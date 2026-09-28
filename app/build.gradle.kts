@@ -33,6 +33,9 @@ dependencies {
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.hilt.navigation.compose)
     implementation(libs.androidx.compose.material3)
+    // The app module is the composition root, and the session screen's overflow menu and the home's
+    // "new session" action are the only places icons are used from here.
+    implementation(libs.androidx.compose.material.icons.extended)
     implementation(libs.kotlinx.serialization.json)
 
     // The QR decoder is a distribution concern: ML Kit's bundled model in the Play build, ZXing in

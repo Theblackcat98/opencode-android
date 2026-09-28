@@ -15,10 +15,15 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -55,6 +60,10 @@ fun HomeScreen(
     onSessionClick: (String) -> Unit,
     onAllSessionsClick: () -> Unit,
     modifier: Modifier = Modifier,
+    /** How many permissions and questions are waiting across every session (plan §4.3). */
+    pendingRequests: Int = 0,
+    onNewSessionClick: () -> Unit = {},
+    onPendingRequestsClick: () -> Unit = {},
 ) {
     val running = rows.filter { it.activity is SessionActivity.Running || it.isRetrying }
     val recent = rows.take(RECENT_LIMIT)
@@ -75,6 +84,26 @@ fun HomeScreen(
                         }
                     }
                 },
+                actions = {
+                    // The inbox is only there when something is waiting: an always-visible empty
+                    // inbox is a dead end, and a badge is the whole signal the user needs.
+                    if (pendingRequests > 0) {
+                        val label = stringResource(R.string.home_requests_waiting_short, pendingRequests)
+                        TextButton(
+                            onClick = onPendingRequestsClick,
+                            modifier = Modifier.semantics { contentDescription = label },
+                        ) {
+                            Text(label, color = MaterialTheme.colorScheme.error)
+                        }
+                    }
+                },
+            )
+        },
+        floatingActionButton = {
+            ExtendedFloatingActionButton(
+                onClick = onNewSessionClick,
+                icon = { Icon(Icons.Filled.Add, contentDescription = null) },
+                text = { Text(stringResource(R.string.home_new_session)) },
             )
         },
     ) { padding ->
@@ -84,8 +113,8 @@ fun HomeScreen(
             }
             return@Scaffold
         }
-        if (rows.isEmpty() && projects.isEmpty()) {
-            EmptyHome(Modifier.padding(padding))
+        if (rows.isEmpty() && projects.isEmpty() && pendingRequests == 0) {
+            EmptyHome(Modifier.padding(padding), onNewSessionClick)
             return@Scaffold
         }
         LazyColumn(
@@ -93,6 +122,11 @@ fun HomeScreen(
             contentPadding = PaddingValues(12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
+            if (pendingRequests > 0) {
+                item(key = "pending-requests") {
+                    PendingRequestsCard(pendingRequests, onPendingRequestsClick)
+                }
+            }
             if (projects.isNotEmpty()) {
                 item(key = "projects-header") { SectionHeader(stringResource(R.string.home_projects)) }
                 items(items = projects, key = { "project-${it.id}" }) { project ->
@@ -250,8 +284,14 @@ private fun SessionPreview(row: SessionRow, onClick: () -> Unit) {
     }
 }
 
+/**
+ * The empty home.
+ *
+ * A server with no sessions is a server the user has not started work on, so the empty state offers
+ * the one action that starts it rather than only explaining that there is nothing here.
+ */
 @Composable
-private fun EmptyHome(modifier: Modifier = Modifier) {
+private fun EmptyHome(modifier: Modifier = Modifier, onNewSessionClick: () -> Unit = {}) {
     Column(
         modifier = modifier.fillMaxSize().padding(32.dp),
         verticalArrangement = Arrangement.Center,
@@ -267,6 +307,40 @@ private fun EmptyHome(modifier: Modifier = Modifier) {
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+        Spacer(Modifier.height(16.dp))
+        Button(onClick = onNewSessionClick) { Text(stringResource(R.string.home_new_session)) }
+    }
+}
+
+/**
+ * The pending-requests card.
+ *
+ * The agent is blocked until this is answered, so it is the first thing on the home and not a
+ * notification-only feature: a user who is not looking at the session still has to be able to find
+ * it (plan §4.3).
+ */
+@Composable
+private fun PendingRequestsCard(count: Int, onClick: () -> Unit) {
+    val label = stringResource(R.string.home_requests_waiting, count)
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .semantics { contentDescription = label },
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+    ) {
+        Column(Modifier.padding(12.dp)) {
+            Text(
+                text = stringResource(R.string.home_requests_title),
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onErrorContainer,
+            )
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onErrorContainer,
+            )
+        }
     }
 }
 

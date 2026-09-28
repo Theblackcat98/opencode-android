@@ -11,7 +11,7 @@ import androidx.compose.runtime.setValue
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import dagger.hilt.android.AndroidEntryPoint
 import dev.opencode.android.core.designsystem.theme.OpenCodeTheme
-import dev.opencode.android.ui.OpenCodeApp
+import dev.opencode.android.navigation.OpenCodeApp
 
 /**
  * The single activity.

@@ -62,6 +62,14 @@ fun SessionScreen(
     onLoadOlder: () -> Unit,
     onFollowChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
+    /** Everything the agent is blocked on, rendered by the requests feature above the timeline. */
+    requestSlot: @Composable () -> Unit = {},
+    /** The composer and the turn's control buttons, rendered below the timeline. */
+    composerSlot: @Composable () -> Unit = {},
+    /** The overflow menu that opens rename, delete and copy. */
+    menuSlot: @Composable () -> Unit = {},
+    /** Opens a provider's action link from a retry, such as "usage exceeded, upgrade". */
+    onOpenLink: (String) -> Unit = {},
 ) {
     val listState = rememberLazyListState()
     val atBottom by remember {
@@ -93,16 +101,11 @@ fun SessionScreen(
                         Subtitle(state)
                     }
                 },
-                navigationIcon = {
-                    Text(
-                        text = "←",
-                        modifier = Modifier
-                            .padding(start = 12.dp)
-                            .semantics { contentDescription = "" },
-                    )
-                },
+                navigationIcon = { BackButton(onNavigateBack) },
+                actions = { menuSlot() },
             )
         },
+        bottomBar = { composerSlot() },
         floatingActionButton = {
             AnimatedVisibility(visible = !atBottom) {
                 ExtendedFloatingActionButton(
@@ -118,19 +121,25 @@ fun SessionScreen(
             }
         },
     ) { padding ->
-        Box(modifier = Modifier.padding(padding).fillMaxSize()) {
-            TimelineList(
-                messages = state.messages,
-                loadingOlder = state.paging.loading,
-                hasMore = state.paging.hasMore,
-                following = state.following,
-                onLoadOlder = onLoadOlder,
-                listState = listState,
-                contentPadding = PaddingValues(12.dp),
-                modifier = Modifier.fillMaxSize(),
-            )
-            if (state.activity is SessionActivityUi.Running) {
-                LinearProgressIndicator(modifier = Modifier.fillMaxWidth().align(Alignment.TopCenter))
+        Column(modifier = Modifier.padding(padding).fillMaxSize()) {
+            state.retry?.let { retry ->
+                RetryBanner(retry = retry, now = state.now, onOpenLink = onOpenLink)
+            }
+            requestSlot()
+            Box(Modifier.weight(1f).fillMaxWidth()) {
+                TimelineList(
+                    messages = state.messages,
+                    loadingOlder = state.paging.loading,
+                    hasMore = state.paging.hasMore,
+                    following = state.following,
+                    onLoadOlder = onLoadOlder,
+                    listState = listState,
+                    contentPadding = PaddingValues(12.dp),
+                    modifier = Modifier.fillMaxSize(),
+                )
+                if (state.activity is SessionActivityUi.Running) {
+                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth().align(Alignment.TopCenter))
+                }
             }
         }
     }

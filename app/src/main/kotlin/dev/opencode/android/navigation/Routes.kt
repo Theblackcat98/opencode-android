@@ -1,10 +1,41 @@
 package dev.opencode.android.navigation
 
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.res.stringResource
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import androidx.navigation.toRoute
+import dev.opencode.android.core.model.PermissionReply
+import dev.opencode.android.feature.composer.ui.ComposerViewModel
+import dev.opencode.android.feature.composer.ui.LocationChoice
+import dev.opencode.android.feature.composer.ui.NewSessionSheet
+import dev.opencode.android.feature.composer.ui.NewSessionViewModel
+import dev.opencode.android.feature.requests.ui.PendingRequestsScreen
+import dev.opencode.android.feature.requests.ui.RequestActions
+import dev.opencode.android.feature.servers.ui.AddServerScreen
+import dev.opencode.android.feature.servers.ui.EditServerScreen
+import dev.opencode.android.feature.servers.ui.EventInspectorScreen
+import dev.opencode.android.feature.servers.ui.ServerStatusScreen
+import dev.opencode.android.feature.servers.ui.ServersScreen
+import dev.opencode.android.feature.sessions.ui.HomeRoute
+import dev.opencode.android.feature.sessions.ui.PendingRequestsViewModel
+import dev.opencode.android.feature.sessions.ui.SessionListRoute
 import kotlinx.serialization.Serializable
+import javax.inject.Inject
 
-/** Type-safe navigation routes for OpenCode Android. */
-
-/** The server registry, and the app's start destination in Phase 1. */
+/** The server registry, and the app's start destination. */
 @Serializable
 data object ServersRoute
 
@@ -32,7 +63,8 @@ data class EditServerRoute(val serverId: String)
 data class EventInspectorRoute(val serverId: String? = null)
 
 /**
- * The per-server home: projects, what is running, and the recent sessions.
+ * The per-server home: projects, what is running, the recent sessions, and the pending-requests
+ * inbox (plan §4.3).
  *
  * [serverId] is optional so a notification or a shared link can land here and let the connection
  * manager pick the server it is already following.
@@ -53,6 +85,211 @@ data class SessionListRoute(
     val projectId: String? = null,
 )
 
-/** One session's timeline. */
+/** One session's timeline, with its composer and its request dock. */
 @Serializable
 data class SessionRoute(val serverId: String? = null, val sessionId: String)
+
+/** Everything waiting across every session of a server. */
+@Serializable
+data class PendingRequestsRoute(val serverId: String? = null)
+
+/**
+ * The navigation graph.
+ *
+ * Phase 1's information architecture is the server registry, so it is the start destination
+ * (plan §4.3). A link shared from another app, or opened from a browser, lands on the add-server
+ * screen with the pairing link already in the field.
+ *
+ * **The driving screens are composed here rather than inside a feature.** A feature depends on the
+ * core modules only, so the session screen, the composer and the request dock cannot import one
+ * another; the app module is where they meet. See [SessionHost] for the session screen's composition
+ * and [NewSessionHost] for the new-session sheet's.
+ */
+@Composable
+fun OpenCodeApp(
+    sharedPayload: String? = null,
+    modifier: Modifier = Modifier,
+    navController: NavHostController = rememberNavController(),
+) {
+    LaunchedEffect(sharedPayload) {
+        if (!sharedPayload.isNullOrBlank()) {
+            navController.navigate(AddServerRoute(initialUrl = sharedPayload))
+        }
+    }
+
+    NavHost(
+        navController = navController,
+        startDestination = ServersRoute,
+        modifier = modifier,
+    ) {
+        composable<ServersRoute> {
+            ServersScreen(
+                onHomeClick = { serverId -> navController.navigate(HomeRoute(serverId)) },
+                onAddServerClick = { navController.navigate(AddServerRoute()) },
+                onServerClick = { serverId -> navController.navigate(ServerStatusRoute(serverId)) },
+                onEditServerClick = { serverId -> navController.navigate(EditServerRoute(serverId)) },
+                onPairAgainClick = { serverId ->
+                    // A rejected credential is repaired by re-pairing, which keeps the profile.
+                    navController.navigate(AddServerRoute(replaceServerId = serverId))
+                },
+                onInspectorClick = { navController.navigate(EventInspectorRoute()) },
+            )
+        }
+
+        composable<AddServerRoute> {
+            AddServerScreen(onNavigateBack = { navController.popBackStack() })
+        }
+
+        composable<ServerStatusRoute> {
+            ServerStatusScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onEditServer = { serverId -> navController.navigate(EditServerRoute(serverId)) },
+                onOpenInspector = { serverId -> navController.navigate(EventInspectorRoute(serverId)) },
+                // Re-pairing keeps the profile and replaces only the credential.
+                onPairAgain = { serverId -> navController.navigate(AddServerRoute(replaceServerId = serverId)) },
+            )
+        }
+
+        composable<EditServerRoute> {
+            EditServerScreen(onNavigateBack = { navController.popBackStack() })
+        }
+
+        composable<EventInspectorRoute> {
+            EventInspectorScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onAddServer = {
+                    navController.popBackStack()
+                    navController.navigate(AddServerRoute())
+                },
+            )
+        }
+
+        composable<HomeRoute> { entry ->
+            val route = entry.toRoute<HomeRoute>()
+            var newSessionOpen by remember { mutableStateOf(false) }
+            HomeRoute(
+                serverId = route.serverId,
+                onSessionClick = { sessionId ->
+                    navController.navigate(SessionRoute(route.serverId, sessionId))
+                },
+                onAllSessionsClick = { serverId ->
+                    navController.navigate(SessionListRoute(serverId = serverId))
+                },
+                onNewSessionClick = { newSessionOpen = true },
+                onPendingRequestsClick = { serverId ->
+                    navController.navigate(PendingRequestsRoute(serverId))
+                },
+            )
+            if (newSessionOpen) {
+                NewSessionHost(
+                    onCreated = { sessionId ->
+                        newSessionOpen = false
+                        navController.navigate(SessionRoute(route.serverId, sessionId))
+                    },
+                    onDismiss = { newSessionOpen = false },
+                )
+            }
+        }
+
+        composable<SessionListRoute> { entry ->
+            val route = entry.toRoute<SessionListRoute>()
+            SessionListRoute(
+                serverId = route.serverId,
+                projectId = route.projectId,
+                onSessionClick = { sessionId ->
+                    navController.navigate(SessionRoute(route.serverId, sessionId))
+                },
+            )
+        }
+
+        composable<SessionRoute> { entry ->
+            val route = entry.toRoute<SessionRoute>()
+            SessionHost(
+                sessionId = route.sessionId,
+                onNavigateBack = { navController.popBackStack() },
+                onSessionDeleted = { navController.popBackStack() },
+            )
+        }
+
+        composable<PendingRequestsRoute> { entry ->
+            val route = entry.toRoute<PendingRequestsRoute>()
+            PendingRequestsHost(
+                onNavigateBack = { navController.popBackStack() },
+                onOpenSession = { sessionId ->
+                    navController.navigate(SessionRoute(route.serverId, sessionId))
+                },
+            )
+        }
+    }
+}
+
+/** The global pending-requests inbox, with the answers wired to the request center. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun PendingRequestsHost(
+    onNavigateBack: () -> Unit,
+    onOpenSession: (String) -> Unit,
+    requests: PendingRequestsViewModel = hiltViewModel(),
+    composer: ComposerViewModel = hiltViewModel(),
+) {
+    val pending by requests.pending.collectAsStateWithLifecycle()
+    val titles by requests.sessionTitles.collectAsStateWithLifecycle()
+    val uriHandler = LocalUriHandler.current
+    val actions = RequestActions(
+        onReplyOnce = { composer.replyPermission(it.request, PermissionReply.Once) },
+        onReplyAlways = { composer.replyPermission(it.request, PermissionReply.Always) },
+        onReject = { request, feedback ->
+            composer.replyPermission(request.request, PermissionReply.Reject, feedback)
+        },
+        onSubmitForm = { form, answer -> composer.submitForm(form.form, answer) },
+        onCancelForm = { composer.cancelForm(it.form) },
+        onOpenLink = { uriHandler.openUri(it) },
+        onOpenSession = onOpenSession,
+    )
+    PendingRequestsScreen(
+        requests = pending,
+        sessionTitles = titles,
+        actions = actions,
+        onNavigateBack = onNavigateBack,
+    )
+}
+
+/** The new-session sheet, which navigates to the session it created. */
+@Composable
+private fun NewSessionHost(
+    onCreated: (String) -> Unit,
+    onDismiss: () -> Unit,
+    viewModel: NewSessionViewModel = hiltViewModel(),
+) {
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    val created by viewModel.created.collectAsStateWithLifecycle()
+    val uriHandler = LocalUriHandler.current
+
+    LaunchedEffect(created) {
+        val sessionId = created ?: return@LaunchedEffect
+        viewModel.reset()
+        onCreated(sessionId)
+    }
+
+    NewSessionSheet(
+        state = state,
+        favorites = emptyList(),
+        recents = emptyList(),
+        modelSearch = "",
+        onTitleChange = viewModel::setTitle,
+        onSelectProject = viewModel::selectLocation,
+        onSelectDirectory = { directory -> viewModel.selectLocation(LocationChoice.Browsed(directory, null)) },
+        onOpenBrowser = viewModel::openBrowser,
+        onSelectAgent = viewModel::selectAgent,
+        onSelectModel = viewModel::selectModel,
+        onBrowseUp = viewModel::goUp,
+        onBrowseEnter = viewModel::enterDirectory,
+        onBrowseUse = viewModel::useBrowsedDirectory,
+        onBrowseDismiss = viewModel::closeBrowser,
+        onCreate = viewModel::create,
+        onDismiss = {
+            viewModel.reset()
+            onDismiss()
+        },
+    )
+}

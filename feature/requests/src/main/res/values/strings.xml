@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- Request dock -->
+    <string name="requests_dock_title">Waiting for you</string>
+    <string name="requests_dock_collapse">Hide the requests</string>
+    <string name="requests_dock_expand">Show %1$d waiting</string>
+    <string name="requests_none">Nothing is waiting.</string>
+
+    <!-- Permission card -->
+    <string name="permission_title">Allow %1$s?</string>
+    <string name="permission_resources">It would touch</string>
+    <string name="permission_resource_one">%1$s</string>
+    <string name="permission_message">%1$s</string>
+    <string name="permission_once">Allow once</string>
+    <string name="permission_always">Always allow</string>
+    <string name="permission_reject">Reject</string>
+    <string name="permission_always_saves">Always allow will also save this rule on the server:</string>
+    <string name="permission_always_pattern">%1$s</string>
+    <string name="permission_always_confirm_title">Save this rule?</string>
+    <string name="permission_always_confirm_body">The server will match these patterns from now on, without asking again:</string>
+    <string name="permission_feedback_label">Tell the agent why (optional)</string>
+    <string name="permission_feedback_send">Reject with feedback</string>
+    <string name="permission_sending">Sending the answer</string>
+
+    <!-- Form card -->
+    <string name="form_reply">Reply</string>
+    <string name="form_cancel">Cancel</string>
+    <string name="form_custom_option">Something else</string>
+    <string name="form_custom_hint">Type your own answer</string>
+    <string name="form_required">Required</string>
+    <string name="form_optional">Optional</string>
+    <string name="form_open_link">Open the link to continue</string>
+    <string name="form_external">Open</string>
+    <string name="form_sending">Sending the answer</string>
+    <string name="form_mcp_title">%1$s needs something</string>
+    <string name="form_websearch_title">Allow web search?</string>
+    <string name="form_websearch_body">The agent wants to use a web search provider. Choose one, or say no.</string>
+    <string name="form_field_label">%1$s (%2$s)</string>
+    <string name="form_select_options">Select one</string>
+    <string name="form_select_many">Select any</string>
+    <string name="form_selected_count">%1$d selected</string>
+    <string name="form_integer_hint">Whole number</string>
+    <string name="form_number_hint">Number</string>
+
+    <!-- Field problems -->
+    <string name="form_error_required">This is required</string>
+    <string name="form_error_pattern">That does not match the expected format</string>
+    <string name="form_error_too_short">Too short</string>
+    <string name="form_error_too_long">Too long</string>
+    <string name="form_error_below_minimum">Too small</string>
+    <string name="form_error_above_maximum">Too large</string>
+    <string name="form_error_not_an_integer">A whole number is required</string>
+    <string name="form_error_not_an_option">Choose one of the options</string>
+    <string name="form_error_too_few">Choose at least %1$d</string>
+    <string name="form_error_too_many">Choose at most %1$d</string>
+    <string name="form_unknown_field_type">Unrecognised field type %1$s</string>
+
+    <!-- Global pending-requests inbox -->
+    <string name="requests_inbox_title">Waiting for you</string>
+    <string name="requests_inbox_empty_title">Nothing is waiting</string>
+    <string name="requests_inbox_empty_subtitle">When the agent needs a permission or an answer, it appears here and in the session.</string>
+    <string name="requests_inbox_open_session">Open the session</string>
+    <string name="requests_inbox_count">%1$d waiting</string>
+
+    <!-- Failure messages -->
+    <string name="action_error_unauthorized">The server rejected this device. Pair it again.</string>
+    <string name="action_error_forbidden">The agent or the server refused this action.</string>
+    <string name="action_error_not_found">That is gone. Another client may have answered it first.</string>
+    <string name="action_error_conflict">The server already has something different under that id.</string>
+    <string name="action_error_session_busy">The session is busy. Try again when it is idle.</string>
+    <string name="action_error_invalid">The server rejected that: %1$s</string>
+    <string name="action_error_server">The server had a problem. It may be starting up.</string>
+    <string name="action_error_offline">The server could not be reached.</string>
+    <string name="action_error_unknown">Something went wrong: %1$s</string>
+    <string name="action_dismiss">Dismiss</string>
+
+</resources>

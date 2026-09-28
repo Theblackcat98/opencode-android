@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- Composer -->
+    <string name="composer_hint">Message the agent</string>
+    <string name="composer_send">Send</string>
+    <string name="composer_sending">Sending</string>
+    <string name="composer_delivery_steer">Steer</string>
+    <string name="composer_delivery_queue">Queue</string>
+    <string name="composer_delivery_description">Steering enters the running turn at the next step. Queued input waits for the turn to finish.</string>
+    <string name="composer_resume">Resume</string>
+    <string name="composer_resume_description">Admit this input without starting the agent</string>
+    <string name="composer_interrupt">Stop</string>
+    <string name="composer_background">Background</string>
+    <string name="composer_inbox">Inbox %1$d</string>
+    <string name="composer_pick_agent">Agent</string>
+    <string name="composer_pick_model">Model</string>
+    <string name="composer_next_agent">Next agent</string>
+    <string name="composer_next_variant">Next variant</string>
+    <string name="composer_queue_on_long_press">Held to queue</string>
+    <string name="composer_hint_queue">Queued</string>
+
+    <!-- Inbox panel -->
+    <string name="inbox_title">Inbox</string>
+    <string name="inbox_empty">Nothing is waiting to be sent.</string>
+    <string name="inbox_pending">Waiting to be sent</string>
+    <string name="inbox_cancel">Cancel this input</string>
+    <string name="inbox_make_steer">Deliver as steering input</string>
+    <string name="inbox_make_queue">Deliver after the turn</string>
+    <string name="inbox_delivery_steer">Steering</string>
+    <string name="inbox_delivery_queue">Queued</string>
+    <string name="inbox_item_summary">%1$s</string>
+
+    <!-- Agent picker -->
+    <string name="agent_picker_title">Agent</string>
+    <string name="agent_no_description">No description</string>
+    <string name="agent_selected">Selected</string>
+    <string name="agent_cycles_to">Next: %1$s</string>
+    <string name="agent_no_selectable">This location has no agent that can be selected.</string>
+
+    <!-- Model picker -->
+    <string name="model_picker_title">Model</string>
+    <string name="model_search">Search models</string>
+    <string name="model_favorites">Favorites</string>
+    <string name="model_recents">Recent</string>
+    <string name="model_default_badge">Default</string>
+    <string name="model_favorite_toggle">Pin this model</string>
+    <string name="model_capability_tools">Tools</string>
+    <string name="model_capability_image">Images</string>
+    <string name="model_context">%1$s context</string>
+    <string name="model_cost">%1$s in, %2$s out per million tokens</string>
+    <string name="model_variant">Variant %1$s</string>
+    <string name="model_disabled">Disabled</string>
+    <string name="model_status_alpha">Alpha</string>
+    <string name="model_status_beta">Beta</string>
+    <string name="model_status_deprecated">Deprecated</string>
+    <string name="model_empty">No model matches. Connect a provider on the server first.</string>
+    <string name="model_none_available">No model available</string>
+    <string name="model_none_available_body">This server has no model configured, so a new session cannot start a turn. Connect a provider on the computer, or run `opencode auth login`, then pull to refresh.</string>
+    <string name="model_variants_label">Reasoning effort</string>
+
+    <!-- New session -->
+    <string name="new_session_title">New session</string>
+    <string name="new_session_where">Where</string>
+    <string name="new_session_where_description">The directory the agent works in</string>
+    <string name="new_session_agent">Agent</string>
+    <string name="new_session_model">Model</string>
+    <string name="new_session_model_default">Server default</string>
+    <string name="new_session_title_hint">Title (optional)</string>
+    <string name="new_session_create">Start</string>
+    <string name="new_session_creating">Starting</string>
+    <string name="new_session_recent_directories">Recent directories</string>
+    <string name="new_session_projects">Projects</string>
+    <string name="new_session_browse">Browse the server\'s files</string>
+    <string name="new_session_browse_title">Choose a directory</string>
+    <string name="new_session_browse_up">Up one level</string>
+    <string name="new_session_browse_use">Use this directory</string>
+    <string name="new_session_browse_empty">Nothing here</string>
+    <string name="new_session_browse_loading">Listing the directory</string>
+    <string name="new_session_no_agents">No agent to choose; the server default will be used.</string>
+    <string name="new_session_pick_first">Choose an agent</string>
+    <string name="new_session_create_failed">Could not start the session: %1$s</string>
+    <string name="new_session_open">New session</string>
+
+</resources>

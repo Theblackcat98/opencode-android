@@ -15,6 +15,10 @@
     <string name="home_project_sessions">Sessions in %1$s</string>
     <string name="home_vcs">%1$s repository</string>
     <string name="home_canonical_directory">Canonical directory %1$s</string>
+    <string name="home_requests_title">Waiting for you</string>
+    <string name="home_requests_waiting">%1$d permissions and questions need an answer</string>
+    <string name="home_requests_waiting_short">%1$d</string>
+    <string name="home_new_session">New session</string>
 
     <!-- Session list -->
     <string name="sessions_title">Sessions</string>
@@ -135,5 +139,21 @@
     <string name="unknown_message_type">Unrecognised message type %1$s</string>
     <string name="unknown_tool_type">Unrecognised tool %1$s</string>
     <string name="unknown_event_logged">It was logged for the developer.</string>
+
+    <!-- Session management -->
+    <string name="action_dismiss">Dismiss</string>
+    <string name="session_menu">Session actions</string>
+    <string name="session_rename">Rename</string>
+    <string name="session_rename_hint">Session title</string>
+    <string name="session_rename_save">Save</string>
+    <string name="session_delete">Delete session</string>
+    <string name="session_delete_title">Delete this session?</string>
+    <string name="session_delete_body">It is deleted on the server, with every message and every subagent it started. This cannot be undone.</string>
+    <string name="session_delete_children">It also has %1$d subagents, which are deleted with it.</string>
+    <string name="session_delete_confirm">Delete</string>
+    <string name="session_copy_message">Copy this message</string>
+    <string name="session_copy_transcript">Copy the whole conversation</string>
+    <string name="session_copied">Copied to the clipboard</string>
+    <string name="session_close">Close</string>
 
 </resources>

@@ -50,6 +50,10 @@ data class SessionUiState(
     val contextUsed: Long = 0L,
     val contextLimit: Long = 0L,
     val activity: SessionActivityUi = SessionActivityUi.Idle,
+    /** The provider's retry, with its countdown and its call to action, or `null`. */
+    val retry: RetryUi? = null,
+    /** The clock the countdown is computed against, so the banner does not hold a timer. */
+    val now: Long = 0L,
     val messages: List<SessionMessage> = emptyList(),
     val paging: TimelinePaging = TimelinePaging(),
     val following: Boolean = true,
@@ -237,18 +241,32 @@ class SessionViewModel @Inject constructor(
 
     val sessionId: StateFlow<String?> = openSession
 
+    /**
+     * A coarse clock for the retry countdown.
+     *
+     * Ticking once a second is what a countdown needs and is cheap: it is one emission a second on
+     * one flow, and it only matters while a retry is actually scheduled.
+     */
+    private val ticks: Flow<Long> = flow {
+        while (true) {
+            emit(clock())
+            delay(TICK_MILLIS)
+        }
+    }
+
     val state: StateFlow<SessionUiState> = combine(
         openSession,
         dataSets.active,
         follow,
-    ) { id, set, following ->
-        if (id == null || set == null) return@combine SessionUiState(following = following)
+        ticks,
+    ) { id, set, following, now ->
+        if (id == null || set == null) return@combine SessionUiState(following = following, now = now)
         val store: TimelineStore = set.timeline(id)
         val info = set.sessions.info.value[id]
         val directory = info?.location?.directory
         val modelLimit = directory
             ?.let { set.models(it).value }
-            ?.contextLimitFor(info?.model)
+            ?.contextLimitFor(info.model)
         SessionUiState(
             title = info?.title?.takeIf(String::isNotBlank) ?: "",
             agent = info?.agent,
@@ -257,6 +275,8 @@ class SessionViewModel @Inject constructor(
             contextUsed = store.lastStepTokens(),
             contextLimit = modelLimit ?: 0L,
             activity = set.activityOf(id),
+            retry = set.sessions.status.value[id]?.retryOrNull,
+            now = now,
             messages = store.state.value.messages,
             paging = store.paging.value,
             following = following,
@@ -320,4 +340,4 @@ private fun ServerDataSet.activityOf(sessionID: String): SessionActivityUi {
 }
 
 private const val STOP_TIMEOUT_MILLIS = 5_000L
-private const val TICK_MILLIS = 60_000L
+private const val TICK_MILLIS = 1_000L
