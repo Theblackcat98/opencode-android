@@ -11,9 +11,7 @@ import dev.opencode.android.core.data.server.SessionCommands
 import dev.opencode.android.core.data.server.VcsStore
 import dev.opencode.android.core.data.action.toActionError
 import dev.opencode.android.core.model.Delivery
-import dev.opencode.android.core.model.FileDiffStatus
 import dev.opencode.android.core.model.ModelRef
-import dev.opencode.android.core.model.PromptRequest
 import dev.opencode.android.core.network.ServerApi
 import dev.opencode.android.core.network.ServerApiFactory
 import dev.opencode.android.core.testing.integration.DevServerHarness
@@ -21,7 +19,6 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import okhttp3.OkHttpClient
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -94,6 +91,7 @@ class LiveReviewIntegrationTest {
 
     @Test
     fun `a review comment on a file range reaches the agent`() = runBlocking {
+        val mark = providerMark()
         val file = write("review-comment-probe.txt", COMMENT_PROBE_LINE)
 
         // The comment is what the review screen produces: a path, a line range, the words, and the
@@ -139,16 +137,17 @@ class LiveReviewIntegrationTest {
         // And the model saw it: the fake provider's own request log is the last hop.
         assertTrue(
             "the provider request must contain the comment's own words",
-            awaitProviderRequest { body -> "please rename this marker" in body },
+            awaitProviderRequest(mark) { body -> "please rename this marker" in body },
         )
         assertTrue(
             "the provider request must contain the file the comment was about",
-            awaitProviderRequest { body -> COMMENT_PROBE_LINE in body },
+            awaitProviderRequest(mark) { body -> COMMENT_PROBE_LINE in body },
         )
     }
 
     @Test
     fun `a comment whose range is attached is sent as a ranged file uri`() = runBlocking {
+        val mark = providerMark()
         val file = write("review-range-probe.txt", "first\nsecond\nthird\n")
         val comment = CommentSelection.onFile(file.absolutePath, 2, 3, "these two lines", totalLines = 3)
 
@@ -170,7 +169,7 @@ class LiveReviewIntegrationTest {
         // The ranged attachment is what the server reads, so the flagged line has to be in it.
         assertTrue(
             "the flagged line must reach the model",
-            awaitProviderRequest { body -> "second" in body && "third" in body },
+            awaitProviderRequest(mark) { body -> "second" in body && "third" in body },
         )
     }
 
@@ -260,6 +259,7 @@ class LiveReviewIntegrationTest {
 
     @Test
     fun `a file can be listed, read and attached with a line range`() = runBlocking {
+        val mark = providerMark()
         val file = write("browse-probe.txt", "alpha\nbeta\ngamma\n")
 
         val listing = files.listAndWait(workDirectory, null)
@@ -288,7 +288,7 @@ class LiveReviewIntegrationTest {
         assertTrue(prompt.isSuccess)
         assertTrue(
             "the flagged lines must reach the model",
-            awaitProviderRequest { body -> "beta" in body && "gamma" in body },
+            awaitProviderRequest(mark) { body -> "beta" in body && "gamma" in body },
         )
     }
 
@@ -396,30 +396,55 @@ class LiveReviewIntegrationTest {
     private fun assertNull(message: String, value: Any?) = assertTrue(message, value == null)
 
     /**
-     * Waits, with a bound, for the fake provider to have recorded a request whose body satisfies
-     * [matches]. The provider log is a different process, so the wait is real; it is bounded, and it
-     * answers `false` rather than throwing so a negative assertion can use the same wait.
+     * The provider's own request log, as the raw JSON of each request.
+     *
+     * **The log is cumulative and the provider outlives the build.** It belongs to a long-running
+     * process that every run appends to, so a marker written by an earlier run is still in it. A
+     * test that only asked "is this marker anywhere in the log" would pass on the second run
+     * against a server that never saw the request — which is the one thing these assertions exist to
+     * rule out. So a test records [providerMark] first and only looks at what came after it.
      */
-    private fun awaitProviderRequest(matches: (String) -> Boolean): Boolean {
+    private fun providerRequests(): List<String> {
         val providerUrl = requireNotNull(DevServerHarness.fakeProviderUrl) {
             "the fake provider URL is not configured; FAKE_PROVIDER_URL is what names it"
         }
-        val client = DevServerHarness.client()
+        return runCatching {
+            DevServerHarness.client()
+                .newCall(okhttp3.Request.Builder().url("$providerUrl/__requests").build())
+                .execute()
+                .use { it.body.string() }
+        }.map { body ->
+            json.parseToJsonElement(body).jsonObject["requests"]?.jsonArray.orEmpty()
+                .map { it.jsonObject.toString() }
+        }.getOrDefault(emptyList())
+    }
+
+    /** Where this test starts in the provider's cumulative log. */
+    private fun providerMark(): Int = providerRequests().size
+
+    /**
+     * Waits, with a bound, for the provider to record a request *after* [mark] whose body satisfies
+     * [matches].
+     *
+     * The provider is a different process, so the wait is real. It is bounded, and it answers
+     * `false` rather than throwing so a negative assertion can use the same wait. A timeout names
+     * the whole log it saw, because "it did not match" without the log is the least useful failure
+     * this test can produce.
+     */
+    private fun awaitProviderRequest(mark: Int, matches: (String) -> Boolean): Boolean {
         val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(REQUEST_WAIT_SECONDS)
         var last = "never reached the provider"
         while (System.nanoTime() < deadline) {
-            val matched = runCatching {
-                val body = client.newCall(okhttp3.Request.Builder().url("$providerUrl/__requests").build())
-                    .execute()
-                    .use { it.body.string() }
-                last = body
-                json.parseToJsonElement(body).jsonObject["requests"]?.jsonArray.orEmpty()
-                    .any { request -> matches(request.jsonObject.toString()) }
-            }.getOrDefault(false)
-            if (matched) return true
+            val requests = providerRequests()
+            last = "the log held ${requests.size} requests, ${requests.size - mark} of them new"
+            if (requests.drop(mark).any(matches)) return true
             Thread.sleep(200)
         }
-        assertTrue("the provider request log never matched; the last log was: $last", last.isNotEmpty())
+        assertTrue(
+            "no request after this test's mark matched; $last; the new ones were: " +
+                providerRequests().drop(mark).joinToString(" | "),
+            providerRequests().isNotEmpty(),
+        )
         return false
     }
 

@@ -136,6 +136,7 @@ class LiveComposerIntegrationTest {
 
     @Test
     fun `a file attachment reaches the model, as the recorded provider request shows`() = runBlocking {
+        val mark = providerMark()
         marker = writeMarker()
         val uri = ServerPath.toUri(marker.name, workDirectory)
 
@@ -152,13 +153,14 @@ class LiveComposerIntegrationTest {
         assertEquals("the server read the file and recorded its bytes", marker.readText().trim(), String(java.util.Base64.getDecoder().decode(stored.data)))
         assertTrue(
             "the provider request must carry the file's content, which is the whole criterion",
-            awaitProviderRequest { body -> marker.readText().trim() in body },
+            awaitProviderRequest(mark) { body -> marker.readText().trim() in body },
         )
     }
 
     @Test
     fun `an inline image is accepted and stored, and a text-only model does not receive it`() =
         runBlocking {
+            val mark = providerMark()
             val png = "data:image/png;base64," + ONE_PIXEL_PNG_BASE64
             val result = commands.prompt(
                 sessionID = sessionId,
@@ -178,7 +180,7 @@ class LiveComposerIntegrationTest {
             // asserting it here is what makes the warning something more than a precaution.
             assertFalse(
                 "a text-only model must not be sent the image",
-                awaitProviderRequest { body -> ONE_PIXEL_PNG_BASE64 in body },
+                awaitProviderRequest(mark) { body -> ONE_PIXEL_PNG_BASE64 in body },
             )
             val model = api.listModels(workDirectory).data.first { it.id == "text" }
             assertFalse(
@@ -268,35 +270,50 @@ class LiveComposerIntegrationTest {
     }
 
     /**
-     * Waits, with a bound, for the fake provider to have recorded a request whose body satisfies
-     * [matches].
+     * The provider's own request log, as the raw JSON of each request.
      *
-     * The provider log is the only place the last hop is visible, and it is a different process, so
-     * the wait is a real one. It is bounded, which is the difference between a test that fails and a
-     * build that hangs, and it answers `false` rather than throwing so that a *negative* assertion —
-     * "the server did not send this" — can be made with the same wait.
+     * **The log is cumulative and the provider outlives the build.** It belongs to a long-running
+     * process that every run appends to, so a marker written by an earlier run is still in it. The
+     * positive assertion here would then pass on a second run against a server that never saw the
+     * request — which is the one thing it exists to rule out — and the *negative* assertion (a
+     * text-only model must not be sent the image) would pass for the wrong reason: the log it reads
+     * would not contain the image because no run ever put it there. So both record [providerMark]
+     * first and read only what came after it.
      */
-    private fun awaitProviderRequest(matches: (String) -> Boolean): Boolean {
+    private fun providerRequests(): List<String> {
         val providerUrl = requireNotNull(DevServerHarness.fakeProviderUrl) {
             "the fake provider URL is not configured; FAKE_PROVIDER_URL is what names it"
         }
-        val client = DevServerHarness.client()
+        return runCatching {
+            DevServerHarness.client()
+                .newCall(okhttp3.Request.Builder().url("$providerUrl/__requests").build())
+                .execute()
+                .use { it.body.string() }
+        }.map { body ->
+            json.parseToJsonElement(body).jsonObject["requests"]?.jsonArray.orEmpty()
+                .map { it.jsonObject.toString() }
+        }.getOrDefault(emptyList())
+    }
+
+    /** Where this test starts in the provider's cumulative log. */
+    private fun providerMark(): Int = providerRequests().size
+
+    /**
+     * Waits, with a bound, for the provider to record a request *after* [mark] whose body satisfies
+     * [matches].
+     *
+     * The provider is a different process, so the wait is a real one. It is bounded, which is the
+     * difference between a test that fails and a build that hangs, and it answers `false` rather than
+     * throwing so that a *negative* assertion — "the server did not send this" — can be made with
+     * the same wait. A negative assertion still waits the full bound on purpose: returning early
+     * would let it pass before the request it is waiting about could have been made.
+     */
+    private fun awaitProviderRequest(mark: Int, matches: (String) -> Boolean): Boolean {
         val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(REQUEST_WAIT_SECONDS)
-        var last = ""
         while (System.nanoTime() < deadline) {
-            val matched = runCatching {
-                val body = client.newCall(okhttp3.Request.Builder().url("$providerUrl/__requests").build())
-                    .execute()
-                    .use { it.body.string() }
-                last = body
-                json.parseToJsonElement(body).jsonObject["requests"]?.jsonArray.orEmpty()
-                    .any { request -> matches(request.jsonObject.toString()) }
-            }.getOrDefault(false)
-            if (matched) return true
+            if (providerRequests().drop(mark).any(matches)) return true
             Thread.sleep(200)
         }
-        // Not a failure: this is also how a *negative* assertion is made, and the log is reported so
-        // that a negative assertion which was never really checked says so here.
         return false
     }
 
