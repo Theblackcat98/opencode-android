@@ -3,6 +3,11 @@ package dev.opencode.android.core.data.server
 import dev.opencode.android.core.data.action.ActionErrorKind
 import dev.opencode.android.core.data.action.toActionError
 import dev.opencode.android.core.model.Delivery
+import dev.opencode.android.core.model.InboxItem
+import dev.opencode.android.core.model.PromptAgentAttachment
+import dev.opencode.android.core.model.PromptFileInput
+import dev.opencode.android.core.model.PromptFileSource
+import dev.opencode.android.core.model.PromptSkillInput
 import dev.opencode.android.core.model.ModelRef
 import dev.opencode.android.core.network.ServerApi
 import dev.opencode.android.core.network.ServerApiFactory
@@ -190,6 +195,117 @@ class SessionCommandsTest {
     }
 
     @Test
+    fun `a prompt carries its files in the shape the route accepts`() = runTest {
+        server.enqueue(enqueued("msg_1"))
+        commands.prompt(
+            sessionID = "ses_a",
+            text = "look at this",
+            files = listOf(PromptFileInput("file:///work/a.ts", name = "a.ts")),
+            agents = listOf(PromptAgentAttachment("build")),
+            skills = listOf(PromptSkillInput("review")),
+        )
+
+        val body = server.takeRequest().bodyText()
+        // The request names a uri. The stored message shape — base64 and a mime — is a different
+        // type on purpose, and sending it here would be a payload the server cannot read.
+        assertTrue(body.contains("\"uri\":\"file:///work/a.ts\""))
+        assertTrue(!body.contains("\"source\""))
+        assertTrue(body.contains("\"agents\":[{\"name\":\"build\"}]"))
+        assertTrue(body.contains("\"skills\":[{\"id\":\"review\"}]"))
+    }
+
+    @Test
+    fun `the optimistic item shows the same chips the confirmed one will`() = runTest {
+        server.enqueue(enqueued("msg_1"))
+        commands.prompt(
+            sessionID = "ses_a",
+            text = "look",
+            files = listOf(PromptFileInput("data:image/png;base64,AAAA", name = "shot.png")),
+        )
+
+        val payload = (timeline.state.value.pending.single().item as InboxItem.User).payload
+        val file = payload.files?.single()
+        assertEquals("shot.png", file?.name)
+        assertEquals("image/png", file?.mime)
+        assertEquals(PromptFileSource.Inline, file?.source)
+    }
+
+    @Test
+    fun `a command shows a pending item and is withdrawn when the server refuses it`() = runTest {
+        server.enqueue(json(404, """{"_tag":"CommandNotFoundError","message":"no such command"}"""))
+        val result = commands.runCommand("ses_a", "deploy", "production")
+
+        val call = server.takeRequest()
+        assertEquals("/api/session/ses_a/command", call.url.encodedPath)
+        assertTrue(call.bodyText().contains("\"name\":\"deploy\""))
+        assertEquals(ActionErrorKind.NOT_FOUND, result.actionErrorOrNull?.kind)
+        assertTrue(timeline.state.value.pending.isEmpty())
+    }
+
+    @Test
+    fun `a shell command carries the client id that makes a retry the same command`() = runTest {
+        server.enqueue(noContent())
+        assertTrue(commands.runShell("ses_a", "git status --short").isSuccess)
+
+        val call = server.takeRequest()
+        assertEquals("/api/session/ses_a/shell", call.url.encodedPath)
+        val body = call.bodyText()
+        assertTrue("a command with a side effect must not run twice", body.contains("\"id\":\"msg_"))
+        assertTrue(body.contains("\"command\":\"git status --short\""))
+    }
+
+    @Test
+    fun `a compaction is its own route and answers with the inbox item`() = runTest {
+        server.enqueue(json(200, """{"data":{"id":"msg_1","sessionID":"ses_a","type":"compaction","payload":{},"delivery":"steer"}}"""))
+        val result = commands.compact("ses_a", Delivery.Queue)
+
+        val call = server.takeRequest()
+        assertEquals("/api/session/ses_a/compact", call.url.encodedPath)
+        assertTrue(call.bodyText().contains("\"delivery\":\"queue\""))
+        assertEquals("msg_1", result.getOrNull()?.id)
+    }
+
+    @Test
+    fun `a busy session refuses a compaction as a conflict`() = runTest {
+        server.enqueue(json(409, """{"_tag":"SessionBusyError","message":"busy","sessionID":"ses_a"}"""))
+        assertEquals(ActionErrorKind.SESSION_BUSY, commands.compact("ses_a").actionErrorOrNull?.kind)
+    }
+
+    @Test
+    fun `a side question is read out of the data wrapper`() = runTest {
+        server.enqueue(json(200, """{"data":{"text":"because the guard runs first"}}"""))
+        val answer = commands.generate("ses_a", "why is it like that?").getOrNull()
+
+        val call = server.takeRequest()
+        assertEquals("/api/session/ses_a/generate", call.url.encodedPath)
+        assertEquals("why is it like that?", call.bodyText().let { it.substringAfter("\"prompt\":\"").substringBefore('"') })
+        assertEquals("because the guard runs first", answer)
+    }
+
+    @Test
+    fun `session environment is a put of the whole map`() = runTest {
+        server.enqueue(noContent())
+        assertTrue(commands.setEnvironment("ses_a", mapOf("A" to "1")).isSuccess)
+
+        val call = server.takeRequest()
+        assertEquals("/api/session/ses_a/environment", call.url.encodedPath)
+        assertEquals("PUT", call.method)
+        assertEquals("""{"variables":{"A":"1"}}""", call.bodyText())
+    }
+
+    @Test
+    fun `a skill activation is the experimental route and is expected to be missing sometimes`() = runTest {
+        server.enqueue(noContent())
+        assertTrue(commands.activateSkill("ses_a", "review", resume = true).isSuccess)
+        val call = server.takeRequest()
+        assertEquals("/api/experimental/session/ses_a/skill", call.url.encodedPath)
+        assertEquals("""{"id":"review","resume":true}""", call.bodyText())
+
+        server.enqueue(json(404, """{"_tag":"SkillNotFoundError","message":"no such skill"}"""))
+        assertEquals(ActionErrorKind.NOT_FOUND, commands.activateSkill("ses_a", "nope").actionErrorOrNull?.kind)
+    }
+
+    @Test
     fun `generated ids are unique and carry the prefixes the server checks`() {
         val ids = IdGenerator(clock = { 42L }, random = { "zz" })
         val messages = List(200) { ids.nextMessageID() }
@@ -225,6 +341,11 @@ class SessionCommandsTest {
         .build()
 
     private fun noContent(): MockResponse = MockResponse.Builder().code(204).build()
+
+    private fun enqueued(id: String): MockResponse = json(
+        200,
+        """{"data":{"id":"$id","sessionID":"ses_a","type":"user","payload":{"text":"hi"},"delivery":"steer"}}""",
+    )
 
     private fun RecordedRequest.bodyText(): String = requireNotNull(body).utf8()
 
