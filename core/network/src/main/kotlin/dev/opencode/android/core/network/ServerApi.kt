@@ -23,6 +23,7 @@ import dev.opencode.android.core.model.SessionInboxInfo
 import dev.opencode.android.core.model.SessionInfo
 import dev.opencode.android.core.model.SessionMessage
 import dev.opencode.android.core.model.SessionUpdateRequest
+import dev.opencode.android.core.model.SessionViewRequest
 import dev.opencode.android.core.model.SwitchAgentRequest
 import dev.opencode.android.core.model.SwitchModelRequest
 import retrofit2.http.Body
@@ -330,6 +331,21 @@ interface ServerApi {
     suspend fun cancelForm(
         @Path("sessionID") sessionID: String,
         @Path("formID") formID: String,
+    ): Unit
+
+    // ------------------------------------------------------- Phase 4: background and attention
+
+    /**
+     * `session.view`: marks the idle transition the viewer has now seen.
+     *
+     * The body is the `time.idle` the client observed, not the current time — the server records
+     * *which* transition was viewed, so a later instant would mark a turn the user never read as
+     * seen. `204`, and `session.viewed` follows, which is what clears the unread badge.
+     */
+    @POST("api/session/{sessionID}/view")
+    suspend fun viewSession(
+        @Path("sessionID") sessionID: String,
+        @Body body: SessionViewRequest,
     ): Unit
 
     /**

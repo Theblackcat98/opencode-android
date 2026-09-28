@@ -73,3 +73,15 @@ data class InboxUpdateRequest(val delivery: Delivery)
 /** `POST /api/session/{id}/interrupt` with `resume`, which returns `{interrupted}`. */
 @Serializable
 data class InterruptResult(val interrupted: Boolean = false)
+
+/**
+ * `POST /api/session/{id}/view`: the idle transition the viewer has now seen (schema `Session.view`).
+ *
+ * [idle] is the `time.idle` the client observed rather than the current instant, because the server
+ * records *which* transition was viewed; a later instant would mark a turn the user never read as
+ * read. The client builds it in
+ * [dev.opencode.android.core.data.attention.SessionViewMarker], which is what decides there is
+ * anything to mark at all.
+ */
+@Serializable
+data class SessionViewRequest(val idle: Long)
