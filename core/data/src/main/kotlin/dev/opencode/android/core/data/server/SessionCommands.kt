@@ -83,9 +83,9 @@ class SessionCommands(
     /**
      * `session.prompt`.
      *
-     * Returns the inbox item the server enqueued, whose id is the [messageID] this call used. The
-     * text is mirrored into the timeline as a pending item first, so the prompt is on screen
-     * immediately; the server's `session.inbox.enqueued` event reconciles it under the same id.
+     * Returns the inbox item the server enqueued, whose id is the client-generated `msg_…` this call
+     * used. The text is mirrored into the timeline as a pending item first, so the prompt is on
+     * screen immediately; the server's `session.inbox.enqueued` event reconciles it under the same id.
      */
     suspend fun prompt(
         sessionID: String,

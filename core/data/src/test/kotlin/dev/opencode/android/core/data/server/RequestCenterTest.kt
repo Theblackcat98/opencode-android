@@ -20,6 +20,8 @@ import mockwebserver3.RecordedRequest
 import okhttp3.OkHttpClient
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotSame
+import org.junit.Assert.assertSame
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -49,7 +51,7 @@ class RequestCenterTest {
             okHttpClient = OkHttpClient(),
             credentialProvider = { null },
         ).createForReads(server.url("/").toString())
-        center = RequestCenter("s1", api, scope)
+        center = RequestCenter(api, scope)
     }
 
     @After
@@ -201,6 +203,17 @@ class RequestCenterTest {
         server.enqueue(noContent())
         assertNull(center.cancelForm(FORM))
         assertTrue(server.takeRequest().url.encodedPath.endsWith("/form/${FORM.id}"))
+    }
+
+    @Test
+    fun `the per-session flow is the same object every time`() = runTest {
+        // It is read from a state projection that recomputes on every session event, so a new
+        // `stateIn` per call would add a collector to the set's scope on every emission and never
+        // remove it.
+        val first = center.forSession("ses_probe")
+        val second = center.forSession("ses_probe")
+        assertSame("the dock's flow must be stable", first, second)
+        assertNotSame(center.forSession("ses_other"), first)
     }
 
     @Test

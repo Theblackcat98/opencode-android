@@ -94,6 +94,28 @@ class FormEngineTest {
     }
 
     @Test
+    fun `two different numbers do not satisfy a numeric condition`() {
+        // Both render as no text, so a text comparison would call them equal and the follow-up
+        // would always show.
+        val field = NumberField(
+            key = "b",
+            conditions = listOf(FormWhen("n", FormWhen.WhenOp.EQ, JsonPrimitive(2))),
+        )
+        assertTrue(FormEngine.isVisible(field, mapOf("n" to JsonPrimitive(2))))
+        assertFalse(FormEngine.isVisible(field, mapOf("n" to JsonPrimitive(1))))
+    }
+
+    @Test
+    fun `a number does not satisfy a boolean condition`() {
+        val field = NumberField(
+            key = "b",
+            conditions = listOf(FormWhen("flag", FormWhen.WhenOp.EQ, JsonPrimitive(true))),
+        )
+        assertFalse(FormEngine.isVisible(field, mapOf("flag" to JsonPrimitive(1))))
+        assertTrue(FormEngine.isVisible(field, mapOf("flag" to JsonPrimitive(true))))
+    }
+
+    @Test
     fun `a condition on a multiselect answer means membership`() {
         val field = StringField(
             key = "detail",

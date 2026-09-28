@@ -70,7 +70,14 @@ class LiveDrivingIntegrationTest {
     private lateinit var commands: SessionCommands
     private lateinit var requests: RequestCenter
     private lateinit var stream: EventStreamClient
-    private val seen = mutableListOf<Event>()
+    /**
+     * Every frame the stream carried.
+     *
+     * A copy-on-write list, because the dispatcher coroutine appends to it while the test's polling
+     * loop iterates it; an `ArrayList` throws `ConcurrentModificationException` the moment the two
+     * overlap, which is a failure of the test rather than of the code under test.
+     */
+    private val seen = java.util.concurrent.CopyOnWriteArrayList<Event>()
     private val collectors = mutableListOf<kotlinx.coroutines.Job>()
 
     @Before

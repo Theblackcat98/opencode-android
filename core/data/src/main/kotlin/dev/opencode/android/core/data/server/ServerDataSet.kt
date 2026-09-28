@@ -53,7 +53,7 @@ class ServerDataSet(
     val sessions = SessionStore(serverId, api, scope, cache)
 
     /** Everything the agent is blocked on, across every session (permissions and forms). */
-    val requests: RequestCenter = RequestCenter(serverId, api, scope)
+    val requests: RequestCenter = RequestCenter(api, scope)
 
     /**
      * The write side of a session.

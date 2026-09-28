@@ -129,16 +129,15 @@ private fun InboxRow(
 internal fun summaryOf(item: InboxItem): String = when (item) {
     is InboxItem.User -> item.payload.text
     is InboxItem.Synthetic -> item.payload.description ?: item.payload.text
-    is InboxItem.Compaction -> stringResourcePlaceholder
+    is InboxItem.Compaction -> NO_SUMMARY
     is InboxItem.Move -> item.payload.location.directory
     is InboxItem.Unknown -> item.raw.toString()
 }
 
 /**
- * A placeholder for the item kinds a composer cannot create.
+ * The summary for the item kinds a composer cannot create.
  *
  * Phase 5 adds `/compact` and the move action, which are the only sources of those two; until then
- * there is nothing to name, and an empty row is better than a label for a feature that does not
- * exist.
+ * there is nothing to name, and a dash is better than a label for a feature that does not exist.
  */
-private const val stringResourcePlaceholder = "—"
+private const val NO_SUMMARY = "—"

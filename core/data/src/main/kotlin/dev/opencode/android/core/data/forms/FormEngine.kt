@@ -168,11 +168,30 @@ object FormEngine {
 
     private fun holds(condition: FormWhen, answers: FormAnswer): Boolean {
         val answer = answers[condition.key]
+        // A condition on a multiselect answer means membership: a follow-up that asks "did they pick
+        // Kotlin?" has to fire when Kotlin is one of the ticked options, and comparing whole arrays
+        // would never fire.
         val equal = when (answer) {
-            is JsonArray -> answer.any { it == condition.value || it.contentOrNull() == condition.value.contentOrNull() }
-            else -> answer == condition.value || answer?.contentOrNull() == condition.value.contentOrNull()
+            is JsonArray -> answer.any { it.sameValueAs(condition.value) }
+            else -> answer.sameValueAs(condition.value)
         }
         return if (condition.op == FormWhen.WhenOp.NEQ) !equal else equal
+    }
+
+    /**
+     * Whether two values are the same for the purpose of a `when` condition.
+     *
+     * Structural equality first. The rendered text is only compared when *both* sides are strings:
+     * a non-string primitive has no text, so comparing text unconditionally would make any two
+     * different numbers, and any number against a boolean, compare equal — and a condition that
+     * always fires is a follow-up that is always shown.
+     */
+    private fun JsonElement?.sameValueAs(other: JsonElement): Boolean {
+        val value = this ?: return false
+        if (value == other) return true
+        val a = value.contentOrNull() ?: return false
+        val b = other.contentOrNull() ?: return false
+        return a == b
     }
 
     private fun stringProblem(field: FormField.StringField, value: JsonElement?): FieldProblem? {

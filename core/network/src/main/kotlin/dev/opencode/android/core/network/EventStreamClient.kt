@@ -548,6 +548,11 @@ class EventStreamClient(
                         is SseMessage.Comment -> Unit
                         is SseMessage.Data -> {
                             val event = decodeEvent(message.payload) ?: continue
+                            // Record before announcing: a collector that waits for `Connected` and then
+                            // reads the inspector would otherwise find the list empty, and the resync
+                            // would fire before the client had the event that triggered it. The frame
+                            // is in hand before anything says so.
+                            recordEvent(event, message.payload, activityAt)
                             if (!serverConnectedSeen) {
                                 if (event.type != SERVER_CONNECTED) {
                                     return@withContext StreamOutcome.Failed(
@@ -561,7 +566,6 @@ class EventStreamClient(
                                 serverConnectedSeen = true
                                 onServerConnected(activityAt)
                             }
-                            recordEvent(event, message.payload, activityAt)
                         }
                     }
                 }

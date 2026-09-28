@@ -26,7 +26,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.launch
+import java.util.concurrent.ConcurrentHashMap
 import dev.opencode.android.core.network.ServerApi as Api
 
 /**
@@ -53,13 +53,21 @@ import dev.opencode.android.core.network.ServerApi as Api
  * agent is still blocked on it.
  */
 class RequestCenter(
-    private val serverId: String,
     private val api: Api,
     private val scope: CoroutineScope,
 ) {
     private val _permissions = MutableStateFlow<Map<String, PermissionRequest>>(emptyMap())
     private val _forms = MutableStateFlow<Map<String, FormInfo>>(emptyMap())
     private val _directoryOfSession = MutableStateFlow<Map<String, String>>(emptyMap())
+
+    /**
+     * One derived flow per session, cached.
+     *
+     * [forSession] is called from a state projection that recomposes on every session event, and a
+     * `stateIn` per call would add a collector to the set's scope each time and never remove it. The
+     * cache is bounded by the sessions the user opens and [clear] drops it.
+     */
+    private val perSession = ConcurrentHashMap<String, StateFlow<List<PendingRequest>>>()
 
     /** The pending permission requests, newest first. */
     val permissions: StateFlow<List<PermissionRequest>> = _permissions
@@ -80,12 +88,14 @@ class RequestCenter(
     }.stateIn(scope, SharingStarted.Eagerly, emptyList())
 
     /** The requests of one session, which is what the session's dock shows. */
-    fun forSession(sessionID: String): StateFlow<List<PendingRequest>> = combine(_permissions, _forms) { perms, forms ->
-        buildList<PendingRequest> {
-            forms.values.filter { it.sessionID == sessionID }.mapTo(this) { PendingRequest.Form(it) }
-            perms.values.filter { it.sessionID == sessionID }.mapTo(this) { PendingRequest.Permission(it) }
-        }.sortedWith(PENDING_ORDER)
-    }.stateIn(scope, SharingStarted.Eagerly, emptyList())
+    fun forSession(sessionID: String): StateFlow<List<PendingRequest>> = perSession.getOrPut(sessionID) {
+        combine(_permissions, _forms) { perms, forms ->
+            buildList<PendingRequest> {
+                forms.values.filter { it.sessionID == sessionID }.mapTo(this) { PendingRequest.Form(it) }
+                perms.values.filter { it.sessionID == sessionID }.mapTo(this) { PendingRequest.Permission(it) }
+            }.sortedWith(PENDING_ORDER)
+        }.stateIn(scope, SharingStarted.Eagerly, emptyList())
+    }
 
     /** The session ids with something pending, for a badge in the session list. */
     val sessionsWithPending: StateFlow<Set<String>> = pending
@@ -177,6 +187,7 @@ class RequestCenter(
         _permissions.value = emptyMap()
         _forms.value = emptyMap()
         _directoryOfSession.value = emptyMap()
+        perSession.clear()
     }
 
     /**
@@ -282,6 +293,3 @@ private const val PERMISSION_RANK = 1
 
 private val PENDING_ORDER: Comparator<PendingRequest> =
     compareBy<PendingRequest> { it.rank }.thenByDescending { it.id }
-
-/** The permission requests of a server, for a caller that only needs the raw list. */
-val RequestCenter.permissionRequests: StateFlow<List<PermissionRequest>> get() = permissions

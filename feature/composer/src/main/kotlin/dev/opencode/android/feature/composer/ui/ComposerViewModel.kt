@@ -166,13 +166,24 @@ class ComposerViewModel @Inject constructor(
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT), emptyList())
 
-    /** Opens a session: the composer follows it, and its catalogs are read. */
+    /**
+     * Opens a session: the composer follows it, its timeline loads, and the catalogs the pickers
+     * read are fetched for the session's location.
+     *
+     * The catalogs are location-scoped, so a session reached by tapping it in the list has never
+     * loaded them — only the new-session flow has, and only for the location the user chose there.
+     * [SyncedResource.sync] is a no-op when the value is not stale, so this costs one request per
+     * catalog the first time and nothing afterwards.
+     */
     fun open(sessionID: String) {
         val set = dataSets.active.value ?: return
         this.sessionID.value = sessionID
         set.timeline(sessionID).start()
-        viewModelScope.launch { set.sessions.loadSession(sessionID) }
-        set.requests.forSession(sessionID)
+        viewModelScope.launch {
+            val directory = set.sessions.loadSession(sessionID)?.location?.directory ?: return@launch
+            set.agents(directory).sync()
+            set.models(directory).sync()
+        }
     }
 
     fun setText(text: String) {
