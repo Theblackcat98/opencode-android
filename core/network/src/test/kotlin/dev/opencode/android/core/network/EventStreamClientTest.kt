@@ -331,7 +331,9 @@ class EventStreamClientTest {
         withTimeout(AWAIT_MILLIS) {
             client.state.first { it is ConnectionState.Suspended && it.reason == EventStreamClient.BACKGROUND_REASON }
         }
-        assertTrue(client.logs.value.any { it.message.contains(EventStreamClient.BACKGROUND_REASON) })
+        // The state becomes `Suspended` before the loop head records it, so the log is waited for
+        // rather than sampled.
+        waitUntil { client.logs.value.any { it.message.contains(EventStreamClient.BACKGROUND_REASON) } }
 
         client.setForeground(true)
         awaitConnected(times = 2)

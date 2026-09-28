@@ -1,13 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
+
     <!--
-      Permits cleartext LAN traffic to local OpenCode server instances,
-      and trusts both system and user-installed CA certificates for self-hosted HTTPS setups.
+      A server on the local network is usually reached over plain HTTP, and a config cannot list
+      arbitrary LAN addresses, so cleartext is permitted. The app marks every non-loopback http
+      server with an "unencrypted" badge and offers HTTPS, an SSH tunnel or Tailscale instead.
+
+      User-installed certificate authorities are deliberately NOT trusted here. Trusting them in the
+      config would apply to every request the app makes, which is not what "optionally trust a
+      private CA for one self-hosted server" means (plan §2.4, §5.2). A server opts in through its
+      own trust setting, and that one connection validates against the platform trust store plus the
+      user's CAs. See core:network UserCaTrust.
     -->
     <base-config cleartextTrafficPermitted="true">
         <trust-anchors>
             <certificates src="system" />
-            <certificates src="user" />
         </trust-anchors>
     </base-config>
+
 </network-security-config>

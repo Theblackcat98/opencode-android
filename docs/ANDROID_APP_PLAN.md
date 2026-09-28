@@ -218,7 +218,7 @@ phases that reuse it get cheaper as a result.
 | Phase | Theme | Main building blocks introduced | Reused by | Status |
 | --- | --- | --- | --- | --- |
 | P0 | Foundation | Build system, schema models, fixture harness, fake provider, CI | All | Complete |
-| P1 | Connect and pair | HTTP client, auth, server registry, `EventStreamClient`, resync signal | All | Ready to start |
+| P1 | Connect and pair | HTTP client, auth, server registry, `EventStreamClient`, resync signal | All | Complete |
 | P2 | Live read-only view | `SyncedResource` stores, `TimelineReducer`, Markdown, code and tool renderers | P3–P10 | Planned |
 | P3 | Drive sessions (MVP) | Composer pipeline, pickers, `RequestCenter`, **forms engine** | P4, P5, P8, P9 | Planned |
 | P4 | Background and notifications | `ConnectionService`, notification and action infrastructure, unread model | P7, P8, P9, P10 | Planned |
@@ -313,6 +313,19 @@ later feature rides on.
 - Restarting the server leads to automatic reconnection, with correct state display.
 - A wrong or rotated password prompts for re-pairing.
 - Integration tests cover pairing and SSE reconnection.
+
+**Status.** Complete. Verified with 188 JVM unit tests and 7 integration tests against a real 2.0.18
+server started by `scripts/dev-server.sh`: a code minted by `POST /api/pair` is redeemed exactly once,
+the token it returns authenticates as the Basic password, a replayed code is rejected, a wrong password
+comes back as the re-pair class, and a closed stream reconnects and fires a second resync. Android Lint
+passes and both `play` and `fdroid` debug APKs assemble; the F-Droid APK contains no Play Services.
+
+**Not verified here, and why.** Scanning a QR code and the under-30-second pairing time need a device
+with a camera, and this phase was built and tested without an emulator or hardware, so those two
+criteria are unverified. The payload a QR code carries is the same string the paste, share and
+deep-link paths use, and all of those paths are covered by the tests above, so what a device adds is
+the camera preview and about two seconds of decoding. Both criteria belong to the manual device matrix
+in [§5.3](#53-testing-strategy).
 
 ---
 
@@ -938,7 +951,7 @@ that delivers it.
 | Phase | Operations | Status |
 | --- | --- | --- |
 | P0 | Foundation (models, fixtures, harness, CI) | Complete |
-| P1 | 3 | Planned |
+| P1 | 3 | Complete |
 | P2 | 12 | Planned |
 | P3 | 20 | Planned |
 | P4 | 1 | Planned |
@@ -963,7 +976,7 @@ and is covered by the reducer or invalidation tests.
 | Phase | Events handled | Status |
 | --- | --- | --- |
 | P0 | All 94 event types modeled in `EventPayload` / `EventTypes`, contract-tested against recorded fixtures | Complete |
-| P1 | `server.connected` | Planned |
+| P1 | `server.connected` (fired, logged, and published as the resync signal) | Complete |
 | P2 | `location.shutdown`, `models-dev.refreshed`, `model.updated`, `agent.updated`, `session.created`, `session.agent.selected`, `session.model.selected`, `session.moved`, `session.renamed`, `session.metadata.updated`, `session.permissions`, `session.viewed`, `session.usage.updated`, `session.deleted`, `session.forked`, `session.inbox.delivered`, `session.inbox.enqueued`, `session.inbox.cancelled`, `session.inbox.delivery.changed`, `session.execution.started`, `session.execution.succeeded`, `session.execution.failed`, `session.execution.interrupted`, `session.instructions.updated`, `session.synthetic`, `session.skill.activated`, `session.shell.started`, `session.shell.ended`, `session.step.started`, `session.step.streamed`, `session.step.ended`, `session.step.failed`, `session.text.started`, `session.text.delta`, `session.text.ended`, `session.reasoning.started`, `session.reasoning.delta`, `session.reasoning.ended`, `session.tool.input.started`, `session.tool.input.delta`, `session.tool.input.ended`, `session.tool.called`, `session.tool.progress`, `session.tool.success`, `session.tool.failed`, `session.retry.scheduled`, `session.compaction.started`, `session.compaction.delta`, `session.compaction.ended`, `session.compaction.failed`, `session.revert.staged`, `session.revert.cleared`, `session.revert.committed`, `project.updated`, `session.status`, `session.idle` | Planned |
 | P3 | `permission.asked`, `permission.replied`, `form.created`, `form.replied`, `form.cancelled` | Planned |
 | P4 | `installation.updated`, `installation.update-available` | Planned |
