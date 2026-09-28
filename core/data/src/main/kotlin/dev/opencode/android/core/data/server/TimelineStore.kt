@@ -14,6 +14,8 @@ import dev.opencode.android.core.model.event.SessionStatusUpdated
 import dev.opencode.android.core.model.SessionStatus
 import dev.opencode.android.core.network.ServerApi
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -50,6 +52,7 @@ class TimelineStore(
     private var cursor: String? = null
     private var loading = false
     private var loadedFromServer = false
+    private var cacheWrite: Job? = null
 
     /** Loads the cached window and then the server's newest page. */
     fun start() {
@@ -81,7 +84,7 @@ class TimelineStore(
                 if (older.isNotEmpty()) {
                     val messages = older + _state.value.messages
                     _state.value = TimelineState.of(messages, _state.value.pending)
-                    writeCache(messages)
+                    scheduleCacheWrite(messages)
                 }
                 _paging.value = _paging.value.copy(loading = false, hasMore = cursor != null)
             } catch (error: Throwable) {
@@ -102,13 +105,15 @@ class TimelineStore(
         val after = TimelineReducer.reduce(before, event, sessionID)
         if (after === before) return false
         _state.value = after
-        scope.launch { writeCache(after.messages) }
+        scheduleCacheWrite(after.messages)
         onTurnEnded(event)
         return true
     }
 
     /** Forgets the timeline, for example when the session is deleted. */
     fun clear() {
+        cacheWrite?.cancel()
+        cacheWrite = null
         _state.value = TimelineState.Empty
         cursor = null
         loadedFromServer = false
@@ -144,7 +149,7 @@ class TimelineStore(
             // Replace rather than merge: the server's page is the projection, and merging would
             // be the guess the plan forbids.
             _state.value = TimelineState.of(fetched, _state.value.pending)
-            writeCache(fetched)
+            scheduleCacheWrite(fetched)
             _paging.value = TimelinePaging(hasMore = cursor != null)
         } catch (error: Throwable) {
             _paging.value = _paging.value.copy(loading = false, error = error.message)
@@ -160,8 +165,20 @@ class TimelineStore(
         _paging.value = _paging.value.copy(hasMore = true)
     }
 
-    private suspend fun writeCache(messages: List<SessionMessage>) {
-        runCatching { cache.writeMessages(serverId, sessionID, messages) }
+    /**
+     * Writes the cache once the events stop arriving.
+     *
+     * A live turn produces a write per frame, and each one replaces the whole window; writing on
+     * every frame would put a database transaction behind every token. Cancelling and restarting
+     * the job coalesces a burst into a single write and still writes promptly, because a token
+     * stream always has a gap before the turn ends.
+     */
+    private fun scheduleCacheWrite(messages: List<SessionMessage>) {
+        cacheWrite?.cancel()
+        cacheWrite = scope.launch {
+            delay(CACHE_WRITE_DEBOUNCE_MILLIS)
+            runCatching { cache.writeMessages(serverId, sessionID, messages) }
+        }
     }
 
     /**
@@ -180,6 +197,9 @@ class TimelineStore(
 
         /** How much of the projection the self-check compares. */
         const val VERIFY_PAGE_SIZE = 100
+
+        /** How long a burst of events is allowed to delay the cache write. */
+        const val CACHE_WRITE_DEBOUNCE_MILLIS = 750L
     }
 }
 

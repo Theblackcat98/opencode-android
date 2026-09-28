@@ -38,7 +38,7 @@ class ServerDataRegistry @Inject constructor(
 ) {
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val sets = LinkedHashMap<String, ServerDataSet>()
-    private val bound = HashMap<String, ServerConnection>()
+    private val bindings = HashMap<String, Binding>()
 
     private val _active = MutableStateFlow<ServerDataSet?>(null)
 
@@ -76,27 +76,35 @@ class ServerDataRegistry @Inject constructor(
         return set
     }
 
+    /**
+     * Attaches a data set to a connection.
+     *
+     * Rebinding cancels the previous collectors. That matters after a re-pair, where a new
+     * [ServerConnection] replaces the old one: without the cancel, the old connection's stream
+     * would keep feeding a dispatcher nothing reads, and its queue would grow for as long as the
+     * app runs.
+     */
     private fun bind(set: ServerDataSet, connection: ServerConnection) {
-        if (bound[set.serverId] === connection) return
-        bound[set.serverId] = connection
+        if (bindings[set.serverId]?.connection === connection) return
+        bindings.remove(set.serverId)?.jobs?.forEach { it.cancel() }
         val dispatcher = EventDispatcher(appScope)
-        appScope.launch {
-            dispatcher.batches.collect { batch ->
-                batch.forEach(set::apply)
-            }
-        }
-        appScope.launch {
-            connection.events.collect { event -> dispatcher.submit(event) }
-        }
-        appScope.launch {
-            connection.resyncSignal.collect { set.resync() }
-        }
+        val jobs = listOf(
+            appScope.launch { dispatcher.batches.collect { batch -> batch.forEach(set::apply) } },
+            appScope.launch { connection.events.collect { event -> dispatcher.submit(event) } },
+            appScope.launch { connection.resyncSignal.collect { set.resync() } },
+        )
+        bindings[set.serverId] = Binding(connection, jobs)
     }
 
-    /** Forgets a removed server's read model. */
+    /** Forgets a removed server's read model and stops listening to its stream. */
     fun forget(serverId: String) {
         sets.remove(serverId)?.clear()
-        bound.remove(serverId)
+        bindings.remove(serverId)?.jobs?.forEach { it.cancel() }
         if (_active.value?.serverId == serverId) _active.value = null
     }
+
+    private data class Binding(
+        val connection: ServerConnection,
+        val jobs: List<kotlinx.coroutines.Job>,
+    )
 }
