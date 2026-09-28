@@ -41,7 +41,16 @@ class FileReader(
     val state: StateFlow<FileBrowserState> = _state.asStateFlow()
 
     /** `fs.list` for [path] inside [directory], keeping the server's spelling of both. */
-    suspend fun list(directory: String, path: String? = null): ActionError? {
+    suspend fun list(directory: String, path: String? = null): ActionError? = listAndWait(directory, path)
+
+    /**
+     * The same call, awaited, which is what a test and a screen that navigates by awaiting need.
+     *
+     * A `null` [path] lists the location itself, and a failure keeps the previous listing and records
+     * the error: a directory the user cannot read is a normal outcome and an empty browser with no
+     * explanation is not a useful one.
+     */
+    suspend fun listAndWait(directory: String, path: String? = null): ActionError? {
         _state.value = _state.value.copy(directory = directory, path = path, loading = true, error = null)
         return try {
             val entries = api.listDirectory(directory, path).data
@@ -68,7 +77,7 @@ class FileReader(
      * which location it was asked about and guessing a base here would be the P2 rule broken.
      */
     suspend fun read(directory: String?, path: String): Result<FileReadResult> = guarded {
-        val body = api.readFile(path = path, directory = directory)
+        val body = api.readFile(url = readUrl(path), directory = directory)
         val bytes = body.bytes()
         val contentType = body.contentType()
         val mime = if (contentType == null) null else "${contentType.type}/${contentType.subtype}"
@@ -83,8 +92,13 @@ class FileReader(
      * confirmation that the bytes are there is stronger than a confirmation that a call returned.
      */
     suspend fun write(directory: String?, path: String, text: String): Result<FileReadResult> {
-        val mediaType = "text/plain; charset=utf-8".toMediaTypeOrNull()
-        val written: Result<FileSystemWrite> = guarded { api.writeFile(path = path, directory = directory, body = text.toRequestBody(mediaType)).data }
+        // `text/plain` is a `415` from this route: verified against a live 2.0.18 server, which
+        // accepts `application/octet-stream` and nothing else. The bytes are UTF-8 and the client is
+        // the only thing that knows that, so the encoding is chosen here rather than asked for.
+        val mediaType = api.OCTET_STREAM.toMediaTypeOrNull()
+        val written: Result<FileSystemWrite> = guarded {
+            api.writeFile(path = path, directory = directory, body = text.toByteArray(Charsets.UTF_8).toRequestBody(mediaType)).data
+        }
         if (written.isFailure) return Result.failure(written.exceptionOrNull()!!)
         return read(directory, path)
     }
@@ -103,6 +117,17 @@ class FileReader(
     }
 
     companion object {
+        /**
+         * The URL `fs.read` is asked with, from the server's own spelling of the path.
+         *
+         * An absolute path keeps its leading `/`, which after the route's own separator is the
+         * double slash the server's wildcard needs to see an absolute path rather than a relative
+         * one; a relative path is sent as it stands and resolves against the location. The path is
+         * percent-encoded because a file with a space in its name is a file a reviewer will open.
+         */
+        fun readUrl(path: String): String =
+            "api/fs/read/" + dev.opencode.android.core.data.composer.ServerPath.encodePath(path)
+
         /**
          * What [bytes] are, as a pure function of the content and the name.
          *

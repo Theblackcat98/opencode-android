@@ -58,6 +58,7 @@ import retrofit2.http.PUT
 import retrofit2.http.Path
 import retrofit2.http.Query
 import retrofit2.http.Tag
+import retrofit2.http.Url
 
 /**
  * The read and write surface of one server: the Phase 1 calls, the Phase 2 projections and the
@@ -605,13 +606,20 @@ interface ServerApi {
     /**
      * `fs.read`: the raw bytes of a file, relative to the location (features doc §27).
      *
-     * The path is a wildcard in the route, so it goes in the path segment and is encoded by
-     * Retrofit; [directory] stays a query parameter because that is how the location is addressed
-     * everywhere else.
+     * **The whole URL is built by the caller, not by Retrofit's path substitution.** The route is a
+     * wildcard (`GET /api/fs/read/` followed by a star) and Retrofit has no wildcard path
+     * parameter: `@Path` strips
+     * one leading `/` from its value, which turns an absolute path into a relative one and makes the
+     * server read a different file than the one asked for. Verified against a live 2.0.18 server: a
+     * double slash is what carries the leading `/` of an absolute path, and it answers `200` with
+     * the right bytes, so the caller composes `api/fs/read/` + the server's own spelling.
+     *
+     * [directory] stays a query parameter because that is how the location is addressed everywhere
+     * else.
      */
-    @GET("api/fs/read/{*path}")
+    @GET
     suspend fun readFile(
-        @Path("path") path: String,
+        @Url url: String,
         @Query(LocationParam.QUERY_KEY) directory: String? = null,
     ): ResponseBody
 
@@ -628,6 +636,9 @@ interface ServerApi {
         @Query(LocationParam.QUERY_KEY) directory: String? = null,
         @Body body: RequestBody,
     ): LocationScoped<FileSystemWrite>
+
+    /** The media type `fs.write` accepts: the body is raw bytes, and `text/plain` is a `415`. */
+    val OCTET_STREAM: String get() = "application/octet-stream"
 
     /**
      * `experimental.session.export`: a session and its transcript.

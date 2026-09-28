@@ -38,7 +38,7 @@ class VcsStore(
         _state.value = _state.value.copy(loading = true, error = null)
         val info = call { api.getVcs(directory) }
         if (info.isFailure) {
-            val failure = info.exceptionOrNull()?.toActionError()
+            val failure = info.actionErrorOrNull
             _state.value = _state.value.copy(loading = false, error = failure?.message)
             return failure
         }
@@ -56,7 +56,7 @@ class VcsStore(
     /** `vcs.base`: the ref the review is taken against. A `null` answer is a fact, not a failure. */
     suspend fun loadBase(): ActionError? {
         val result = call { api.getVcsBase(directory) }
-        val failure = result.exceptionOrNull()?.toActionError()
+        val failure = result.actionErrorOrNull
         _state.value = _state.value.copy(base = result.getOrNull()?.data, error = failure?.message)
         return failure
     }
@@ -67,7 +67,7 @@ class VcsStore(
         if (result.isSuccess) {
             _state.value = _state.value.copy(branches = result.getOrThrow(), branchError = null)
         } else {
-            _state.value = _state.value.copy(branchError = result.exceptionOrNull()?.toActionError()?.message)
+            _state.value = _state.value.copy(branchError = result.actionErrorOrNull?.message)
         }
         return result
     }

@@ -96,7 +96,7 @@ class ReviewStore(
 
             else -> call { api.vcsDiff(directory = directory, mode = mode, base = base, context = context).data }
         }
-        val failure = result.exceptionOrNull()?.toActionError()
+        val failure = result.actionErrorOrNull
         val files = result.getOrNull().orEmpty().map(UnifiedDiff::parse)
         _state.value = _state.value.copy(
             files = files,

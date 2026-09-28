@@ -96,8 +96,21 @@ class FileReadResult(
     /** The size, which a viewer shows and an attachment policy compares against. */
     val sizeBytes: Long get() = bytes.size.toLong()
 
-    /** The lines, for a text viewer with line numbers. Empty for anything else. */
-    val lines: List<String> get() = text?.split('\n')?.map { it.removeSuffix("\r") }.orEmpty()
+    /**
+     * The lines, for a text viewer with line numbers. Empty for anything else.
+     *
+     * A trailing newline **terminates** the last line rather than beginning an empty one, which is
+     * what a person counts: a three-line file ends in a newline and has three lines, not four. An
+     * empty file has no lines at all, and a file of one empty line has one.
+     */
+    val lines: List<String>
+        get() {
+            val body = text ?: return emptyList()
+            if (body.isEmpty()) return emptyList()
+            val parts = body.split('\n').map { it.removeSuffix("\r") }.toMutableList()
+            if (parts.isNotEmpty() && parts.last().isEmpty()) parts.removeAt(parts.lastIndex)
+            return parts
+        }
 
     /**
      * The attachment this file becomes when the user attaches it whole.
