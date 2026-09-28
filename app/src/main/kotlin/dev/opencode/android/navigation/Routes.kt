@@ -138,7 +138,6 @@ fun OpenCodeApp(
     modifier: Modifier = Modifier,
     navController: NavHostController = rememberNavController(),
     composer: ComposerViewModel = hiltViewModel(),
-    fork: (String, String?) -> Unit = { _, _ -> },
 ) {
     LaunchedEffect(sharedPayload) {
         if (!sharedPayload.isNullOrBlank()) {
@@ -241,7 +240,6 @@ fun OpenCodeApp(
 
         composable<SessionRoute> { entry ->
             val route = entry.toRoute<SessionRoute>()
-            val forkFromMessage: (String) -> Unit = { messageId -> fork(route.sessionId.orEmpty(), messageId) }
             SessionHost(
                 sessionId = route.sessionId,
                 onNavigateBack = { navController.popBackStack() },
@@ -270,7 +268,9 @@ fun OpenCodeApp(
                     )
                 },
                 onUndoConfirmed = { messageId -> composer.stageUndo(messageId) },
-                onForkFrom = forkFromMessage,
+                // A fork is a new session id, so the graph navigates to it rather than the screen
+                // re-rendering the one it is on. The view model publishes the id once.
+                onForked = { sessionId -> navController.navigate(SessionRoute(route.serverId, sessionId)) },
             )
         }
 

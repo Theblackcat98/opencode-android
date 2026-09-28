@@ -54,6 +54,21 @@ fun SessionActionsSheet(
      * only place that can hold both, and it supplies the callback; `null` hides the row.
      */
     onOpenAttention: (() -> Unit)? = null,
+    /**
+     * Opens the history panel: jump, search, export, import and the context inspector.
+     *
+     * It is a callback for the same reason [onOpenAttention] is — the panel is the review feature's
+     * and a feature may not import another feature, so the app module supplies the way in.
+     */
+    onOpenHistory: (() -> Unit)? = null,
+    /**
+     * Opens the experimental switches, when this server has any route the app could offer.
+     *
+     * The same arrangement as [onOpenHistory], and `null` hides the row: a server that serves
+     * neither `experimental.fs.write` nor the transfer routes has nothing to switch on, and a
+     * settings page of switches that do nothing is worse than no page.
+     */
+    onOpenExperimental: (() -> Unit)? = null,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var renaming by remember { mutableStateOf(false) }
@@ -73,6 +88,8 @@ fun SessionActionsSheet(
             if (onOpenAttention != null) {
                 SheetAction(R.string.session_attention) { onOpenAttention() }
             }
+            onOpenHistory?.let { open -> SheetAction(R.string.session_history) { open() } }
+            onOpenExperimental?.let { open -> SheetAction(R.string.session_experimental) { open() } }
             SheetAction(R.string.session_delete) { confirmingDelete = true }
         }
     }

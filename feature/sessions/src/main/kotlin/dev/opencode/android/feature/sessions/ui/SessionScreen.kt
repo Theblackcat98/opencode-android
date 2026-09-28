@@ -160,8 +160,18 @@ fun SessionScreen(
 /** Title, agent, model, context gauge and cost: everything the plan's header carries. */
 @Composable
 private fun Subtitle(state: SessionUiState) {
-    Column {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Column {
+            state.forkedAt?.let { boundary ->
+                // A fork's origin is the server's own `Session.fork` boundary. Saying so matters
+                // because a copy is indistinguishable from a session that happened to be short, and
+                // a user who forked to try something does not know which of the two they are in.
+                Text(
+                    text = stringResource(R.string.session_forked_from, boundary),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
             state.agent?.let { agent ->
                 Text(
                     text = agent,

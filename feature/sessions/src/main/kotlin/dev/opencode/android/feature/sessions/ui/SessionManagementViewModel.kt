@@ -3,6 +3,7 @@ package dev.opencode.android.feature.sessions.ui
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dev.opencode.android.core.data.action.ActionError
+import dev.opencode.android.core.data.action.toActionError
 import dev.opencode.android.core.data.server.ServerDataRegistry
 import dev.opencode.android.core.data.server.actionErrorOrNull
 import dev.opencode.android.core.data.transcript.TranscriptFormatter
@@ -36,9 +37,19 @@ class SessionManagementViewModel @Inject constructor(
 
     private val open = MutableStateFlow<String?>(null)
     private val _error = MutableStateFlow<ActionError?>(null)
+    private val _forked = MutableStateFlow<String?>(null)
 
     /** The last failure, which the screen shows as a snackbar and then clears. */
     val error: StateFlow<ActionError?> = _error.asStateFlow()
+
+    /**
+     * The id of a session this app has just forked, or `null`.
+     *
+     * It is a one-shot rather than a sticky field because the graph navigates on it: a fork that
+     * left its id here forever would re-navigate on every recomposition. The caller consumes it
+     * with [consumeFork] and the value is cleared in the same breath.
+     */
+    val forked: StateFlow<String?> = _forked.asStateFlow()
 
     /** Direct children of the open session, which the delete confirmation has to name. */
     val childCount: StateFlow<Int> = dataSets.active
@@ -71,6 +82,26 @@ class SessionManagementViewModel @Inject constructor(
         val messages = set.timeline(sessionID).state.value.messages
         if (messages.isEmpty()) return null
         return TranscriptFormatter.transcript(messages, title)
+    }
+
+    /**
+     * `session.fork`: a copy of the open session, cut before [messageId] when one is given.
+     *
+     * The copy is a *new session id*, so the caller navigates to it rather than mutating anything
+     * here; [forked] is how it learns which one. A fork is not reversible and not destructive —
+     * the original is untouched — so it is the one session operation that does not ask first.
+     */
+    fun fork(messageId: String?) = withSession { set, id ->
+        val result = set.revertCommands.fork(id, messageId)
+        result.onSuccess { info -> _forked.value = info.id }
+        result.exceptionOrNull()?.let { _error.value = it.toActionError() }
+    }
+
+    /** Takes the forked id, once, so the graph navigates to it exactly one time. */
+    fun consumeFork(): String? {
+        val id = _forked.value
+        _forked.value = null
+        return id
     }
 
     fun dismissError() {

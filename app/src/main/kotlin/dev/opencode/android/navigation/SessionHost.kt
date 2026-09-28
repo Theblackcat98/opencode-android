@@ -76,7 +76,7 @@ fun SessionHost(
     onNewSession: () -> Unit = {},
     onOpenReview: (String?) -> Unit = {},
     onUndoConfirmed: (String) -> Unit = {},
-    onForkFrom: (String) -> Unit = {},
+    onForked: (String) -> Unit = {},
     modifier: Modifier = Modifier,
     timeline: SessionViewModel = hiltViewModel(),
     composer: ComposerViewModel = hiltViewModel(),
@@ -85,6 +85,7 @@ fun SessionHost(
     val state by timeline.state.collectAsStateWithLifecycle()
     val composerState by composer.state.collectAsStateWithLifecycle()
     val childCount by management.childCount.collectAsStateWithLifecycle()
+    val forked by management.forked.collectAsStateWithLifecycle()
     val favorites by composer.modelFavorites.collectAsStateWithLifecycle()
     val recents by composer.modelRecents.collectAsStateWithLifecycle()
     val clipboard = LocalClipboardManager.current
@@ -92,6 +93,8 @@ fun SessionHost(
     val menu = stringResource(R.string.session_menu)
     var actionsOpen by remember { mutableStateOf(false) }
     var attentionOpen by remember { mutableStateOf(false) }
+    var historyOpen by remember { mutableStateOf(false) }
+    var experimentalOpen by remember { mutableStateOf(false) }
     var inboxOpen by remember { mutableStateOf(false) }
     var agentPickerOpen by remember { mutableStateOf(false) }
     var modelPickerOpen by remember { mutableStateOf(false) }
@@ -108,6 +111,13 @@ fun SessionHost(
         onPicked = composer::attachImage,
         onCameraUnavailable = { attachOpen = false },
     )
+
+    // A fork produced a new session id; the graph is what knows how to open one. Taking it here
+    // rather than in the graph keeps `SessionHost` from knowing the navigation API, and clearing it
+    // in the same call is what makes the navigation happen once.
+    LaunchedEffect(forked) {
+        management.consumeFork()?.let(onForked)
+    }
 
     LaunchedEffect(sessionId) {
         timeline.open(sessionId)
@@ -183,7 +193,7 @@ fun SessionHost(
                 UserMessageActions(
                     messageId = message.id,
                     text = message.text,
-                    onFork = onForkFrom,
+                    onFork = { id -> management.fork(id) },
                     onRevert = { id, _ -> undoTarget = id },
                 )
             }
@@ -248,7 +258,17 @@ fun SessionHost(
             },
             onDismiss = { actionsOpen = false },
             onOpenAttention = { actionsOpen = false; attentionOpen = true },
+            onOpenHistory = { actionsOpen = false; historyOpen = true },
+            onOpenExperimental = { actionsOpen = false; experimentalOpen = true },
         )
+    }
+
+    if (historyOpen) {
+        HistoryHost(sessionId = sessionId, onDismiss = { historyOpen = false })
+    }
+
+    if (experimentalOpen) {
+        ExperimentalHost(onDismiss = { experimentalOpen = false })
     }
 
     if (inboxOpen) {

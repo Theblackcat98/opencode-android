@@ -15,6 +15,7 @@ import dev.opencode.android.core.data.server.SessionStore
 import dev.opencode.android.core.data.server.ServerDataSet
 import dev.opencode.android.core.data.server.TimelinePaging
 import dev.opencode.android.core.data.server.TimelineStore
+import dev.opencode.android.core.model.ForkBoundary
 import dev.opencode.android.core.model.ModelInfo
 import dev.opencode.android.core.model.Project
 import dev.opencode.android.core.model.SessionMessage
@@ -64,6 +65,14 @@ data class SessionUiState(
     val serverId: String? = null,
     val directory: String? = null,
     val offline: Boolean = false,
+    /**
+     * The message this session was forked at, or `null`.
+     *
+     * A fork boundary is the server's answer (`Session.fork`, schema `ForkBoundary`), and it is the
+     * only record of where a copy came from. A session whose history stops at message 9 of another
+     * one looks identical to a session that was always short, so the header says so.
+     */
+    val forkedAt: String? = null,
 ) {
     val contextPercent: Int get() = if (contextLimit > 0) ((contextUsed * 100) / contextLimit).toInt().coerceIn(0, 100) else 0
 }
@@ -297,6 +306,8 @@ class SessionViewModel @Inject constructor(
             following = following,
             serverId = set.serverId,
             directory = directory,
+            forkedAt = (info?.fork as? ForkBoundary.Before)?.messageID
+                ?: (info?.fork as? ForkBoundary.Through)?.messageID,
         )
     }.stateIn(
         scope = viewModelScope,
