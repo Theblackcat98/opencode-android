@@ -140,8 +140,15 @@ data class VcsState(
     /** The provider's name, or `null` when the directory is not a repository. */
     val provider: String? get() = info?.provider
 
-    /** Whether the server reported a repository at all. */
-    val isRepository: Boolean get() = info != null
+    /**
+     * Whether this directory is a checkout at all.
+     *
+     * `vcs.get` answers `{"branch":{}}` for a directory that is not a repository — a bare `data`
+     * object rather than a `404`, because "this is not a repository" is an answer and not an error.
+     * A provider, a current branch or a default branch are the three things that make it one.
+     */
+    val isRepository: Boolean
+        get() = info != null && (info.provider != null || info.branch.current != null || info.branch.default != null)
 
     /** The base the review is taken against, preferring an explicit override over the server's. */
     fun baseFor(override: String?): String? = override?.takeIf { it.isNotBlank() } ?: base?.name
