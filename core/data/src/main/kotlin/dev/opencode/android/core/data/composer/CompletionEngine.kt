@@ -74,6 +74,14 @@ enum class ClientAction {
     COMPACT,
     SIDE_QUESTION,
     EDITOR,
+    /** `session.revert.stage` and the composer restore that follows it. */
+    UNDO,
+
+    /** `session.revert.clear`. */
+    REDO,
+
+    /** The review screen, with the TUI's "last turn" scope already selected. */
+    DIFF,
 }
 
 /**
@@ -95,10 +103,13 @@ data class ClientCommand(
 /**
  * The client commands this phase can actually perform.
  *
- * `/undo`, `/redo` and `/diff` are **not** here. They are real TUI commands, and they are Phase 6
- * operations (`session.revert.*` and `session.diff`), so offering them now would put a row in the
- * palette that cannot do what it says. They arrive with the operations, which is the only order in
- * which a palette is honest.
+ * `/undo`, `/redo` and `/diff` arrived with Phase 6, which is where `session.revert.stage`,
+ * `session.revert.clear` and `session.diff` became real operations. They were deliberately absent
+ * before that: a palette row that cannot do what it says is worse than a missing row, so the three
+ * waited for the operations rather than being offered as placeholders.
+ *
+ * `/undo` takes no argument because the message it rolls back to is the newest one, and every other
+ * target is a menu row on a specific message — "undo to here" — rather than something a user types.
  */
 object ClientCommands {
     val ALL: List<ClientCommand> = listOf(
@@ -106,6 +117,9 @@ object ClientCommands {
         ClientCommand("sessions", ClientAction.SESSION_LIST),
         ClientCommand("models", ClientAction.MODEL_PICKER),
         ClientCommand("agents", ClientAction.AGENT_PICKER),
+        ClientCommand("undo", ClientAction.UNDO),
+        ClientCommand("redo", ClientAction.REDO),
+        ClientCommand("diff", ClientAction.DIFF),
         ClientCommand("compact", ClientAction.COMPACT),
         ClientCommand("btw", ClientAction.SIDE_QUESTION, argumentHint = "question"),
         ClientCommand("editor", ClientAction.EDITOR),

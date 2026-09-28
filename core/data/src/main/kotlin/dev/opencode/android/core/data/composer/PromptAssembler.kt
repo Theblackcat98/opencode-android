@@ -10,6 +10,8 @@ import dev.opencode.android.core.model.PromptRequest
 import dev.opencode.android.core.model.PromptSkillInput
 import dev.opencode.android.core.model.SessionCommandRequest
 import dev.opencode.android.core.model.SessionShellRequest
+import dev.opencode.android.core.data.review.ReviewComment
+import dev.opencode.android.core.data.review.ReviewComments
 
 /**
  * The composer's whole input, as the value that decides what one send does.
@@ -33,9 +35,32 @@ data class ComposerInput(
     val clientCommands: List<ClientCommand> = ClientCommands.ALL,
     /** The agents of this location, which is what decides whether a mention is an agent or a file. */
     val agents: List<AgentInfo> = emptyList(),
+    /**
+     * The review comments waiting to go on this prompt (plan §6, "Review comments").
+     *
+     * A comment is three things at once and all three are produced here so they cannot disagree: a
+     * ranged `file:` attachment the agent reads, the web app's `metadata.opencodeComment` the desktop
+     * reads back, and a readable section appended to the text. The metadata alone is invisible to a
+     * model, and the attachment alone is a file it has no reason to open.
+     */
+    val reviewComments: List<ReviewComment> = emptyList(),
 ) {
     /** The delivery the request will carry: `resume` is a flag, not a delivery mode. */
     val effectiveResume: Boolean get() = resume && delivery == Delivery.Steer
+
+    /**
+     * The text the request will actually carry, which is the user's words plus the comment section.
+     *
+     * Kept as a function rather than baked into the text field so the composer's own field still
+     * shows exactly what the user typed, and the draft they come back to on undo is theirs.
+     */
+    val textWithComments: String
+        get() {
+            val section = ReviewComments.readableText(reviewComments)
+            if (section.isEmpty()) return text
+            val own = text.trim()
+            return if (own.isEmpty()) section else "$own\n\n$section"
+        }
 
     /** Every name an `@mention` can name an agent by: the id, and the display name when it differs. */
     val agentNames: Set<String>
@@ -138,7 +163,7 @@ object PromptAssembler {
         return when {
             shell != null -> assembleShell(shell, input)
             slash != null -> assembleCommandLine(slash, input, confirmed)
-            text.isEmpty() && input.attachments.isEmpty() -> Assembly.Empty
+            text.isEmpty() && input.attachments.isEmpty() && input.reviewComments.isEmpty() -> Assembly.Empty
             else -> assemblePrompt(text, input, confirmed)
         }
     }
@@ -191,7 +216,7 @@ object PromptAssembler {
             }
         }
         input.clientCommands.firstOrNull { it.name == name }?.let { command ->
-            if (input.attachments.isNotEmpty() && !command.takesArguments) {
+            if ((input.attachments.isNotEmpty() || input.reviewComments.isNotEmpty()) && !command.takesArguments) {
                 return Assembly.Refused(PromptProblem.ATTACHMENT_BLOCKED)
             }
             if (command.takesArguments && arguments.isEmpty()) return Assembly.Empty
@@ -203,17 +228,18 @@ object PromptAssembler {
     }
 
     private fun assemblePrompt(text: String, input: ComposerInput, confirmed: Boolean): Assembly {
-        if (input.attachments.isEmpty() && text.isEmpty()) return Assembly.Empty
+        if (input.attachments.isEmpty() && text.isEmpty() && input.reviewComments.isEmpty()) return Assembly.Empty
         when (val blocked = checkAttachments(input, confirmed, takesText = true)) {
             null -> Unit
             else -> return blocked
         }
         return Assembly.Prompt(
             PromptRequest(
-                text = text,
+                text = input.textWithComments,
                 files = files(input).ifEmpty { null },
                 agents = agents(input).ifEmpty { null },
                 skills = input.skills.ifEmpty { null },
+                metadata = ReviewComments.metadataOf(input.reviewComments).ifEmpty { null },
                 delivery = input.delivery,
                 // `resume` only means anything for steering input; a queued prompt waits anyway,
                 // and sending both is a contradiction the server would have to resolve.
@@ -251,6 +277,16 @@ object PromptAssembler {
      */
     private fun files(input: ComposerInput): List<PromptFileInput> {
         val byUri = LinkedHashMap<String, PromptFileInput>()
+        // A review comment's line range is an attachment like any other, and it is the one the agent
+        // has to read to understand the comment; it is folded into the same map so a file that is
+        // both commented on and attached is sent once.
+        input.reviewComments.forEach { comment ->
+            val uri = comment.attachmentUri(input.location)
+            byUri[uri] = byUri[uri] ?: PromptFileInput(
+                uri = uri,
+                name = comment.path.substringAfterLast('/'),
+            )
+        }
         input.attachments.forEach { attachment ->
             byUri[attachment.uri] = PromptFileInput(
                 uri = attachment.uri,

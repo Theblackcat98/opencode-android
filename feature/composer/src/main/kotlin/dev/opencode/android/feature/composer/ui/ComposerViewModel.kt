@@ -24,6 +24,14 @@ import dev.opencode.android.core.data.composer.PromptProblem
 import dev.opencode.android.core.data.composer.StashEntry
 import dev.opencode.android.core.data.composer.TriggerKind
 import dev.opencode.android.core.data.composer.detectTrigger
+import dev.opencode.android.core.data.review.RestoredFile
+import dev.opencode.android.core.data.review.RestoredPrompt
+import dev.opencode.android.core.data.review.ReviewComment
+import dev.opencode.android.core.data.review.RevertPlan
+import dev.opencode.android.core.data.review.SendPreparation
+import dev.opencode.android.core.data.server.RevertCommands
+import dev.opencode.android.core.model.SessionMessage
+import dev.opencode.android.core.model.SessionRevert
 import dev.opencode.android.core.data.preferences.ModelPreferences
 import dev.opencode.android.core.data.server.FileSearchState
 import dev.opencode.android.core.data.server.PendingRequest
@@ -84,6 +92,9 @@ enum class ComposerProblem {
 
     /** The `fs.find` search behind `@` failed; the mention list is showing what it has. */
     SEARCH_FAILED,
+
+    /** A revert is staged or in flight, so this send is not going out yet (plan §6, undo/redo). */
+    REVERT_BLOCKED,
 }
 
 /** The answer to a `/btw` side question, and whether it is still being produced. */
@@ -110,6 +121,18 @@ sealed interface ComposerEffect {
     data object OpenAgentPicker : ComposerEffect
     data object OpenModelPicker : ComposerEffect
     data object OpenEditor : ComposerEffect
+
+    /** The review screen, with the TUI's "last turn" scope already selected. */
+    data object OpenDiff : ComposerEffect
+
+    /**
+     * A revert is staged and the prompt is back in the composer.
+     *
+     * The composer does not perform the stage itself: `RevertPlan` decides the order and
+     * [RevertCommands] carries it out, and the composition root asks for the confirmation that plan
+     * §5.2 requires before a revert is staged at all.
+     */
+    data class ConfirmUndo(val messageID: String, val text: String) : ComposerEffect
 
     /** The box is empty and ready; what to do about focus is the screen's business. */
     data object FocusComposer : ComposerEffect
@@ -153,8 +176,23 @@ data class ComposerUiState(
     val problemDetail: String? = null,
     val sideQuestion: SideQuestion? = null,
     val compacting: Boolean = false,
+    // ------------------------------------------------------------------ Phase 6: review
+    /** The review comments waiting to go on the next prompt. */
+    val reviewComments: List<ReviewComment> = emptyList(),
+    /** A staged revert, which makes the next send a commit-then-send. */
+    val stagedRevert: SessionRevert? = null,
+    /** The files a staged revert will restore, which the banner lists. */
+    val restoredFiles: List<RestoredFile> = emptyList(),
+    /** A revert operation is in flight, which disables the send. */
+    val reverting: Boolean = false,
 ) {
-    val canSend: Boolean get() = !sending && problem == null && assemblyIsSendable()
+    val canSend: Boolean get() = !sending && !reverting && problem == null && assemblyIsSendable()
+
+    /** Whether a revert is staged, which is what the banner and the commit-first send key on. */
+    val isStaged: Boolean get() = stagedRevert != null
+
+    /** The comment count the composer's context row shows. */
+    val commentCount: Int get() = reviewComments.size
 
     /** The variant currently selected, which the cycle button advances. */
     val variant: String? get() = model?.variant
@@ -190,7 +228,7 @@ data class ComposerUiState(
         val intent = intent
         return when (intent) {
             is PromptIntent.Client -> intent.text.isNotEmpty()
-            else -> text.isNotBlank() || attachments.isNotEmpty()
+            else -> text.isNotBlank() || attachments.isNotEmpty() || reviewComments.isNotEmpty()
         }
     }
 }
@@ -245,6 +283,8 @@ class ComposerViewModel @Inject constructor(
         val sideQuestion: SideQuestion? = null,
         val compacting: Boolean = false,
         val loadedDraft: Boolean = false,
+        val reviewComments: List<ReviewComment> = emptyList(),
+        val reverting: Boolean = false,
     )
 
     /** The prompt history of the active server, newest first, and the stash beside it. */
@@ -326,6 +366,11 @@ class ComposerViewModel @Inject constructor(
             problemDetail = mine.problemDetail,
             sideQuestion = mine.sideQuestion,
             compacting = mine.compacting,
+            reviewComments = mine.reviewComments,
+            reverting = mine.reverting,
+            stagedRevert = set?.revertCommands?.state?.value?.staged,
+            restoredFiles = set?.revertCommands?.state?.value?.staged
+                ?.let(RevertPlan::restoredFiles).orEmpty(),
         )
     }.stateIn(viewModelScope, SharingStarted.Eagerly, ComposerUiState())
 
@@ -447,6 +492,9 @@ class ComposerViewModel @Inject constructor(
                 model = snapshot.modelInfo,
                 serverCommands = snapshot.serverCommands,
                 agents = snapshot.agents,
+                // The comments the review screen left here, which is the whole point of the
+                // composer being the thing that turns a review into a prompt.
+                reviewComments = snapshot.reviewComments,
             ),
             confirmed = confirmed,
         )
@@ -456,6 +504,15 @@ class ComposerViewModel @Inject constructor(
             is Assembly.Prompt -> {
                 local.value = local.value.copy(sending = true, error = null, problem = null)
                 viewModelScope.launch {
+                    // **Commit the staged revert, then send.** The server judges a prompt against the
+                    // tree as it is when the prompt arrives, and the commit is what puts that tree
+                    // back. A prompt sent first would be judged against files that are about to
+                    // change under it, and a commit that failed must not be followed by a send.
+                    val prepared = prepareSend(set, id)
+                    if (prepared !is SendPreparation.Send) {
+                        local.value = local.value.copy(sending = false)
+                        return@launch
+                    }
                     val result = set.commands.prompt(
                         sessionID = id,
                         text = assembly.request.text,
@@ -464,7 +521,11 @@ class ComposerViewModel @Inject constructor(
                         files = assembly.request.files,
                         agents = assembly.request.agents,
                         skills = assembly.request.skills,
+                        metadata = assembly.request.metadata,
                     )
+                    if (result.isSuccess) {
+                        dataSets.active.value?.review?.takeComments()
+                    }
                     onSent(result.actionErrorOrNull, assembly.request.text)
                 }
             }
@@ -499,6 +560,33 @@ class ComposerViewModel @Inject constructor(
         }
     }
 
+    /**
+     * What has to happen before a send, given the staged revert.
+     *
+     * Returns [SendPreparation.Send] when the send may go, and records the error otherwise: a send
+     * refused because a revert is in flight, or refused because its commit failed, is a message the
+     * user has to see rather than a prompt that silently disappears.
+     */
+    private suspend fun prepareSend(set: ServerDataSet, id: String): SendPreparation {
+        return when (val preparation = RevertPlan.beforeSend(set.revertCommands.state.value)) {
+            SendPreparation.Send -> SendPreparation.Send
+            SendPreparation.CommitThenSend -> {
+                val error = set.revertCommands.commit(id).actionErrorOrNull
+                if (error != null) {
+                    local.value = local.value.copy(error = error)
+                    SendPreparation.Wait("the revert could not be committed")
+                } else {
+                    SendPreparation.Send
+                }
+            }
+
+            is SendPreparation.Wait -> {
+                local.value = local.value.copy(problem = ComposerProblem.REVERT_BLOCKED, problemDetail = preparation.reason)
+                SendPreparation.Wait(preparation.reason)
+            }
+        }
+    }
+
     private fun performClient(action: ClientAction, text: String) {
         when (action) {
             ClientAction.NEW_SESSION -> {
@@ -527,7 +615,150 @@ class ComposerViewModel @Inject constructor(
             ClientAction.COMPACT -> compact()
 
             ClientAction.SIDE_QUESTION -> ask(text)
+
+            // The three that arrived with the Phase 6 operations. `/diff` navigates; `/undo` and
+            // `/redo` are the session's, and both ask before they change the working copy (§5.2).
+            ClientAction.DIFF -> {
+                clearComposer()
+                effects.trySend(ComposerEffect.OpenDiff)
+            }
+
+            ClientAction.UNDO -> undo()
+
+            ClientAction.REDO -> redo()
         }
+    }
+
+    /**
+     * `/undo`: stage a rollback to before the newest user message.
+     *
+     * The composition root asks for the confirmation (plan §5.2) and then calls [stageUndo] with the
+     * message the user chose — from the palette it is the newest one, and from a message menu it is
+     * the one the row named. The stage itself interrupts a busy session and cancels pending user
+     * input first, which is [RevertPlan]'s order and not this method's.
+     */
+    private fun undo() {
+        val id = sessionID.value ?: return
+        val set = dataSets.active.value ?: return
+        val target = newestUserMessage(set, id)
+        if (target == null) {
+            local.value = local.value.copy(error = null)
+            return
+        }
+        effects.trySend(ComposerEffect.ConfirmUndo(target.id, target.text))
+    }
+
+    /**
+     * `session.revert.stage`, and the composer restore that follows it.
+     *
+     * The whole prompt goes back, not just the text: the attachments and the review comments are the
+     * parts a user would be angry to lose, and the delivery is the mode the prompt was sent with.
+     * A stage that fails changes nothing here, which is what plan §5.2 asks of a dangerous action.
+     */
+    fun stageUndo(messageID: String, restoreFiles: Boolean = true) {
+        val id = sessionID.value ?: return
+        val set = dataSets.active.value ?: return
+        val message = messageById(set, id, messageID)
+        local.value = local.value.copy(reverting = true, error = null)
+        viewModelScope.launch {
+            val outcome = set.revertCommands.stage(
+                sessionID = id,
+                messageID = messageID,
+                busy = set.sessions.activity.value[id] == SessionActivity.Running,
+                pendingUserInboxIDs = pendingUserInboxIds(set, id),
+                restoreFiles = restoreFiles,
+                prompt = message?.let { restoredFrom(it) },
+            )
+            local.value = local.value.copy(reverting = false)
+            when (outcome) {
+                is RevertCommands.StageOutcome.Done -> restore(outcome.revert, message)
+                is RevertCommands.StageOutcome.Failed -> {
+                    local.value = local.value.copy(error = outcome.error)
+                }
+            }
+        }
+    }
+
+    /**
+     * `/redo`: `session.revert.clear`.
+     *
+     * The restored prompt is *not* put back. Redo means "take the rollback back", so the composer
+     * keeps whatever the user has typed since, which is the only reading that does not destroy work.
+     */
+    fun redo() {
+        val id = sessionID.value ?: return
+        val set = dataSets.active.value ?: return
+        local.value = local.value.copy(reverting = true, error = null)
+        viewModelScope.launch {
+            val result = set.revertCommands.clear(id)
+            local.value = local.value.copy(
+                reverting = false,
+                error = result.actionErrorOrNull,
+            )
+        }
+    }
+
+    /** The newest user message of a session, which is what the palette's `/undo` targets. */
+    private fun newestUserMessage(set: ServerDataSet, id: String): SessionMessage.User? =
+        set.timeline(id).state.value.messages
+            .asReversed()
+            .filterIsInstance<SessionMessage.User>()
+            .firstOrNull()
+
+    private fun messageById(set: ServerDataSet, id: String, messageID: String): SessionMessage.User? =
+        set.timeline(id).state.value.messages
+            .filterIsInstance<SessionMessage.User>()
+            .firstOrNull { it.id == messageID }
+
+    /**
+     * The pending inbox items an undo cancels: the *user* ones only.
+     *
+     * A compaction or a move in the inbox is not something an undo should cancel, so the filter is
+     * here rather than in [RevertPlan], which is a pure function and has no idea what an inbox item
+     * is.
+     */
+    private fun pendingUserInboxIds(set: ServerDataSet, id: String): List<String> =
+        // The pending item's own id is the `msg_…` the client generated, which is exactly what
+        // `session.inbox.cancel` takes.
+        set.timeline(id).state.value.pending
+            .filter { it.item is dev.opencode.android.core.model.InboxItem.User }
+            .map { it.id }
+
+    /** The prompt an undo puts back, in the shape the composer holds. */
+    private fun restoredFrom(message: SessionMessage.User): RestoredPrompt = RestoredPrompt(
+        messageID = message.id,
+        text = message.text,
+        // A stored user message carries its files as decoded base64 (schema `Prompt.FileAttachment`),
+        // so the attachment that goes back into the composer is a `data:` URL again — the one shape
+        // the prompt route accepts for content the phone holds.
+        attachments = message.files.orEmpty().mapIndexed { index, attachment ->
+            val label = attachment.name ?: attachment.mime.ifEmpty { "file" }
+            AttachmentDraft(
+                id = "$label#$index",
+                label = label,
+                uri = "data:${attachment.mime};base64,${attachment.data}",
+                kind = AttachmentPolicy.classify(attachment.mime),
+                mime = attachment.mime,
+            )
+        },
+        comments = dev.opencode.android.core.data.review.ReviewComments.read(message.metadata),
+        delivery = local.value.delivery,
+    )
+
+    /** Puts the restored prompt into the box: text, attachments and comments together. */
+    private fun restore(revert: SessionRevert, message: SessionMessage.User?) {
+        val prompt = message?.let(::restoredFrom) ?: return
+        local.value = local.value.copy(
+            text = prompt.text,
+            cursor = prompt.text.length,
+            attachments = prompt.attachments,
+            reviewComments = prompt.comments,
+            problem = null,
+            problemDetail = null,
+        )
+        dataSets.active.value?.revertCommands?.applyStaged(revert, prompt)
+        refresh()
+        persistDraft()
     }
 
     /** `session.compact`. A busy session is a conflict the composer reports rather than retries. */
@@ -569,6 +800,23 @@ class ComposerViewModel @Inject constructor(
                 ),
             )
         }
+    }
+
+    /**
+     * Takes the review comments the review screen left, so the next send carries them.
+     *
+     * The composer holds them rather than reaching into the review store, because the composer is
+     * what turns a review into a prompt and a second holder of the same list would be a second
+     * thing to keep in step.
+     */
+    fun setReviewComments(comments: List<ReviewComment>) {
+        local.value = local.value.copy(reviewComments = comments, problem = null, problemDetail = null)
+    }
+
+    fun removeReviewComment(index: Int) {
+        local.value = local.value.copy(
+            reviewComments = local.value.reviewComments.filterIndexed { position, _ -> position != index },
+        )
     }
 
     fun dismissSideQuestion() {

@@ -125,6 +125,22 @@ object RevertPlan {
         is RevertState.Committing -> SendPreparation.Wait("the revert is being committed")
         is RevertState.Staged -> SendPreparation.CommitThenSend
     }
+
+    /**
+     * The same question, asked of the store's own projection.
+     *
+     * The store holds one [dev.opencode.android.core.data.server.RevertFlowState] per server rather
+     * than a map of them, because a session is what a revert belongs to and a client follows one
+     * server at a time; this overload is what keeps that detail out of the composer's decision.
+     */
+    fun beforeSend(state: dev.opencode.android.core.data.server.RevertFlowState): SendPreparation = when {
+        state.busy && state.step == dev.opencode.android.core.data.server.StageStep.COMMIT ->
+            SendPreparation.Wait("the revert is being committed")
+
+        state.busy -> SendPreparation.Wait("a revert is in progress")
+        state.staged != null -> SendPreparation.CommitThenSend
+        else -> SendPreparation.Send
+    }
 }
 
 /** One step of the "before staging" sequence (features doc §21, reference clients). */

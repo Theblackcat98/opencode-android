@@ -107,6 +107,7 @@ fun ComposerProblemRow(
         )
 
         ComposerProblem.NO_SESSION -> stringResource(R.string.composer_no_session)
+        ComposerProblem.REVERT_BLOCKED -> stringResource(R.string.composer_revert_blocked)
         ComposerProblem.SEARCH_FAILED -> stringResource(R.string.composer_search_failed)
     }
     Surface(
