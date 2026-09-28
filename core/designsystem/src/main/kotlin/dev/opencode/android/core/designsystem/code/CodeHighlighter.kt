@@ -137,6 +137,7 @@ object CodeHighlighter {
             stringDelimiters = listOf('\'', '"'),
             lineComment = listOf("--"),
             blockComment = listOf("/*" to "*/"),
+            keywordsIgnoreCase = true,
         )
 
         CodeLanguage.CSS -> hashLike(
@@ -172,18 +173,24 @@ private fun hashLike(
     annotation = annotation,
 )
 
-/** A configuration language: quoted keys and values, and a comment marker. */
+/**
+ * A configuration language: quoted keys and values, a comment marker, and a `:` or `=` that is worth
+ * colouring because it is the shape of the file.
+ */
 private fun dataLike(
     keywords: Set<String>,
     stringDelimiters: List<Char>,
     lineComment: List<String>,
     blockComment: List<Pair<String, String>>,
+    keywordsIgnoreCase: Boolean = false,
 ): LexerRules = LexerRules(
     lineComment = lineComment,
     blockComment = blockComment,
     stringDelimiters = stringDelimiters,
     keywords = keywords,
     annotation = false,
+    keyValueMarker = true,
+    keywordsIgnoreCase = keywordsIgnoreCase,
 )
 
 /** XML, HTML and Markdown: a tag is a run, and the rest of the line is prose. */
@@ -250,6 +257,15 @@ internal data class LexerRules(
     val markup: Boolean = false,
     /** A `+`/`-` prefix marks a diff change, which is what marks a patch body. */
     val diffBody: Boolean = false,
+    /** A `:` or `=` separates a key from a value, which is what a configuration language marks. */
+    val keyValueMarker: Boolean = false,
+    /**
+     * The keyword set is matched case-insensitively.
+     *
+     * Only SQL wants this, because only SQL treats its keywords that way: matching `VAL` in Kotlin
+     * would colour an identifier as a keyword, and Kotlin's `val` is not the same token.
+     */
+    val keywordsIgnoreCase: Boolean = false,
     /** A `|` starts a table cell in Markdown. */
     val tablePipe: Boolean = false,
     /** A `>` starts a block quote or a YAML folded scalar. */

@@ -29,12 +29,22 @@ internal class Lexer(
         // that opened it, so the first run here is the rest of the literal, and the closing marker
         // is what ends it.
         if (carry.open) {
-            val closed = consumeUntilClose(index = 0, delimiter = carry.openStringDelimiter!!, triple = carry.triple)
+            val closed = consumeUntilClose(from = 0, delimiter = carry.openStringDelimiter!!, triple = carry.triple)
+            // The rest of the literal is a run in its own right: the line is the inside of a string
+            // from its first character, and a renderer that painted it as plain text would be
+            // showing a multi-line literal as if each line were code.
+            add(CodeTokenKind.STRING, 0, closed.index)
             index = closed.index
             if (closed.closed) pendingCarry = LineCarry.NONE
         }
         while (index < text.length) {
+            val before = index
             index = step(index, pendingCarry)
+            // Structural guarantee rather than a test: a scanner that consumes nothing would loop
+            // forever on a line this function was handed by a server, and the whole point of the
+            // totality rule is that no input can do that. If a future rule ever fails to advance,
+            // the line is finished one character early instead of hanging the phone.
+            if (index <= before) index = before + 1
         }
         if (tokens.isEmpty() || tokens.last().end < text.length) {
             tokens += CodeToken(CodeTokenKind.PLAIN, tokens.lastOrNull()?.end ?: 0, text.length)
@@ -56,15 +66,28 @@ internal class Lexer(
             return text.length
         }
         rules.blockComment.firstOrNull { text.startsWith(it.first, index) }?.let { (open, close) ->
-            val result = consumeUntilClose(index + open.length, close, triple = false, open = open)
+            val result = consumeUntilClose(from = index + open.length, delimiter = close, triple = false)
             add(CodeTokenKind.COMMENT, index, result.index)
             return result.index
+        }
+
+        // A tag is a run wherever it appears, because XML and HTML put several on one line and a
+        // reader needs all of them marked, not only the one that starts it.
+        if (rules.markup && ch == '<') {
+            val close = text.indexOf('>', index)
+            val end = if (close < 0) text.length else close + 1
+            add(CodeTokenKind.ANNOTATION, index, end)
+            return end
+        }
+        if (rules.markup && ch == '/' && text.getOrNull(index + 1) == '>') {
+            add(CodeTokenKind.ANNOTATION, index, index + 1)
+            return index + 1
         }
 
         if (ch in rules.stringDelimiters) {
             val triple = rules.tripleQuote && text.startsWith("$ch$ch$ch", index)
             val open = if (triple) "$ch$ch$ch" else ch.toString()
-            val result = consumeUntilClose(index + open.length, close = if (triple) open else ch.toString(), triple = triple, open = open)
+            val result = consumeUntilClose(from = index + open.length, delimiter = open, triple = triple)
             add(CodeTokenKind.STRING, index, result.index)
             // Only a language that *has* multi-line literals can leave one open.
             pendingCarry = if (triple && !result.closed && rules.tripleQuote) {
@@ -75,13 +98,13 @@ internal class Lexer(
             return result.index
         }
         if (rules.backtickTemplate && ch == '`') {
-            val result = consumeUntilClose(index + 1, "`", triple = false, open = "`")
+            val result = consumeUntilClose(from = index + 1, delimiter = "`", triple = false)
             add(CodeTokenKind.STRING, index, result.index)
             pendingCarry = LineCarry.NONE
             return result.index
         }
         if (ch == '"' && !rules.stringDelimiters.contains('"')) {
-            val result = consumeUntilClose(index + 1, "\"", triple = false, open = "\"")
+            val result = consumeUntilClose(from = index + 1, delimiter = "\"", triple = false)
             add(CodeTokenKind.STRING, index, result.index)
             return result.index
         }
@@ -104,7 +127,9 @@ internal class Lexer(
         if (ch.isLetter() || ch == '_' || ch == '$') {
             val end = scanWhile(index) { it.isLetterOrDigit() || it == '_' || it == '$' }
             val word = text.substring(index, end)
-            if (word.lowercase() in rules.keywords) add(CodeTokenKind.KEYWORD, index, end) else add(CodeTokenKind.PLAIN, index, end)
+            val keyword = word in rules.keywords ||
+                (rules.keywordsIgnoreCase && word.lowercase() in rules.keywords)
+            add(if (keyword) CodeTokenKind.KEYWORD else CodeTokenKind.PLAIN, index, end)
             return end
         }
         if (ch == '#' && text.getOrNull(index + 1) == '[') {
@@ -113,8 +138,19 @@ internal class Lexer(
             add(CodeTokenKind.ANNOTATION, index, end)
             return end
         }
-        if (!ch.isLetterOrDigit() && !ch.isWhitespace() && ch != '_') {
-            val end = scanWhile(index) { !it.isLetterOrDigit() && !it.isWhitespace() && it != '_' && it != '@' && it != '#' && it != '"' && it != '\'' && it != '`' }
+        if (rules.keyValueMarker && (ch == ':' || ch == '=')) {
+            add(CodeTokenKind.MARKER, index, index + 1)
+            return index + 1
+        }
+        if (!ch.isLetterOrDigit() && !ch.isWhitespace() && ch != '_' && ch != '$') {
+            // The characters a language's own rules own are excluded, so a quote is never punctuation
+            // in a language that has quotes. One in a language that has *no* quotes would leave the
+            // run empty; the progress guarantee in [run] then carries the line past it rather than
+            // letting the scanner stand still.
+            val end = scanWhile(index) {
+                !it.isLetterOrDigit() && !it.isWhitespace() && it != '_' && it != '$' &&
+                    it != '@' && it != '#' && it != '"' && it != '\'' && it != '`'
+            }
             add(CodeTokenKind.PUNCTUATION, index, end)
             return end
         }
@@ -130,6 +166,12 @@ internal class Lexer(
     private fun markLeadingMarker(index: Int, carryIn: LineCarry): Int? {
         val ch = text[index]
         if (carryIn.open) return null
+        if (rules.diffBody && text.startsWith("@@")) {
+            // A hunk header is one marker, not a marker followed by a range: there is nothing in
+            // `@@ -1,3 +1,4 @@` that a reader takes in as code.
+            add(CodeTokenKind.MARKER, 0, text.length)
+            return text.length
+        }
         if (rules.diffBody && (ch == '+' || ch == '-' || ch == '@')) {
             val end = scanWhile(index) { !it.isWhitespace() }
             val rest = text.indexOf('\n', index).let { if (it < 0) text.length else it }
@@ -145,16 +187,6 @@ internal class Lexer(
         if (rules.quotePrefix && ch == '>') {
             add(CodeTokenKind.MARKER, index, index + 1)
             return index + 1
-        }
-        if (rules.markup && ch == '<') {
-            val close = text.indexOf('>', index)
-            val end = if (close < 0) text.length else close + 1
-            add(CodeTokenKind.ANNOTATION, index, end)
-            return end
-        }
-        if (rules.markup && ch == '/' && text.getOrNull(index + 1) == '>') {
-            add(CodeTokenKind.ANNOTATION, index, index + 2)
-            return index + 2
         }
         if (rules.tablePipe && ch == '|') {
             add(CodeTokenKind.MARKER, index, index + 1)
@@ -174,8 +206,15 @@ internal class Lexer(
 
     private data class Close(val index: Int, val closed: Boolean)
 
-    private fun consumeUntilClose(index: Int, delimiter: String, triple: Boolean, open: String): Close {
-        var at = index
+    /**
+     * Scans to the end of the literal that opened at [from].
+     *
+     * A delimiter that is not there means the literal runs to the end of the line, and
+     * [Close.closed] says so — which is the only thing the caller needs in order to decide whether
+     * the *next* line is still inside the literal.
+     */
+    private fun consumeUntilClose(from: Int, delimiter: String, triple: Boolean): Close {
+        var at = from
         while (at < text.length) {
             val found = text.indexOf(delimiter, at)
             if (found < 0) return Close(text.length, closed = false)

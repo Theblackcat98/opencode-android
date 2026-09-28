@@ -83,7 +83,7 @@ enum class CodeLanguage(val id: String, val extensions: Set<String>) {
 
     companion object {
         private val byExtension: Map<String, CodeLanguage> = buildMap {
-            entries.forEach { language ->
+            CodeLanguage.entries.forEach { language ->
                 language.extensions.forEach { put(it, language) }
             }
         }
