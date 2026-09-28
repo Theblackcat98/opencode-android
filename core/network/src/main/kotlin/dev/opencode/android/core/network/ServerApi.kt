@@ -235,12 +235,15 @@ interface ServerApi {
      *
      * With [resume] true, pending steering input resumes and queued prompts stay parked
      * (features doc §4.2), which is the difference between stopping and stopping-and-continuing.
+     *
+     * The answer is a bare `SessionInterruptResponse`, not the `{data: …}` wrapper most routes use;
+     * the spec says so and a 2.0.18 server confirms it, so wrapping it would fail to decode.
      */
     @POST("api/session/{sessionID}/interrupt")
     suspend fun interrupt(
         @Path("sessionID") sessionID: String,
         @Query("resume") resume: Boolean? = null,
-    ): DataResponse<InterruptResult>
+    ): InterruptResult
 
     /** `session.background`: moves blocking tools to the background so the turn can finish. */
     @POST("api/session/{sessionID}/background")

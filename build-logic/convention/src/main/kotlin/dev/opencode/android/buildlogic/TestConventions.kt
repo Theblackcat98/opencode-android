@@ -18,7 +18,14 @@ internal val Project.integrationMode: Boolean
 internal const val INTEGRATION_TASK = "integrationTest"
 private const val INTEGRATION_PATTERN = "*.integration.*"
 
-/** Environment written by scripts/dev-server.sh, forwarded to integration tests as system properties. */
+/**
+ * Environment written by scripts/dev-server.sh, forwarded to integration tests as system properties.
+ *
+ * A Gradle property of the same name wins, because a long-lived daemon does not reliably see the
+ * environment of a client that started after it: without the property, a local integration run
+ * silently skips instead of failing. CI sets the environment and keeps working; a developer on the
+ * command line passes `-Popencode.it.url=... -Popencode.it.password=...` and is sure of the run.
+ */
 private val INTEGRATION_ENV = mapOf(
     "OPENCODE_URL" to "opencode.it.url",
     "OPENCODE_PASSWORD" to "opencode.it.password",
@@ -47,7 +54,9 @@ internal fun Project.configureTests() {
         if (integration) {
             filter.includeTestsMatching(INTEGRATION_PATTERN)
             INTEGRATION_ENV.forEach { (env, property) ->
-                providers.environmentVariable(env).orNull?.let { systemProperty(property, it) }
+                val fromProperty = providers.gradleProperty(property).orNull
+                val value = fromProperty ?: providers.environmentVariable(env).orNull
+                if (value != null) systemProperty(property, value)
             }
             // A live server is not a cacheable input.
             outputs.upToDateWhen { false }

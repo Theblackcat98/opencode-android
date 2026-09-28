@@ -6,7 +6,10 @@ import dev.opencode.android.core.model.event.Event
 import dev.opencode.android.core.model.event.EventPayload
 import dev.opencode.android.core.model.json.OpenCodeJson
 import dev.opencode.android.core.testing.Fixtures
+import dev.opencode.android.core.model.Delivery
+import dev.opencode.android.core.model.InboxItem
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -146,6 +149,45 @@ class TimelineReducerGoldenTest {
                 assertEquals("$sessionID diverged at cut $cut", whole, stepped)
             }
         }
+    }
+
+    @Test
+    fun `a delivery change rewrites the pending item's mode and nothing else`() {
+        // Phase 3's inbox panel switches a parked prompt from queue to steer. The server answers with
+        // `session.inbox.delivery.changed`, and the item the user wrote is not re-sent, so the
+        // reducer has to rewrite the mode of the entry it already holds.
+        val enqueued = Event.decode(
+            """
+            {"id":"evt_1","type":"session.inbox.enqueued","created":10,"data":{
+              "inboxID":"msg_1","sessionID":"ses_a","item":{"type":"user","delivery":"queue",
+              "payload":{"text":"parked"}}}}
+            """.trimIndent(),
+        )
+        val changed = Event.decode(
+            """
+            {"id":"evt_2","type":"session.inbox.delivery.changed","created":20,"data":{
+              "sessionID":"ses_a","inboxID":"msg_1","delivery":"steer"}}
+            """.trimIndent(),
+        )
+        val parked = TimelineReducer.reduce(TimelineState.Empty, enqueued, "ses_a")
+        val steered = TimelineReducer.reduce(parked, changed, "ses_a")
+
+        assertEquals(Delivery.Steer, steered.pending.single().item.delivery)
+        val item = parked.pending.single().item
+        assertEquals("the text the user wrote must survive", "parked", (item as InboxItem.User).payload.text)
+        assertEquals(1, steered.pending.size)
+    }
+
+    @Test
+    fun `a delivery change for an item that is not pending changes nothing`() {
+        val changed = Event.decode(
+            """
+            {"id":"evt_3","type":"session.inbox.delivery.changed","created":20,"data":{
+              "sessionID":"ses_a","inboxID":"msg_gone","delivery":"steer"}}
+            """.trimIndent(),
+        )
+        val before = TimelineState.Empty
+        assertSame(before, TimelineReducer.reduce(before, changed, "ses_a"))
     }
 
     private fun replay(sessionID: String): List<SessionMessage> = replay(eventsFor(sessionID), sessionID).messages

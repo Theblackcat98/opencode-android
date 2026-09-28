@@ -141,7 +141,7 @@ class SessionCommands(
      * from what the user had already typed.
      */
     suspend fun interrupt(sessionID: String, resume: Boolean? = null): Result<Boolean> = call {
-        api.interrupt(sessionID, resume).data.interrupted
+        api.interrupt(sessionID, resume).interrupted
     }
 
     /** `session.background`: moves blocking tools out of the way so the turn can finish. */

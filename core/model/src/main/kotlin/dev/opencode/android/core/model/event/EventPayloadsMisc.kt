@@ -35,22 +35,31 @@ value class FilesystemChange(val value: String) {
     }
 }
 
+/**
+ * `form.created`: a form is waiting for an answer.
+ *
+ * [EventPayload.SessionScoped] because the form names the session it blocks, and a store that
+ * dispatches by session — the timeline reducer, the request center's resync — must be able to see that
+ * without matching on the payload class.
+ */
 @Serializable
-data class FormCreated(val form: FormInfo) : EventPayload
+data class FormCreated(val form: FormInfo) : EventPayload.SessionScoped {
+    override val sessionID: String get() = form.sessionID
+}
 
 @Serializable
 data class FormReplied(
     val id: String,
-    val sessionID: String,
+    override val sessionID: String,
     /** Answers by field key: string, number, boolean or string array. */
     val answer: Map<String, JsonElement>,
-) : EventPayload
+) : EventPayload.SessionScoped
 
 @Serializable
 data class FormCancelled(
     val id: String,
-    val sessionID: String,
-) : EventPayload
+    override val sessionID: String,
+) : EventPayload.SessionScoped
 
 @Serializable
 data class InstallationUpdated(val version: String) : EventPayload
@@ -73,14 +82,14 @@ data class McpResourcesChanged(val server: String) : EventPayload
 @Serializable
 data class PermissionAsked(
     val id: String,
-    val sessionID: String,
+    override val sessionID: String,
     val action: String,
     val resources: List<String>,
     val save: List<String>? = null,
     val metadata: JsonObject? = null,
     val source: PermissionSource? = null,
     val message: String? = null,
-) : EventPayload {
+) : EventPayload.SessionScoped {
     /** The same request as the REST form, which is what the center stores. */
     fun toRequest(): PermissionRequest = PermissionRequest(
         id = id,
@@ -96,10 +105,10 @@ data class PermissionAsked(
 
 @Serializable
 data class PermissionReplied(
-    val sessionID: String,
+    override val sessionID: String,
     val requestID: String,
     val reply: PermissionReply,
-) : EventPayload
+) : EventPayload.SessionScoped
 
 @Serializable
 data class ProjectUpdated(

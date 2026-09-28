@@ -58,3 +58,18 @@ internal object InboxItemSerializer : DiscriminatedUnionSerializer<InboxItem>(
         variant("move", InboxItem.Move.serializer()),
     ),
 )
+
+/**
+ * The same item delivered differently, which is what `session.inbox.update` changes.
+ *
+ * Every variant carries its own `delivery`, so there is no setter; a copy per variant is the honest
+ * way to express it, and an [InboxItem.Unknown] is left alone because a client that cannot read the
+ * item cannot change how it is delivered either.
+ */
+fun InboxItem.withDelivery(delivery: Delivery): InboxItem = when (this) {
+    is InboxItem.User -> copy(delivery = delivery)
+    is InboxItem.Synthetic -> copy(delivery = delivery)
+    is InboxItem.Compaction -> copy(delivery = delivery)
+    is InboxItem.Move -> copy(delivery = delivery)
+    is InboxItem.Unknown -> this
+}

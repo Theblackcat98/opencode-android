@@ -93,6 +93,11 @@ private fun kindOf(error: ApiError): ActionErrorKind = when (error) {
     is ApiError.Conflict -> ActionErrorKind.CONFLICT
     is ApiError.SessionBusy -> ActionErrorKind.SESSION_BUSY
     is ApiError.InvalidRequest -> ActionErrorKind.INVALID_REQUEST
+    // A form the server has already answered or cancelled is a conflict, not a server fault: it is
+    // the ordinary result of answering from two clients, and the UI says "already answered".
+    is ApiError.FormAlreadySettled -> ActionErrorKind.CONFLICT
+    is ApiError.FormInvalidAnswer -> ActionErrorKind.INVALID_REQUEST
+    is ApiError.InstructionEntryValueTooLarge -> ActionErrorKind.INVALID_REQUEST
     is ApiError.ServiceUnavailable -> ActionErrorKind.SERVER
     is ApiError.SessionNotFound, is ApiError.MessageNotFound, is ApiError.PermissionNotFound,
     is ApiError.FormNotFound, is ApiError.AgentNotFound, is ApiError.FileNotFound,

@@ -1,10 +1,12 @@
 package dev.opencode.android.core.data.timeline
 
 import dev.opencode.android.core.model.AssistantContent
+import dev.opencode.android.core.model.Delivery
 import dev.opencode.android.core.model.FinishReason
 import dev.opencode.android.core.model.InboxItem
 import dev.opencode.android.core.model.InterruptReason
 import dev.opencode.android.core.model.Outcome
+import dev.opencode.android.core.model.withDelivery
 import dev.opencode.android.core.model.SessionMessage
 import dev.opencode.android.core.model.StructuredError
 import dev.opencode.android.core.model.ToolContent
@@ -21,6 +23,7 @@ import dev.opencode.android.core.model.event.SessionExecutionStarted
 import dev.opencode.android.core.model.event.SessionExecutionSucceeded
 import dev.opencode.android.core.model.event.SessionInboxCancelled
 import dev.opencode.android.core.model.event.SessionInboxDelivered
+import dev.opencode.android.core.model.event.SessionInboxDeliveryChanged
 import dev.opencode.android.core.model.event.SessionInboxEnqueued
 import dev.opencode.android.core.model.event.SessionModelSelected
 import dev.opencode.android.core.model.event.SessionReasoningDelta
@@ -421,6 +424,10 @@ object TimelineReducer {
                 draft.remove(payload.inboxID)
             }
 
+            // Phase 3's inbox panel: queue becomes steer without the item ever being re-sent.
+            is SessionInboxDeliveryChanged ->
+                draft.setPendingDelivery(payload.inboxID, payload.delivery)
+
             is SessionModelSelected -> draft.append(
                 SessionMessage.ModelSwitched(
                     id = messageIdFromEvent(event.id),
@@ -745,6 +752,19 @@ private class Draft(private val state: TimelineState) {
         val current = pending ?: state.pending
         if (current.none { it.id == id }) return
         pending = current.filterNot { it.id == id }
+    }
+
+    /**
+     * Changes how a pending item will be delivered.
+     *
+     * The item is otherwise untouched, which is what the server does: `session.inbox.update` carries
+     * the new delivery and nothing else, and the content the user wrote is not re-read from anywhere.
+     */
+    fun setPendingDelivery(id: String, delivery: Delivery) {
+        val current = pending ?: state.pending
+        val target = current.firstOrNull { it.id == id } ?: return
+        if (target.item.delivery == delivery) return
+        pending = current.map { if (it.id == id) it.copy(item = it.item.withDelivery(delivery)) else it }
     }
 
     /** The new state, or the old one when the event changed nothing. */
