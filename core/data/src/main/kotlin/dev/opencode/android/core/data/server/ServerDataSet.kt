@@ -9,8 +9,13 @@ import dev.opencode.android.core.model.Project
 import dev.opencode.android.core.model.event.Event
 import dev.opencode.android.core.model.event.EventPayload
 import dev.opencode.android.core.model.event.InstallationUpdateAvailable
+import dev.opencode.android.core.model.event.FilesystemChanged
 import dev.opencode.android.core.model.event.InstallationUpdated
 import dev.opencode.android.core.model.event.ProjectUpdated
+import dev.opencode.android.core.model.event.SessionRevertCleared
+import dev.opencode.android.core.model.event.SessionRevertCommitted
+import dev.opencode.android.core.model.event.SessionRevertStaged
+import dev.opencode.android.core.model.event.VcsBranchUpdated
 import dev.opencode.android.core.network.ServerApi
 import dev.opencode.android.core.data.sync.ResourceKey
 import dev.opencode.android.core.data.sync.SyncedResource
@@ -67,6 +72,36 @@ class ServerDataSet(
 
     /** `fs.list`: the directory browser behind "pick a location" for a new session. */
     val browser: DirectoryBrowser = DirectoryBrowser(api, scope)
+
+    /**
+     * The Phase 6 review surface: scopes, parsed diffs, the review position, the VCS header, the
+     * file browser and the comments waiting for the next prompt.
+     *
+     * One review per server, not per location, because the "Last turn" scope is scoped to a
+     * *session* while the other three are scoped to a *directory*, and switching between them is a
+     * change of scope rather than a change of checkout. The VCS header and the file browser are the
+     * two pieces that are per-location, and they get a store per directory the moment a review
+     * names one.
+     */
+    val review: ReviewStore = ReviewStore(serverId, api)
+
+    /** `session.revert.*`, `session.fork` and `session.diff`: the undo/redo/history operations. */
+    val revertCommands: RevertCommands = RevertCommands(api, timeline = { timelines[it] })
+
+    init {
+        review.reverts = revertCommands
+    }
+
+    /** The comments, the metadata a prompt carries, and the experiment switches. */
+    val reviewComments get() = review.comments
+
+    private val vcsStores = ConcurrentHashMap<String, VcsStore>()
+
+    /** The repository header and the base-branch picker, per directory. */
+    fun vcs(directory: String): VcsStore = vcsStores.getOrPut(directory) { VcsStore(serverId, directory, api) }
+
+    /** `fs.read`, `fs.find` and the file browser behind the file viewer. */
+    val files: FileReader = FileReader(api)
 
     /**
      * The composer's catalogs: `command.list`, `skill.list`, `reference.list` and the `fs.find`
@@ -212,6 +247,33 @@ class ServerDataSet(
             }
 
             is InstallationUpdated, is InstallationUpdateAvailable -> installation.apply(event)
+
+            // ------------------------------------------------------------------ Phase 6: review
+            //
+            // `vcs.branch.updated {branch}` moves the header, and the header is the branch *and* the
+            // changed files, so both are re-read: a checkout that switched branches has a different
+            // working copy, and a header that kept the old file list would describe a tree that no
+            // longer exists. The event names a branch, not a directory, so every open directory is
+            // asked — one request each, and only for the directories a review has actually opened.
+            is VcsBranchUpdated -> vcsStores.values.forEach { store ->
+                store.applyBranchUpdated(payload.branch)
+                scope.launch { store.refresh() }
+            }
+
+            // `filesystem.changed {file, event}` is the live refresh for the file viewer and the
+            // browser. The event names one file and no location, so the file's own path decides
+            // which open directory it belongs to, and only that one is re-listed.
+            is FilesystemChanged -> {
+                vcsStores.keys.forEach { directory ->
+                    if (VcsStore.directoryFilter(directory)(payload.file)) {
+                        scope.launch { files.list(directory, files.state.value.path) }
+                    }
+                }
+            }
+
+            is SessionRevertStaged -> revertCommands.applyStaged(payload.revert)
+            is SessionRevertCleared, is SessionRevertCommitted -> revertCommands.applyStaged(null)
+
             else -> Unit
         }
         requests.apply(event)
@@ -255,5 +317,8 @@ class ServerDataSet(
         defaultModels.clear()
         projects.clear()
         composerCatalogs.clear()
+        vcsStores.clear()
+        files.clear()
+        browser.clear()
     }
 }

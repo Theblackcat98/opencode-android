@@ -3,7 +3,9 @@ package dev.opencode.android.core.network
 import dev.opencode.android.core.model.AgentInfo
 import dev.opencode.android.core.model.CommandInfo
 import dev.opencode.android.core.model.DataResponse
+import dev.opencode.android.core.model.FileDiff
 import dev.opencode.android.core.model.FileSystemEntry
+import dev.opencode.android.core.model.FileSystemWrite
 import dev.opencode.android.core.model.FormDetail
 import dev.opencode.android.core.model.FormInfo
 import dev.opencode.android.core.model.FormReplyPayload
@@ -24,18 +26,28 @@ import dev.opencode.android.core.model.SessionCommandRequest
 import dev.opencode.android.core.model.SessionCompactRequest
 import dev.opencode.android.core.model.SessionCreateRequest
 import dev.opencode.android.core.model.SessionEnvironmentRequest
+import dev.opencode.android.core.model.SessionForkRequest
 import dev.opencode.android.core.model.SessionGenerateRequest
 import dev.opencode.android.core.model.SessionGenerateResponse
+import dev.opencode.android.core.model.SessionImportRequest
 import dev.opencode.android.core.model.SessionInboxInfo
 import dev.opencode.android.core.model.SessionInfo
 import dev.opencode.android.core.model.SessionMessage
+import dev.opencode.android.core.model.SessionRevert
+import dev.opencode.android.core.model.SessionRevertStageRequest
 import dev.opencode.android.core.model.SessionShellRequest
+import dev.opencode.android.core.model.SessionTransfer
 import dev.opencode.android.core.model.SessionUpdateRequest
 import dev.opencode.android.core.model.SessionViewRequest
 import dev.opencode.android.core.model.SkillActivationRequest
 import dev.opencode.android.core.model.SkillInfo
 import dev.opencode.android.core.model.SwitchAgentRequest
 import dev.opencode.android.core.model.SwitchModelRequest
+import dev.opencode.android.core.model.VcsBase
+import dev.opencode.android.core.model.VcsFileStatus
+import dev.opencode.android.core.model.VcsInfo
+import okhttp3.RequestBody
+import okhttp3.ResponseBody
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
@@ -482,4 +494,163 @@ interface ServerApi {
         @Path("sessionID") sessionID: String,
         @Body body: SkillActivationRequest,
     ): Unit
+
+    // ----------------------------------------------- Phase 6: review, diffs, files and history
+
+    /**
+     * `session.diff`: what one turn changed (features doc §4.2, "Per-turn file diffs").
+     *
+     * [from] is the user message whose turn to diff and defaults to the newest user message's turn;
+     * [to] extends the range to a later user message. [context] is the number of unchanged lines
+     * around each hunk and is left out to ask for full-file patches, which is what a phone wants
+     * far less often than the server's default of a three-line context.
+     */
+    @GET("api/session/{sessionID}/diff")
+    suspend fun sessionDiff(
+        @Path("sessionID") sessionID: String,
+        @Query("from") from: String? = null,
+        @Query("to") to: String? = null,
+        @Query("context") context: String? = null,
+    ): DataResponse<List<FileDiff>>
+
+    /** `vcs.get`: the provider and the current and default branches of a location. */
+    @GET("api/vcs")
+    suspend fun getVcs(
+        @Query(LocationParam.QUERY_KEY) directory: String? = null,
+    ): LocationScoped<VcsInfo>
+
+    /** `vcs.base`: the ref the review is taken against, or `null` when the server has no opinion. */
+    @GET("api/vcs/base")
+    suspend fun getVcsBase(
+        @Query(LocationParam.QUERY_KEY) directory: String? = null,
+    ): LocationScoped<VcsBase?>
+
+    /** `vcs.status`: the files the working copy has changed, with the server's own counts. */
+    @GET("api/vcs/status")
+    suspend fun getVcsStatus(
+        @Query(LocationParam.QUERY_KEY) directory: String? = null,
+    ): LocationScoped<List<VcsFileStatus>>
+
+    /**
+     * `vcs.branch.list`: the branch names the base picker offers.
+     *
+     * [limit] is a string on the wire even though it is a number, which the spec spells out and
+     * which `fs.find` has the same shape for.
+     */
+    @GET("api/vcs/branch")
+    suspend fun listVcsBranches(
+        @Query(LocationParam.QUERY_KEY) directory: String? = null,
+        @Query("search") search: String? = null,
+        @Query("limit") limit: String? = null,
+    ): LocationScoped<List<String>>
+
+    /**
+     * `vcs.diff`: the repository diff for one review scope.
+     *
+     * [mode] is `working` (HEAD to the working copy), `committed` (merge base to HEAD) or `branch`
+     * (merge base to the working copy) — the TUI's uncommitted, committed and all. [base] overrides
+     * the branch the merge base is taken against, which is what the base picker sets.
+     */
+    @GET("api/vcs/diff")
+    suspend fun vcsDiff(
+        @Query(LocationParam.QUERY_KEY) directory: String? = null,
+        @Query("mode") mode: String,
+        @Query("base") base: String? = null,
+        @Query("context") context: String? = null,
+    ): LocationScoped<List<FileDiff>>
+
+    /**
+     * `session.revert.stage`: `/undo` (features doc §21).
+     *
+     * [files] true asks the server to restore the working copy as well as marking the turn, which
+     * is what makes an undo undo rather than just hide. The server answers `409` while the session
+     * is busy, so the caller interrupts first.
+     */
+    @POST("api/session/{sessionID}/revert/stage")
+    suspend fun stageRevert(
+        @Path("sessionID") sessionID: String,
+        @Body body: SessionRevertStageRequest,
+    ): DataResponse<SessionRevert>
+
+    /** `session.revert.clear`: `/redo`. `204`, and `session.revert.cleared` follows. */
+    @DELETE("api/session/{sessionID}/revert")
+    suspend fun clearRevert(
+        @Path("sessionID") sessionID: String,
+    ): Unit
+
+    /**
+     * `session.revert.commit`: accepts the rollback.
+     *
+     * The TUI commits before submitting the edited prompt, and so does this client, because the
+     * server applies the restore at commit time. `204`, and `session.revert.committed {to}` says
+     * which snapshot the working copy is at now.
+     */
+    @POST("api/session/{sessionID}/revert/commit")
+    suspend fun commitRevert(
+        @Path("sessionID") sessionID: String,
+    ): Unit
+
+    /**
+     * `session.fork`: a copy of the session, optionally cut before a message.
+     *
+     * Omitting [before] copies the whole history. The answer is the new session, and
+     * `session.forked` carries the same object, so the caller can navigate immediately.
+     */
+    @POST("api/session/{sessionID}/fork")
+    suspend fun forkSession(
+        @Path("sessionID") sessionID: String,
+        @Body body: SessionForkRequest,
+    ): DataResponse<SessionInfo>
+
+    /**
+     * `fs.read`: the raw bytes of a file, relative to the location (features doc §27).
+     *
+     * The path is a wildcard in the route, so it goes in the path segment and is encoded by
+     * Retrofit; [directory] stays a query parameter because that is how the location is addressed
+     * everywhere else.
+     */
+    @GET("api/fs/read/{*path}")
+    suspend fun readFile(
+        @Path("path") path: String,
+        @Query(LocationParam.QUERY_KEY) directory: String? = null,
+    ): ResponseBody
+
+    /**
+     * `experimental.fs.write`: writes a file and creates its parents.
+     *
+     * Writing to the machine the agent is working on is a dangerous action (plan §5.2), so the
+     * route is behind capability detection *and* a setting, and the response only names the path
+     * that was written — the caller re-reads the file rather than trusting its own buffer.
+     */
+    @POST("api/experimental/fs/write")
+    suspend fun writeFile(
+        @Query("path") path: String,
+        @Query(LocationParam.QUERY_KEY) directory: String? = null,
+        @Body body: RequestBody,
+    ): LocationScoped<FileSystemWrite>
+
+    /**
+     * `experimental.session.export`: a session and its transcript.
+     *
+     * [sanitize] is a string on the wire even though it is a boolean, which the spec spells out.
+     * Sanitizing redacts sensitive data, so it is the default and the switch to turn it off is the
+     * caller's decision, not this method's.
+     */
+    @GET("api/experimental/session/{sessionID}/export")
+    suspend fun exportSession(
+        @Path("sessionID") sessionID: String,
+        @Query("sanitize") sanitize: String? = null,
+    ): DataResponse<SessionTransfer>
+
+    /** `experimental.session.import`: appends a transcript. Import parents before children. */
+    @POST("api/experimental/session/import")
+    suspend fun importSession(
+        @Body body: SessionImportRequest,
+    ): DataResponse<SessionInfo>
+
+    /** `session.context`: the messages after the last compaction, which is what the model sees. */
+    @GET("api/session/{sessionID}/context")
+    suspend fun getSessionContext(
+        @Path("sessionID") sessionID: String,
+    ): DataResponse<List<SessionMessage>>
 }

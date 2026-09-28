@@ -55,6 +55,82 @@ data class AttachmentDraft(
     }
 }
 
+/**
+ * What a file the server holds is, for the viewer that has to be chosen (plan §6, "File browser").
+ *
+ * The classification is the same question [AttachmentPolicy.classify] answers for a picked file, and
+ * it is deliberately the *same* rule: what a model can read is a property of the format, and what a
+ * phone can display is too. So the decision is one function and the two callers cannot disagree
+ * about a file.
+ */
+enum class FileContentKind {
+    /** UTF-8 text: line numbers, syntax highlighting and a "attach lines" range. */
+    TEXT,
+
+    /** A picture the phone can decode, using [AttachmentPolicy.IMAGE_TYPES]. */
+    IMAGE,
+
+    /** Anything else: no viewer, so a share and a download (features doc §27). */
+    BINARY,
+}
+
+/**
+ * What `fs.read` answered with, after the client has looked at the bytes.
+ *
+ * The route is raw `application/octet-stream` (features doc §27), so the client is the only thing
+ * that knows whether a body is text it can show with line numbers, a picture it can decode, or a
+ * binary it can only offer to share. Deciding that is a rule and not a guess, so it is a value with
+ * a name, computed once off the main thread by [dev.opencode.android.core.data.server.FileReader].
+ */
+class FileReadResult(
+    val path: String,
+    val bytes: ByteArray,
+    val kind: FileContentKind,
+    val mime: String?,
+    /** Decoded as UTF-8, when [kind] is [FileContentKind.TEXT]. */
+    val text: String? = null,
+) {
+    /** The name a list row, a chip and a share sheet all use. */
+    val label: String get() = path.trimEnd('/').substringAfterLast('/').ifEmpty { path }
+
+    /** The size, which a viewer shows and an attachment policy compares against. */
+    val sizeBytes: Long get() = bytes.size.toLong()
+
+    /** The lines, for a text viewer with line numbers. Empty for anything else. */
+    val lines: List<String> get() = text?.split('\n')?.map { it.removeSuffix("\r") }.orEmpty()
+
+    /**
+     * The attachment this file becomes when the user attaches it whole.
+     *
+     * It is an [AttachmentDraft] rather than a [PromptFileInput] because it has to be *checked*
+     * before it goes: a 25 MiB text file is a legal file and an illegal attachment, and the
+     * difference is the composer's business.
+     */
+    fun toAttachment(location: String?, id: String): AttachmentDraft = AttachmentDraft(
+        id = id,
+        label = label,
+        uri = ServerPath.toUri(path, location),
+        kind = when (kind) {
+            FileContentKind.TEXT -> AttachmentKind.TEXT
+            FileContentKind.IMAGE -> AttachmentKind.IMAGE
+            FileContentKind.BINARY -> AttachmentKind.BINARY
+        },
+        sizeBytes = sizeBytes,
+        mime = mime,
+    )
+
+    /** The same file with a line range, which is the "attach lines" action (features doc §6). */
+    fun toAttachment(location: String?, id: String, range: LineRange): AttachmentDraft = toAttachment(location, id)
+        .copy(uri = ServerPath.toUri(path, location, range), range = range)
+
+    override fun equals(other: Any?): Boolean =
+        this === other || (other is FileReadResult && path == other.path && bytes.contentEquals(other.bytes))
+
+    override fun hashCode(): Int = 31 * path.hashCode() + bytes.contentHashCode()
+
+    override fun toString(): String = "FileReadResult(path=$path, kind=$kind, bytes=${bytes.size})"
+}
+
 /** Why an attachment cannot be sent, or can only be sent after the user says so. */
 enum class AttachmentProblem {
     /** Over the 20 MiB per-item limit. */

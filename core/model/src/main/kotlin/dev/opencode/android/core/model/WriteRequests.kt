@@ -149,6 +149,30 @@ data class SwitchAgentRequest(val agent: String)
 @Serializable
 data class SwitchModelRequest(val model: ModelRef)
 
+/**
+ * `POST /api/session/{id}/revert/stage` (schema `Session.revert.stage`): `/undo`.
+ *
+ * [files] true asks the server to restore the working copy as well as marking the turn, which is
+ * what makes an undo an undo rather than a hide. It is not optional in this client: staging a revert
+ * that does not restore files is a state the user cannot see and cannot reason about.
+ */
+@Serializable
+data class SessionRevertStageRequest(
+    val messageID: String,
+    val files: Boolean? = null,
+)
+
+/**
+ * `POST /api/session/{id}/fork` (schema `Session.fork`).
+ *
+ * [before] cuts the copy *before* that message; omitting it copies the whole history. The body is
+ * required by the route even when it is empty, which is why it is a data class and not a unit.
+ */
+@Serializable
+data class SessionForkRequest(
+    val before: String? = null,
+)
+
 /** `PATCH /api/session/{id}/inbox/{inboxID}` (schema `Session.Inbox.update`): queue becomes steer. */
 @Serializable
 data class InboxUpdateRequest(val delivery: Delivery)
