@@ -65,8 +65,6 @@ class AndroidKeystoreCredentialStore(
                         .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
                         .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
                         .setKeySize(KEY_SIZE_BITS)
-                        // Nothing else on the device should be able to use this key to decrypt.
-                        .setUserAuthenticationRequired(false)
                         .build(),
                 )
             }.generateKey()

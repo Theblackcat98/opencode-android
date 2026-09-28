@@ -139,7 +139,7 @@ class PairingAndReconnectTest {
             infoAuthHeader,
         )
 
-        val connection = connections.connectServer(profile, scope)
+        val connection = connections.connectServer(profile)
         withTimeout(TIMEOUT_MILLIS) {
             connection.connectionState.first { it is ConnectionState.Connected }
         }
@@ -157,7 +157,7 @@ class PairingAndReconnectTest {
         }
 
         val id = repository.addServer("Rotated", baseUrl(), "stale-token")
-        val connection = connections.connectServer(repository.getServer(id)!!, scope)
+        val connection = connections.connectServer(repository.getServer(id)!!)
 
         val state = withTimeout(TIMEOUT_MILLIS) {
             connection.connectionState.first {
@@ -232,7 +232,7 @@ class PairingAndReconnectTest {
         }
 
         val profile = (repository.addPairedServer(link()) as AddServerOutcome.Success).profile
-        val connection = connections.connectServer(profile, scope)
+        val connection = connections.connectServer(profile)
 
         withTimeout(TIMEOUT_MILLIS) { connection.resyncCount.first { it >= 1L } }
         withTimeout(TIMEOUT_MILLIS) { connection.resyncCount.first { it >= 2L } }

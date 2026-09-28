@@ -11,6 +11,9 @@ dependencies {
     api(libs.okhttp)
     implementation(projects.core.database)
     implementation(libs.kotlinx.coroutines.core)
+    // ProcessLifecycleOwner, so a connection follows the app's foreground state without every
+    // screen having to report its own.
+    implementation(libs.androidx.lifecycle.process)
 
     testImplementation(projects.core.testing)
     testImplementation(libs.kotlinx.coroutines.test)

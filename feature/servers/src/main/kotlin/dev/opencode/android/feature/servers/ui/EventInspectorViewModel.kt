@@ -78,7 +78,7 @@ class EventInspectorViewModel @Inject constructor(
                 ?: serverRepository.getAllServers().firstOrNull { it.isDefault }?.id
                 ?: return@launch
             val profile = serverRepository.getServer(serverId) ?: return@launch
-            val connection = connectionManager.connectServer(profile, viewModelScope)
+            val connection = connectionManager.connectServer(profile)
             _uiState.update { it.copy(serverId = serverId, serverName = profile.name) }
 
             launch {

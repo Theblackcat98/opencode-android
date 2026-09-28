@@ -103,7 +103,7 @@ class EditServerViewModel @Inject constructor(
                     // The address or the TLS setting may have changed, so the cached client, which
                     // was built for the old ones, has to go.
                     connectionManager.refreshServer(serverId)
-                    connectionManager.connectServer(outcome.profile, viewModelScope)
+                    connectionManager.connectServer(outcome.profile)
                 }
 
                 is AddServerOutcome.Failure -> _uiState.update {

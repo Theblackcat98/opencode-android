@@ -147,13 +147,16 @@ class ServerValidator(
          * `null` when the server is not an OpenCode V2 release, [VersionStatus.TESTED] for the
          * tested range and older, and [VersionStatus.NEWER_UNTESTED] above it.
          *
-         * The reported [ServerInfo.majorVersion] wins over the string, because a version string
-         * that does not parse is exactly the case that must not be trusted.
+         * The version string decides, and a string that does not parse is not a recognized V2
+         * release: an unparsable version is exactly the case that must not be trusted, so it is
+         * reported as unsupported rather than connected to. The reported [ServerInfo.majorVersion]
+         * is checked as well, and a server that says it is not a major version 2 is rejected even
+         * when the string would have passed.
          */
         fun versionStatusOf(info: ServerInfo): VersionStatus? {
             val parsed = versionStatusOf(info.version) ?: return null
-            val major = info.majorVersion
-            return if (major != null && major != TESTED_MAJOR) null else parsed
+            val major = info.majorVersion ?: return null
+            return if (major != TESTED_MAJOR) null else parsed
         }
 
         /**

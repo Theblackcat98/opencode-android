@@ -123,7 +123,9 @@ fun AddServerScreen(
                 .fillMaxSize()
                 .padding(padding),
         ) {
-            PrimaryTabRow(selectedTabIndex = uiState.selectedTab.ordinal) {
+            // In re-pair mode only the paste tab is shown, so the selection is indexed into
+            // the visible tabs rather than into the full list.
+            PrimaryTabRow(selectedTabIndex = visibleTabs.indexOf(uiState.selectedTab).coerceAtLeast(0)) {
                 visibleTabs.forEach { tab ->
                     Tab(
                         selected = uiState.selectedTab == tab,

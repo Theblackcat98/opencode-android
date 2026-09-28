@@ -36,6 +36,8 @@ class ServerConnection(
     private val credentialCache: ServerCredentialCache,
     private val serverTls: ServerTls,
     okHttpClient: OkHttpClient,
+    /** The scope the stream and the health mirror run in. Owned by [ServerConnectionManager]. */
+    private val scope: CoroutineScope,
     connectivityMonitor: NetworkConnectivityMonitor? = null,
 ) {
     val client: EventStreamClient = EventStreamClient(
@@ -58,8 +60,11 @@ class ServerConnection(
 
     private val started = AtomicBoolean(false)
 
-    /** Starts the event stream. Calling it again while running only asks for an immediate retry. */
-    fun start(scope: CoroutineScope) {
+    /**
+     * Starts the event stream. Calling it again while running only asks for an immediate retry, so
+     * every screen that opens a server can call it without coordinating with the others.
+     */
+    fun start() {
         if (started.compareAndSet(false, true)) {
             scope.launch { primeCredentialThenMirrorHealth() }
         }
@@ -70,7 +75,11 @@ class ServerConnection(
         client.stop()
     }
 
-    /** Follows the app lifecycle: the stream runs in the foreground only in this phase. */
+    /**
+     * Follows the app lifecycle: the stream runs in the foreground only in this phase (plan §6).
+     * The app's own lifecycle is observed by [ServerConnectionManager]; a screen calls this only
+     * when it wants the connection paused for a reason of its own.
+     */
     fun setForeground(visible: Boolean) = client.setForeground(visible)
 
     /** Drops the socket and reconnects now, for example after a re-pair. */

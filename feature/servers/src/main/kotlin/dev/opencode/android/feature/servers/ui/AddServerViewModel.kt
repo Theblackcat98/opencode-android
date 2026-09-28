@@ -63,8 +63,13 @@ class AddServerViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(
         AddServerUiState(
             // A shared or deep-linked link is text, so it lands on the paste tab with the payload
-            // already filled in rather than asking the user to retype what they just shared.
-            selectedTab = if (sharedLink.isNullOrBlank()) AddServerTab.SCAN else AddServerTab.PASTE,
+            // already filled in rather than asking the user to retype what they just shared. A
+            // re-pair is a credential repair, and the paste tab is the only path that can do it.
+            selectedTab = if (replaceServerId != null || !sharedLink.isNullOrBlank()) {
+                AddServerTab.PASTE
+            } else {
+                AddServerTab.SCAN
+            },
             pairingLinkInput = sharedLink.orEmpty(),
         ),
     )
@@ -172,7 +177,7 @@ class AddServerViewModel @Inject constructor(
                     // A re-pair replaces the credential, so the cached client, which was built
                     // around the rejected one, is dropped before reconnecting.
                     if (replaceServerId != null) connectionManager.refreshServer(outcome.profile.id)
-                    connectionManager.connectServer(outcome.profile, viewModelScope)
+                    connectionManager.connectServer(outcome.profile)
                 }
 
                 is AddServerOutcome.Failure -> _uiState.update {

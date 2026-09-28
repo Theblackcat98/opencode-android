@@ -65,7 +65,7 @@ class ServerStatusViewModel @Inject constructor(
         viewModelScope.launch {
             val profile = serverRepository.getServer(serverId) ?: return@launch
             val connection = connectionManager.getOrCreateConnection(profile)
-            connection.start(viewModelScope)
+            connection.start()
             _uiState.update { it.copy(profile = profile) }
 
             launch {
