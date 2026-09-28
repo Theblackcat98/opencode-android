@@ -72,6 +72,15 @@ data class ToolCard(
     val durationMillis: Long?,
     /** True when this client has no dedicated card and the raw input has to be shown. */
     val unknown: Boolean = false,
+    /**
+     * The files this tool changed, from `metadata.files` (features doc §5, "Tool metadata worth
+     * rendering").
+     *
+     * Kept as paths rather than folded into [detail], because they are links: the transcript shows
+     * one row per file and the review viewer opens the file, and a card whose detail is a blob of
+     * JSON cannot do either.
+     */
+    val changedFiles: List<String> = emptyList(),
 )
 
 /** Where a tool call is in its lifecycle, as a card shows it. */
@@ -116,6 +125,8 @@ fun AssistantContent.Tool.toCard(): ToolCard {
         detail = detailOf(kind, input, completed, error),
         durationMillis = (time.completed ?: 0L).takeIf { it > 0L }?.let { it - (time.ran ?: time.created) },
         unknown = !ToolCardKind.isKnown(name),
+        changedFiles = dev.opencode.android.core.data.review.ChangedFiles
+            .fromToolMetadata(completed?.metadata ?: error?.metadata),
     )
 }
 

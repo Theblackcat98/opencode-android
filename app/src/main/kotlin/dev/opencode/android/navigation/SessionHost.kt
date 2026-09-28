@@ -3,7 +3,11 @@ package dev.opencode.android.navigation
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.Icon
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -43,6 +47,8 @@ import dev.opencode.android.feature.sessions.ui.SessionActionsSheet
 import dev.opencode.android.feature.sessions.ui.SessionManagementViewModel
 import dev.opencode.android.feature.sessions.ui.SessionScreen
 import dev.opencode.android.feature.sessions.ui.SessionViewModel
+import dev.opencode.android.feature.sessions.ui.UserMessageActions
+import dev.opencode.android.feature.sessions.R as SessionsR
 
 /**
  * One session, assembled from the three features that own parts of it.
@@ -68,6 +74,9 @@ fun SessionHost(
     onSessionDeleted: () -> Unit,
     onOpenSessionList: () -> Unit = {},
     onNewSession: () -> Unit = {},
+    onOpenReview: (String?) -> Unit = {},
+    onUndoConfirmed: (String) -> Unit = {},
+    onForkFrom: (String) -> Unit = {},
     modifier: Modifier = Modifier,
     timeline: SessionViewModel = hiltViewModel(),
     composer: ComposerViewModel = hiltViewModel(),
@@ -91,6 +100,9 @@ fun SessionHost(
     var editorOpen by rememberSaveable { mutableStateOf(false) }
     var attachOpen by remember { mutableStateOf(false) }
     var modelSearch by rememberSaveable { mutableStateOf("") }
+    // The message an undo is aimed at, held between the menu row and the confirmation (plan §5.2:
+    // reverting files is a dangerous action, so it asks).
+    var undoTarget by remember { mutableStateOf<String?>(null) }
 
     val pickAttachment = rememberAttachmentPicker(
         onPicked = composer::attachImage,
@@ -113,8 +125,14 @@ fun SessionHost(
                 ComposerEffect.OpenAgentPicker -> agentPickerOpen = true
                 ComposerEffect.OpenModelPicker -> modelPickerOpen = true
                 ComposerEffect.OpenEditor -> editorOpen = true
+                // `/diff` is the review screen, and the review is another feature; the composition
+                // root is the only place that knows how to get there.
+                ComposerEffect.OpenDiff -> onOpenReview(null)
                 // Focus is the field's own business; the empty box is the visible part of the send.
                 ComposerEffect.FocusComposer -> Unit
+                // The palette's `/undo`: the composer picked the message, and this is where the
+                // confirmation plan §5.2 asks for is asked.
+                is ComposerEffect.ConfirmUndo -> undoTarget = effect.messageID
             }
         }
     }
@@ -156,6 +174,20 @@ fun SessionHost(
         onOpenLink = { uriHandler.openUri(it) },
         modifier = modifier,
         requestSlot = { RequestDock(requests = composerState.requests, actions = requestActions) },
+        onOpenChangedFile = { path -> onOpenReview(path) },
+        messageActions = { messageId ->
+            // Only a user message is a boundary the server accepts, so only a user message gets the
+            // rows; the timeline asks for them and this answers.
+            val message = state.messages.firstOrNull { it.id == messageId } as? dev.opencode.android.core.model.SessionMessage.User
+            if (message != null) {
+                UserMessageActions(
+                    messageId = message.id,
+                    text = message.text,
+                    onFork = onForkFrom,
+                    onRevert = { id, _ -> undoTarget = id },
+                )
+            }
+        },
         composerSlot = {
             ComposerBar(
                 state = composerState,
@@ -286,6 +318,20 @@ fun SessionHost(
         )
     }
 
+    if (undoTarget != null) {
+        // The confirmation that makes a revert a two-step action rather than one tap.
+        val revertMessage = state.messages
+            .firstOrNull { it.id == undoTarget } as? dev.opencode.android.core.model.SessionMessage.User
+        RevertConfirmationDialog(
+            preview = revertMessage?.text.orEmpty(),
+            onConfirm = {
+                onUndoConfirmed(undoTarget.orEmpty())
+                undoTarget = null
+            },
+            onDismiss = { undoTarget = null },
+        )
+    }
+
     if (attachOpen) {
         AttachSourceSheet(
             onPick = { source ->
@@ -295,4 +341,40 @@ fun SessionHost(
             onDismiss = { attachOpen = false },
         )
     }
+}
+
+
+/**
+ * The confirmation that precedes a revert (plan §5.2, "reverting files").
+ *
+ * It shows the prompt that is about to be rolled back, because "undo" without saying *which turn*
+ * is a confirmation of nothing: the user cannot tell a two-turn-old prompt from the last one.
+ */
+@Composable
+private fun RevertConfirmationDialog(
+    preview: String,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(SessionsR.string.timeline_revert_here)) },
+        text = {
+            Text(
+                text = preview.take(280),
+                style = MaterialTheme.typography.bodyMedium,
+                maxLines = 6,
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text(stringResource(SessionsR.string.timeline_revert_here))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(SessionsR.string.action_dismiss))
+            }
+        },
+    )
 }

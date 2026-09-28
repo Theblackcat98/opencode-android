@@ -3,6 +3,7 @@ package dev.opencode.android.feature.review
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dev.opencode.android.core.data.action.ActionError
+import dev.opencode.android.core.data.action.toActionError
 import dev.opencode.android.core.data.capability.ExperimentalRoute
 import dev.opencode.android.core.data.capability.RouteAvailability
 import dev.opencode.android.core.data.review.CommentSelection
@@ -22,7 +23,9 @@ import dev.opencode.android.core.data.review.RevertPlan
 import dev.opencode.android.core.data.server.ReviewState
 import dev.opencode.android.core.data.server.ServerDataRegistry
 import dev.opencode.android.core.data.server.SessionContextInspector
+import dev.opencode.android.core.data.server.FileBrowserState
 import dev.opencode.android.core.data.server.VcsState
+import dev.opencode.android.core.model.FileSystemEntry
 import dev.opencode.android.core.model.SessionRevert
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -158,6 +161,47 @@ class ReviewViewModel @Inject constructor(
 
     /** The published review. */
     val state: StateFlow<ReviewUiState> = _state.asStateFlow()
+
+    /**
+     * The file browser's state, projected from the store.
+     *
+     * It is published here rather than injected into the screen separately because the browser and
+     * the review share a directory, and a screen that asked two stores for one directory could show
+     * a path the diff does not belong to.
+     */
+    val files: StateFlow<FileBrowserState> = MutableStateFlow(FileBrowserState()).also { flow ->
+        viewModelScope.launch {
+            dataSets.active.collect { active ->
+                active?.files?.state?.collect { flow.value = it }
+            }
+        }
+    }
+
+    /** `fs.list` for a path inside the session's location. */
+    fun listFiles(path: String? = null) {
+        val directory = _state.value.directory ?: return
+        viewModelScope.launch { set?.files?.list(directory, path) }
+    }
+
+    /** `fs.read`: the bytes of one file, for the viewer. */
+    fun readFile(entry: FileSystemEntry) {
+        val directory = _state.value.directory ?: return
+        viewModelScope.launch {
+            val result = set?.files?.read(directory, entry.path)
+            // A read that failed tells the screen why there is nothing to show; a `404` on a file the
+            // server listed is a real answer, not a bug, so it is surfaced rather than swallowed.
+            val failure = result?.exceptionOrNull()
+            if (failure != null) {
+                _state.value = _state.value.copy(error = failure.toActionError())
+            }
+        }
+    }
+
+    /** One directory up, using the browser's own derivation of the parent (features doc §27). */
+    fun goUp() {
+        val parent = files.value.parent ?: return
+        listFiles(parent)
+    }
 
     private val set get() = dataSets.active.value
 

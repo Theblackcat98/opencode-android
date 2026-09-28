@@ -105,6 +105,21 @@ data class SessionRoute(val serverId: String? = null, val sessionId: String)
 data class PendingRequestsRoute(val serverId: String? = null)
 
 /**
+ * The review, which is `/diff` and the file browser.
+ *
+ * [sessionId] is null for a repository-level review (uncommitted, committed, all) and names a
+ * session for the "last turn" scope, which is a `session.diff` between two messages. [initialPath]
+ * is how a changed-files link in the transcript opens one file of the review, so the link and the
+ * destination are the same screen with one field apart.
+ */
+@Serializable
+data class ReviewRoute(
+    val serverId: String? = null,
+    val sessionId: String? = null,
+    val initialPath: String? = null,
+)
+
+/**
  * The navigation graph.
  *
  * Phase 1's information architecture is the server registry, so it is the start destination
@@ -122,6 +137,8 @@ fun OpenCodeApp(
     openSession: OpenSessionTarget? = null,
     modifier: Modifier = Modifier,
     navController: NavHostController = rememberNavController(),
+    composer: ComposerViewModel = hiltViewModel(),
+    fork: (String, String?) -> Unit = { _, _ -> },
 ) {
     LaunchedEffect(sharedPayload) {
         if (!sharedPayload.isNullOrBlank()) {
@@ -224,6 +241,7 @@ fun OpenCodeApp(
 
         composable<SessionRoute> { entry ->
             val route = entry.toRoute<SessionRoute>()
+            val forkFromMessage: (String) -> Unit = { messageId -> fork(route.sessionId.orEmpty(), messageId) }
             SessionHost(
                 sessionId = route.sessionId,
                 onNavigateBack = { navController.popBackStack() },
@@ -240,6 +258,35 @@ fun OpenCodeApp(
                         popUpTo(SessionRoute(route.serverId, route.sessionId)) { inclusive = true }
                         launchSingleTop = true
                     }
+                },
+                onOpenReview = { path ->
+                    // `/diff` and a changed-files link both land here; the link adds the file.
+                    navController.navigate(
+                        ReviewRoute(
+                            serverId = route.serverId,
+                            sessionId = route.sessionId,
+                            initialPath = path,
+                        ),
+                    )
+                },
+                onUndoConfirmed = { messageId -> composer.stageUndo(messageId) },
+                onForkFrom = forkFromMessage,
+            )
+        }
+
+        composable<ReviewRoute> { entry ->
+            val route = entry.toRoute<ReviewRoute>()
+            ReviewHost(
+                sessionId = route.sessionId,
+                initialPath = route.initialPath,
+                onNavigateBack = { navController.popBackStack() },
+                onAttachFile = { path, name, type ->
+                    composer.attachServerFile(path, name, type)
+                    navController.popBackStack()
+                },
+                onAttachLines = { path, name, type, range ->
+                    composer.attachServerFileWithRange(path, name, type, range)
+                    navController.popBackStack()
                 },
             )
         }

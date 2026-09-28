@@ -76,6 +76,8 @@ fun TimelineList(
     modifier: Modifier = Modifier,
     listState: LazyListState = rememberLazyListState(),
     contentPadding: PaddingValues = PaddingValues(12.dp),
+    onOpenChangedFile: ((String) -> Unit)? = null,
+    messageActions: (@Composable (String) -> Unit)? = null,
 ) {
     LazyColumn(
         state = listState,
@@ -90,7 +92,12 @@ fun TimelineList(
             items = messages,
             key = { it.stableKey() },
         ) { message ->
-            TimelineMessageItem(message)
+            Column {
+                TimelineMessageItem(message, onOpenChangedFile = onOpenChangedFile)
+                // The per-message actions row belongs to the message and not to a card, so a
+                // message with no action simply renders nothing extra.
+                messageActions?.invoke(message.id)
+            }
         }
         if (following) {
             item(key = "following") {
@@ -144,10 +151,21 @@ private fun OlderMessagesRow(
 
 /** One message, whatever its type. */
 @Composable
-fun TimelineMessageItem(message: SessionMessage, modifier: Modifier = Modifier) {
+fun TimelineMessageItem(
+    message: SessionMessage,
+    modifier: Modifier = Modifier,
+    /**
+     * Opens a file this message changed, which is Phase 6's "changed files per message".
+     *
+     * A callback rather than a screen because a feature may not import another one, and the review
+     * viewer is another feature. `null` hides the links, which is what a caller with no review
+     * destination to offer passes.
+     */
+    onOpenChangedFile: ((String) -> Unit)? = null,
+) {
     when (message) {
         is SessionMessage.User -> UserMessageCard(message, modifier)
-        is SessionMessage.Assistant -> AssistantMessageCard(message, modifier)
+        is SessionMessage.Assistant -> AssistantMessageCard(message, modifier, onOpenChangedFile)
         is SessionMessage.Synthetic -> NoticeCard(
             title = stringResource(R.string.timeline_synthetic),
             body = message.text,
@@ -250,7 +268,11 @@ private fun AttachmentChip(label: String, isImage: Boolean) {
 }
 
 @Composable
-private fun AssistantMessageCard(message: SessionMessage.Assistant, modifier: Modifier = Modifier) {
+private fun AssistantMessageCard(
+    message: SessionMessage.Assistant,
+    modifier: Modifier = Modifier,
+    onOpenChangedFile: ((String) -> Unit)? = null,
+) {
     Column(modifier = modifier.fillMaxWidth()) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
@@ -276,6 +298,14 @@ private fun AssistantMessageCard(message: SessionMessage.Assistant, modifier: Mo
                 }
             }
         }
+        // The step's own snapshot is the first thing a reviewer wants: it names every file the turn
+        // changed, whether or not a tool card said so (features doc §5, "assistant.snapshot").
+        if (onOpenChangedFile != null) {
+            ChangedFilesRow(
+                files = dev.opencode.android.core.data.review.ChangedFiles.fromSnapshot(message.snapshot?.files),
+                onOpenFile = onOpenChangedFile,
+            )
+        }
         message.content.forEach { part ->
             when (part) {
                 is AssistantContent.Text -> if (part.text.isNotBlank()) {
@@ -287,7 +317,14 @@ private fun AssistantMessageCard(message: SessionMessage.Assistant, modifier: Mo
                 }
 
                 is AssistantContent.Reasoning -> ReasoningBlock(part, Modifier.padding(top = 4.dp))
-                is AssistantContent.Tool -> ToolCardView(part.toCard(), Modifier.padding(top = 4.dp))
+                is AssistantContent.Tool -> {
+                    val card = part.toCard()
+                    ToolCardView(card, Modifier.padding(top = 4.dp))
+                    if (onOpenChangedFile != null) {
+                        ChangedFilesRow(files = card.changedFiles, onOpenFile = onOpenChangedFile)
+                    }
+                }
+
                 is AssistantContent.Unknown -> UnknownTool(part, Modifier.padding(top = 4.dp))
             }
         }

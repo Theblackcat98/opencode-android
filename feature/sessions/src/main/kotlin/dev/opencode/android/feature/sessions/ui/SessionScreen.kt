@@ -70,6 +70,16 @@ fun SessionScreen(
     menuSlot: @Composable () -> Unit = {},
     /** Opens a provider's action link from a retry, such as "usage exceeded, upgrade". */
     onOpenLink: (String) -> Unit = {},
+    /**
+     * Opens a file a message changed in the review viewer.
+     *
+     * `null` hides the links. It is a callback and not a screen because the review is another
+     * feature and a feature may not import another feature, so the app module — which composes both
+     * — is the only place that can hand one to the other.
+     */
+    onOpenChangedFile: ((String) -> Unit)? = null,
+    /** The per-message actions, which is where "revert to here" and "fork from here" live. */
+    messageActions: (@Composable (String) -> Unit)? = null,
 ) {
     val listState = rememberLazyListState()
     val atBottom by remember {
@@ -136,6 +146,8 @@ fun SessionScreen(
                     listState = listState,
                     contentPadding = PaddingValues(12.dp),
                     modifier = Modifier.fillMaxSize(),
+                    onOpenChangedFile = onOpenChangedFile,
+                    messageActions = messageActions,
                 )
                 if (state.activity is SessionActivityUi.Running) {
                     LinearProgressIndicator(modifier = Modifier.fillMaxWidth().align(Alignment.TopCenter))

@@ -23,6 +23,7 @@ import dev.opencode.android.core.data.composer.PromptIntent
 import dev.opencode.android.core.data.composer.PromptProblem
 import dev.opencode.android.core.data.composer.StashEntry
 import dev.opencode.android.core.data.composer.TriggerKind
+import dev.opencode.android.core.data.composer.LineRange
 import dev.opencode.android.core.data.composer.detectTrigger
 import dev.opencode.android.core.data.review.RestoredFile
 import dev.opencode.android.core.data.review.RestoredPrompt
@@ -852,6 +853,17 @@ class ComposerViewModel @Inject constructor(
     fun attachServerFile(path: String, name: String, type: String) {
         val directory = state.value.directory
         addAttachment(attachmentReader.serverFile(path, name, type, directory))
+    }
+
+    /**
+     * Adds a server file with a line range, which is the file viewer's "attach lines" action.
+     *
+     * The range becomes `?start=&end=` on the `file:` URI (features doc §6), which is the one thing
+     * the paperclip cannot express and the reason this exists as its own call rather than a flag.
+     */
+    fun attachServerFileWithRange(path: String, name: String, type: String, range: LineRange) {
+        val directory = state.value.directory
+        addAttachment(attachmentReader.serverFile(path, name, type, directory).copy(range = range))
     }
 
     /** Adds a reference directory from `reference.list`. */
