@@ -63,7 +63,51 @@ fun FileBrowserScreen(
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     ModalBottomSheet(onDismissRequest = onNavigateBack, sheetState = sheetState, modifier = modifier) {
-        Column(modifier = Modifier.fillMaxSize().padding(bottom = 24.dp)) {
+        FileBrowserContent(
+            directory = directory,
+            path = path,
+            entries = entries,
+            reading = reading,
+            content = content,
+            loading = loading,
+            error = error,
+            canEdit = canEdit,
+            onEnter = onEnter,
+            onUp = onUp,
+            onRead = onRead,
+            onAttach = onAttach,
+            onAttachLines = onAttachLines,
+            onShare = onShare,
+        )
+    }
+}
+
+/**
+ * The browser's own content, without the sheet.
+ *
+ * Separate from the sheet for the same reason the comment dialog's body is separate: a
+ * `ModalBottomSheet` animates in, so at the first frame a screenshot would be an empty rectangle —
+ * and this app's baselines are its review artifact.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun FileBrowserContent(
+    directory: String?,
+    path: String?,
+    entries: List<FileSystemEntry>,
+    reading: String?,
+    content: FileReadResult?,
+    loading: Boolean,
+    error: String?,
+    canEdit: Boolean = false,
+    onEnter: (FileSystemEntry) -> Unit = {},
+    onUp: () -> Unit = {},
+    onRead: (FileSystemEntry) -> Unit = {},
+    onAttach: (FileReadResult) -> Unit = {},
+    onAttachLines: (FileReadResult) -> Unit = {},
+    onShare: (FileReadResult) -> Unit = {},
+) {
+    Column(modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp)) {
             Text(
                 text = path?.ifBlank { null } ?: directory.orEmpty(),
                 style = MaterialTheme.typography.titleSmall,
@@ -124,7 +168,6 @@ fun FileBrowserScreen(
                 )
             }
         }
-    }
 }
 
 /** One entry: a directory opens, a file is read, and the row says which it is. */
@@ -203,7 +246,14 @@ private fun FileActions(
     }
 }
 
-/** The dialog that turns a selection in a file into a comment (plan §6, "Review comments"). */
+/**
+ * The dialog that turns a selection in a file into a comment (plan §6, "Review comments").
+ *
+ * The body is a separate composable so a screenshot can photograph the content without the dialog's
+ * window: `AlertDialog` never reports idle under Robolectric — its window animation is what does not
+ * settle — and a screenshot of a window that never settles is a test that fails on a timeout rather
+ * than on a pixel. The chrome is Material's and the content is the part this app owns.
+ */
 @Composable
 fun ReviewCommentDialog(
     draft: CommentDraft,
@@ -213,37 +263,8 @@ fun ReviewCommentDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = {
-            Text(
-                text = stringResource(
-                    R.string.review_comment_add,
-                    dev.opencode.android.core.data.composer.LineRange(draft.startLine, draft.endLine).toSuffix().removePrefix("#"),
-                ),
-            )
-        },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(
-                    text = draft.path,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                OutlinedTextField(
-                    value = draft.text,
-                    onValueChange = onTextChange,
-                    label = { Text(stringResource(R.string.review_comment_hint)) },
-                    minLines = 3,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                if (draft.text.isEmpty()) {
-                    Text(
-                        text = stringResource(R.string.review_comment_empty),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-        },
+        title = { Text(stringResource(R.string.review_comment_add, draft.selectionText())) },
+        text = { CommentDraftContent(draft = draft, onTextChange = onTextChange) },
         confirmButton = {
             TextButton(onClick = onSubmit, enabled = draft.canSubmit) {
                 Text(stringResource(R.string.review_comment_submit))
@@ -254,6 +275,44 @@ fun ReviewCommentDialog(
         },
     )
 }
+
+/** The body of the comment dialog: the anchor, the field and the empty-state sentence. */
+@Composable
+fun CommentDraftContent(
+    draft: CommentDraft,
+    onTextChange: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            text = draft.path,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Text(
+            text = stringResource(R.string.review_comment_add, draft.selectionText()),
+            style = MaterialTheme.typography.titleSmall,
+        )
+        OutlinedTextField(
+            value = draft.text,
+            onValueChange = onTextChange,
+            label = { Text(stringResource(R.string.review_comment_hint)) },
+            minLines = 3,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        if (draft.text.isEmpty()) {
+            Text(
+                text = stringResource(R.string.review_comment_empty),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+/** The `#12-18` spelling of a draft's range, which the dialog's title and the chip both use. */
+internal fun CommentDraft.selectionText(): String =
+    dev.opencode.android.core.data.composer.LineRange(startLine, endLine).toSuffix().removePrefix("#")
 
 /** The base-branch picker, which is `vcs.branch.list` (features doc §28). */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -266,7 +325,19 @@ fun BaseBranchSheet(
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
-        Column(modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp)) {
+        BaseBranchContent(branches = branches, selected = selected, onSelect = onSelect)
+    }
+}
+
+/** The base picker's rows, without the sheet. See [FileBrowserContent] for why it is separate. */
+@Composable
+fun BaseBranchContent(
+    branches: List<String>,
+    selected: String?,
+    onSelect: (String?) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier = modifier.fillMaxWidth().padding(bottom = 24.dp)) {
             Text(
                 text = stringResource(R.string.review_choose_base),
                 style = MaterialTheme.typography.titleMedium,
@@ -289,6 +360,5 @@ fun BaseBranchSheet(
                     )
                 }
             }
-        }
     }
 }
