@@ -223,7 +223,7 @@ phases that reuse it get cheaper as a result.
 | P3 | Drive sessions (MVP) | Composer pipeline, pickers, `RequestCenter`, **forms engine** | P4, P5, P8, P9 | Complete |
 | P4 | Background and notifications | `ConnectionService`, notification and action infrastructure, unread model | P7, P8, P9, P10 | Complete |
 | P5 | Rich composer | Attachment pipeline, autocomplete and mention engine | P6, P8 | Complete |
-| P6 | Review and history | Diff engine and viewer, file viewer, revert and fork flows | P7, P9 | Planned |
+| P6 | Review and history | Diff engine and viewer, file viewer, revert and fork flows | P7, P9 | Complete |
 | P7 | Execution surfaces | WebSocket and terminal component, process panels, worktree flows | P10 | Planned |
 | P8 | Integrations | OAuth, key and command login flows, MCP and plugin management | P9 | Planned |
 | P9 | Configuration | Config explorer and validated file editor | P10 | Planned |
@@ -981,6 +981,115 @@ phone cannot be decided here, and there is no emulator and no device.
 - Forking from a message works.
 - A file can be browsed and attached with a line range.
 
+**Status: complete.**
+
+All fifteen operations are in `ServerApi` and every one of them is called. What is verified and what is
+device-only is set out below; nothing in this phase is claimed on the strength of a compile.
+
+**What was built.** A pure patch parser (`UnifiedDiff`), a file tree, review navigation, a comment model in the
+web app's `metadata.opencodeComment` format, a staged-revert plan, and the two stores the operations go through
+(`ReviewStore`, `VcsStore`, `RevertCommands`, `FileReader`). On top of them: the review screen (four scopes, a VCS
+header, a changed-files tree, a comment badge and list, unified and split views, wrap, mark-reviewed), a file
+browser with a real viewer, and a history panel (jump, search, export, import, context inspector) with the
+experimental switches that govern it. Phase 7 reuses the diff rows, the code highlighter, the file viewer and
+`FileReader`; §6's table lists them.
+
+**What was verified, and how.**
+
+- *884 unit-test executions, 0 failures* (`./gradlew unitTest`, one variant per module, both app flavours). This
+  includes the patch parser's total-parse cases, the comment format's round trip, the review's operations over a
+  `MockWebServer` with the real `ServerApi`, and 22 Roborazzi baselines in the review module.
+- *39 integration-test executions, 0 failures, 0 skipped* against a live `opencode serve` 2.0.18 with the
+  scripted provider, of which 11 are Phase 6's (`LiveReviewIntegrationTest`).
+- `./gradlew lintDebug` and `./gradlew assembleDebug` (both flavours) green.
+
+**What was found that the plan did not anticipate.**
+
+- **A `FileSystem.Entry` carries a path and a type and nothing else** (the spec's `FileSystem.Entry` has
+  `additionalProperties: false`). So a file viewer cannot refuse to fetch a file it thinks is too large, and an
+  estimate from the name is wrong on exactly the file a user opened. The cap is therefore on what is *drawn*
+  (`VIEWER_MAX_LINES`, 2,000) and the viewer says how many lines it left out.
+- **`fs.read` is `application/octet-stream`, and the bytes decide what a file is** — except when the server has
+  already said it is an image. `FileReader.classify` tested the bytes first, which classified every picture as a
+  binary and made the image branch unreachable; the content type decides first, now.
+- **`sanitize` is a string on the wire** even though the schema calls it a boolean, and `experimental.fs.write`
+  answers `415` for `text/plain` and `200` for `application/octet-stream`. Both are asserted on the request, not on
+  a mock, because a mocked interface agrees with whatever the test was written against.
+- **A one-line comment's wire form cannot say where the range ended.** The web app's `selection` is the bare
+  number `1`, which is ambiguous between "line 1" and "lines 1 to the end of the file". The client keeps the
+  explicit end (so the attachment carries `?start=1&end=1`) and the wire says `1`; the test asserts the round trip
+  and says so.
+- **The fake provider's request log is cumulative and outlives the build.** A test that asked "is this marker
+  anywhere in the log" passed on its second run by matching a request from the first. Both live test classes now
+  record where they start in the log and read only what follows; without that, "a comment reaches the agent" was
+  not a claim.
+
+**Decisions.**
+
+- **Syntax highlighting is hand-written, not `multiplatform-markdown-renderer`'s module.** The full argument is on
+  `CodeHighlighter`: the unit this phase needs is a *line*, not a document — a diff renders a line at a time in a
+  `LazyColumn` with its own gutter, numbers, selection and comment anchors, and a document renderer cannot hand
+  those back. The function is total (a half-open string literal, a block comment the previous line opened, a
+  shebang: all produce runs, none throw) and carries state only where a language needs it (`LineCarry`), which a
+  diff must not thread and a file must. The cost is admitted on the same declaration: no per-language grammar, so
+  a `SELECT` is not a keyword in SQL. `highlight` is the seam to replace if that ever matters.
+- **The review, the file browser, the comment list, the history panel and the base picker are sheets**, and each
+  one keeps its content in a separate composable from the sheet. A `ModalBottomSheet` animates in, so a
+  screenshot of the sheet would photograph an empty rectangle; separating them is what makes the baselines worth
+  having.
+- **The split/unified choice is measured, not declared.** `ReviewUiState.split` is a three-state answer —
+  `true`, `false`, or "this screen cannot tell" — and the app module settles it from the real window width
+  (`BoxWithConstraints`, 840 dp, Material's expanded width class). A screen that guessed a layout from a default
+  would be wrong on exactly the devices the rule is about.
+- **The experimental switches are a preference of their own, off by default**, and the review *reads* it rather
+  than taking a boolean a screen could pass. A switch says the route may be called; `CapabilityPolicy`'s answer
+  from the first `404` says it can be; both must agree before a write happens.
+- **Undo, redo and fork declare no strings in the review module.** Their UI belongs to the timeline (the per-
+  message actions) and the composer (the staged-revert banner), and a second set of sentences here would be a
+  second thing to translate and a second thing to disagree.
+
+**Exit criteria, one by one.**
+
+| Criterion | Result |
+| --- | --- |
+| A comment left on the last turn's diff reaches the agent | **Verified.** `LiveReviewIntegrationTest` sends a prompt carrying a ranged `file:` attachment and `metadata.opencodeComment`, asserts the server stored the metadata the web app reads, and asserts the provider's *own request log* contains both the comment's words and the file's bytes. |
+| Undo restores files, the edited prompt can be resent, and redo works | **Verified.** The stage's ordering (interrupt, cancel queued user input, then stage) is asserted call by call over a `MockWebServer`, and live: the stage, the restored file on disk, the prompt back in the composer, and `revert.clear` taking it back. The *resend* half is the composer's commit-then-send, which is P5's `ComposerViewModel` path and is unit tested; the two together are not driven as one user gesture on a device. |
+| Forking from a message works | **Verified.** `session.fork` with `before` is called, the new session id is what the graph navigates to, and the server's `Session.fork` boundary is what the header reads to say where the copy came from. Live and over the fake server. |
+| A file can be browsed and attached with a line range | **Verified.** `fs.list` (including a directory outside the location), `fs.read` and the ranged attachment, live: the flagged lines are in the provider's request. The `fs.find` quick open and the line-range selection are unit tested and photographed. |
+
+**Known limitations.**
+
+- **A comment can be removed but not edited.** Its text becomes a prompt the agent reads, so changing it after the
+  fact would leave the review and the prompt disagreeing about what was asked for.
+- **The file viewer draws the first 2,000 lines and says how many it left out.** It does not page, and there is no
+  "jump to line".
+- **An image is decoded with `BitmapFactory`, not Coil.** The bytes arrived in memory and never touched the disk,
+  and a viewer that wrote a preview to storage would be creating files on the user's behalf for a file they only
+  looked at. A decode that fails falls back to the same sentence a binary gets. Coil earns its place when a
+  *remote* image is shown, which is P8's `websearch` and P10's attachments.
+- **The split view is a threshold, not an adaptive layout.** There is no list-detail pane and no foldable posture;
+  Phase 10's adaptive work is where that belongs.
+- **The search is a substring match over the formatted message.** It has no ranking, no regex and no highlighting
+  in the timeline, and it runs on the transcript already in memory rather than asking the server — there is no
+  route for it.
+- **Markdown is the one export format this client builds.** The route returns `SessionTransfer.Data`; Markdown is
+  rendered here through the same `TranscriptFormatter` that "copy transcript" uses, so the two cannot disagree. An
+  import accepts only what the route returns.
+- **A prompt history is searched, not navigated by date.** "Jump" moves between user messages; there is no
+  calendar and no per-day grouping.
+- **`experimental.fs.write` replaces the whole file.** It cannot apply a patch, so an edit that conflicts with
+  what the agent wrote in the meantime overwrites it; the confirmation says this in as many words, and the file is
+  re-read afterwards so a write that reported success and changed nothing is reported rather than assumed.
+- **Split, the file tree, the comments and the history are all one view model each, not one.** A review of a
+  hundred files and a search field are different amounts of content, and the state that shares them is the
+  `ReviewUiState` the baselines are taken from.
+
+**What only a device can settle.** The plan's manual matrix (§5.3): a real phone and tablet, Android 8 to latest,
+HTTP and HTTPS, TalkBack over the diff and the file viewer, dynamic type at 2× on the diff rows (the baselines
+cover 1.5×), a real camera and a real content provider, and the share and download grants as another app sees
+them. The Roborazzi baselines are Robolectric's software renderer at 411 dp × 2,000 dp, which is a proxy for a
+phone and not a phone.
+
 ---
 
 ### Phase 7: Subagents, shells, terminals and worktrees (L)
@@ -1331,7 +1440,7 @@ that delivers it.
 | P3 | 20 | Complete |
 | P4 | 1 | Complete |
 | P5 | 10 | Complete |
-| P6 | 15 | Planned |
+| P6 | 15 | Complete |
 | P7 | 30 | Planned |
 | P8 | 27 | Planned |
 | P9 | 11 | Planned |
@@ -1356,7 +1465,7 @@ and is covered by the reducer or invalidation tests.
 | P3 | `permission.asked`, `permission.replied`, `form.created`, `form.replied`, `form.cancelled` | Complete |
 | P4 | `installation.updated`, `installation.update-available` (recorded on `ServerDataSet`; an announced version becomes the "server update available" notification) | Complete |
 | P5 | `reference.updated`, `command.updated`, `skill.updated` (recorded on `ServerDataSet.composerCatalogs`; the empty payload invalidates the named location, or every location the client has open when the frame carries none) | Complete |
-| P6 | `filesystem.changed`, `vcs.branch.updated` | Planned |
+| P6 | `filesystem.changed` (re-reads the browser's listing and the file the viewer holds), `vcs.branch.updated` (re-reads `vcs.get` and `vcs.status` for every open location, so a branch that moves on the desktop moves the header) | Complete |
 | P7 | `worktree.updated`, `worktree.resolved`, `pty.created`, `pty.updated`, `pty.exited`, `pty.deleted`, `persistent-pty.added`, `persistent-pty.removed`, `shell.created`, `shell.exited`, `shell.deleted` | Planned |
 | P8 | `credential.updated`, `credential.switched`, `integration.updated`, `provider.updated`, `plugin.updated`, `websearch.updated`, `mcp.status.changed`, `mcp.resources.changed` | Planned |
 | P9 | `config.updated` | Planned |

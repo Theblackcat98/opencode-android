@@ -5,12 +5,35 @@ network, or any network your phone can reach, and drives the server's full featu
 
 ## Status
 
-Phase 5, *Rich composer and context*, is complete. The app pairs with one or more OpenCode servers, keeps a
-live event stream to each of them, **drives** them from the phone, stays reachable while it works, and now says
-what a prompt is about to carry before it sends it. The phase table is in
-[`docs/ANDROID_APP_PLAN.md`](docs/ANDROID_APP_PLAN.md#6-phases).
+Phase 6, *Review, diffs, files and history control*, is complete. The app pairs with one or more OpenCode servers,
+keeps a live event stream to each of them, **drives** them from the phone, stays reachable while it works, says
+what a prompt is about to carry before it sends it, and now shows what the agent changed and lets you take it
+back. The phase table is in [`docs/ANDROID_APP_PLAN.md`](docs/ANDROID_APP_PLAN.md#6-phases).
 
 What works today:
+
+- **A review of what the agent changed**: the TUI's four `/diff` scopes — last turn, uncommitted, committed and
+  against the base branch — with the branch, the base and the changed-file count in a header that follows
+  `vcs.branch.updated`. A patch is parsed into hunks, coloured a line at a time, and shown unified on a phone and
+  side by side where the window is wide enough, with a wrap toggle, a changed-files tree, next and previous file
+  and hunk, and a mark-reviewed that survives leaving the screen.
+- **A comment on a line reaches the agent.** Tap a line in a diff, write what should change, and it goes with the
+  next prompt in the web app's own `metadata.opencodeComment` format, with the selected lines attached as a ranged
+  `file:` URI. The bar carries a badge of how many are waiting, and the list can take one back.
+- **Undo, redo and fork from a message.** "Undo to here" stops the session, cancels anything queued behind it,
+  restores the files the turn changed, and puts the prompt back in the composer; the banner says which files will
+  come back, and the next send commits the rollback before it goes. Redo takes it back. "Fork from here" copies the
+  session up to that message, opens the copy, and its header says which message it was cut at.
+- **Browse the server's files and read them.** `fs.list` navigation including directories outside the location,
+  `fs.find` quick open, and a viewer with line numbers and highlighting for text, a picture for an image, and share
+  or download for anything else. Attach the whole file or the lines you tapped. Remote editing exists, is off
+  until you turn it on, is a separate switch from everything else because it writes to the machine the agent works
+  on, and asks again at the point of the write.
+- **History, export and context.** Jump between prompts, search the transcript, export as JSON or as Markdown with
+  an option to redact what the server would redact, import a transcript back, and an inspector that lists the
+  messages the model can still see with their sizes — which is the question "is it still reading the beginning of
+  this conversation?".
+- And from Phase 5:
 
 - **A prompt that says what it will carry**: one line under the box names whether it is a message, a command, a
   shell line or an app action, how many attachments and skills ride along, and whether it steers or queues. What
