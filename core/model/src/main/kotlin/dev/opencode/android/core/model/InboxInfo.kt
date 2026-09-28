@@ -70,7 +70,7 @@ internal object SessionInboxInfoSerializer : KSerializer<SessionInboxInfo> {
  * `GET /api/session/active`: the sessions with a live execution, keyed by session id
  * (schema `SessionActive`).
  */
-@Serializable
+@Serializable(with = ActiveSessionMapSerializer::class)
 data class ActiveSessionMap(
     val running: Set<String>,
 ) {

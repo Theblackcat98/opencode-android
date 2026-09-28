@@ -10,6 +10,10 @@ import dev.opencode.android.core.data.repository.DefaultServerRepository
 import dev.opencode.android.core.data.repository.ServerRepository
 import dev.opencode.android.core.data.security.AndroidKeystoreCredentialStore
 import dev.opencode.android.core.data.security.SecureCredentialStore
+import dev.opencode.android.core.data.server.DebugFlags
+import dev.opencode.android.core.data.server.LogTimelineSelfCheck
+import dev.opencode.android.core.data.server.TimelineSelfCheck
+import dev.opencode.android.core.database.cache.ReadCacheStore
 import dev.opencode.android.core.database.dao.ServerDao
 import dev.opencode.android.core.network.PairingClient
 import dev.opencode.android.core.network.ServerCredentialCache
@@ -41,4 +45,14 @@ object DataModule {
         pairingClient = pairingClient,
         credentialCache = credentialCache,
     )
+
+    /**
+     * Where the timeline self-check's findings go.
+     *
+     * The comparison itself always runs; only the logging is behind a debug flag the app sets from
+     * its own `BuildConfig`, so a release build never writes transcript contents to logcat.
+     */
+    @Provides
+    @Singleton
+    fun provideTimelineSelfCheck(): TimelineSelfCheck = LogTimelineSelfCheck(DebugFlags.selfCheckLogs)
 }

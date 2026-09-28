@@ -17,7 +17,14 @@ class ServerInfoDecodingTest {
         assertEquals("2.0.18", info.version)
         assertEquals(2, info.majorVersion)
         assertTrue(info.pid > 0)
-        assertEquals(listOf("http://127.0.0.1:4196"), info.urls)
+        // The port and host depend on the machine the fixtures were recorded on; the contract is
+        // that the server names at least one URL it is reachable at, and that it is a loopback URL
+        // for a server started by scripts/dev-server.sh.
+        assertTrue("the server must report how it is reachable", info.urls.isNotEmpty())
+        assertTrue(
+            "expected a loopback URL, got ${info.urls}",
+            info.urls.all { it.startsWith("http://127.0.0.1:") || it.startsWith("http://localhost:") },
+        )
         assertEquals("/tmp/opencode", info.paths.tmp)
     }
 

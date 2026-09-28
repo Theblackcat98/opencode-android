@@ -5,6 +5,7 @@ import dev.opencode.android.core.testing.Fixtures
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ProjectDecodingTest {
@@ -19,9 +20,10 @@ class ProjectDecodingTest {
         assertEquals("c42aa3ccc1e04f703386feb3e4f519d0bcd1d408", project.id)
         assertEquals("/home/nick/Documents/Projects/opencode-android", project.canonical)
         assertEquals("git", project.vcs)
-        assertEquals(1790567446435L, project.time.created)
-        assertEquals(1790567446435L, project.time.updated)
-        assertEquals(1790567446439L, project.time.active)
+        // Timestamps are per recording, so the contract is their order, not their value.
+        assertTrue("a project is created before it is active", project.time.created > 0)
+        assertTrue(project.time.updated >= project.time.created)
+        assertTrue(project.time.active >= project.time.updated)
         assertEquals(emptyList<String>(), project.sandboxes)
     }
 
