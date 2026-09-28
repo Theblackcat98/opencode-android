@@ -19,6 +19,9 @@ captures/
 .externalNativeBuild/
 .cxx/
 
+# Scratch output from tools/dump-client-type.py and ad-hoc server probes
+.probe/
+
 # Test harness state (scripts/dev-server.sh)
 .dev-server/
 node_modules/

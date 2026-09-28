@@ -219,7 +219,7 @@ phases that reuse it get cheaper as a result.
 | --- | --- | --- | --- | --- |
 | P0 | Foundation | Build system, schema models, fixture harness, fake provider, CI | All | Complete |
 | P1 | Connect and pair | HTTP client, auth, server registry, `EventStreamClient`, resync signal | All | Complete |
-| P2 | Live read-only view | `SyncedResource` stores, `TimelineReducer`, Markdown, code and tool renderers | P3–P10 | Planned |
+| P2 | Live read-only view | `SyncedResource` stores, `TimelineReducer`, Markdown, code and tool renderers | P3–P10 | Complete |
 | P3 | Drive sessions (MVP) | Composer pipeline, pickers, `RequestCenter`, **forms engine** | P4, P5, P8, P9 | Planned |
 | P4 | Background and notifications | `ConnectionService`, notification and action infrastructure, unread model | P7, P8, P9, P10 | Planned |
 | P5 | Rich composer | Attachment pipeline, autocomplete and mention engine | P6, P8 | Planned |
@@ -386,6 +386,38 @@ every driving feature reuses.
 - A turn driven from the desktop TUI streams on the phone with identical content.
 - Sessions with more than 1,000 messages scroll smoothly.
 - A reconnect in the middle of a turn converges to the REST projection.
+
+**Status.** Complete. Verified with 269 JVM unit tests (81 of them added by this phase), Android Lint clean, and both
+`play` and `fdroid` debug APKs assembled. The two criteria that a build can decide are decided by tests:
+`TimelineReducerGoldenTest` replays every recorded SSE stream and compares the result with the server's own
+`session.message.list` projection, byte for byte, and `mid turn reconnect converges` replaces the client's state
+with a projection recorded *while the assistant message was still open*, replays the rest of the stream onto it, and
+requires the same convergence. The recorder gained that mid-turn capture, and re-recorded the fixture set: the
+previous `events.jsonl` and `messages-*.json` files came from different runs, so they did not describe the same
+sessions and only `misc` happened to line up.
+
+**Not verified here, and why.** Scrolling smoothness with more than 1,000 messages needs a device: frame timing
+is a property of the compositor and the display, not of a JVM test, and there is no emulator or hardware here. What
+*is* verified is the structure that smoothness depends on — stable `LazyColumn` keys per message id, a plain
+recycling layout rather than a fully composed one, and O(1) reducer application so a `text.delta` does not rescan a
+thousand messages. A turn driven from the desktop TUI is likewise a device check; the content half of it is what the
+replay-equals-projection test covers.
+
+**Deviations.**
+
+- **Markdown.** [§3](#3-technology-choices) names `multiplatform-markdown-renderer`. This phase ships a
+  block parser for the subset an assistant answer uses instead, because it is a pure function (so it can be unit
+  tested and `remember`ed off the main thread, per [§5.4](#54-performance-accessibility-and-localization)), because
+  it is *total* where a general engine is not — a stray `*` or an unterminated fence renders as text rather than
+  eating the rest of the paragraph — and because it adds no dependency to a phase that has none. The syntax
+  highlighting module is the part that is genuinely missing and should be taken from the library when the code
+  blocks grow; `CodeBlock` is where it goes.
+- **Attachment thumbnails.** A user message carries a `data:` URL of base64 the server stored. The chip names the
+  file; decoding and showing the image is Phase 5's image pipeline, so the renderer says what it is rather than
+  pretending.
+- **`session.instructions.updated`** carries no `text` in 2.0.18, so, as in the reference client, it does not
+  insert a system notice. The `System` and `Skill` renderers exist and are covered by the fixtures the recorder
+  drives.
 
 ---
 
@@ -952,7 +984,7 @@ that delivers it.
 | --- | --- | --- |
 | P0 | Foundation (models, fixtures, harness, CI) | Complete |
 | P1 | 3 | Complete |
-| P2 | 12 | Planned |
+| P2 | 12 | Complete |
 | P3 | 20 | Planned |
 | P4 | 1 | Planned |
 | P5 | 10 | Planned |
@@ -977,7 +1009,7 @@ and is covered by the reducer or invalidation tests.
 | --- | --- | --- |
 | P0 | All 94 event types modeled in `EventPayload` / `EventTypes`, contract-tested against recorded fixtures | Complete |
 | P1 | `server.connected` (fired, logged, and published as the resync signal) | Complete |
-| P2 | `location.shutdown`, `models-dev.refreshed`, `model.updated`, `agent.updated`, `session.created`, `session.agent.selected`, `session.model.selected`, `session.moved`, `session.renamed`, `session.metadata.updated`, `session.permissions`, `session.viewed`, `session.usage.updated`, `session.deleted`, `session.forked`, `session.inbox.delivered`, `session.inbox.enqueued`, `session.inbox.cancelled`, `session.inbox.delivery.changed`, `session.execution.started`, `session.execution.succeeded`, `session.execution.failed`, `session.execution.interrupted`, `session.instructions.updated`, `session.synthetic`, `session.skill.activated`, `session.shell.started`, `session.shell.ended`, `session.step.started`, `session.step.streamed`, `session.step.ended`, `session.step.failed`, `session.text.started`, `session.text.delta`, `session.text.ended`, `session.reasoning.started`, `session.reasoning.delta`, `session.reasoning.ended`, `session.tool.input.started`, `session.tool.input.delta`, `session.tool.input.ended`, `session.tool.called`, `session.tool.progress`, `session.tool.success`, `session.tool.failed`, `session.retry.scheduled`, `session.compaction.started`, `session.compaction.delta`, `session.compaction.ended`, `session.compaction.failed`, `session.revert.staged`, `session.revert.cleared`, `session.revert.committed`, `project.updated`, `session.status`, `session.idle` | Planned |
+| P2 | `location.shutdown`, `models-dev.refreshed`, `model.updated`, `agent.updated`, `session.created`, `session.agent.selected`, `session.model.selected`, `session.moved`, `session.renamed`, `session.metadata.updated`, `session.permissions`, `session.viewed`, `session.usage.updated`, `session.deleted`, `session.forked`, `session.inbox.delivered`, `session.inbox.enqueued`, `session.inbox.cancelled`, `session.inbox.delivery.changed`, `session.execution.started`, `session.execution.succeeded`, `session.execution.failed`, `session.execution.interrupted`, `session.instructions.updated`, `session.synthetic`, `session.skill.activated`, `session.shell.started`, `session.shell.ended`, `session.step.started`, `session.step.streamed`, `session.step.ended`, `session.step.failed`, `session.text.started`, `session.text.delta`, `session.text.ended`, `session.reasoning.started`, `session.reasoning.delta`, `session.reasoning.ended`, `session.tool.input.started`, `session.tool.input.delta`, `session.tool.input.ended`, `session.tool.called`, `session.tool.progress`, `session.tool.success`, `session.tool.failed`, `session.retry.scheduled`, `session.compaction.started`, `session.compaction.delta`, `session.compaction.ended`, `session.compaction.failed`, `session.revert.staged`, `session.revert.cleared`, `session.revert.committed`, `project.updated`, `session.status`, `session.idle` | Complete |
 | P3 | `permission.asked`, `permission.replied`, `form.created`, `form.replied`, `form.cancelled` | Planned |
 | P4 | `installation.updated`, `installation.update-available` | Planned |
 | P5 | `reference.updated`, `command.updated`, `skill.updated` | Planned |

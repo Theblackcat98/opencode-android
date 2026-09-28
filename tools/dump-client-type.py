@@ -1,7 +1,19 @@
+#!/usr/bin/env python3
+"""Prints one generated TypeScript type from the vendored @opencode/client.
+
+The OpenAPI spec types every event payload as an opaque JSON string, so the event
+contract is `@opencode/client`'s generated types. When a release adds or changes
+one, this is how the declaration is read back without unpacking the tarball by
+hand; `api/opencode-2.0.x/events.json` is what it produced.
+
+    python3 tools/dump-client-type.py V2EventSessionStepEnded
+    python3 tools/dump-client-type.py SessionMessageInfo
+"""
 import re
 import sys
 
-src = open('.vendor-tmp/package/dist/promise/generated/types.d.ts').read()
+TYPES = '.vendor-tmp/package/dist/promise/generated/types.d.ts'
+src = open(TYPES).read()
 
 
 def full(name):
