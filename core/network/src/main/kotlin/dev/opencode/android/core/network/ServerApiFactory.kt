@@ -28,6 +28,16 @@ class ServerApiFactory(
     private val serverTls: ServerTls = ServerTls(okHttpClient, UserCertificateSource { emptyList() }),
     private val credentialProvider: CredentialProvider? = null,
 ) {
+    /**
+     * A client with no fixed directory, for callers that name the location per request.
+     *
+     * Phase 2 uses this: `project.list`, `session.active` and `session.list` do not take a
+     * location at all, so attaching one to every request would send a parameter the route
+     * ignores. The routes that do take one declare `@Query(LocationParam.QUERY_KEY)`.
+     */
+    fun createForReads(baseUrl: String, trustUserCertificates: Boolean = false): ServerApi =
+        create(baseUrl = baseUrl, directory = null, trustUserCertificates = trustUserCertificates)
+
     fun create(
         baseUrl: String,
         directory: String? = null,

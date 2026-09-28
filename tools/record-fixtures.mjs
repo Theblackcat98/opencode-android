@@ -262,6 +262,50 @@ async function main() {
   const noAuth = await api("GET", "/api/model", undefined, { auth: false })
   save("errors/unauthorized.json", { status: noAuth.status, body: noAuth.json })
 
+  // A reconnect in the middle of a turn. The projection is fetched while the turn is still
+  // running, so a client that has seen the events up to that point can be compared with what the
+  // server itself said at that moment, and the rest of the stream can then be replayed onto the
+  // resynced timeline. That is exit criterion "a reconnect mid-turn converges to the REST
+  // projection", reduced to something a build can assert.
+  const reconnect = "ses_fixture_reconnect"
+  if (!(await existingSession(reconnect))) {
+    await api("POST", "/api/session", {
+      id: reconnect,
+      title: "fixture reconnect",
+      model: { id: "question", providerID: "fake" },
+    })
+  }
+  const sinceReconnect = Date.now()
+  await api("POST", `/api/session/${reconnect}/prompt`, {
+    id: "msg_fixture_reconnect",
+    text: "Ask me the scripted question.",
+  })
+  // The `question` model blocks the turn on a form, so the projection can be read while the
+  // assistant message is still open. A fixed sleep would either land before the turn starts or
+  // after it has already finished; a form is a turn that waits for the user.
+  const deadline = Date.now() + 120000
+  let midTaken = false
+  while (!midTaken && Date.now() < deadline) {
+    midTaken = allFrames.some(
+      (f) =>
+        f.type === "form.created" &&
+        f.data?.form?.sessionID === reconnect &&
+        f.created >= sinceReconnect,
+    )
+    if (!midTaken) await sleep(10)
+  }
+  if (!midTaken) throw new Error("reconnect scenario: no pending form, cannot snapshot mid-turn")
+  save(
+    "messages-reconnect-mid.json",
+    (await api("GET", `/api/session/${reconnect}/message`, undefined, { query: "&limit=100" })).json,
+  )
+  await waitForIdle(reconnect, sinceReconnect)
+  save(
+    "messages-reconnect.json",
+    (await api("GET", `/api/session/${reconnect}/message`, undefined, { query: "&limit=100" })).json,
+  )
+  save("session-reconnect.json", (await api("GET", `/api/session/${reconnect}`)).json)
+
   const lines = allFrames.map((f) => JSON.stringify(f)).join("\n")
   writeFileSync(join(OUT, "events.jsonl"), `${lines}\n`)
   console.log(`saved events.jsonl (${allFrames.length} frames, ${heartbeatCount} heartbeats skipped)`)
@@ -271,7 +315,7 @@ async function main() {
   save("manifest.json", {
     serverVersion: process.env.OPENCODE_VERSION ?? null,
     recordedAt: new Date().toISOString(),
-    scenarios: scenarios.map(([name, model]) => ({ name, model })),
+    scenarios: [...scenarios.map(([name, model]) => ({ name, model })), { name: "reconnect", model: "question" }],
     eventTypes: types,
     note: "Recorded against opencode serve with tools/fake-provider. IDs and timestamps vary per run; tests must not assert exact values.",
   })

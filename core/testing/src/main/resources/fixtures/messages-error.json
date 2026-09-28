@@ -1,18 +1,18 @@
 {
   "data": [
     {
-      "id": "msg_0e62141eb001MwT5rRUoe7VZZj",
+      "id": "msg_0e71fccfe001h4dzZiPf7kzBEz",
       "time": {
-        "created": 1790567334379
+        "created": 1790584016126
       },
       "type": "idle",
       "outcome": "failed"
     },
     {
-      "id": "msg_0e61ff909001w3EyfSLTxX3r6A",
+      "id": "msg_0e71e6af40013UuFNc29C1Zzru",
       "time": {
-        "created": 1790567334370,
-        "completed": 1790567334378
+        "created": 1790584016117,
+        "completed": 1790584016124
       },
       "type": "assistant",
       "agent": "build",
@@ -23,8 +23,8 @@
       },
       "content": [],
       "snapshot": {
-        "start": "2fdf6bd4c1800492f5f332afc9d0f672460fb8ab",
-        "end": "2fdf6bd4c1800492f5f332afc9d0f672460fb8ab",
+        "start": "0cc028f85af0c11d527546b38ce7612ee98bbc16",
+        "end": "0cc028f85af0c11d527546b38ce7612ee98bbc16",
         "files": []
       },
       "finish": "error",
@@ -37,14 +37,14 @@
     {
       "id": "msg_fixture_error",
       "time": {
-        "created": 1790567250183
+        "created": 1790583925490
       },
       "text": "Answer despite the scripted provider failure.",
       "type": "user"
     }
   ],
   "cursor": {
-    "previous": "eyJpZCI6Im1zZ18wZTYyMTQxZWIwMDFNd1Q1clJVb2U3VlpaaiIsIm9yZGVyIjoiZGVzYyIsImRpcmVjdGlvbiI6InByZXZpb3VzIn0",
+    "previous": "eyJpZCI6Im1zZ18wZTcxZmNjZmUwMDFoNGR6WmlQZjdrekJFeiIsIm9yZGVyIjoiZGVzYyIsImRpcmVjdGlvbiI6InByZXZpb3VzIn0",
     "next": "eyJpZCI6Im1zZ19maXh0dXJlX2Vycm9yIiwib3JkZXIiOiJkZXNjIiwiZGlyZWN0aW9uIjoibmV4dCJ9"
   }
 }

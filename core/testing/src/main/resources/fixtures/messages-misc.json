@@ -1,19 +1,19 @@
 {
   "data": [
     {
-      "id": "msg_0e6214907002Rfr23pXkI5B2Qs",
+      "id": "msg_0e71fd7ef001M8yTR3U0ygR7rg",
       "time": {
-        "created": 1790567336199
+        "created": 1790584018927
       },
       "type": "idle",
       "outcome": "succeeded"
     },
     {
-      "id": "msg_0e62148de001bKg4S5UeSNiLLr",
+      "id": "msg_0e71fd7c9001o1H6dxk9DStziL",
       "time": {
-        "created": 1790567336167,
-        "streamed": 1790567336192,
-        "completed": 1790567336198
+        "created": 1790584018897,
+        "streamed": 1790584018921,
+        "completed": 1790584018925
       },
       "type": "assistant",
       "agent": "build",
@@ -30,8 +30,8 @@
             "reasoningField": "reasoning_content"
           },
           "time": {
-            "created": 1790567336175,
-            "completed": 1790567336190
+            "created": 1790584018905,
+            "completed": 1790584018920
           }
         },
         {
@@ -40,8 +40,8 @@
         }
       ],
       "snapshot": {
-        "start": "05d494ddf6bac95a84fd797abc1c53f140ca9529",
-        "end": "05d494ddf6bac95a84fd797abc1c53f140ca9529",
+        "start": "5ffe404ef1c30e1e41ba981aba507504eca3e187",
+        "end": "5ffe404ef1c30e1e41ba981aba507504eca3e187",
         "files": []
       },
       "finish": "stop",
@@ -58,25 +58,25 @@
       }
     },
     {
-      "id": "msg_0e6214878001kXg4lhigqNBWR0",
+      "id": "msg_0e71fd76f0018Au9yWC28HLi5U",
       "metadata": {
         "source": "shell",
-        "shellID": "sh_0e621487000145DC2DJ9TApeEq",
+        "shellID": "sh_0e71fd769001Q5zINHaNkFQMvm",
         "state": "completed",
         "truncated": false,
         "exit": 0
       },
       "time": {
-        "created": 1790567336156
+        "created": 1790584018887
       },
-      "text": "The following shell command was executed by the user:\n<shell id=\"sh_0e621487000145DC2DJ9TApeEq\" state=\"completed\" command=\"echo fixture-shell\">\nfixture-shell\n\n</shell>",
+      "text": "The following shell command was executed by the user:\n<shell id=\"sh_0e71fd769001Q5zINHaNkFQMvm\" state=\"completed\" command=\"echo fixture-shell\">\nfixture-shell\n\n</shell>",
       "type": "synthetic"
     },
     {
       "type": "compaction",
       "id": "msg_fixture_misc_compact",
       "time": {
-        "created": 1790567336098
+        "created": 1790584018832
       },
       "status": "failed",
       "reason": "manual",
@@ -96,11 +96,11 @@
       }
     },
     {
-      "id": "msg_0e621486a001X9xoNRLMiv7DQc",
+      "id": "msg_0e71fd764001BzmKmgJ4lthY4M",
       "time": {
-        "created": 1790567336064,
-        "streamed": 1790567336089,
-        "completed": 1790567336096
+        "created": 1790584018803,
+        "streamed": 1790584018826,
+        "completed": 1790584018831
       },
       "type": "assistant",
       "agent": "build",
@@ -116,8 +116,8 @@
         }
       ],
       "snapshot": {
-        "start": "05d494ddf6bac95a84fd797abc1c53f140ca9529",
-        "end": "05d494ddf6bac95a84fd797abc1c53f140ca9529",
+        "start": "5ffe404ef1c30e1e41ba981aba507504eca3e187",
+        "end": "5ffe404ef1c30e1e41ba981aba507504eca3e187",
         "files": []
       },
       "finish": "stop",
@@ -134,9 +134,9 @@
       }
     },
     {
-      "id": "msg_0e621487a001LsK1KVu4Nqd7eJ",
+      "id": "msg_0e71fd772001rBkdHAOVIjgiL6",
       "time": {
-        "created": 1790567336058
+        "created": 1790584018802
       },
       "type": "model-switched",
       "model": {
@@ -155,11 +155,11 @@
         "background": true
       },
       "time": {
-        "created": 1790567336051,
-        "completed": 1790567336055
+        "created": 1790584018795,
+        "completed": 1790584018798
       },
       "type": "shell",
-      "shellID": "sh_0e621487000145DC2DJ9TApeEq",
+      "shellID": "sh_0e71fd769001Q5zINHaNkFQMvm",
       "command": "echo fixture-shell",
       "status": "exited",
       "exit": 0,
@@ -173,7 +173,7 @@
     {
       "id": "msg_fixture_misc_synthetic",
       "time": {
-        "created": 1790567336040
+        "created": 1790584018786
       },
       "text": "A note injected for fixtures.",
       "description": "fixture",
@@ -181,7 +181,7 @@
     }
   ],
   "cursor": {
-    "previous": "eyJpZCI6Im1zZ18wZTYyMTQ5MDcwMDJSZnIyM3BYa0k1QjJRcyIsIm9yZGVyIjoiZGVzYyIsImRpcmVjdGlvbiI6InByZXZpb3VzIn0",
+    "previous": "eyJpZCI6Im1zZ18wZTcxZmQ3ZWYwMDFNOHlUUjNVMHlnUjdyZyIsIm9yZGVyIjoiZGVzYyIsImRpcmVjdGlvbiI6InByZXZpb3VzIn0",
     "next": "eyJpZCI6Im1zZ19maXh0dXJlX21pc2Nfc3ludGhldGljIiwib3JkZXIiOiJkZXNjIiwiZGlyZWN0aW9uIjoibmV4dCJ9"
   }
 }

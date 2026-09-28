@@ -25,7 +25,7 @@ import kotlinx.serialization.json.JsonObject
 /** Payloads of the `session.*` event family. Field-for-field with the `V2Event*` declarations. */
 @Serializable
 data class SessionCreated(
-    val sessionID: String,
+    override val sessionID: String,
     val projectID: String,
     val location: LocationRef,
     val subpath: String? = null,
@@ -37,72 +37,72 @@ data class SessionCreated(
     val metadata: SessionMetadata? = null,
     val permissions: List<PermissionRule>? = null,
     val version: String,
-) : EventPayload
+) : EventPayload, EventPayload.SessionScoped
 
 @Serializable
 data class SessionAgentSelected(
-    val sessionID: String,
+    override val sessionID: String,
     val agent: String,
     val previous: String? = null,
-) : EventPayload
+) : EventPayload, EventPayload.SessionScoped
 
 @Serializable
 data class SessionModelSelected(
-    val sessionID: String,
+    override val sessionID: String,
     val model: ModelRef,
     val previous: ModelRef? = null,
-) : EventPayload
+) : EventPayload, EventPayload.SessionScoped
 
 @Serializable
 data class SessionMoved(
-    val sessionID: String,
+    override val sessionID: String,
     val location: LocationRef,
     val projectID: String,
     val subpath: String? = null,
-) : EventPayload
+) : EventPayload, EventPayload.SessionScoped
 
 @Serializable
 data class SessionRenamed(
-    val sessionID: String,
+    override val sessionID: String,
     val title: String,
-) : EventPayload
+) : EventPayload, EventPayload.SessionScoped
 
 @Serializable
 data class SessionMetadataUpdated(
-    val sessionID: String,
+    override val sessionID: String,
     val metadata: SessionMetadata,
-) : EventPayload
+) : EventPayload, EventPayload.SessionScoped
 
 @Serializable
 data class SessionPermissions(
-    val sessionID: String,
+    override val sessionID: String,
     val permissions: List<PermissionRule>,
-) : EventPayload
+) : EventPayload, EventPayload.SessionScoped
 
 @Serializable
 data class SessionViewed(
-    val sessionID: String,
+    override val sessionID: String,
     val idle: Long,
-) : EventPayload
+) : EventPayload, EventPayload.SessionScoped
 
 @Serializable
 data class SessionUsageUpdated(
-    val sessionID: String,
+    override val sessionID: String,
     val cost: Double,
     val tokens: TokenUsage,
-) : EventPayload
+) : EventPayload, EventPayload.SessionScoped
 
 @Serializable
-data class SessionDeleted(val sessionID: String) : EventPayload
+data class SessionDeleted(override val sessionID: String) : EventPayload, EventPayload.SessionScoped
 
 @Serializable
 data class SessionForked(
-    val sessionID: String,
+    override val sessionID: String,
     val parentID: String,
     val boundary: ForkBoundary,
     val instructions: Map<String, String>? = null,
     val instructionEntries: List<InstructionEntry>? = null,
-) : EventPayload
+) : EventPayload, EventPayload.SessionScoped
 
 /** One entry of `session.forked`'s instruction snapshot. */
 @Serializable
@@ -114,103 +114,103 @@ data class InstructionEntry(
 
 @Serializable
 data class SessionInboxDelivered(
-    val sessionID: String,
+    override val sessionID: String,
     val inboxID: String,
-) : EventPayload
+) : EventPayload, EventPayload.SessionScoped
 
 @Serializable
 data class SessionInboxEnqueued(
-    val sessionID: String,
+    override val sessionID: String,
     val inboxID: String,
     val item: InboxItem,
-) : EventPayload
+) : EventPayload, EventPayload.SessionScoped
 
 @Serializable
 data class SessionInboxCancelled(
-    val sessionID: String,
+    override val sessionID: String,
     val inboxID: String,
-) : EventPayload
+) : EventPayload, EventPayload.SessionScoped
 
 @Serializable
 data class SessionInboxDeliveryChanged(
-    val sessionID: String,
+    override val sessionID: String,
     val inboxID: String,
     val delivery: Delivery,
-) : EventPayload
+) : EventPayload, EventPayload.SessionScoped
 
 @Serializable
-data class SessionExecutionStarted(val sessionID: String) : EventPayload
+data class SessionExecutionStarted(override val sessionID: String) : EventPayload, EventPayload.SessionScoped
 
 @Serializable
-data class SessionExecutionSucceeded(val sessionID: String) : EventPayload
+data class SessionExecutionSucceeded(override val sessionID: String) : EventPayload, EventPayload.SessionScoped
 
 @Serializable
 data class SessionExecutionFailed(
-    val sessionID: String,
+    override val sessionID: String,
     val error: StructuredError,
-) : EventPayload
+) : EventPayload, EventPayload.SessionScoped
 
 @Serializable
 data class SessionExecutionInterrupted(
-    val sessionID: String,
+    override val sessionID: String,
     val reason: InterruptReason,
-) : EventPayload
+) : EventPayload, EventPayload.SessionScoped
 
 @Serializable
 data class SessionInstructionsUpdated(
-    val sessionID: String,
+    override val sessionID: String,
     val delta: Map<String, String>,
     val text: String? = null,
-) : EventPayload
+) : EventPayload, EventPayload.SessionScoped
 
 @Serializable
 data class SessionSynthetic(
-    val sessionID: String,
+    override val sessionID: String,
     val text: String,
     val description: String? = null,
     val metadata: JsonObject? = null,
-) : EventPayload
+) : EventPayload, EventPayload.SessionScoped
 
 @Serializable
 data class SessionSkillActivated(
-    val sessionID: String,
+    override val sessionID: String,
     val id: String,
     val name: String,
     val text: String,
-) : EventPayload
+) : EventPayload, EventPayload.SessionScoped
 
 @Serializable
 data class SessionShellStarted(
-    val sessionID: String,
+    override val sessionID: String,
     val shell: ShellInfo,
-) : EventPayload
+) : EventPayload, EventPayload.SessionScoped
 
 @Serializable
 data class SessionShellEnded(
-    val sessionID: String,
+    override val sessionID: String,
     val shell: ShellInfo,
     val output: ShellOutput,
-) : EventPayload
+) : EventPayload, EventPayload.SessionScoped
 
 @Serializable
 data class SessionStepStarted(
-    val sessionID: String,
+    override val sessionID: String,
     val assistantMessageID: String,
     val agent: String,
     val model: ModelRef,
     val snapshot: String? = null,
     val started: Long,
-) : EventPayload
+) : EventPayload, EventPayload.SessionScoped
 
 @Serializable
 data class SessionStepStreamed(
-    val sessionID: String,
+    override val sessionID: String,
     val assistantMessageID: String,
-) : EventPayload
+) : EventPayload, EventPayload.SessionScoped
 
 @Serializable
 data class SessionStepEnded(
-    val sessionID: String,
+    override val sessionID: String,
     val assistantMessageID: String,
     val finish: FinishReason,
     val rawFinish: String? = null,
@@ -219,11 +219,11 @@ data class SessionStepEnded(
     val tokens: TokenUsage,
     val snapshot: String? = null,
     val files: List<String>? = null,
-) : EventPayload
+) : EventPayload, EventPayload.SessionScoped
 
 @Serializable
 data class SessionStepFailed(
-    val sessionID: String,
+    override val sessionID: String,
     val assistantMessageID: String,
     val error: StructuredError,
     val finish: FinishReason? = null,
@@ -233,113 +233,113 @@ data class SessionStepFailed(
     val tokens: TokenUsage? = null,
     val snapshot: String? = null,
     val files: List<String>? = null,
-) : EventPayload
+) : EventPayload, EventPayload.SessionScoped
 
 @Serializable
 data class SessionTextStarted(
-    val sessionID: String,
+    override val sessionID: String,
     val assistantMessageID: String,
     val ordinal: Long,
-) : EventPayload
+) : EventPayload, EventPayload.SessionScoped
 
 @Serializable
 data class SessionTextDelta(
-    val sessionID: String,
+    override val sessionID: String,
     val assistantMessageID: String,
     val ordinal: Long,
     val delta: String,
-) : EventPayload
+) : EventPayload, EventPayload.SessionScoped
 
 @Serializable
 data class SessionTextEnded(
-    val sessionID: String,
+    override val sessionID: String,
     val assistantMessageID: String,
     val ordinal: Long,
     val text: String,
     val state: JsonObject? = null,
-) : EventPayload
+) : EventPayload, EventPayload.SessionScoped
 
 @Serializable
 data class SessionReasoningStarted(
-    val sessionID: String,
+    override val sessionID: String,
     val assistantMessageID: String,
     val ordinal: Long,
     val state: JsonObject? = null,
-) : EventPayload
+) : EventPayload, EventPayload.SessionScoped
 
 @Serializable
 data class SessionReasoningDelta(
-    val sessionID: String,
+    override val sessionID: String,
     val assistantMessageID: String,
     val ordinal: Long,
     val delta: String,
-) : EventPayload
+) : EventPayload, EventPayload.SessionScoped
 
 @Serializable
 data class SessionReasoningEnded(
-    val sessionID: String,
+    override val sessionID: String,
     val assistantMessageID: String,
     val ordinal: Long,
     val text: String,
     val state: JsonObject? = null,
-) : EventPayload
+) : EventPayload, EventPayload.SessionScoped
 
 @Serializable
 data class SessionToolInputStarted(
-    val sessionID: String,
+    override val sessionID: String,
     val assistantMessageID: String,
     val id: String,
     val name: String,
-) : EventPayload
+) : EventPayload, EventPayload.SessionScoped
 
 @Serializable
 data class SessionToolInputDelta(
-    val sessionID: String,
+    override val sessionID: String,
     val assistantMessageID: String,
     val id: String,
     val delta: String,
-) : EventPayload
+) : EventPayload, EventPayload.SessionScoped
 
 @Serializable
 data class SessionToolInputEnded(
-    val sessionID: String,
+    override val sessionID: String,
     val assistantMessageID: String,
     val id: String,
     val text: String,
-) : EventPayload
+) : EventPayload, EventPayload.SessionScoped
 
 @Serializable
 data class SessionToolCalled(
-    val sessionID: String,
+    override val sessionID: String,
     val assistantMessageID: String,
     val id: String,
     val input: Map<String, JsonElement>,
     val executed: Boolean,
     val state: JsonObject? = null,
-) : EventPayload
+) : EventPayload, EventPayload.SessionScoped
 
 @Serializable
 data class SessionToolProgress(
-    val sessionID: String,
+    override val sessionID: String,
     val assistantMessageID: String,
     val id: String,
     val metadata: Map<String, JsonElement>,
-) : EventPayload
+) : EventPayload, EventPayload.SessionScoped
 
 @Serializable
 data class SessionToolSuccess(
-    val sessionID: String,
+    override val sessionID: String,
     val assistantMessageID: String,
     val id: String,
     val content: List<ToolContent>,
     val metadata: Map<String, JsonElement>? = null,
     val executed: Boolean,
     val resultState: JsonObject? = null,
-) : EventPayload
+) : EventPayload, EventPayload.SessionScoped
 
 @Serializable
 data class SessionToolFailed(
-    val sessionID: String,
+    override val sessionID: String,
     val assistantMessageID: String,
     val id: String,
     val error: StructuredError,
@@ -347,34 +347,34 @@ data class SessionToolFailed(
     val metadata: Map<String, JsonElement>? = null,
     val executed: Boolean,
     val resultState: JsonObject? = null,
-) : EventPayload
+) : EventPayload, EventPayload.SessionScoped
 
 @Serializable
 data class SessionRetryScheduled(
-    val sessionID: String,
+    override val sessionID: String,
     val assistantMessageID: String,
     val attempt: Long,
     val at: Long,
     val error: StructuredError,
-) : EventPayload
+) : EventPayload, EventPayload.SessionScoped
 
 @Serializable
 data class SessionCompactionStarted(
-    val sessionID: String,
+    override val sessionID: String,
     val reason: CompactionReason,
     val recent: String,
     val inputID: String? = null,
-) : EventPayload
+) : EventPayload, EventPayload.SessionScoped
 
 @Serializable
 data class SessionCompactionDelta(
-    val sessionID: String,
+    override val sessionID: String,
     val text: String,
-) : EventPayload
+) : EventPayload, EventPayload.SessionScoped
 
 @Serializable
 data class SessionCompactionEnded(
-    val sessionID: String,
+    override val sessionID: String,
     val reason: CompactionReason,
     val model: ModelRef? = null,
     val providerState: JsonObject? = null,
@@ -383,38 +383,38 @@ data class SessionCompactionEnded(
     val recent: String,
     val cost: Double? = null,
     val tokens: TokenUsage? = null,
-) : EventPayload
+) : EventPayload, EventPayload.SessionScoped
 
 @Serializable
 data class SessionCompactionFailed(
-    val sessionID: String,
+    override val sessionID: String,
     val reason: CompactionReason,
     val error: StructuredError,
     val inputID: String? = null,
     val cost: Double? = null,
     val tokens: TokenUsage? = null,
-) : EventPayload
+) : EventPayload, EventPayload.SessionScoped
 
 @Serializable
 data class SessionRevertStaged(
-    val sessionID: String,
+    override val sessionID: String,
     val revert: SessionRevert,
-) : EventPayload
+) : EventPayload, EventPayload.SessionScoped
 
 @Serializable
-data class SessionRevertCleared(val sessionID: String) : EventPayload
+data class SessionRevertCleared(override val sessionID: String) : EventPayload, EventPayload.SessionScoped
 
 @Serializable
 data class SessionRevertCommitted(
-    val sessionID: String,
+    override val sessionID: String,
     val to: String,
-) : EventPayload
+) : EventPayload, EventPayload.SessionScoped
 
 @Serializable
 data class SessionStatusUpdated(
-    val sessionID: String,
+    override val sessionID: String,
     val status: SessionStatus,
-) : EventPayload
+) : EventPayload, EventPayload.SessionScoped
 
 @Serializable
-data class SessionIdle(val sessionID: String) : EventPayload
+data class SessionIdle(override val sessionID: String) : EventPayload, EventPayload.SessionScoped

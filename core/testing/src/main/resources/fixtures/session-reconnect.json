@@ -1,9 +1,9 @@
 {
   "data": {
-    "id": "ses_fixture_long",
+    "id": "ses_fixture_reconnect",
     "projectID": "c42aa3ccc1e04f703386feb3e4f519d0bcd1d408",
     "model": {
-      "id": "long",
+      "id": "question",
       "providerID": "fake",
       "variant": "default"
     },
@@ -19,11 +19,11 @@
     },
     "outcome": "succeeded",
     "time": {
-      "created": 1790584017253,
-      "updated": 1790584017255,
-      "idle": 1790584017325
+      "created": 1790584020322,
+      "updated": 1790584020324,
+      "idle": 1790584020738
     },
-    "title": "fixture long",
+    "title": "fixture reconnect",
     "location": {
       "directory": "/home/nick/Documents/Projects/opencode-android"
     }

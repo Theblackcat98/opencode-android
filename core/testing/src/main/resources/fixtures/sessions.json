@@ -20,9 +20,9 @@
       },
       "outcome": "succeeded",
       "time": {
-        "created": 1790567336032,
-        "updated": 1790567336061,
-        "idle": 1790567336199
+        "created": 1790584018779,
+        "updated": 1790584018804,
+        "idle": 1790584018927
       },
       "title": "fixture misc",
       "location": {
@@ -49,9 +49,9 @@
       },
       "outcome": "succeeded",
       "time": {
-        "created": 1790567334502,
-        "updated": 1790567334505,
-        "idle": 1790567334576
+        "created": 1790584017253,
+        "updated": 1790584017255,
+        "idle": 1790584017325
       },
       "title": "fixture long",
       "location": {
@@ -78,9 +78,9 @@
       },
       "outcome": "failed",
       "time": {
-        "created": 1790567250174,
-        "updated": 1790567250178,
-        "idle": 1790567334379
+        "created": 1790583925483,
+        "updated": 1790583925485,
+        "idle": 1790584016126
       },
       "title": "fixture error",
       "location": {
@@ -107,9 +107,9 @@
       },
       "outcome": "succeeded",
       "time": {
-        "created": 1790567247137,
-        "updated": 1790567247140,
-        "idle": 1790567249370
+        "created": 1790583923955,
+        "updated": 1790583923957,
+        "idle": 1790583924037
       },
       "title": "fixture subagent",
       "location": {
@@ -136,9 +136,9 @@
       },
       "outcome": "succeeded",
       "time": {
-        "created": 1790567244100,
-        "updated": 1790567244103,
-        "idle": 1790567246031
+        "created": 1790583920915,
+        "updated": 1790583920917,
+        "idle": 1790583922478
       },
       "title": "fixture question",
       "location": {
@@ -165,9 +165,9 @@
       },
       "outcome": "succeeded",
       "time": {
-        "created": 1790567241058,
-        "updated": 1790567241062,
-        "idle": 1790567242983
+        "created": 1790583919383,
+        "updated": 1790583919386,
+        "idle": 1790583919469
       },
       "title": "fixture edit",
       "location": {
@@ -194,9 +194,9 @@
       },
       "outcome": "succeeded",
       "time": {
-        "created": 1790567238020,
-        "updated": 1790567238023,
-        "idle": 1790567240324
+        "created": 1790583917847,
+        "updated": 1790583917850,
+        "idle": 1790583917952
       },
       "title": "fixture shell",
       "location": {
@@ -223,9 +223,9 @@
       },
       "outcome": "succeeded",
       "time": {
-        "created": 1790567236480,
-        "updated": 1790567236483,
-        "idle": 1790567236549
+        "created": 1790583916314,
+        "updated": 1790583916317,
+        "idle": 1790583916369
       },
       "title": "fixture reasoning",
       "location": {
@@ -252,9 +252,9 @@
       },
       "outcome": "succeeded",
       "time": {
-        "created": 1790567234829,
-        "updated": 1790567234925,
-        "idle": 1790567235036
+        "created": 1790583914679,
+        "updated": 1790583914774,
+        "idle": 1790583914855
       },
       "title": "fixture text",
       "location": {
@@ -263,7 +263,7 @@
     }
   ],
   "cursor": {
-    "previous": "eyJhbmNob3IiOnsiaWQiOiJzZXNfZml4dHVyZV9taXNjIiwidGltZSI6MTc5MDU2NzMzNjA2MSwiZGlyZWN0aW9uIjoicHJldmlvdXMifX0",
-    "next": "eyJhbmNob3IiOnsiaWQiOiJzZXNfZml4dHVyZV90ZXh0IiwidGltZSI6MTc5MDU2NzIzNDkyNSwiZGlyZWN0aW9uIjoibmV4dCJ9fQ"
+    "previous": "eyJhbmNob3IiOnsiaWQiOiJzZXNfZml4dHVyZV9taXNjIiwidGltZSI6MTc5MDU4NDAxODgwNCwiZGlyZWN0aW9uIjoicHJldmlvdXMifX0",
+    "next": "eyJhbmNob3IiOnsiaWQiOiJzZXNfZml4dHVyZV90ZXh0IiwidGltZSI6MTc5MDU4MzkxNDc3NCwiZGlyZWN0aW9uIjoibmV4dCJ9fQ"
   }
 }

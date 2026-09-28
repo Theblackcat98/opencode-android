@@ -1,19 +1,19 @@
 {
   "data": [
     {
-      "id": "msg_0e6231ca4001oC8ftnx6yYCm1e",
+      "id": "msg_0e71e4d80002xod2o2KxvOYqz8",
       "time": {
-        "created": 1790567455908
+        "created": 1790583917952
       },
       "type": "idle",
       "outcome": "succeeded"
     },
     {
-      "id": "msg_0e6231c86001n2KyBXzfl8j5Gq",
+      "id": "msg_0e71e4d65001lD86iqY7Cg3SKI",
       "time": {
-        "created": 1790567455888,
-        "streamed": 1790567455901,
-        "completed": 1790567455906
+        "created": 1790583917933,
+        "streamed": 1790583917946,
+        "completed": 1790583917951
       },
       "type": "assistant",
       "agent": "build",
@@ -29,8 +29,8 @@
         }
       ],
       "snapshot": {
-        "start": "16c5eb6c1cd26dfe1450e23eeaa23efce2865327",
-        "end": "16c5eb6c1cd26dfe1450e23eeaa23efce2865327",
+        "start": "077577514e4c3233b950ab1b40dfbfa4ee5c6958",
+        "end": "077577514e4c3233b950ab1b40dfbfa4ee5c6958",
         "files": []
       },
       "finish": "stop",
@@ -47,11 +47,11 @@
       }
     },
     {
-      "id": "msg_0e6231c45001oR7iuD2yVcYuQ2",
+      "id": "msg_0e71e4d21001ooWeylyH5gkIlV",
       "time": {
-        "created": 1790567455827,
-        "streamed": 1790567455851,
-        "completed": 1790567455873
+        "created": 1790583917874,
+        "streamed": 1790583917898,
+        "completed": 1790583917920
       },
       "type": "assistant",
       "agent": "build",
@@ -85,15 +85,15 @@
             }
           },
           "time": {
-            "created": 1790567455835,
-            "ran": 1790567455850,
-            "completed": 1790567455867
+            "created": 1790583917882,
+            "ran": 1790583917897,
+            "completed": 1790583917914
           }
         }
       ],
       "snapshot": {
-        "start": "16c5eb6c1cd26dfe1450e23eeaa23efce2865327",
-        "end": "16c5eb6c1cd26dfe1450e23eeaa23efce2865327",
+        "start": "077577514e4c3233b950ab1b40dfbfa4ee5c6958",
+        "end": "077577514e4c3233b950ab1b40dfbfa4ee5c6958",
         "files": []
       },
       "finish": "tool-calls",
@@ -112,14 +112,14 @@
     {
       "id": "msg_fixture_shell",
       "time": {
-        "created": 1790567455810
+        "created": 1790583917855
       },
       "text": "Run the marker shell command and quote its output.",
       "type": "user"
     }
   ],
   "cursor": {
-    "previous": "eyJpZCI6Im1zZ18wZTYyMzFjYTQwMDFvQzhmdG54NnlZQ20xZSIsIm9yZGVyIjoiZGVzYyIsImRpcmVjdGlvbiI6InByZXZpb3VzIn0",
+    "previous": "eyJpZCI6Im1zZ18wZTcxZTRkODAwMDJ4b2QybzJLeHZPWXF6OCIsIm9yZGVyIjoiZGVzYyIsImRpcmVjdGlvbiI6InByZXZpb3VzIn0",
     "next": "eyJpZCI6Im1zZ19maXh0dXJlX3NoZWxsIiwib3JkZXIiOiJkZXNjIiwiZGlyZWN0aW9uIjoibmV4dCJ9"
   }
 }

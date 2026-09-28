@@ -109,8 +109,16 @@ resolve_bin() {
         npm install --no-audit --no-fund --prefix "$cli_dir" "@opencode/cli@$CLI_VERSION" >&2
         printf '%s' "$CLI_VERSION" >"$stamp"
     fi
+    # The npm package ships one binary per libc. `find | head` picks whichever the filesystem
+    # lists first, which is how a glibc host ended up running the musl build and failing with
+    # "cannot execute: required file not found". Prefer glibc, and the baseline flavour only when
+    # the plain one is absent, because both run on any glibc system.
     local bin
-    bin="$(find "$cli_dir/node_modules/@opencode" -name opencode -type f -perm -111 2>/dev/null | head -n 1)"
+    bin="$cli_dir/node_modules/@opencode/cli-linux-x64/bin/opencode"
+    [[ -x "$bin" ]] || bin="$cli_dir/node_modules/@opencode/cli-linux-x64-baseline/bin/opencode"
+    if [[ ! -x "$bin" ]]; then
+        bin="$(find "$cli_dir/node_modules/@opencode" -name opencode -type f -perm -111 2>/dev/null | head -n 1)"
+    fi
     [[ -n "$bin" ]] || fail "no opencode binary found under $cli_dir/node_modules/@opencode"
     printf '%s\n' "$bin"
 }

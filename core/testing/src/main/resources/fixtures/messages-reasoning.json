@@ -1,19 +1,19 @@
 {
   "data": [
     {
-      "id": "msg_0e6231678002dC74ZUCSGNeTBl",
+      "id": "msg_0e71e4751001ezqOVstv11EXYI",
       "time": {
-        "created": 1790567454328
+        "created": 1790583916369
       },
       "type": "idle",
       "outcome": "succeeded"
     },
     {
-      "id": "msg_0e6231645001Oe7xIfkmIdMMH7",
+      "id": "msg_0e71e4724001YqLX11I8YCQn9Z",
       "time": {
-        "created": 1790567454294,
-        "streamed": 1790567454320,
-        "completed": 1790567454326
+        "created": 1790583916338,
+        "streamed": 1790583916363,
+        "completed": 1790583916367
       },
       "type": "assistant",
       "agent": "build",
@@ -30,8 +30,8 @@
             "reasoningField": "reasoning_content"
           },
           "time": {
-            "created": 1790567454304,
-            "completed": 1790567454318
+            "created": 1790583916348,
+            "completed": 1790583916361
           }
         },
         {
@@ -40,8 +40,8 @@
         }
       ],
       "snapshot": {
-        "start": "4b267db52de9425d4211329255806eb9ef465ac7",
-        "end": "4b267db52de9425d4211329255806eb9ef465ac7",
+        "start": "fdc008d3bef96d201a6278d41623af1e0b1dd155",
+        "end": "fdc008d3bef96d201a6278d41623af1e0b1dd155",
         "files": []
       },
       "finish": "stop",
@@ -60,14 +60,14 @@
     {
       "id": "msg_fixture_reasoning",
       "time": {
-        "created": 1790567454274
+        "created": 1790583916322
       },
       "text": "Think briefly, then answer.",
       "type": "user"
     }
   ],
   "cursor": {
-    "previous": "eyJpZCI6Im1zZ18wZTYyMzE2NzgwMDJkQzc0WlVDU0dOZVRCbCIsIm9yZGVyIjoiZGVzYyIsImRpcmVjdGlvbiI6InByZXZpb3VzIn0",
+    "previous": "eyJpZCI6Im1zZ18wZTcxZTQ3NTEwMDFlenFPVnN0djExRVhZSSIsIm9yZGVyIjoiZGVzYyIsImRpcmVjdGlvbiI6InByZXZpb3VzIn0",
     "next": "eyJpZCI6Im1zZ19maXh0dXJlX3JlYXNvbmluZyIsIm9yZGVyIjoiZGVzYyIsImRpcmVjdGlvbiI6Im5leHQifQ"
   }
 }

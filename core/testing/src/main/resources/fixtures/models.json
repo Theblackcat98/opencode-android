@@ -659,7 +659,7 @@
       "package": "@opencode/ai/providers/openai-compatible",
       "settings": {
         "apiKey": "fake-key",
-        "baseURL": "http://127.0.0.1:4199/v1",
+        "baseURL": "http://127.0.0.1:4697/v1",
         "provider": "fake"
       },
       "capabilities": {
@@ -719,7 +719,7 @@
       "package": "@opencode/ai/providers/openai-compatible",
       "settings": {
         "apiKey": "fake-key",
-        "baseURL": "http://127.0.0.1:4199/v1",
+        "baseURL": "http://127.0.0.1:4697/v1",
         "provider": "fake"
       },
       "capabilities": {
@@ -779,7 +779,7 @@
       "package": "@opencode/ai/providers/openai-compatible",
       "settings": {
         "apiKey": "fake-key",
-        "baseURL": "http://127.0.0.1:4199/v1",
+        "baseURL": "http://127.0.0.1:4697/v1",
         "provider": "fake"
       },
       "capabilities": {
@@ -839,7 +839,7 @@
       "package": "@opencode/ai/providers/openai-compatible",
       "settings": {
         "apiKey": "fake-key",
-        "baseURL": "http://127.0.0.1:4199/v1",
+        "baseURL": "http://127.0.0.1:4697/v1",
         "provider": "fake"
       },
       "capabilities": {
@@ -899,7 +899,7 @@
       "package": "@opencode/ai/providers/openai-compatible",
       "settings": {
         "apiKey": "fake-key",
-        "baseURL": "http://127.0.0.1:4199/v1",
+        "baseURL": "http://127.0.0.1:4697/v1",
         "provider": "fake"
       },
       "capabilities": {
@@ -959,7 +959,7 @@
       "package": "@opencode/ai/providers/openai-compatible",
       "settings": {
         "apiKey": "fake-key",
-        "baseURL": "http://127.0.0.1:4199/v1",
+        "baseURL": "http://127.0.0.1:4697/v1",
         "provider": "fake"
       },
       "capabilities": {
@@ -1019,7 +1019,7 @@
       "package": "@opencode/ai/providers/openai-compatible",
       "settings": {
         "apiKey": "fake-key",
-        "baseURL": "http://127.0.0.1:4199/v1",
+        "baseURL": "http://127.0.0.1:4697/v1",
         "provider": "fake"
       },
       "capabilities": {
@@ -1079,7 +1079,7 @@
       "package": "@opencode/ai/providers/openai-compatible",
       "settings": {
         "apiKey": "fake-key",
-        "baseURL": "http://127.0.0.1:4199/v1",
+        "baseURL": "http://127.0.0.1:4697/v1",
         "provider": "fake"
       },
       "capabilities": {
@@ -1139,7 +1139,7 @@
       "package": "@opencode/ai/providers/openai-compatible",
       "settings": {
         "apiKey": "fake-key",
-        "baseURL": "http://127.0.0.1:4199/v1",
+        "baseURL": "http://127.0.0.1:4697/v1",
         "provider": "fake"
       },
       "capabilities": {

@@ -58,6 +58,17 @@ sealed interface EventPayload {
     data object WebsearchUpdated : EventPayload
 
     /**
+     * A payload that names the session it belongs to.
+     *
+     * Marking the `session.*` payloads with it is what lets a store ask an event which session it
+     * is about without a hand-written table of every payload class, and lets the timeline reducer
+     * ignore another session's events by construction.
+     */
+    interface SessionScoped : EventPayload {
+        val sessionID: String
+    }
+
+    /**
      * An `rpc.<rpcID>.<event>` frame. The envelope keeps the full `type` string; [rpcID]
      * is its first segment and [event] the remainder. Carried as raw JSON: plugin RPC
      * payloads are defined by the plugin, not the server contract. Never decoded through

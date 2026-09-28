@@ -7,7 +7,9 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import dev.opencode.android.core.database.cache.ReadCacheStore
 import dev.opencode.android.core.database.OpenCodeDatabase
+import dev.opencode.android.core.database.cache.RoomReadCacheStore
 import dev.opencode.android.core.database.dao.ServerDao
 import javax.inject.Singleton
 
@@ -32,5 +34,12 @@ object DatabaseModule {
     @Provides
     fun provideServerDao(database: OpenCodeDatabase): ServerDao {
         return database.serverDao()
+    }
+
+    /** The offline cache of session lists and recent timelines. */
+    @Provides
+    @Singleton
+    fun provideReadCacheStore(database: OpenCodeDatabase): ReadCacheStore {
+        return RoomReadCacheStore(database)
     }
 }
