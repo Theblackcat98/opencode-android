@@ -2,24 +2,42 @@ package dev.opencode.android.core.network
 
 import dev.opencode.android.core.model.AgentInfo
 import dev.opencode.android.core.model.DataResponse
+import dev.opencode.android.core.model.FileSystemEntry
+import dev.opencode.android.core.model.FormDetail
+import dev.opencode.android.core.model.FormInfo
+import dev.opencode.android.core.model.FormReplyPayload
+import dev.opencode.android.core.model.InboxUpdateRequest
+import dev.opencode.android.core.model.InterruptResult
 import dev.opencode.android.core.model.LocationInfo
 import dev.opencode.android.core.model.LocationScoped
 import dev.opencode.android.core.model.ModelInfo
 import dev.opencode.android.core.model.Paged
 import dev.opencode.android.core.model.PairingSession
+import dev.opencode.android.core.model.PermissionReplyPayload
+import dev.opencode.android.core.model.PermissionRequest
 import dev.opencode.android.core.model.Project
+import dev.opencode.android.core.model.PromptRequest
 import dev.opencode.android.core.model.ServerInfo
+import dev.opencode.android.core.model.SessionCreateRequest
 import dev.opencode.android.core.model.SessionInboxInfo
 import dev.opencode.android.core.model.SessionInfo
 import dev.opencode.android.core.model.SessionMessage
+import dev.opencode.android.core.model.SessionUpdateRequest
+import dev.opencode.android.core.model.SwitchAgentRequest
+import dev.opencode.android.core.model.SwitchModelRequest
+import retrofit2.http.Body
+import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.Headers
+import retrofit2.http.PATCH
+import retrofit2.http.POST
 import retrofit2.http.Path
 import retrofit2.http.Query
 import retrofit2.http.Tag
 
 /**
- * The read surface of one server: the Phase 1 calls plus the Phase 2 projections.
+ * The read and write surface of one server: the Phase 1 calls, the Phase 2 projections and the
+ * Phase 3 driving operations.
  *
  * Instances are per server; [ServerApiFactory] builds one bound to a base URL and a credential.
  * `event.subscribe` (`GET /api/event`) is not here because the SSE reader needs the raw response
@@ -29,6 +47,19 @@ import retrofit2.http.Tag
  * `directory = null` so that no `location[directory]` is attached to routes that do not take one
  * (`project.list`, `session.active`, `session.list`), and names the parameter explicitly with
  * [LocationParam.QUERY_KEY] on the routes that do. The P1 factory behaviour is unchanged.
+ *
+ * **One interface, not one per tag.** [EventStreamClient] has to be built by hand because it owns
+ * the raw response stream, and the P1 factory returned a single object that every caller injected.
+ * Splitting the rest into a read interface and a write interface would mean either two Retrofit
+ * instances over the same OkHttp client (two generated proxies, one connection pool, no benefit) or
+ * changing the factory's contract for no behavioural gain, so the two sections below stay in one
+ * interface with a comment marking where the split would go.
+ *
+ * **Writes answer with events, not with bodies.** A `204` write is confirmed by the event that
+ * changes the state, which the P2 stores already apply (plan §4.2), so a write returns `Unit` and
+ * Retrofit raises `HttpException` for a failure. A method that returns `DataResponse` is the
+ * exception: the server answers with the projection it created, and reading it is cheaper than
+ * waiting for the event to arrive.
  */
 interface ServerApi {
 
@@ -139,4 +170,175 @@ interface ServerApi {
     suspend fun getDefaultModel(
         @Query(LocationParam.QUERY_KEY) directory: String? = null,
     ): LocationScoped<ModelInfo?>
+
+    // ---------------------------------------------------------------- Phase 3: drive sessions
+
+    /**
+     * `session.create`.
+     *
+     * Every field is optional, so the server fills in the location, the agent and the model it
+     * would use by default. The app sends the location and the agent the user chose and omits the
+     * model unless one was picked, which is what leaves `model.default` in charge.
+     */
+    @POST("api/session")
+    suspend fun createSession(
+        @Body body: SessionCreateRequest,
+    ): DataResponse<SessionInfo>
+
+    /**
+     * `session.update`: rename, replace the metadata, or set session permission rules.
+     *
+     * A field left out is not changed. The answer is `204`, and the `session.renamed`,
+     * `session.metadata.updated` and `session.permissions` events carry the result, so there is
+     * nothing to read back.
+     */
+    @PATCH("api/session/{sessionID}")
+    suspend fun updateSession(
+        @Path("sessionID") sessionID: String,
+        @Body body: SessionUpdateRequest,
+    ): Unit
+
+    /** `session.remove`: deletes a session and its children. `204`. */
+    @DELETE("api/session/{sessionID}")
+    suspend fun removeSession(
+        @Path("sessionID") sessionID: String,
+    ): Unit
+
+    /** `session.switchAgent`, confirmed by `session.agent.selected`. `204`. */
+    @POST("api/session/{sessionID}/agent")
+    suspend fun switchAgent(
+        @Path("sessionID") sessionID: String,
+        @Body body: SwitchAgentRequest,
+    ): Unit
+
+    /** `session.switchModel`, confirmed by `session.model.selected`. `204`. */
+    @POST("api/session/{sessionID}/model")
+    suspend fun switchModel(
+        @Path("sessionID") sessionID: String,
+        @Body body: SwitchModelRequest,
+    ): Unit
+
+    /**
+     * `session.prompt`.
+     *
+     * Answers with the inbox item it enqueued, which is the same object `session.inbox.enqueued`
+     * carries. A `msg_…` [PromptRequest.id] that is reused with a different payload is a `409`.
+     */
+    @POST("api/session/{sessionID}/prompt")
+    suspend fun prompt(
+        @Path("sessionID") sessionID: String,
+        @Body body: PromptRequest,
+    ): DataResponse<SessionInboxInfo>
+
+    /**
+     * `session.interrupt`.
+     *
+     * With [resume] true, pending steering input resumes and queued prompts stay parked
+     * (features doc §4.2), which is the difference between stopping and stopping-and-continuing.
+     */
+    @POST("api/session/{sessionID}/interrupt")
+    suspend fun interrupt(
+        @Path("sessionID") sessionID: String,
+        @Query("resume") resume: Boolean? = null,
+    ): DataResponse<InterruptResult>
+
+    /** `session.background`: moves blocking tools to the background so the turn can finish. */
+    @POST("api/session/{sessionID}/background")
+    suspend fun background(
+        @Path("sessionID") sessionID: String,
+    ): Unit
+
+    /** `session.inbox.update`: switches a pending item between queue and steer. `204`. */
+    @PATCH("api/session/{sessionID}/inbox/{inboxID}")
+    suspend fun updateInboxItem(
+        @Path("sessionID") sessionID: String,
+        @Path("inboxID") inboxID: String,
+        @Body body: InboxUpdateRequest,
+    ): Unit
+
+    /** `session.inbox.cancel`: drops a pending item. `204`, and `session.inbox.cancelled` follows. */
+    @DELETE("api/session/{sessionID}/inbox/{inboxID}")
+    suspend fun cancelInboxItem(
+        @Path("sessionID") sessionID: String,
+        @Path("inboxID") inboxID: String,
+    ): Unit
+
+    /** `permission.request.list`: the pending requests of a location, across all its sessions. */
+    @GET("api/permission/request")
+    suspend fun listPermissionRequests(
+        @Query(LocationParam.QUERY_KEY) directory: String? = null,
+    ): LocationScoped<List<PermissionRequest>>
+
+    /** `session.permission.list`: the pending requests of one session. */
+    @GET("api/session/{sessionID}/permission")
+    suspend fun listSessionPermissions(
+        @Path("sessionID") sessionID: String,
+    ): DataResponse<List<PermissionRequest>>
+
+    /** `session.permission.get`: one request, for the case the list is missing an id. */
+    @GET("api/session/{sessionID}/permission/{requestID}")
+    suspend fun getSessionPermission(
+        @Path("sessionID") sessionID: String,
+        @Path("requestID") requestID: String,
+    ): DataResponse<PermissionRequest>
+
+    /**
+     * `session.permission.reply`.
+     *
+     * [PermissionReplyPayload.decision] is once, always or reject; a reject rejects every pending
+     * request in the session. [PermissionReplyPayload.message] is optional feedback to the agent.
+     */
+    @POST("api/session/{sessionID}/permission/{requestID}/reply")
+    suspend fun replyToPermission(
+        @Path("sessionID") sessionID: String,
+        @Path("requestID") requestID: String,
+        @Body body: PermissionReplyPayload,
+    ): Unit
+
+    /** `form.list`: the pending forms of a location, across all its sessions. */
+    @GET("api/form")
+    suspend fun listForms(
+        @Query(LocationParam.QUERY_KEY) directory: String? = null,
+    ): LocationScoped<List<FormInfo>>
+
+    /** `session.form.list`: the pending forms of one session. */
+    @GET("api/session/{sessionID}/form")
+    suspend fun listSessionForms(
+        @Path("sessionID") sessionID: String,
+    ): DataResponse<List<FormInfo>>
+
+    /** `session.form.get`: one form with its state, for the case the list is missing an id. */
+    @GET("api/session/{sessionID}/form/{formID}")
+    suspend fun getSessionForm(
+        @Path("sessionID") sessionID: String,
+        @Path("formID") formID: String,
+    ): DataResponse<FormDetail>
+
+    /** `session.form.reply`: answers a form. `204`, and `form.replied` follows. */
+    @POST("api/session/{sessionID}/form/{formID}/reply")
+    suspend fun replyToForm(
+        @Path("sessionID") sessionID: String,
+        @Path("formID") formID: String,
+        @Body body: FormReplyPayload,
+    ): Unit
+
+    /** `session.form.cancel`: dismissing a question cancels it. `204`, `form.cancelled` follows. */
+    @DELETE("api/session/{sessionID}/form/{formID}")
+    suspend fun cancelForm(
+        @Path("sessionID") sessionID: String,
+        @Path("formID") formID: String,
+    ): Unit
+
+    /**
+     * `fs.list`: the entries of a directory on the server.
+     *
+     * [path] is absolute or relative to the location, and defaults to the location itself. The
+     * entries carry the server's own path spelling, so a browser has to join them the way the
+     * server does rather than normalize them itself.
+     */
+    @GET("api/fs/list")
+    suspend fun listDirectory(
+        @Query(LocationParam.QUERY_KEY) directory: String? = null,
+        @Query("path") path: String? = null,
+    ): LocationScoped<List<FileSystemEntry>>
 }

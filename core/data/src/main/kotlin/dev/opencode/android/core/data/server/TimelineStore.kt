@@ -1,5 +1,6 @@
 package dev.opencode.android.core.data.server
 
+import dev.opencode.android.core.data.timeline.PendingInboxItem
 import dev.opencode.android.core.data.timeline.TimelineConvergence
 import dev.opencode.android.core.data.timeline.TimelineDivergence
 import dev.opencode.android.core.data.timeline.TimelineReducer
@@ -118,6 +119,33 @@ class TimelineStore(
         cursor = null
         loadedFromServer = false
         _paging.value = TimelinePaging()
+    }
+
+    /**
+     * Shows a pending inbox item before the server has confirmed it.
+     *
+     * This is the plan's one permitted piece of optimism (plan §4.2), and it is safe for the same
+     * reason it is useful: the item carries the `msg_…` id the prompt was sent with, so the
+     * `session.inbox.enqueued` event replaces this entry instead of adding a second one. The entry
+     * is *not* written to the cache, because it is not the server's projection.
+     */
+    fun showPending(item: PendingInboxItem) {
+        val current = _state.value
+        if (current.pending.any { it.id == item.id }) return
+        _state.value = current.copy(pending = current.pending + item)
+    }
+
+    /**
+     * Removes a pending item this client invented.
+     *
+     * Used when the call that created it failed: the server emitted nothing, so nothing would
+     * otherwise ever remove it, and a prompt that will never be sent must not sit in the
+     * transcript looking like work in progress.
+     */
+    fun dropPending(id: String) {
+        val current = _state.value
+        if (current.pending.none { it.id == id }) return
+        _state.value = current.copy(pending = current.pending.filterNot { it.id == id })
     }
 
     /**

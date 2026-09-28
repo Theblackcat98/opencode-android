@@ -8,6 +8,8 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import dev.opencode.android.core.data.repository.DefaultServerRepository
 import dev.opencode.android.core.data.repository.ServerRepository
+import dev.opencode.android.core.data.preferences.DataStoreModelPreferences
+import dev.opencode.android.core.data.preferences.ModelPreferences
 import dev.opencode.android.core.data.security.AndroidKeystoreCredentialStore
 import dev.opencode.android.core.data.security.SecureCredentialStore
 import dev.opencode.android.core.data.server.DebugFlags
@@ -55,4 +57,18 @@ object DataModule {
     @Provides
     @Singleton
     fun provideTimelineSelfCheck(): TimelineSelfCheck = LogTimelineSelfCheck(DebugFlags.selfCheckLogs)
+
+    /**
+     * The model picker's recents and favorites.
+     *
+     * The one piece of model state the client owns (features doc §8), stored per server in
+     * DataStore rather than in Room: it is a handful of `provider/model#variant` strings, it is not
+     * queried, and a preference store avoids a schema change in a database that is otherwise a
+     * cache of the server's own projection.
+     */
+    @Provides
+    @Singleton
+    fun provideModelPreferences(
+        @ApplicationContext context: Context,
+    ): ModelPreferences = DataStoreModelPreferences(context)
 }

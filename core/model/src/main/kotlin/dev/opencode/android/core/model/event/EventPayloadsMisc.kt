@@ -1,6 +1,9 @@
 package dev.opencode.android.core.model.event
 
+import dev.opencode.android.core.model.FormInfo
 import dev.opencode.android.core.model.PermissionReply
+import dev.opencode.android.core.model.PermissionRequest
+import dev.opencode.android.core.model.PermissionSource
 import dev.opencode.android.core.model.Project
 import dev.opencode.android.core.model.ShellInfo
 import dev.opencode.android.core.model.ShellStatus
@@ -33,7 +36,7 @@ value class FilesystemChange(val value: String) {
 }
 
 @Serializable
-data class FormCreated(val form: EventFormInfo) : EventPayload
+data class FormCreated(val form: FormInfo) : EventPayload
 
 @Serializable
 data class FormReplied(
@@ -49,20 +52,6 @@ data class FormCancelled(
     val sessionID: String,
 ) : EventPayload
 
-/**
- * A form awaiting an answer (schema `Form.Info`). The field list stays raw JSON: later
- * phases model the field union for the forms engine. Nothing is lost; it re-encodes
- * byte-identically (modulo number formatting).
- */
-@Serializable
-data class EventFormInfo(
-    val id: String,
-    val sessionID: String,
-    val title: String,
-    val metadata: JsonObject? = null,
-    val fields: JsonElement,
-)
-
 @Serializable
 data class InstallationUpdated(val version: String) : EventPayload
 
@@ -75,6 +64,12 @@ data class McpStatusChanged(val server: String) : EventPayload
 @Serializable
 data class McpResourcesChanged(val server: String) : EventPayload
 
+/**
+ * `permission.asked`: a request the agent is blocked on.
+ *
+ * It is the [PermissionRequest] projection the same endpoint returns, so the request center upserts
+ * the event and a REST resync into one map of the same type.
+ */
 @Serializable
 data class PermissionAsked(
     val id: String,
@@ -85,18 +80,18 @@ data class PermissionAsked(
     val metadata: JsonObject? = null,
     val source: PermissionSource? = null,
     val message: String? = null,
-) : EventPayload
-
-/** Where a permission request came from. */
-@Serializable
-data class PermissionSource(
-    val type: String,
-    val messageID: String,
-    val id: String,
-) {
-    companion object {
-        const val TOOL = "tool"
-    }
+) : EventPayload {
+    /** The same request as the REST form, which is what the center stores. */
+    fun toRequest(): PermissionRequest = PermissionRequest(
+        id = id,
+        sessionID = sessionID,
+        action = action,
+        resources = resources,
+        save = save,
+        metadata = metadata,
+        source = source,
+        message = message,
+    )
 }
 
 @Serializable

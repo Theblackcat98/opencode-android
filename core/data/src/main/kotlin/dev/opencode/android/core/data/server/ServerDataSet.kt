@@ -52,6 +52,20 @@ class ServerDataSet(
 
     val sessions = SessionStore(serverId, api, scope, cache)
 
+    /** Everything the agent is blocked on, across every session (permissions and forms). */
+    val requests: RequestCenter = RequestCenter(serverId, api, scope)
+
+    /**
+     * The write side of a session.
+     *
+     * Built with a lookup into this set's timelines so a prompt can show its own pending item before
+     * the server confirms it; that is the only optimistic state the plan allows (plan §4.2).
+     */
+    val commands: SessionCommands = SessionCommands(api, timeline = { timelines[it] })
+
+    /** `fs.list`: the directory browser behind "pick a location" for a new session. */
+    val browser: DirectoryBrowser = DirectoryBrowser(api, scope)
+
     private val locations = ConcurrentHashMap<String, SyncedResource<LocationInfo>>()
     private val agents = ConcurrentHashMap<String, SyncedResource<List<AgentInfo>>>()
     private val models = ConcurrentHashMap<String, SyncedResource<List<ModelInfo>>>()
@@ -127,7 +141,9 @@ class ServerDataSet(
      * Re-reads everything after a `server.connected`.
      *
      * This is the only place that knows a reconnect happened, and it deliberately does not patch
-     * anything: the client has no record of what it missed, so the answer is the server's.
+     * anything: the client has no record of what it missed, so the answer is the server's. The
+     * pending requests and forms are re-read per location, because both lists are location-scoped
+     * and one location going away must not empty the others.
      */
     fun resync() {
         projects.invalidate()
@@ -137,6 +153,12 @@ class ServerDataSet(
         models.values.forEach { it.invalidate() }
         defaultModels.values.forEach { it.invalidate() }
         timelines.values.forEach { it.resync() }
+        val directories = (locations.keys + requests.knownDirectories).toSet()
+        if (directories.isEmpty()) {
+            scope.launch { requests.resync(null) }
+        } else {
+            directories.forEach { directory -> scope.launch { requests.resync(directory) } }
+        }
     }
 
     /** Applies one event, in the order the stores need. */
@@ -157,11 +179,13 @@ class ServerDataSet(
                 agents.remove(directory)?.clear()
                 models.remove(directory)?.clear()
                 defaultModels.remove(directory)?.clear()
+                requests.dropLocation(directory)
                 scope.launch { runCatching { cache.dropLocation(serverId, directory) } }
             }
 
             else -> Unit
         }
+        requests.apply(event)
         sessions.apply(event)
         val scoped = payload as? EventPayload.SessionScoped ?: return
         timelines[scoped.sessionID]?.apply(event)
@@ -191,6 +215,7 @@ class ServerDataSet(
     /** Forgets everything, for example when the server is removed. */
     fun clear() {
         sessions.clear()
+        requests.clear()
         timelines.values.forEach { it.clear() }
         timelines.clear()
         _openTimelines.value = emptyList()
