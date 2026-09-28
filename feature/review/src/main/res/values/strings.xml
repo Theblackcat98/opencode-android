@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Review: scopes -->
+    <string name="review_title">Review</string>
+    <string name="review_scope_last_turn">Last turn</string>
+    <string name="review_scope_uncommitted">Uncommitted</string>
+    <string name="review_scope_committed">Committed</string>
+    <string name="review_scope_all">All</string>
+    <string name="review_scope_label">Scope: %1$s</string>
+    <string name="review_empty">Nothing changed in this scope.</string>
+    <string name="review_empty_uncommitted">No uncommitted changes in this project.</string>
+    <string name="review_empty_committed">No commits beyond the review base.</string>
+    <string name="review_empty_all">No changes against the review base.</string>
+    <string name="review_no_session">Open a session to review its last turn.</string>
+    <string name="review_no_location">This project has no directory to diff against.</string>
+
+    <!-- Review: navigation -->
+    <string name="review_next_file">Next file</string>
+    <string name="review_previous_file">Previous file</string>
+    <string name="review_next_hunk">Next hunk</string>
+    <string name="review_previous_hunk">Previous hunk</string>
+    <string name="review_file_position">%1$d of %2$d</string>
+    <string name="review_hunk_position">hunk %1$d of %2$d</string>
+    <string name="review_file_tree">Files</string>
+    <string name="review_mark_reviewed">Mark reviewed</string>
+    <string name="review_mark_unreviewed">Mark not reviewed</string>
+    <string name="review_progress">%1$d of %2$d reviewed</string>
+    <string name="review_complete">Review complete</string>
+    <string name="review_toggle_wrap">Wrap lines</string>
+    <string name="review_toggle_split">Split view</string>
+    <string name="review_split_unavailable">Split view needs a wider screen.</string>
+
+    <!-- Review: file row -->
+    <string name="review_file_counts">+%1$d −%2$d</string>
+    <string name="review_file_status_added">Added</string>
+    <string name="review_file_status_deleted">Deleted</string>
+    <string name="review_file_status_modified">Modified</string>
+    <string name="review_file_binary">Binary file, not shown</string>
+    <string name="review_file_unparsed">The server sent something this client could not parse. The text is shown as it arrived.</string>
+
+    <!-- Review: VCS header -->
+    <string name="review_branch">Branch: %1$s</string>
+    <string name="review_branch_unknown">No branch</string>
+    <string name="review_not_a_repository">This project is not under version control.</string>
+    <string name="review_changed_files">%1$d changed</string>
+    <string name="review_base">Base: %1$s</string>
+    <string name="review_base_unknown">Base not set</string>
+    <string name="review_choose_base">Review base</string>
+    <string name="review_choose_base_body">The diff is taken against this branch.</string>
+    <string name="review_base_default">Server default</string>
+    <string name="review_branch_source_reflog">inferred from the reflog</string>
+    <string name="review_branch_source_default">the repository default</string>
+
+    <!-- Review comments -->
+    <string name="review_comment">Comment</string>
+    <string name="review_comment_hint">What should change here?</string>
+    <string name="review_comment_add">Comment on lines %1$s</string>
+    <string name="review_comment_submit">Send with the next prompt</string>
+    <string name="review_comment_cancel">Cancel</string>
+    <string name="review_comment_remove">Remove comment</string>
+    <string name="review_comment_count">%1$d comments go with the next prompt</string>
+    <string name="review_comment_on">%1$s:%2$s</string>
+    <string name="review_comment_empty">An empty comment is not sent.</string>
+
+    <!-- Revert, redo and fork -->
+    <string name="revert_title">Undo</string>
+    <string name="revert_stage">Undo to here</string>
+    <string name="revert_stage_body">The files this turn changed are restored, and the prompt goes back into the composer. The session is stopped first and any queued prompt is cancelled.</string>
+    <string name="revert_confirm">Undo this turn</string>
+    <string name="revert_staged">Undo staged</string>
+    <string name="revert_staged_files">%1$d files restored</string>
+    <string name="revert_staged_none">The transcript is rolled back; the working copy was not snapshotted, so no file changed.</string>
+    <string name="revert_redo">Redo</string>
+    <string name="revert_redo_body">Take the rollback back. The files are put the way they were and the composer keeps what you have typed.</string>
+    <string name="revert_in_progress">Working…</string>
+    <string name="revert_send_commits_first">The revert is committed before this prompt is sent.</string>
+    <string name="revert_blocked">A revert is in progress.</string>
+    <string name="revert_failed_interrupt">The session would not stop, so nothing was rolled back.</string>
+    <string name="revert_failed_cancel">A queued prompt could not be cancelled, so nothing was rolled back.</string>
+    <string name="revert_failed_stage">The server refused the rollback.</string>
+    <string name="revert_restored_prompt">The prompt is back in the composer.</string>
+
+    <!-- Fork -->
+    <string name="fork_title">Fork</string>
+    <string name="fork_from_here">Fork from here</string>
+    <string name="fork_from_here_body">A copy of this session with everything before this message removed.</string>
+    <string name="fork_origin">Forked from %1$s</string>
+    <string name="fork_boundary_before">before this message</string>
+    <string name="fork_boundary_through">through this message</string>
+
+    <!-- File browser and viewer -->
+    <string name="files_title">Files</string>
+    <string name="files_search">Search files</string>
+    <string name="files_open">Files</string>
+    <string name="files_up">Up one directory</string>
+    <string name="files_empty">This directory is empty.</string>
+    <string name="files_unreadable">This directory could not be read.</string>
+    <string name="files_attach">Attach file</string>
+    <string name="files_attach_lines">Attach lines</string>
+    <string name="files_attach_range">Attach lines %1$s</string>
+    <string name="files_share">Share</string>
+    <string name="files_download">Download</string>
+    <string name="files_binary">This file cannot be shown. Share or download it instead.</string>
+    <string name="files_too_large">%1$s is larger than the viewer will open.</string>
+    <string name="files_line_range">Lines %1$s</string>
+    <string name="files_select_start">Select the first line</string>
+    <string name="files_select_end">Select the last line</string>
+    <string name="files_edit">Edit on the server</string>
+    <string name="files_edit_body">This writes to the machine the agent is working on. It is an experimental route and it is off unless you turn it on.</string>
+    <string name="files_edit_saved">Saved. %1$s</string>
+    <string name="files_edit_off">Remote editing is off.</string>
+    <string name="files_changed">%1$s changed on the server</string>
+    <string name="files_bytes">%1$s</string>
+
+    <!-- History tools -->
+    <string name="history_title">History</string>
+    <string name="history_jump">Jump to a message</string>
+    <string name="history_previous_prompt">Previous prompt</string>
+    <string name="history_next_prompt">Next prompt</string>
+    <string name="history_search">Search this session</string>
+    <string name="history_search_empty">No message matches.</string>
+    <string name="history_export">Export</string>
+    <string name="history_export_json">Export as JSON</string>
+    <string name="history_export_markdown">Export as Markdown</string>
+    <string name="history_export_sanitize">Redact sensitive data</string>
+    <string name="history_export_body">Exporting a transcript is an experimental route; the app hides it if this server does not have it.</string>
+    <string name="history_export_done">Exported %1$d messages.</string>
+    <string name="history_import">Import</string>
+    <string name="history_import_body">A session the server already has is refused, and parents must be imported before their children.</string>
+    <string name="history_import_done">Imported as %1$s.</string>
+    <string name="context_title">Context</string>
+    <string name="context_body">%1$d messages after the last compaction, %2$s of text.</string>
+    <string name="context_empty">Nothing after the last compaction.</string>
+    <string name="context_entry">%1$s · %2$s</string>
+    <string name="context_files">%1$d files</string>
+
+    <!-- Experimental switches -->
+    <string name="experimental_title">Experimental</string>
+    <string name="experimental_fs_write">Edit files on the server</string>
+    <string name="experimental_fs_write_body">Writes through experimental.fs.write. Off by default because a remote write can break a project.</string>
+    <string name="experimental_export">Export and import sessions</string>
+    <string name="experimental_export_body">Uses the experimental export and import routes. Hidden when this server does not have them.</string>
+    <string name="experimental_unavailable">This server does not have that route.</string>
+    <string name="experimental_probing">Checking this server…</string>
+
+    <string name="action_retry">Try again</string>
+    <string name="action_dismiss">Dismiss</string>
+    <string name="action_share">Share</string>
+</resources>

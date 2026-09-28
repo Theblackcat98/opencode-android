@@ -26,6 +26,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import dev.opencode.android.core.designsystem.code.CodeLanguage
+import dev.opencode.android.core.designsystem.code.CodeHighlighter
+import dev.opencode.android.core.designsystem.diff.DiffColors
+import dev.opencode.android.core.designsystem.diff.highlighted
 import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
 
 /**
@@ -177,7 +181,17 @@ private fun ColumnAlignment.toTextAlign(): TextAlign = when (this) {
     ColumnAlignment.RIGHT -> TextAlign.End
 }
 
-/** A code block: monospace, its own surface, and no wrapping, so a long line scrolls sideways. */
+/**
+ * A code block: monospace, its own surface, and no wrapping, so a long line scrolls sideways.
+ *
+ * **Highlighted since Phase 6, and by this project's own lexer.** The `multiplatform-markdown-renderer`
+ * highlighting module that plan §3 named is not adopted, and the reason is recorded on
+ * [dev.opencode.android.core.designsystem.code.CodeHighlighter]: the diff viewer and the file viewer
+ * need *runs of a line*, not a composed document, and a third highlighter for the same file would
+ * be three answers to "what colour is this line". The block resolves its language from the fence tag
+ * and highlights the body with the same function the diff viewer uses, so a snippet in an answer and
+ * the same lines in a diff are drawn the same way.
+ */
 @Composable
 fun CodeBlock(
     code: String,
@@ -185,6 +199,9 @@ fun CodeBlock(
     modifier: Modifier = Modifier,
 ) {
     val codeTypography = OpenCodeThemeExtras.code
+    val resolved = CodeLanguage.ofTag(language)
+    val colors = DiffColors.of()
+    val scroll = rememberScrollState()
     Surface(
         modifier = modifier,
         color = MaterialTheme.colorScheme.surfaceVariant,
@@ -198,9 +215,9 @@ fun CodeBlock(
                 )
             }
             Text(
-                text = code,
+                text = highlighted(code.trimEnd('\n'), resolved, colors),
                 style = codeTypography.body,
-                modifier = Modifier.horizontalScroll(rememberScrollState()),
+                modifier = Modifier.horizontalScroll(scroll),
             )
         }
     }
