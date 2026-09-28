@@ -61,7 +61,7 @@ class DrivingScreenshotTest {
     fun composer() = capture("composer") {
         ComposerBar(
             state = DrivingFixtures.composerState(),
-            onTextChange = {},
+            onTextChange = { _, _ -> },
             onSend = {},
             onSendQueued = {},
             onDeliveryChange = {},
@@ -217,7 +217,7 @@ class DrivingScreenshotTest {
     fun drivingDarkTheme() = capture("driving-dark", dark = true) {
         ComposerBar(
             state = DrivingFixtures.composerState(),
-            onTextChange = {},
+            onTextChange = { _, _ -> },
             onSend = {},
             onSendQueued = {},
             onDeliveryChange = {},
@@ -237,7 +237,7 @@ class DrivingScreenshotTest {
     fun drivingLargeFontScale() = capture("driving-large-font", fontScale = 1.5f) {
         ComposerBar(
             state = DrivingFixtures.composerState(),
-            onTextChange = {},
+            onTextChange = { _, _ -> },
             onSend = {},
             onSendQueued = {},
             onDeliveryChange = {},
