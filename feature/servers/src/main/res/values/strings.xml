@@ -11,6 +11,7 @@
     <string name="servers_unencrypted_badge">Unencrypted</string>
     <string name="servers_unencrypted_description">Traffic to this server is not encrypted</string>
     <string name="servers_status">Status</string>
+    <string name="servers_sessions">Sessions</string>
     <string name="servers_edit">Edit</string>
     <string name="servers_delete">Delete</string>
     <string name="servers_options">Server options</string>

@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- Home -->
+    <string name="home_title">Sessions</string>
+    <string name="home_projects">Projects</string>
+    <string name="home_running">Running now</string>
+    <string name="home_recent">Recent</string>
+    <string name="home_all_sessions">All sessions</string>
+    <string name="home_subagents">%1$d subagents</string>
+    <string name="home_subagent">1 subagent</string>
+    <string name="home_empty_title">No sessions yet</string>
+    <string name="home_empty_subtitle">Start one from the computer, or with opencode, and it appears here.</string>
+    <string name="home_no_server">Choose a server to see its sessions.</string>
+    <string name="home_project_sessions">Sessions in %1$s</string>
+    <string name="home_vcs">%1$s repository</string>
+    <string name="home_canonical_directory">Canonical directory %1$s</string>
+
+    <!-- Session list -->
+    <string name="sessions_title">Sessions</string>
+    <string name="sessions_search">Search sessions</string>
+    <string name="sessions_search_description">Search session titles</string>
+    <string name="sessions_filter_roots">Root sessions only</string>
+    <string name="sessions_filter_roots_description">Hide subagents and background commands</string>
+    <string name="sessions_filter_project">Filter by project</string>
+    <string name="sessions_filter_directory">Filter by directory</string>
+    <string name="sessions_filter_all">All projects</string>
+    <string name="sessions_filter_clear">Clear filters</string>
+    <string name="sessions_empty_title">Nothing here</string>
+    <string name="sessions_empty_subtitle">No session matches this filter.</string>
+    <string name="sessions_load_more">Load more</string>
+    <string name="sessions_loading_more">Loading more sessions</string>
+    <string name="sessions_end">That is every session</string>
+    <string name="sessions_retry_badge">Retrying</string>
+    <string name="sessions_retry_in">Retrying in %1$s</string>
+    <string name="sessions_retry_attempt">Attempt %1$d</string>
+    <string name="sessions_unread_description">Unread: finished after you last looked at it</string>
+    <string name="sessions_running_description">Running</string>
+    <string name="sessions_summary">%1$s. %2$s.</string>
+    <string name="sessions_cost_and_tokens">%1$s, %2$s tokens</string>
+    <string name="sessions_outcome_succeeded">Succeeded</string>
+    <string name="sessions_outcome_failed">Failed</string>
+    <string name="sessions_outcome_interrupted">Interrupted</string>
+    <string name="sessions_agent_chip">Agent %1$s</string>
+    <string name="sessions_model_chip">Model %1$s</string>
+    <string name="sessions_variant_chip">Variant %1$s</string>
+
+    <!-- Session header -->
+    <string name="session_context_gauge">Context %1$d%% of %2$s tokens</string>
+    <string name="session_cost">Cost %1$s</string>
+    <string name="session_toggle_follow">Follow the latest message</string>
+    <string name="session_jump_to_latest">Jump to the latest message</string>
+    <string name="session_loading_older">Loading earlier messages</string>
+    <string name="session_start_of_history">Start of the conversation</string>
+    <string name="session_load_older">Load earlier messages</string>
+    <string name="session_title_untitled">Untitled session</string>
+    <string name="session_offline_notice">Offline: showing the last messages this device saved</string>
+    <string name="session_following">Following</string>
+    <string name="session_not_following">Not following</string>
+
+    <!-- Timeline: messages -->
+    <string name="timeline_user">You</string>
+    <string name="timeline_assistant">Assistant</string>
+    <string name="timeline_system">System</string>
+    <string name="timeline_synthetic">Injected</string>
+    <string name="timeline_skill">Skill %1$s</string>
+    <string name="timeline_shell_command">Shell command</string>
+    <string name="timeline_pending_input">Waiting to be sent</string>
+    <string name="timeline_attachment_count">%1$d attachments</string>
+    <string name="timeline_attachment_one">1 attachment</string>
+    <string name="timeline_image_attachment">Image attachment %1$s</string>
+    <string name="timeline_file_attachment">File %1$s</string>
+    <string name="timeline_agents_mentioned">Agents: %1$s</string>
+    <string name="timeline_skills_attached">Skills: %1$s</string>
+
+    <!-- Timeline: reasoning -->
+    <string name="timeline_reasoning">Reasoning</string>
+    <string name="timeline_reasoning_duration">Thought for %1$s</string>
+    <string name="timeline_expand">Expand</string>
+    <string name="timeline_collapse">Collapse</string>
+
+    <!-- Timeline: tools -->
+    <string name="tool_generic">Tool %1$s</string>
+    <string name="tool_read">Read file</string>
+    <string name="tool_glob">Find files</string>
+    <string name="tool_grep">Search text</string>
+    <string name="tool_edit">Edit file</string>
+    <string name="tool_write">Write file</string>
+    <string name="tool_patch">Apply patch</string>
+    <string name="tool_shell">Run command</string>
+    <string name="tool_webfetch">Fetch page</string>
+    <string name="tool_websearch">Search the web</string>
+    <string name="tool_skill">Load skill</string>
+    <string name="tool_subagent">Subagent</string>
+    <string name="tool_question">Question</string>
+    <string name="tool_execute">Execute</string>
+    <string name="tool_unknown">Unknown tool %1$s</string>
+    <string name="tool_running">Running</string>
+    <string name="tool_streaming">Preparing</string>
+    <string name="tool_completed">Done</string>
+    <string name="tool_failed">Failed</string>
+    <string name="tool_duration">%1$s</string>
+    <string name="tool_path">%1$s</string>
+    <string name="tool_pattern">Pattern %1$s</string>
+    <string name="tool_command">$ %1$s</string>
+    <string name="tool_url">%1$s</string>
+    <string name="tool_query">%1$s</string>
+    <string name="tool_files_changed">%1$d files</string>
+    <string name="tool_output">Output</string>
+    <string name="tool_input">Input</string>
+    <string name="tool_answers">Answer: %1$s</string>
+    <string name="tool_child_session">Subagent session %1$s</string>
+    <string name="tool_lines">%1$d lines</string>
+    <string name="tool_status_description">%1$s, %2$s</string>
+
+    <!-- Timeline: dividers and markers -->
+    <string name="divider_turn_succeeded">Turn finished</string>
+    <string name="divider_turn_failed">Turn failed</string>
+    <string name="divider_turn_interrupted">Turn interrupted</string>
+    <string name="marker_agent_switched">Agent switched to %1$s</string>
+    <string name="marker_agent_switched_from">Agent switched from %1$s to %2$s</string>
+    <string name="marker_model_switched">Model switched to %1$s</string>
+    <string name="marker_model_switched_from">Model switched from %1$s to %2$s</string>
+    <string name="marker_location_switched">Moved to %1$s</string>
+    <string name="marker_location_switched_from">Moved from %1$s to %2$s</string>
+    <string name="compaction_running">Compacting the conversation</string>
+    <string name="compaction_completed">Conversation compacted</string>
+    <string name="compaction_failed">Compaction failed</string>
+    <string name="compaction_reason_auto">Automatic</string>
+    <string name="compaction_reason_manual">Manual</string>
+    <string name="compaction_summary">Summary</string>
+    <string name="step_error">The model returned an error</string>
+    <string name="step_retry_scheduled">Retrying in %1$s (attempt %2$d)</string>
+    <string name="step_error_type">%1$s: %2$s</string>
+    <string name="unknown_message_type">Unrecognised message type %1$s</string>
+    <string name="unknown_tool_type">Unrecognised tool %1$s</string>
+    <string name="unknown_event_logged">It was logged for the developer.</string>
+
+</resources>

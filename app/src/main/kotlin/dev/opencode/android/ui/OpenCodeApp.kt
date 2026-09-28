@@ -7,6 +7,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.toRoute
 import dev.opencode.android.feature.servers.ui.AddServerScreen
 import dev.opencode.android.feature.servers.ui.EditServerScreen
 import dev.opencode.android.feature.servers.ui.EventInspectorScreen
@@ -18,6 +19,11 @@ import dev.opencode.android.navigation.EventInspectorRoute
 import dev.opencode.android.navigation.HomeRoute
 import dev.opencode.android.navigation.ServerStatusRoute
 import dev.opencode.android.navigation.ServersRoute
+import dev.opencode.android.navigation.SessionListRoute
+import dev.opencode.android.navigation.SessionRoute
+import dev.opencode.android.feature.sessions.ui.HomeRoute as HomeRouteScreen
+import dev.opencode.android.feature.sessions.ui.SessionListRoute as SessionListRouteScreen
+import dev.opencode.android.feature.sessions.ui.SessionRoute as SessionRouteScreen
 
 /**
  * The navigation graph.
@@ -45,6 +51,7 @@ fun OpenCodeApp(
     ) {
         composable<ServersRoute> {
             ServersScreen(
+                onHomeClick = { serverId -> navController.navigate(HomeRoute(serverId)) },
                 onAddServerClick = { navController.navigate(AddServerRoute()) },
                 onServerClick = { serverId -> navController.navigate(ServerStatusRoute(serverId)) },
                 onEditServerClick = { serverId -> navController.navigate(EditServerRoute(serverId)) },
@@ -87,6 +94,7 @@ fun OpenCodeApp(
         composable<HomeRoute> {
             // Phase 2 replaces this with the session list for the given server.
             ServersScreen(
+                onHomeClick = { serverId -> navController.navigate(HomeRoute(serverId)) },
                 onAddServerClick = { navController.navigate(AddServerRoute()) },
                 onServerClick = { serverId -> navController.navigate(ServerStatusRoute(serverId)) },
                 onEditServerClick = { serverId -> navController.navigate(EditServerRoute(serverId)) },

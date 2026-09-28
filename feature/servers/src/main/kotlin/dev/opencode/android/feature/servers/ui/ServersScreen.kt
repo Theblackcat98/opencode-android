@@ -63,6 +63,7 @@ import dev.opencode.android.feature.servers.R
 fun ServersScreen(
     onAddServerClick: () -> Unit,
     onServerClick: (String) -> Unit,
+    onHomeClick: (String) -> Unit = onServerClick,
     onEditServerClick: (String) -> Unit,
     onPairAgainClick: (String) -> Unit,
     onInspectorClick: () -> Unit,
@@ -122,6 +123,7 @@ fun ServersScreen(
                     ServerListItem(
                         server = server,
                         onClick = { onServerClick(server.id) },
+                        onHome = { onHomeClick(server.id) },
                         onEdit = { onEditServerClick(server.id) },
                         onSetDefault = { viewModel.setDefaultServer(server.id) },
                         onPairAgain = { onPairAgainClick(server.id) },
@@ -173,6 +175,7 @@ object ServersTags {
 private fun ServerListItem(
     server: ServerProfile,
     onClick: () -> Unit,
+    onHome: () -> Unit,
     onEdit: () -> Unit,
     onSetDefault: () -> Unit,
     onPairAgain: () -> Unit,

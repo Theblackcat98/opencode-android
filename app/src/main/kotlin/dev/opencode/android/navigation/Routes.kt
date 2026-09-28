@@ -32,10 +32,27 @@ data class EditServerRoute(val serverId: String)
 data class EventInspectorRoute(val serverId: String? = null)
 
 /**
- * The per-server home.
+ * The per-server home: projects, what is running, and the recent sessions.
  *
- * Phase 2 gives this a session list; in Phase 1 it is registered so a link into it already
- * resolves, and it shows the registry.
+ * [serverId] is optional so a notification or a shared link can land here and let the connection
+ * manager pick the server it is already following.
  */
 @Serializable
 data class HomeRoute(val serverId: String? = null)
+
+/**
+ * The session list, with [projectId] narrowing it to one project.
+ *
+ * The list screen is reachable from the home's "All sessions" and from a project, and in both cases
+ * it is the same list with a different filter, so the filter is a route argument rather than a
+ * screen.
+ */
+@Serializable
+data class SessionListRoute(
+    val serverId: String? = null,
+    val projectId: String? = null,
+)
+
+/** One session's timeline. */
+@Serializable
+data class SessionRoute(val serverId: String? = null, val sessionId: String)
