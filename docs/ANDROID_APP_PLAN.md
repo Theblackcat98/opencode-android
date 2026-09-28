@@ -530,9 +530,9 @@ matrix in [§5.3](#53-testing-strategy).
 
 **Known limitations.**
 
-- The model picker's favorites and recents are per server and read from DataStore; the new-session sheet is
-  currently handed empty lists, so a model pinned from a session does not show as pinned in the picker the new
-  session opens. The store and the flows exist; the sheet is not wired to them yet.
+- The model picker's favorites and recents are per server and live in DataStore, which is the one piece of model
+  state the client owns. They survive a reinstall only if the preference file does, and they are not shared between
+  devices: the server has no idea what a given user reaches for.
 - A permission request whose `save` is empty cannot be answered "always": the button is disabled, because there
   would be nothing to store and the server would reject it. `session.permission.create` is a Phase 10 operation, so
   no request in this phase can be raised any other way.
