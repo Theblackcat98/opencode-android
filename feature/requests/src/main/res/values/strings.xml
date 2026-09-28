@@ -74,4 +74,124 @@
     <string name="action_error_unknown">Something went wrong: %1$s</string>
     <string name="action_dismiss">Dismiss</string>
 
+    <!-- Notification channels (Phase 4) -->
+    <string name="channel_permission_name">Permission requests</string>
+    <string name="channel_permission_description">The agent has stopped and is waiting for you to allow something.</string>
+    <string name="channel_question_name">Questions and forms</string>
+    <string name="channel_question_description">The agent is waiting for an answer, a choice or a sign-off.</string>
+    <string name="channel_turn_name">Finished turns</string>
+    <string name="channel_turn_description">A session turn ended, whatever the outcome.</string>
+    <string name="channel_subagent_name">Finished subagents</string>
+    <string name="channel_subagent_description">A subagent finished, so you can come back to its parent.</string>
+    <string name="channel_retry_name">Retries and limits</string>
+    <string name="channel_retry_description">A provider is retrying, or a usage limit was reached.</string>
+    <string name="channel_update_name">Server updates</string>
+    <string name="channel_update_description">A newer OpenCode is available for one of your servers.</string>
+    <string name="channel_connection_name">Connection</string>
+    <string name="channel_connection_description">Shown while sessions are running or something is waiting for you.</string>
+
+    <!-- Notification actions -->
+    <string name="action_allow_once">Allow once</string>
+    <string name="action_allow_always">Always allow</string>
+    <string name="action_reject">Reject</string>
+    <string name="action_answer">Reply</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_open">Open</string>
+    <string name="action_interrupt">Interrupt</string>
+
+    <!-- What a notification says -->
+    <string name="notify_permission_title">Allow %1$s?</string>
+    <string name="notify_permission_body">%1$s is waiting for you.</string>
+    <string name="notify_permission_body_resources">%1$s wants to touch %2$s.</string>
+    <string name="notify_permission_saves">Always allow would save: %1$s</string>
+    <string name="notify_form_title">%1$s is asking</string>
+    <string name="notify_form_body">%1$s is waiting for an answer.</string>
+    <string name="notify_form_reply_label">Your answer</string>
+    <string name="notify_turn_succeeded">%1$s finished</string>
+    <string name="notify_turn_failed">%1$s failed</string>
+    <string name="notify_turn_interrupted">%1$s was interrupted</string>
+    <string name="notify_turn_body">Tap to read it in %1$s.</string>
+    <string name="notify_subagent_subject">Subagent %1$s</string>
+    <string name="notify_subagent_body">Running in %1$s.</string>
+    <string name="notify_subagent_body_unknown">Running in a background session.</string>
+    <string name="notify_retry_title">Retrying %1$s</string>
+    <string name="notify_retry_body">Attempt %1$d, next at %2$s.</string>
+    <string name="notify_update_title">OpenCode %1$s is available</string>
+    <string name="notify_update_body">This server is running an older version.</string>
+    <string name="notify_summary_title">%1$s</string>
+    <string name="notify_summary_server_fallback">OpenCode</string>
+    <string name="notify_summary_body">%1$d waiting for you, %2$d in total.</string>
+    <string name="notify_summary_all_blocking">%1$d waiting for you.</string>
+    <string name="notify_failed_title">That did not go through</string>
+    <string name="notify_failed_body">%1$s: %2$s</string>
+    <string name="notify_outcome_title">The turn ended</string>
+    <string name="notify_outcome_body">Open the session to see what happened.</string>
+
+    <!-- The "Allow always" confirmation, which plan §5.2 requires -->
+    <string name="confirm_always_title">Always allow %1$s?</string>
+    <string name="confirm_always_body">The server will match these from now on without asking:\n%1$s</string>
+    <string name="confirm_always_no_patterns">The server will match this request from now on without asking.</string>
+    <string name="confirm_always_action">Yes, always allow</string>
+
+    <!-- Answering a form from the shade -->
+    <string name="notify_form_blank">Type an answer first.</string>
+    <string name="notify_form_invalid">That answer is not one this question accepts.</string>
+
+    <!-- The connection service's ongoing notification -->
+    <plurals name="connection_running_title">
+        <item quantity="one">%1$d session running</item>
+        <item quantity="other">%1$d sessions running</item>
+    </plurals>
+    <string name="connection_waiting_title">%1$d waiting for you</string>
+    <string name="connection_always_title">Always connected</string>
+    <string name="connection_idle_title">Watching for work</string>
+    <string name="connection_waiting_body">The agent is blocked until you answer.</string>
+    <string name="connection_idle_body">Connected and ready.</string>
+    <string name="connection_auto_approve_subtext">Auto-approving</string>
+
+    <!-- Launcher shortcut -->
+    <plurals name="launcher_unread_label">
+        <item quantity="one">%1$d unread</item>
+        <item quantity="other">%1$d unread</item>
+    </plurals>
+    <string name="launcher_unread_long_label">OpenCode, sessions waiting for you</string>
+
+    <!-- Notifications and background settings -->
+    <string name="settings_title">Notifications and background</string>
+    <string name="settings_section_notifications">Notifications</string>
+    <string name="settings_section_background">Background</string>
+    <string name="settings_section_auto_approve">Auto-approve</string>
+    <string name="settings_notifications_blocked">Notifications are off</string>
+    <string name="settings_notifications_blocked_body">Without them a permission request cannot reach a locked phone.</string>
+    <string name="settings_notifications_allow">Turn on</string>
+    <string name="settings_notifications_allowed">Notifications are on</string>
+    <string name="settings_notifications_manage">Manage</string>
+    <string name="settings_channel_manage">Settings</string>
+    <string name="settings_always_connected">Always connected</string>
+    <string name="settings_always_connected_body">Keep the connection open even when nothing is running. Uses more battery.</string>
+    <string name="settings_idle_grace">Stop after</string>
+    <string name="settings_idle_grace_body">The connection stays open for %1$s after the last session or request.</string>
+    <plurals name="settings_idle_grace_value">
+        <item quantity="one">%1$d minute</item>
+        <item quantity="other">%1$d minutes</item>
+    </plurals>
+    <string name="settings_quiet_hours">Quiet hours</string>
+    <string name="settings_quiet_hours_body">Quiet between %1$s. A permission still comes through, because the agent is waiting.</string>
+    <string name="settings_quiet_hours_off">Off. Finished turns and retries always notify.</string>
+    <string name="settings_battery">Background restrictions</string>
+    <string name="settings_battery_body">Some phones stop background apps unless battery optimisation is turned off for this one. The connection also cannot start while the app is closed unless you allow it here.</string>
+    <string name="settings_battery_open">Open</string>
+    <string name="settings_auto_approve_global">Auto-approve everywhere</string>
+    <string name="settings_auto_approve_global_body">Off. Every permission request waits for you.</string>
+    <string name="settings_auto_approve_session">Auto-approve in this session</string>
+    <string name="settings_auto_approve_session_body">Off. This session still asks.</string>
+    <string name="settings_auto_approve_duration">%1$d min</string>
+    <string name="settings_auto_approve_active">On for %1$d more minutes</string>
+    <string name="settings_auto_approve_explainer">Auto-approve answers permission requests with \"allow once\" and always stops on its own. Rules the server is configured to deny still apply, because a denied action never asks.</string>
+    <string name="settings_auto_approve_confirm_title">Turn on auto-approve?</string>
+    <string name="settings_auto_approve_confirm_body">For the next %1$s, permission requests are answered for you without asking. You can turn it off at any time.</string>
+    <string name="settings_auto_approve_confirm_yes">Turn it on</string>
+    <string name="settings_mute">Mute this session</string>
+    <string name="settings_mute_body">No notifications for this session, including a permission it is waiting on.</string>
+
 </resources>

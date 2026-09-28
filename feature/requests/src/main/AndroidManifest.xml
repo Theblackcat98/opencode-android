@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!--
+      The background-presence components of Phase 4 live in this module because that is where the plan
+      (§4.1) puts notifications: the channels, the builders, the sink and the two components that use
+      them are one surface, and a feature module can declare components and still depend on the core
+      modules only.
+
+      `dataSync` is the type the P0 spike selected; the reasoning, including why `connectedDevice` was
+      rejected, is in the plan's Phase 4 status.
+    -->
+    <application>
+
+        <service
+            android:name=".notifications.ConnectionService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+
+        <!--
+          Explicit rather than implicit: this receiver exists to no other app, and an implicit one
+          would be a message any installed app could send carrying "answer this permission".
+        -->
+        <receiver
+            android:name=".notifications.NotificationActionReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="dev.opencode.android.action.PERFORM_ATTENTION_ACTION" />
+            </intent-filter>
+        </receiver>
+    </application>
+
+</manifest>
