@@ -72,43 +72,20 @@ fun NewSessionSheet(
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState, modifier = modifier) {
-        Column(
-            Modifier
-                .fillMaxWidth()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp)
-                .padding(bottom = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Text(stringResource(R.string.new_session_title), style = MaterialTheme.typography.titleMedium)
-            OutlinedTextField(
-                value = state.title,
-                onValueChange = onTitleChange,
-                label = { Text(stringResource(R.string.new_session_title_hint)) },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions.Default,
-                modifier = Modifier.fillMaxWidth(),
-            )
-            LocationSection(state, onSelectProject, onSelectDirectory, onOpenBrowser)
-            AgentSection(state, onSelectAgent)
-            ModelSection(state, favorites, recents, modelSearch, onSelectModel)
-            state.error?.let {
-                Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
-            }
-            Button(
-                onClick = onCreate,
-                enabled = state.canCreate,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text(
-                    stringResource(
-                        if (state.creating) R.string.new_session_creating else R.string.new_session_create,
-                    ),
-                )
-            }
-        }
+        NewSessionContent(
+            state = state,
+            favorites = favorites,
+            recents = recents,
+            modelSearch = modelSearch,
+            onTitleChange = onTitleChange,
+            onSelectProject = onSelectProject,
+            onSelectDirectory = onSelectDirectory,
+            onOpenBrowser = onOpenBrowser,
+            onSelectAgent = onSelectAgent,
+            onSelectModel = onSelectModel,
+            onCreate = onCreate,
+        )
     }
-
     if (state.browsing) {
         DirectoryBrowser(
             state = state,
@@ -117,6 +94,65 @@ fun NewSessionSheet(
             onUse = onBrowseUse,
             onDismiss = onBrowseDismiss,
         )
+    }
+}
+
+/**
+ * The new-session form itself, without the sheet chrome.
+ *
+ * A `ModalBottomSheet` needs a sheet host to lay out, so the body is a composable of its own: the
+ * sheet wraps it and a screenshot renders it directly, which means the baseline shows the form the
+ * user actually reads rather than an empty overlay.
+ */
+@Composable
+fun NewSessionContent(
+    state: NewSessionUiState,
+    favorites: List<ModelRef>,
+    recents: List<ModelRef>,
+    modelSearch: String,
+    onTitleChange: (String) -> Unit,
+    onSelectProject: (LocationChoice) -> Unit,
+    onSelectDirectory: (String) -> Unit,
+    onOpenBrowser: () -> Unit,
+    onSelectAgent: (String) -> Unit,
+    onSelectModel: (ModelRef) -> Unit,
+    onCreate: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier
+            .fillMaxWidth()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp)
+            .padding(bottom = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text(stringResource(R.string.new_session_title), style = MaterialTheme.typography.titleMedium)
+        OutlinedTextField(
+            value = state.title,
+            onValueChange = onTitleChange,
+            label = { Text(stringResource(R.string.new_session_title_hint)) },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions.Default,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        LocationSection(state, onSelectProject, onSelectDirectory, onOpenBrowser)
+        AgentSection(state, onSelectAgent)
+        ModelSection(state, favorites, recents, modelSearch, onSelectModel)
+        state.error?.let {
+            Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+        }
+        Button(
+            onClick = onCreate,
+            enabled = state.canCreate,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text(
+                stringResource(
+                    if (state.creating) R.string.new_session_creating else R.string.new_session_create,
+                ),
+            )
+        }
     }
 }
 

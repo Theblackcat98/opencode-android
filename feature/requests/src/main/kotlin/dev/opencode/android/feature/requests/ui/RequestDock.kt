@@ -1,6 +1,8 @@
 package dev.opencode.android.feature.requests.ui
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -142,6 +144,7 @@ fun RequestDock(
  * timeline through [PermissionRequest.source], which is what lets the dock sit next to the tool card
  * that asked.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun PermissionCard(
     request: PermissionRequest,
@@ -178,7 +181,9 @@ fun PermissionCard(
                 style = MaterialTheme.typography.labelSmall,
             )
         }
-        Row(
+        // A wrapping row, not a fixed one: at a large font scale three buttons do not fit on a
+        // phone's width, and clipping "Reject" is the one button a user must always be able to reach.
+        FlowRow(
             modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
@@ -279,9 +284,11 @@ private fun InlineForm(request: PendingRequest.Form, actions: RequestActions, bu
 
     Column(modifier = modifier.fillMaxWidth().padding(vertical = 8.dp)) {
         Text(form.title, style = MaterialTheme.typography.titleSmall)
+        // A question is asked by a specific tool call, and a transcript can hold several; naming the
+        // one being answered is what tells the user which card this belongs to.
         form.questionTool?.id?.let {
             Text(
-                text = it,
+                text = stringResource(R.string.form_answers_tool, it),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -292,14 +299,8 @@ private fun InlineForm(request: PendingRequest.Form, actions: RequestActions, bu
             onAnswerChange = answers.set,
             onOpenLink = actions.onOpenLink,
             enabled = !busy,
+            showProblems = attempted,
         )
-        if (attempted && problems.isNotEmpty()) {
-            Text(
-                text = stringResource(R.string.form_reply),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.error,
-            )
-        }
         Row(
             modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -332,6 +333,7 @@ private fun ConsentRequest(
 ) {
     val answers = formAnswers(request.form)
     var confirming by rememberSaveable(request.form.id) { mutableStateOf(false) }
+    var attempted by rememberSaveable(request.form.id) { mutableStateOf(false) }
     val title = stringResource(R.string.form_websearch_title)
 
     if (confirming) {
@@ -347,16 +349,21 @@ private fun ConsentRequest(
                         onAnswerChange = answers.set,
                         onOpenLink = actions.onOpenLink,
                         enabled = !busy,
+                        showProblems = attempted,
                     )
                 }
             },
             confirmButton = {
                 Button(
                     onClick = {
+                        if (!FormEngine.canSubmit(request.form.fields, answers.value)) {
+                            attempted = true
+                            return@Button
+                        }
                         confirming = false
                         actions.onSubmitForm(request, FormEngine.toAnswer(request.form.fields, answers.value))
                     },
-                    enabled = !busy && FormEngine.canSubmit(request.form.fields, answers.value),
+                    enabled = !busy,
                 ) {
                     Text(stringResource(R.string.form_reply))
                 }
@@ -400,41 +407,66 @@ private fun ElicitationSheet(
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val form = request.form
     val answers = formAnswers(form)
-    val title = stringResource(R.string.form_mcp_title, form.mcpServer ?: form.title)
-
+    var attempted by rememberSaveable(form.id) { mutableStateOf(false) }
     ModalBottomSheet(
         onDismissRequest = { actions.onCancelForm(request) },
         sheetState = sheetState,
         modifier = modifier,
     ) {
-        Column(
-            Modifier.fillMaxWidth().padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ElicitationContent(form, answers.value, answers.set, actions, busy, attempted, onAttempt = { attempted = true })
+    }
+}
+
+/**
+ * An elicitation's body, without the sheet chrome.
+ *
+ * A `ModalBottomSheet` needs a host to lay out, so the body is a composable of its own: the sheet
+ * wraps it and a screenshot renders it directly.
+ */
+@Composable
+fun ElicitationContent(
+    form: FormInfo,
+    answers: FormAnswer,
+    onAnswerChange: (String, JsonElement?) -> Unit,
+    actions: RequestActions,
+    busy: Boolean,
+    showProblems: Boolean = false,
+    onAttempt: () -> Unit = {},
+    modifier: Modifier = Modifier,
+) {
+    val title = stringResource(R.string.form_mcp_title, form.mcpServer ?: form.title)
+    Column(
+        modifier.fillMaxWidth().padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text(title, style = MaterialTheme.typography.titleMedium)
+        form.mcpMessage?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
+        HorizontalDivider()
+        FormFields(
+            fields = form.fields,
+            answers = answers,
+            onAnswerChange = onAnswerChange,
+            onOpenLink = actions.onOpenLink,
+            enabled = !busy,
+            showProblems = showProblems,
+        )
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(title, style = MaterialTheme.typography.titleMedium)
-            form.mcpMessage?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
-            HorizontalDivider()
-            FormFields(
-                fields = form.fields,
-                answers = answers.value,
-                onAnswerChange = answers.set,
-                onOpenLink = actions.onOpenLink,
+            Button(
+                onClick = {
+                    if (!FormEngine.canSubmit(form.fields, answers)) {
+                        onAttempt()
+                        return@Button
+                    }
+                    actions.onSubmitForm(PendingRequest.Form(form), FormEngine.toAnswer(form.fields, answers))
+                },
                 enabled = !busy,
-            )
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Button(
-                    onClick = {
-                        actions.onSubmitForm(request, FormEngine.toAnswer(form.fields, answers.value))
-                    },
-                    enabled = !busy && FormEngine.canSubmit(form.fields, answers.value),
-                ) {
-                    Text(stringResource(R.string.form_reply))
-                }
-                FormCancelButton(onClick = { actions.onCancelForm(request) }, enabled = !busy)
+                Text(stringResource(R.string.form_reply))
             }
+            FormCancelButton(onClick = { actions.onCancelForm(PendingRequest.Form(form)) }, enabled = !busy)
         }
     }
 }

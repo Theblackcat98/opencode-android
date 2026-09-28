@@ -1,6 +1,8 @@
 package dev.opencode.android.feature.requests.ui
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -61,6 +63,14 @@ fun FormFields(
     onOpenLink: (String) -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    /**
+     * Whether a field's problem is shown.
+     *
+     * The engine validates from the first keystroke, because that is what a form does; the *display*
+     * of a problem waits for the first attempt to send. A required field the user has not reached
+     * yet is not an error, it is a field.
+     */
+    showProblems: Boolean = false,
 ) {
     val states = FormEngine.fieldStates(fields, answers)
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -68,6 +78,7 @@ fun FormFields(
             FormFieldRow(
                 state = state,
                 enabled = enabled,
+                showProblems = showProblems,
                 onAnswerChange = onAnswerChange,
                 onOpenLink = onOpenLink,
             )
@@ -80,6 +91,7 @@ fun FormFields(
 private fun FormFieldRow(
     state: FormFieldState,
     enabled: Boolean,
+    showProblems: Boolean,
     onAnswerChange: (String, JsonElement?) -> Unit,
     onOpenLink: (String) -> Unit,
 ) {
@@ -88,6 +100,7 @@ private fun FormFieldRow(
             state = state,
             field = field,
             enabled = enabled,
+            showProblems = showProblems,
             onAnswerChange = onAnswerChange,
         )
 
@@ -95,6 +108,7 @@ private fun FormFieldRow(
             state = state,
             field = field,
             enabled = enabled,
+            showProblems = showProblems,
             onAnswerChange = onAnswerChange,
         )
 
@@ -102,6 +116,7 @@ private fun FormFieldRow(
             state = state,
             field = field,
             enabled = enabled,
+            showProblems = showProblems,
             onAnswerChange = onAnswerChange,
         )
 
@@ -109,6 +124,7 @@ private fun FormFieldRow(
             state = state,
             field = field,
             enabled = enabled,
+            showProblems = showProblems,
             onAnswerChange = onAnswerChange,
         )
 
@@ -138,6 +154,7 @@ private fun StringFieldRow(
     state: FormFieldState,
     field: FormField.StringField,
     enabled: Boolean,
+    showProblems: Boolean,
     onAnswerChange: (String, JsonElement?) -> Unit,
 ) {
     val text = (state.value as? JsonPrimitive)?.takeIf { it.isString }?.content.orEmpty()
@@ -166,12 +183,12 @@ private fun StringFieldRow(
                 placeholder = field.placeholder?.let { { Text(it) } },
                 singleLine = true,
                 enabled = enabled,
-                isError = state.problem != null,
+                isError = showProblems && state.problem != null,
                 keyboardOptions = KeyboardOptions(keyboardType = keyboardTypeFor(field.format)),
                 modifier = Modifier.fillMaxWidth(),
             )
         }
-        ProblemText(state)
+        ProblemText(state, showProblems)
     }
 }
 
@@ -181,6 +198,7 @@ private fun NumberFieldRow(
     state: FormFieldState,
     field: FormField.NumberField,
     enabled: Boolean,
+    showProblems: Boolean,
     onAnswerChange: (String, JsonElement?) -> Unit,
 ) {
     val text = (state.value as? JsonPrimitive)?.content.orEmpty()
@@ -201,13 +219,13 @@ private fun NumberFieldRow(
             },
             singleLine = true,
             enabled = enabled,
-            isError = state.problem != null,
+            isError = showProblems && state.problem != null,
             keyboardOptions = KeyboardOptions(
                 keyboardType = if (field.integer) KeyboardType.Number else KeyboardType.Decimal,
             ),
             modifier = Modifier.fillMaxWidth(),
         )
-        ProblemText(state)
+        ProblemText(state, showProblems)
     }
 }
 
@@ -217,6 +235,7 @@ private fun BooleanFieldRow(
     state: FormFieldState,
     field: FormField.BooleanField,
     enabled: Boolean,
+    showProblems: Boolean,
     onAnswerChange: (String, JsonElement?) -> Unit,
 ) {
     val checked = (state.value as? JsonPrimitive)?.content?.toBooleanStrictOrNull() ?: field.default ?: false
@@ -227,7 +246,7 @@ private fun BooleanFieldRow(
     ) {
         Column(Modifier.weight(1f)) {
             FieldLabel(state)
-            ProblemText(state)
+            ProblemText(state, showProblems)
         }
         Switch(
             checked = checked,
@@ -238,18 +257,25 @@ private fun BooleanFieldRow(
 }
 
 /** A multiselect field: chips, which is what "pick any of these" looks like on a phone. */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun MultiselectFieldRow(
     state: FormFieldState,
     field: FormField.MultiselectField,
     enabled: Boolean,
+    showProblems: Boolean,
     onAnswerChange: (String, JsonElement?) -> Unit,
 ) {
     val selected = (state.value as? JsonArray)?.mapNotNull { (it as? JsonPrimitive)?.content }.orEmpty()
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         FieldLabel(state)
         val selectedCount = stringResource(R.string.form_selected_count, selected.size)
-        Column(Modifier.selectableGroup().semantics { contentDescription = selectedCount }) {
+        // Chips are content-width and wrap: a chip stretched to the full row reads as a text field,
+        // and three of them do not fit on a phone at a large font scale.
+        FlowRow(
+            modifier = Modifier.selectableGroup().semantics { contentDescription = selectedCount },
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
             field.options.forEach { option ->
                 val isSelected = option.value in selected
                 FilterChip(
@@ -260,11 +286,10 @@ private fun MultiselectFieldRow(
                     },
                     enabled = enabled,
                     label = { Text(option.label) },
-                    modifier = Modifier.padding(vertical = 2.dp).fillMaxWidth(),
                 )
             }
         }
-        ProblemText(state)
+        ProblemText(state, showProblems)
     }
 }
 
@@ -304,10 +329,10 @@ private fun FieldLabel(state: FormFieldState) {
     }
 }
 
-/** The field's problem, or nothing. A missing answer is not an error until Reply is pressed. */
+/** The field's problem, once the form has been asked to send. */
 @Composable
-private fun ProblemText(state: FormFieldState) {
-    val problem = state.problem ?: return
+private fun ProblemText(state: FormFieldState, showProblems: Boolean) {
+    val problem = state.problem?.takeIf { showProblems } ?: return
     val text = if (problem.takesCount) {
         val limit = (state.field as? FormField.MultiselectField)?.let {
             if (problem == dev.opencode.android.core.data.forms.FieldProblem.TOO_FEW) it.minItems else it.maxItems

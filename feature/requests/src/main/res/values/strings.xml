@@ -25,6 +25,7 @@
 
     <!-- Form card -->
     <string name="form_reply">Reply</string>
+    <string name="form_answers_tool">Answers the %1$s tool call</string>
     <string name="form_cancel">Cancel</string>
     <string name="form_custom_option">Something else</string>
     <string name="form_custom_hint">Type your own answer</string>
