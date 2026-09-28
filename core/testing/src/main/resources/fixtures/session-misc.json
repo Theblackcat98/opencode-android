@@ -1,0 +1,31 @@
+{
+  "data": {
+    "id": "ses_fixture_misc",
+    "projectID": "c42aa3ccc1e04f703386feb3e4f519d0bcd1d408",
+    "model": {
+      "id": "reasoning",
+      "providerID": "fake",
+      "variant": "default"
+    },
+    "cost": 0,
+    "tokens": {
+      "input": 0,
+      "output": 0,
+      "reasoning": 0,
+      "cache": {
+        "read": 0,
+        "write": 0
+      }
+    },
+    "outcome": "succeeded",
+    "time": {
+      "created": 1790567336032,
+      "updated": 1790567336061,
+      "idle": 1790567336199
+    },
+    "title": "fixture misc",
+    "location": {
+      "directory": "/home/nick/Documents/Projects/opencode-android"
+    }
+  }
+}

@@ -1,0 +1,52 @@
+data: {"id":"evt_0e60e8df7001jaThw53k7faCK2","type":"server.connected","data":{}}
+
+: heartbeat
+
+data: {"id":"evt_0e60e91e4001VQIJdYUnpCNIQk","created":1790566109668,"type":"project.updated","location":{"directory":"/home/nick/Documents/Projects/opencode-android"},"data":{"id":"c42aa3ccc1e04f703386feb3e4f519d0bcd1d408","canonical":"/home/nick/Documents/Projects/opencode-android","vcs":"git","time":{"created":1790566043405,"updated":1790566043405,"active":1790566109668},"sandboxes":[]}}
+
+data: {"id":"evt_0e60e921b0014R3dSqX2JsOM0u","created":1790566109723,"type":"integration.updated","location":{"directory":"/home/nick/Documents/Projects/opencode-android"},"data":{}}
+
+data: {"id":"evt_0e60e921d001Qu2zSNhJhZHXYl","created":1790566109725,"type":"provider.updated","location":{"directory":"/home/nick/Documents/Projects/opencode-android"},"data":{}}
+
+data: {"id":"evt_0e60e9220001e5g5X5nPEV0WlF","created":1790566109728,"type":"model.updated","location":{"directory":"/home/nick/Documents/Projects/opencode-android"},"data":{}}
+
+data: {"id":"evt_0e60e9224001cSRBF8pFR7SGx9","created":1790566109732,"type":"vcs.branch.updated","location":{"directory":"/home/nick/Documents/Projects/opencode-android"},"data":{"branch":"phase-0"}}
+
+data: {"id":"evt_0e60e9225001VaKIll5RmOZ14H","created":1790566109733,"type":"agent.updated","location":{"directory":"/home/nick/Documents/Projects/opencode-android"},"data":{}}
+
+data: {"id":"evt_0e60e92250021l9492n8HttD2a","created":1790566109733,"type":"command.updated","location":{"directory":"/home/nick/Documents/Projects/opencode-android"},"data":{}}
+
+data: {"id":"evt_0e60e9225003rKomJn1sgng8jg","created":1790566109733,"type":"skill.updated","location":{"directory":"/home/nick/Documents/Projects/opencode-android"},"data":{}}
+
+data: {"id":"evt_0e60e9227001Vi8SFnrq5dKxyk","created":1790566109735,"type":"websearch.updated","location":{"directory":"/home/nick/Documents/Projects/opencode-android"},"data":{}}
+
+data: {"id":"evt_0e60e9227003Pv2MKXiOexTEX9","created":1790566109735,"type":"reference.updated","location":{"directory":"/home/nick/Documents/Projects/opencode-android"},"data":{}}
+
+data: {"id":"evt_0e60e9228001Y21Gmy52egnOS0","created":1790566109736,"type":"plugin.updated","location":{"directory":"/home/nick/Documents/Projects/opencode-android"},"data":{}}
+
+data: {"id":"evt_0e60e9229001iAAUedIo3Ps7BY","created":1790566109737,"type":"session.inbox.enqueued","location":{"directory":"/home/nick/Documents/Projects/opencode-android"},"data":{"inboxID":"msg_probe001","sessionID":"ses_f19f1d328ffebzXmE8f1XMCk1T","item":{"type":"user","payload":{"text":"Say hello in five words."},"delivery":"steer"}},"durable":{"aggregateID":"ses_f19f1d328ffebzXmE8f1XMCk1T","seq":1,"version":1}}
+
+data: {"id":"evt_0e60e922a001ZoKECuUu3O8EJ2","created":1790566109738,"type":"session.execution.started","data":{"sessionID":"ses_f19f1d328ffebzXmE8f1XMCk1T"},"durable":{"aggregateID":"ses_f19f1d328ffebzXmE8f1XMCk1T","seq":2,"version":1}}
+
+data: {"id":"evt_0e60e9236001oOC1EHyCVQdVio","created":1790566109751,"metadata":{"instructions":{"initial":true}},"type":"session.instructions.updated","location":{"directory":"/home/nick/Documents/Projects/opencode-android"},"data":{"sessionID":"ses_f19f1d328ffebzXmE8f1XMCk1T","delta":{"core/environment":"8c8f1e8e2ea3d5f068284b5b336f6ff334ead5e6855bdd5a70312da4855605de","core/date":"31838d1728bba7c14ba6819d8964efd7aeb4f8166e852d256bb379f02c02ae4c","core/codemode":"616a7ad8b8e40e8a71eab238dfbbe9eaf0f4a9e6fdad853226d075bfe602e1e6","core/skill-guidance":"8394362d28c82fa4d13c7a9f5568c05680f6687e07db8f426a0e3c92f3027dc9"}},"durable":{"aggregateID":"ses_f19f1d328ffebzXmE8f1XMCk1T","seq":3,"version":2}}
+
+data: {"id":"evt_0e60e9238001VF744HoH1uhbDQ","created":1790566109752,"type":"session.inbox.delivered","location":{"directory":"/home/nick/Documents/Projects/opencode-android"},"data":{"sessionID":"ses_f19f1d328ffebzXmE8f1XMCk1T","inboxID":"msg_probe001"},"durable":{"aggregateID":"ses_f19f1d328ffebzXmE8f1XMCk1T","seq":4,"version":1}}
+
+data: {"id":"evt_0e60e926d001Bos8vdYSAamhnQ","created":1790566109805,"type":"session.step.started","location":{"directory":"/home/nick/Documents/Projects/opencode-android"},"data":{"sessionID":"ses_f19f1d328ffebzXmE8f1XMCk1T","agent":"build","model":{"id":"text","providerID":"fake"},"assistantMessageID":"msg_0e60e923c001grvZxMPxuLrrWY","snapshot":"1ee4a794a8a58a42288afeef0d3244e5a9b20d01","started":1790566109791},"durable":{"aggregateID":"ses_f19f1d328ffebzXmE8f1XMCk1T","seq":5,"version":1}}
+
+data: {"id":"evt_0e60e926e001IU0zKgKyVAedli","created":1790566109806,"type":"session.text.started","location":{"directory":"/home/nick/Documents/Projects/opencode-android"},"data":{"sessionID":"ses_f19f1d328ffebzXmE8f1XMCk1T","assistantMessageID":"msg_0e60e923c001grvZxMPxuLrrWY","ordinal":0},"durable":{"aggregateID":"ses_f19f1d328ffebzXmE8f1XMCk1T","seq":6,"version":1}}
+
+data: {"id":"evt_0e60e927d001aOGzjrXed5xKXn","created":1790566109821,"type":"session.text.delta","location":{"directory":"/home/nick/Documents/Projects/opencode-android"},"data":{"sessionID":"ses_f19f1d328ffebzXmE8f1XMCk1T","assistantMessageID":"msg_0e60e923c001grvZxMPxuLrrWY","ordinal":0,"delta":"The fake provider streams plain text in three chunks."}}
+
+data: {"id":"evt_0e60e927d0025rauMxrHCVpfSh","created":1790566109821,"type":"session.text.ended","location":{"directory":"/home/nick/Documents/Projects/opencode-android"},"data":{"sessionID":"ses_f19f1d328ffebzXmE8f1XMCk1T","assistantMessageID":"msg_0e60e923c001grvZxMPxuLrrWY","ordinal":0,"text":"The fake provider streams plain text in three chunks."},"durable":{"aggregateID":"ses_f19f1d328ffebzXmE8f1XMCk1T","seq":7,"version":1}}
+
+data: {"id":"evt_0e60e927e0015f6jA2XdkG4La5","created":1790566109822,"type":"session.step.streamed","location":{"directory":"/home/nick/Documents/Projects/opencode-android"},"data":{"sessionID":"ses_f19f1d328ffebzXmE8f1XMCk1T","assistantMessageID":"msg_0e60e923c001grvZxMPxuLrrWY"},"durable":{"aggregateID":"ses_f19f1d328ffebzXmE8f1XMCk1T","seq":8,"version":1}}
+
+data: {"id":"evt_0e60e9287001xgtzTWWFroMSYj","created":1790566109831,"type":"session.step.ended","location":{"directory":"/home/nick/Documents/Projects/opencode-android"},"data":{"sessionID":"ses_f19f1d328ffebzXmE8f1XMCk1T","assistantMessageID":"msg_0e60e923c001grvZxMPxuLrrWY","finish":"stop","rawFinish":"stop","cost":0,"tokens":{"input":0,"output":0,"reasoning":0,"cache":{"read":0,"write":0}},"snapshot":"45b7dd839287e81601c853ed54b9ddb7cc333761","files":[".probe/sse-sample.txt"]},"durable":{"aggregateID":"ses_f19f1d328ffebzXmE8f1XMCk1T","seq":9,"version":1}}
+
+data: {"id":"evt_0e60e9289001jRmdLoPTBtlaOi","created":1790566109833,"type":"session.usage.updated","data":{"sessionID":"ses_f19f1d328ffebzXmE8f1XMCk1T","cost":0,"tokens":{"input":0,"output":0,"reasoning":0,"cache":{"read":0,"write":0}}}}
+
+data: {"id":"evt_0e60e928a001y3IZrNQYViHXD8","created":1790566109834,"type":"session.execution.succeeded","data":{"sessionID":"ses_f19f1d328ffebzXmE8f1XMCk1T"},"durable":{"aggregateID":"ses_f19f1d328ffebzXmE8f1XMCk1T","seq":10,"version":1}}
+
+: heartbeat
+

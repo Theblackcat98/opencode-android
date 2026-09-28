@@ -1,0 +1,6 @@
+{
+  "_tag": "MessageNotFoundError",
+  "sessionID": "ses_fixture_misc",
+  "messageID": "msg_missing0000000000000000",
+  "message": "Message not found: msg_missing0000000000000000"
+}

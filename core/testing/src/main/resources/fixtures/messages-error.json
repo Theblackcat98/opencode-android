@@ -1,0 +1,50 @@
+{
+  "data": [
+    {
+      "id": "msg_0e62141eb001MwT5rRUoe7VZZj",
+      "time": {
+        "created": 1790567334379
+      },
+      "type": "idle",
+      "outcome": "failed"
+    },
+    {
+      "id": "msg_0e61ff909001w3EyfSLTxX3r6A",
+      "time": {
+        "created": 1790567334370,
+        "completed": 1790567334378
+      },
+      "type": "assistant",
+      "agent": "build",
+      "model": {
+        "id": "error",
+        "providerID": "fake",
+        "variant": "default"
+      },
+      "content": [],
+      "snapshot": {
+        "start": "2fdf6bd4c1800492f5f332afc9d0f672460fb8ab",
+        "end": "2fdf6bd4c1800492f5f332afc9d0f672460fb8ab",
+        "files": []
+      },
+      "finish": "error",
+      "error": {
+        "type": "provider.internal",
+        "message": "fake provider: scripted failure",
+        "status": 500
+      }
+    },
+    {
+      "id": "msg_fixture_error",
+      "time": {
+        "created": 1790567250183
+      },
+      "text": "Answer despite the scripted provider failure.",
+      "type": "user"
+    }
+  ],
+  "cursor": {
+    "previous": "eyJpZCI6Im1zZ18wZTYyMTQxZWIwMDFNd1Q1clJVb2U3VlpaaiIsIm9yZGVyIjoiZGVzYyIsImRpcmVjdGlvbiI6InByZXZpb3VzIn0",
+    "next": "eyJpZCI6Im1zZ19maXh0dXJlX2Vycm9yIiwib3JkZXIiOiJkZXNjIiwiZGlyZWN0aW9uIjoibmV4dCJ9"
+  }
+}

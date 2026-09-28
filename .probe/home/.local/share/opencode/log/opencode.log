@@ -1,0 +1,11 @@
+timestamp=2026-09-28T03:19:35.338Z level=INFO run=8a7089ee message="cli starting" version=2.0.18 channel=latest local=false args="[\"serve\",\"--hostname\",\"127.0.0.1\",\"--port\",\"4096\",\"--print-logs\"]" role=cli
+timestamp=2026-09-28T03:19:35.418Z level=INFO run=8a7089ee message="database schema bootstrap started" migrations=48 role=server
+timestamp=2026-09-28T03:19:35.426Z level=INFO run=8a7089ee message="database schema bootstrap completed" migrations=48 durationMs=8 role=server
+timestamp=2026-09-28T03:20:20.128Z level=INFO run=8a7089ee message="Sent HTTP response" http.span=1 role=server http.method=GET http.url=/api/model http.status=401
+timestamp=2026-09-28T03:20:20.131Z level=INFO run=8a7089ee message="Sent HTTP response" http.span=1 role=server http.method=GET http.url=/api/provider http.status=401
+timestamp=2026-09-28T03:20:47.791Z level=INFO run=b924cf05 message="cli starting" version=2.0.18 channel=latest local=false args="[\"service\",\"set\",\"--help\"]" role=cli
+timestamp=2026-09-28T03:20:47.826Z level=INFO run=fb6b6569 message="cli starting" version=2.0.18 channel=latest local=false args="[\"service\",\"get\",\"--help\"]" role=cli
+timestamp=2026-09-28T03:20:51.421Z level=INFO run=c30be6a3 message="cli starting" version=2.0.18 channel=latest local=false args="[\"service\",\"get\"]" role=cli
+timestamp=2026-09-28T03:21:05.536Z level=INFO run=e1e0a446 message="cli starting" version=2.0.18 channel=latest local=false args="[\"service\",\"set\",\"password\",\"probe-password\"]" role=cli
+timestamp=2026-09-28T03:21:05.572Z level=INFO run=db7962a0 message="cli starting" version=2.0.18 channel=latest local=false args="[\"service\",\"get\"]" role=cli
+timestamp=2026-09-28T03:21:05.504Z level=INFO run=8a7089ee message="Sent HTTP response" http.span=13 role=server http.method=GET http.url=/api/info http.status=401

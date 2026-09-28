@@ -1,0 +1,109 @@
+### MoneyUSD
+number
+
+### TokenUsageInfo
+{
+    input: number
+
+### SessionMetadata
+{
+    [x: string]: JsonValue
+
+### PermissionRuleset
+Array<PermissionRule>
+
+### SessionInboxItem
+{
+    type: "user"
+
+### SessionInboxDelivery
+"steer" | "queue"
+
+### SessionForkBoundary
+{
+    type: "before"
+
+### SessionRevert
+{
+    messageID: string
+
+### ShellInfo
+{
+    id: string
+
+### FormInfo1
+{
+    id: string
+
+### FormAnswer1
+{
+    [x: string]: FormValue1
+
+### PermissionSource
+{
+    type: "tool"
+
+### PermissionReply
+"once" | "always" | "reject"
+
+### SessionStatus
+{
+    type: "idle"
+
+### Pty
+{
+    id: string
+
+### PersistentPtyInfo
+{
+    id: string
+
+### ProjectVcs
+string
+
+### ProjectIcon
+{
+    url?: string
+
+### ProjectCommands
+{
+    start?: string
+
+### ProjectTime
+{
+    created: number
+
+### InstructionEntrySnapshot
+Array<{
+    key: InstructionEntryKey
+
+### ToolContent1
+ToolTextContent | ToolFileContent1
+
+### SessionMessageProviderState1
+{
+    [x: string]: any
+
+### SessionProviderContext
+{
+    version: 1
+
+### SessionStructuredError
+{
+    type: string
+
+### ModelRef
+{
+    id: string
+
+### SessionInfo
+{
+    id: string
+
+### FileDiffInfo
+{
+    file: string
+
+### PermissionRuleset
+Array<PermissionRule>
+

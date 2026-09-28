@@ -1,0 +1,38 @@
+[
+  {
+    "id": "frm_0e623286f0014l8AWsck6EgEe1",
+    "sessionID": "ses_fixture_question",
+    "title": "Questions",
+    "metadata": {
+      "kind": "question",
+      "tool": {
+        "messageID": "msg_0e6232842001BQaxodegm8mVH8",
+        "id": "call_question_1"
+      }
+    },
+    "fields": [
+      {
+        "key": "q0",
+        "title": "Shell",
+        "description": "Which fake shell should run?",
+        "type": "string",
+        "options": [
+          {
+            "value": "bash",
+            "label": "bash",
+            "description": "Run bash"
+          },
+          {
+            "value": "sh",
+            "label": "sh",
+            "description": "Run sh"
+          }
+        ],
+        "custom": true
+      }
+    ],
+    "state": {
+      "status": "pending"
+    }
+  }
+]

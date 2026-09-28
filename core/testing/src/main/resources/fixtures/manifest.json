@@ -1,0 +1,84 @@
+{
+  "serverVersion": "2.0.18",
+  "recordedAt": "2026-09-28T03:48:57.580Z",
+  "scenarios": [
+    {
+      "name": "text",
+      "model": "text"
+    },
+    {
+      "name": "reasoning",
+      "model": "reasoning"
+    },
+    {
+      "name": "shell",
+      "model": "shell"
+    },
+    {
+      "name": "edit",
+      "model": "edit"
+    },
+    {
+      "name": "question",
+      "model": "question"
+    },
+    {
+      "name": "subagent",
+      "model": "subagent"
+    },
+    {
+      "name": "error",
+      "model": "error"
+    },
+    {
+      "name": "long",
+      "model": "long"
+    }
+  ],
+  "eventTypes": {
+    "server.connected": 1,
+    "session.created": 9,
+    "integration.updated": 1,
+    "provider.updated": 1,
+    "model.updated": 1,
+    "vcs.branch.updated": 1,
+    "agent.updated": 1,
+    "command.updated": 1,
+    "skill.updated": 1,
+    "websearch.updated": 1,
+    "reference.updated": 1,
+    "plugin.updated": 1,
+    "session.inbox.enqueued": 11,
+    "session.execution.started": 9,
+    "session.instructions.updated": 9,
+    "session.inbox.delivered": 11,
+    "session.step.started": 24,
+    "session.text.started": 9,
+    "session.text.delta": 9,
+    "session.text.ended": 9,
+    "session.step.streamed": 13,
+    "session.step.ended": 9,
+    "session.usage.updated": 10,
+    "session.execution.succeeded": 8,
+    "session.reasoning.started": 2,
+    "session.reasoning.delta": 2,
+    "session.reasoning.ended": 2,
+    "session.tool.input.started": 4,
+    "session.tool.input.ended": 4,
+    "session.tool.failed": 4,
+    "session.step.failed": 5,
+    "session.retry.scheduled": 14,
+    "session.synthetic": 4,
+    "project.updated": 1,
+    "session.execution.failed": 1,
+    "shell.created": 1,
+    "session.shell.started": 1,
+    "shell.exited": 1,
+    "session.shell.ended": 1,
+    "session.model.selected": 1,
+    "session.compaction.started": 1,
+    "session.compaction.delta": 2,
+    "session.compaction.failed": 1
+  },
+  "note": "Recorded against opencode serve with tools/fake-provider. IDs and timestamps vary per run; tests must not assert exact values."
+}

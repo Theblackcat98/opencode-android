@@ -1,0 +1,10 @@
+{
+  "$comment": "Known API differences that check-api-drift must not fail on. Every entry needs a reason. Anything not listed here fails `check` (and CI).",
+  "addedEvents": {},
+  "removedEvents": {},
+  "addedOperations": {
+    "GET /auth/connect/{code}": "Unpublished pairing redemption route (plan API matrix, P1). Present in the live 2.0.18 /openapi.json but not in the published spec by design.",
+    "POST /api/pair": "Unpublished pairing-code creation route (plan API matrix, P10). Present in the live 2.0.18 /openapi.json but not in the published spec by design."
+  },
+  "removedOperations": {}
+}

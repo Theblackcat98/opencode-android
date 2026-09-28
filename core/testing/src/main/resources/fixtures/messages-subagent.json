@@ -1,0 +1,119 @@
+{
+  "data": [
+    {
+      "id": "msg_0e62334750018jMH3Yc4xpmdiV",
+      "time": {
+        "created": 1790567462005
+      },
+      "type": "idle",
+      "outcome": "succeeded"
+    },
+    {
+      "id": "msg_0e6233459001KGxjRXsNHYXcn9",
+      "time": {
+        "created": 1790567461985,
+        "streamed": 1790567461998,
+        "completed": 1790567462003
+      },
+      "type": "assistant",
+      "agent": "build",
+      "model": {
+        "id": "subagent",
+        "providerID": "fake",
+        "variant": "default"
+      },
+      "content": [
+        {
+          "type": "text",
+          "text": "The subagent answered."
+        }
+      ],
+      "snapshot": {
+        "start": "1130defb07dce7f451c3b94d09d6310dccb24f17",
+        "end": "1130defb07dce7f451c3b94d09d6310dccb24f17",
+        "files": []
+      },
+      "finish": "stop",
+      "rawFinish": "stop",
+      "cost": 0,
+      "tokens": {
+        "input": 0,
+        "output": 0,
+        "reasoning": 0,
+        "cache": {
+          "read": 0,
+          "write": 0
+        }
+      }
+    },
+    {
+      "id": "msg_0e6233428001faOkClLeFmGtpW",
+      "time": {
+        "created": 1790567461943,
+        "streamed": 1790567461966,
+        "completed": 1790567461972
+      },
+      "type": "assistant",
+      "agent": "build",
+      "model": {
+        "id": "subagent",
+        "providerID": "fake",
+        "variant": "default"
+      },
+      "content": [
+        {
+          "type": "tool",
+          "id": "call_subagent_1",
+          "name": "subagent",
+          "executed": false,
+          "state": {
+            "status": "error",
+            "input": {
+              "description": "Ask the fake subagent",
+              "prompt": "Reply with the word pong.",
+              "subagent_type": "general"
+            },
+            "error": {
+              "type": "tool.execution",
+              "message": "Invalid arguments for tool \"subagent\":\n- agent: Missing key\n\nArguments provided:\n{\n  \"description\": \"Ask the fake subagent\",\n  \"prompt\": \"Reply with the word pong.\"\n}\n\nUpdate the arguments and call the tool again."
+            }
+          },
+          "time": {
+            "created": 1790567461952,
+            "ran": 1790567461965,
+            "completed": 1790567461967
+          }
+        }
+      ],
+      "snapshot": {
+        "start": "1130defb07dce7f451c3b94d09d6310dccb24f17",
+        "end": "1130defb07dce7f451c3b94d09d6310dccb24f17",
+        "files": []
+      },
+      "finish": "tool-calls",
+      "rawFinish": "tool_calls",
+      "cost": 0,
+      "tokens": {
+        "input": 0,
+        "output": 0,
+        "reasoning": 0,
+        "cache": {
+          "read": 0,
+          "write": 0
+        }
+      }
+    },
+    {
+      "id": "msg_fixture_subagent",
+      "time": {
+        "created": 1790567461926
+      },
+      "text": "Consult the scripted subagent, then report.",
+      "type": "user"
+    }
+  ],
+  "cursor": {
+    "previous": "eyJpZCI6Im1zZ18wZTYyMzM0NzUwMDE4ak1IM1ljNHhwbWRpViIsIm9yZGVyIjoiZGVzYyIsImRpcmVjdGlvbiI6InByZXZpb3VzIn0",
+    "next": "eyJpZCI6Im1zZ19maXh0dXJlX3N1YmFnZW50Iiwib3JkZXIiOiJkZXNjIiwiZGlyZWN0aW9uIjoibmV4dCJ9"
+  }
+}

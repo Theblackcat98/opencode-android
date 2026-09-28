@@ -1,0 +1,31 @@
+{
+  "data": {
+    "id": "ses_fixture_question",
+    "projectID": "c42aa3ccc1e04f703386feb3e4f519d0bcd1d408",
+    "model": {
+      "id": "question",
+      "providerID": "fake",
+      "variant": "default"
+    },
+    "cost": 0,
+    "tokens": {
+      "input": 0,
+      "output": 0,
+      "reasoning": 0,
+      "cache": {
+        "read": 0,
+        "write": 0
+      }
+    },
+    "outcome": "succeeded",
+    "time": {
+      "created": 1790567458870,
+      "updated": 1790567458874,
+      "idle": 1790567460447
+    },
+    "title": "fixture question",
+    "location": {
+      "directory": "/home/nick/Documents/Projects/opencode-android"
+    }
+  }
+}

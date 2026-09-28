@@ -1,0 +1,5 @@
+{
+  "_tag": "SessionNotFoundError",
+  "sessionID": "ses_missing0000000000000000",
+  "message": "Session not found: ses_missing0000000000000000"
+}

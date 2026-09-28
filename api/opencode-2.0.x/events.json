@@ -1,0 +1,572 @@
+{
+  "client": "@opencode/client",
+  "clientVersion": "2.0.18",
+  "source": "generated TypeScript types (V2Event union in dist/promise/generated/types.d.ts)",
+  "eventCount": 94,
+  "events": [
+    {
+      "tsType": "AgentUpdated",
+      "type": "agent.updated",
+      "rpc": false,
+      "declaration": "export type AgentUpdated = {\n    id: string;\n    created: number;\n    metadata?: {\n        [x: string]: any;\n    };\n    type: \"agent.updated\";\n    location?: LocationRef;\n    data: {};\n};"
+    },
+    {
+      "tsType": "CommandUpdated",
+      "type": "command.updated",
+      "rpc": false,
+      "declaration": "export type CommandUpdated = {\n    id: string;\n    created: number;\n    metadata?: {\n        [x: string]: any;\n    };\n    type: \"command.updated\";\n    location?: LocationRef;\n    data: {};\n};"
+    },
+    {
+      "tsType": "ConfigUpdated",
+      "type": "config.updated",
+      "rpc": false,
+      "declaration": "export type ConfigUpdated = {\n    id: string;\n    created: number;\n    metadata?: {\n        [x: string]: any;\n    };\n    type: \"config.updated\";\n    location?: LocationRef;\n    data: {};\n};"
+    },
+    {
+      "tsType": "CredentialSwitched",
+      "type": "credential.switched",
+      "rpc": false,
+      "declaration": "export type CredentialSwitched = {\n    id: string;\n    created: number;\n    metadata?: {\n        [x: string]: any;\n    };\n    type: \"credential.switched\";\n    location?: LocationRef;\n    data: {\n        integrationID: string;\n        credentialID: string | null;\n    };\n};"
+    },
+    {
+      "tsType": "CredentialUpdated",
+      "type": "credential.updated",
+      "rpc": false,
+      "declaration": "export type CredentialUpdated = {\n    id: string;\n    created: number;\n    metadata?: {\n        [x: string]: any;\n    };\n    type: \"credential.updated\";\n    location?: LocationRef;\n    data: {};\n};"
+    },
+    {
+      "tsType": "FilesystemChanged",
+      "type": "filesystem.changed",
+      "rpc": false,
+      "declaration": "export type FilesystemChanged = {\n    id: string;\n    created: number;\n    metadata?: {\n        [x: string]: any;\n    };\n    type: \"filesystem.changed\";\n    location?: LocationRef;\n    data: {\n        file: string;\n        event: \"add\" | \"change\" | \"unlink\";\n    };\n};"
+    },
+    {
+      "tsType": "FormCancelled",
+      "type": "form.cancelled",
+      "rpc": false,
+      "declaration": "export type FormCancelled = {\n    id: string;\n    created: number;\n    metadata?: {\n        [x: string]: any;\n    };\n    type: \"form.cancelled\";\n    location?: LocationRef;\n    data: {\n        id: string;\n        sessionID: string;\n    };\n};"
+    },
+    {
+      "tsType": "FormCreated",
+      "type": "form.created",
+      "rpc": false,
+      "declaration": "export type FormCreated = {\n    id: string;\n    created: number;\n    metadata?: {\n        [x: string]: any;\n    };\n    type: \"form.created\";\n    location?: LocationRef;\n    data: {\n        form: FormInfo1;\n    };\n};"
+    },
+    {
+      "tsType": "FormReplied",
+      "type": "form.replied",
+      "rpc": false,
+      "declaration": "export type FormReplied = {\n    id: string;\n    created: number;\n    metadata?: {\n        [x: string]: any;\n    };\n    type: \"form.replied\";\n    location?: LocationRef;\n    data: {\n        id: string;\n        sessionID: string;\n        answer: FormAnswer1;\n    };\n};"
+    },
+    {
+      "tsType": "InstallationUpdateAvailable",
+      "type": "installation.update-available",
+      "rpc": false,
+      "declaration": "export type InstallationUpdateAvailable = {\n    id: string;\n    created: number;\n    metadata?: {\n        [x: string]: any;\n    };\n    type: \"installation.update-available\";\n    location?: LocationRef;\n    data: {\n        version: string;\n    };\n};"
+    },
+    {
+      "tsType": "InstallationUpdated",
+      "type": "installation.updated",
+      "rpc": false,
+      "declaration": "export type InstallationUpdated = {\n    id: string;\n    created: number;\n    metadata?: {\n        [x: string]: any;\n    };\n    type: \"installation.updated\";\n    location?: LocationRef;\n    data: {\n        version: string;\n    };\n};"
+    },
+    {
+      "tsType": "IntegrationUpdated",
+      "type": "integration.updated",
+      "rpc": false,
+      "declaration": "export type IntegrationUpdated = {\n    id: string;\n    created: number;\n    metadata?: {\n        [x: string]: any;\n    };\n    type: \"integration.updated\";\n    location?: LocationRef;\n    data: {};\n};"
+    },
+    {
+      "tsType": "LocationShutdown",
+      "type": "location.shutdown",
+      "rpc": false,
+      "declaration": "export type LocationShutdown = {\n    id: string;\n    created: number;\n    metadata?: {\n        [x: string]: any;\n    };\n    type: \"location.shutdown\";\n    location?: LocationRef;\n    data: {};\n};"
+    },
+    {
+      "tsType": "McpResourcesChanged",
+      "type": "mcp.resources.changed",
+      "rpc": false,
+      "declaration": "export type McpResourcesChanged = {\n    id: string;\n    created: number;\n    metadata?: {\n        [x: string]: any;\n    };\n    type: \"mcp.resources.changed\";\n    location?: LocationRef;\n    data: {\n        server: string;\n    };\n};"
+    },
+    {
+      "tsType": "McpStatusChanged",
+      "type": "mcp.status.changed",
+      "rpc": false,
+      "declaration": "export type McpStatusChanged = {\n    id: string;\n    created: number;\n    metadata?: {\n        [x: string]: any;\n    };\n    type: \"mcp.status.changed\";\n    location?: LocationRef;\n    data: {\n        server: string;\n    };\n};"
+    },
+    {
+      "tsType": "ModelUpdated",
+      "type": "model.updated",
+      "rpc": false,
+      "declaration": "export type ModelUpdated = {\n    id: string;\n    created: number;\n    metadata?: {\n        [x: string]: any;\n    };\n    type: \"model.updated\";\n    location?: LocationRef;\n    data: {};\n};"
+    },
+    {
+      "tsType": "ModelsDevRefreshed",
+      "type": "models-dev.refreshed",
+      "rpc": false,
+      "declaration": "export type ModelsDevRefreshed = {\n    id: string;\n    created: number;\n    metadata?: {\n        [x: string]: any;\n    };\n    type: \"models-dev.refreshed\";\n    location?: LocationRef;\n    data: {};\n};"
+    },
+    {
+      "tsType": "PermissionAsked",
+      "type": "permission.asked",
+      "rpc": false,
+      "declaration": "export type PermissionAsked = {\n    id: string;\n    created: number;\n    metadata?: {\n        [x: string]: any;\n    };\n    type: \"permission.asked\";\n    location?: LocationRef;\n    data: {\n        id: string;\n        sessionID: string;\n        action: string;\n        resources: Array<string>;\n        save?: Array<string>;\n        metadata?: {\n            [x: string]: any;\n        };\n        source?: PermissionSource;\n        message?: string;\n    };\n};"
+    },
+    {
+      "tsType": "PermissionReplied",
+      "type": "permission.replied",
+      "rpc": false,
+      "declaration": "export type PermissionReplied = {\n    id: string;\n    created: number;\n    metadata?: {\n        [x: string]: any;\n    };\n    type: \"permission.replied\";\n    location?: LocationRef;\n    data: {\n        sessionID: string;\n        requestID: string;\n        reply: PermissionReply;\n    };\n};"
+    },
+    {
+      "tsType": "PersistentPtyAdded",
+      "type": "persistent-pty.added",
+      "rpc": false,
+      "declaration": "export type PersistentPtyAdded = {\n    id: string;\n    created: number;\n    metadata?: {\n        [x: string]: any;\n    };\n    type: \"persistent-pty.added\";\n    location?: LocationRef;\n    data: {\n        sessionID: string;\n        terminal: PersistentPtyInfo;\n    };\n};"
+    },
+    {
+      "tsType": "PersistentPtyRemoved",
+      "type": "persistent-pty.removed",
+      "rpc": false,
+      "declaration": "export type PersistentPtyRemoved = {\n    id: string;\n    created: number;\n    metadata?: {\n        [x: string]: any;\n    };\n    type: \"persistent-pty.removed\";\n    location?: LocationRef;\n    data: {\n        sessionID: string;\n        ptyID: string;\n    };\n};"
+    },
+    {
+      "tsType": "PluginUpdated",
+      "type": "plugin.updated",
+      "rpc": false,
+      "declaration": "export type PluginUpdated = {\n    id: string;\n    created: number;\n    metadata?: {\n        [x: string]: any;\n    };\n    type: \"plugin.updated\";\n    location?: LocationRef;\n    data: {};\n};"
+    },
+    {
+      "tsType": "ProjectUpdated",
+      "type": "project.updated",
+      "rpc": false,
+      "declaration": "export type ProjectUpdated = {\n    id: string;\n    created: number;\n    metadata?: {\n        [x: string]: any;\n    };\n    type: \"project.updated\";\n    location?: LocationRef;\n    data: {\n        id: string;\n        canonical: string;\n        vcs?: ProjectVcs;\n        name?: string;\n        icon?: ProjectIcon;\n        commands?: ProjectCommands;\n        time: ProjectTime;\n        sandboxes: Array<string>;\n    };\n};"
+    },
+    {
+      "tsType": "ProviderUpdated",
+      "type": "provider.updated",
+      "rpc": false,
+      "declaration": "export type ProviderUpdated = {\n    id: string;\n    created: number;\n    metadata?: {\n        [x: string]: any;\n    };\n    type: \"provider.updated\";\n    location?: LocationRef;\n    data: {};\n};"
+    },
+    {
+      "tsType": "PtyCreated",
+      "type": "pty.created",
+      "rpc": false,
+      "declaration": "export type PtyCreated = {\n    id: string;\n    created: number;\n    metadata?: {\n        [x: string]: any;\n    };\n    type: \"pty.created\";\n    location?: LocationRef;\n    data: {\n        info: Pty;\n    };\n};"
+    },
+    {
+      "tsType": "PtyDeleted",
+      "type": "pty.deleted",
+      "rpc": false,
+      "declaration": "export type PtyDeleted = {\n    id: string;\n    created: number;\n    metadata?: {\n        [x: string]: any;\n    };\n    type: \"pty.deleted\";\n    location?: LocationRef;\n    data: {\n        id: string;\n    };\n};"
+    },
+    {
+      "tsType": "PtyExited",
+      "type": "pty.exited",
+      "rpc": false,
+      "declaration": "export type PtyExited = {\n    id: string;\n    created: number;\n    metadata?: {\n        [x: string]: any;\n    };\n    type: \"pty.exited\";\n    location?: LocationRef;\n    data: {\n        id: string;\n        exitCode: number;\n    };\n};"
+    },
+    {
+      "tsType": "PtyUpdated",
+      "type": "pty.updated",
+      "rpc": false,
+      "declaration": "export type PtyUpdated = {\n    id: string;\n    created: number;\n    metadata?: {\n        [x: string]: any;\n    };\n    type: \"pty.updated\";\n    location?: LocationRef;\n    data: {\n        info: Pty;\n    };\n};"
+    },
+    {
+      "tsType": "ReferenceUpdated",
+      "type": "reference.updated",
+      "rpc": false,
+      "declaration": "export type ReferenceUpdated = {\n    id: string;\n    created: number;\n    metadata?: {\n        [x: string]: any;\n    };\n    type: \"reference.updated\";\n    location?: LocationRef;\n    data: {};\n};"
+    },
+    {
+      "tsType": "V2EventRpc",
+      "type": "rpc.*",
+      "rpc": true,
+      "declaration": "export type V2EventRpc = {\n    id: string;\n    created: number;\n    metadata?: {\n        [x: string]: any;\n    } | undefined;\n    type: `${\"rpc.\"}${string}`;\n    location: LocationPublicRef;\n    data: {\n        [x: string]: any;\n    };\n};"
+    },
+    {
+      "tsType": "V2EventServerConnected",
+      "type": "server.connected",
+      "rpc": false,
+      "declaration": "export type V2EventServerConnected = {\n    id: string;\n    metadata?: {\n        [x: string]: any;\n    } | undefined;\n    location?: LocationPublicRef | undefined;\n    type: \"server.connected\";\n    data: {};\n};"
+    },
+    {
+      "tsType": "SessionAgentSelected",
+      "type": "session.agent.selected",
+      "rpc": false,
+      "declaration": "export type SessionAgentSelected = {\n    id: string;\n    created: number;\n    metadata?: {\n        [x: string]: any;\n    };\n    type: \"session.agent.selected\";\n    durable: {\n        aggregateID: string;\n        seq: number;\n        version: 1;\n    };\n    location?: LocationRef;\n    data: {\n        sessionID: string;\n        agent: string;\n        previous?: string;\n    };\n};"
+    },
+    {
+      "tsType": "SessionCompactionDelta",
+      "type": "session.compaction.delta",
+      "rpc": false,
+      "declaration": "export type SessionCompactionDelta = {\n    id: string;\n    created: number;\n    metadata?: {\n        [x: string]: any;\n    };\n    type: \"session.compaction.delta\";\n    location?: LocationRef;\n    data: {\n        sessionID: string;\n        text: string;\n    };\n};"
+    },
+    {
+      "tsType": "SessionCompactionEnded",
+      "type": "session.compaction.ended",
+      "rpc": false,
+      "declaration": "export type SessionCompactionEnded = {\n    id: string;\n    created: number;\n    metadata?: {\n        [x: string]: any;\n    };\n    type: \"session.compaction.ended\";\n    durable: {\n        aggregateID: string;\n        seq: number;\n        version: 1;\n    };\n    location?: LocationRef;\n    data: {\n        sessionID: string;\n        reason: \"auto\" | \"manual\";\n        model?: ModelRef;\n        providerState?: SessionMessageProviderState1;\n        providerContext?: SessionProviderContext;\n        text: string;\n        recent: string;\n        cost?: MoneyUSD;\n        tokens?: TokenUsageInfo;\n    };\n};"
+    },
+    {
+      "tsType": "SessionCompactionFailed",
+      "type": "session.compaction.failed",
+      "rpc": false,
+      "declaration": "export type SessionCompactionFailed = {\n    id: string;\n    created: number;\n    metadata?: {\n        [x: string]: any;\n    };\n    type: \"session.compaction.failed\";\n    durable: {\n        aggregateID: string;\n        seq: number;\n        version: 1;\n    };\n    location?: LocationRef;\n    data: {\n        sessionID: string;\n        reason: \"auto\" | \"manual\";\n        error: SessionStructuredError;\n        inputID?: string;\n        cost?: MoneyUSD;\n        tokens?: TokenUsageInfo;\n    };\n};"
+    },
+    {
+      "tsType": "SessionCompactionStarted",
+      "type": "session.compaction.started",
+      "rpc": false,
+      "declaration": "export type SessionCompactionStarted = {\n    id: string;\n    created: number;\n    metadata?: {\n        [x: string]: any;\n    };\n    type: \"session.compaction.started\";\n    durable: {\n        aggregateID: string;\n        seq: number;\n        version: 1;\n    };\n    location?: LocationRef;\n    data: {\n        sessionID: string;\n        reason: \"auto\" | \"manual\";\n        recent: string;\n        inputID?: string;\n    };\n};"
+    },
+    {
+      "tsType": "SessionCreated",
+      "type": "session.created",
+      "rpc": false,
+      "declaration": "export type SessionCreated = {\n    id: string;\n    created: number;\n    metadata?: {\n        [x: string]: any;\n    };\n    type: \"session.created\";\n    durable: {\n        aggregateID: string;\n        seq: number;\n        version: 1;\n    };\n    location?: LocationRef;\n    data: {\n        sessionID: string;\n        projectID: string;\n        location: LocationRef;\n        subpath?: string;\n        parentID?: string;\n        slug: string;\n        title?: string;\n        agent?: string;\n        model?: ModelRef;\n        metadata?: SessionMetadata;\n        permissions?: PermissionRuleset;\n        version: string;\n    };\n};"
+    },
+    {
+      "tsType": "SessionDeleted",
+      "type": "session.deleted",
+      "rpc": false,
+      "declaration": "export type SessionDeleted = {\n    id: string;\n    created: number;\n    metadata?: {\n        [x: string]: any;\n    };\n    type: \"session.deleted\";\n    durable: {\n        aggregateID: string;\n        seq: number;\n        version: 2;\n    };\n    location?: LocationRef;\n    data: {\n        sessionID: string;\n    };\n};"
+    },
+    {
+      "tsType": "SessionExecutionFailed",
+      "type": "session.execution.failed",
+      "rpc": false,
+      "declaration": "export type SessionExecutionFailed = {\n    id: string;\n    created: number;\n    metadata?: {\n        [x: string]: any;\n    };\n    type: \"session.execution.failed\";\n    durable: {\n        aggregateID: string;\n        seq: number;\n        version: 1;\n    };\n    location?: LocationRef;\n    data: {\n        sessionID: string;\n        error: SessionStructuredError;\n    };\n};"
+    },
+    {
+      "tsType": "SessionExecutionInterrupted",
+      "type": "session.execution.interrupted",
+      "rpc": false,
+      "declaration": "export type SessionExecutionInterrupted = {\n    id: string;\n    created: number;\n    metadata?: {\n        [x: string]: any;\n    };\n    type: \"session.execution.interrupted\";\n    durable: {\n        aggregateID: string;\n        seq: number;\n        version: 1;\n    };\n    location?: LocationRef;\n    data: {\n        sessionID: string;\n        reason: \"user\" | \"shutdown\" | \"superseded\" | \"inactivity\";\n    };\n};"
+    },
+    {
+      "tsType": "SessionExecutionStarted",
+      "type": "session.execution.started",
+      "rpc": false,
+      "declaration": "export type SessionExecutionStarted = {\n    id: string;\n    created: number;\n    metadata?: {\n        [x: string]: any;\n    };\n    type: \"session.execution.started\";\n    durable: {\n        aggregateID: string;\n        seq: number;\n        version: 1;\n    };\n    location?: LocationRef;\n    data: {\n        sessionID: string;\n    };\n};"
+    },
+    {
+      "tsType": "SessionExecutionSucceeded",
+      "type": "session.execution.succeeded",
+      "rpc": false,
+      "declaration": "export type SessionExecutionSucceeded = {\n    id: string;\n    created: number;\n    metadata?: {\n        [x: string]: any;\n    };\n    type: \"session.execution.succeeded\";\n    durable: {\n        aggregateID: string;\n        seq: number;\n        version: 1;\n    };\n    location?: LocationRef;\n    data: {\n        sessionID: string;\n    };\n};"
+    },
+    {
+      "tsType": "SessionForked",
+      "type": "session.forked",
+      "rpc": false,
+      "declaration": "export type SessionForked = {\n    id: string;\n    created: number;\n    metadata?: {\n        [x: string]: any;\n    };\n    type: \"session.forked\";\n    durable: {\n        aggregateID: string;\n        seq: number;\n        version: 2;\n    };\n    location?: LocationRef;\n    data: {\n        sessionID: string;\n        parentID: string;\n        boundary: SessionForkBoundary;\n        instructions?: {\n            [x: string]: string;\n        };\n        instructionEntries?: InstructionEntrySnapshot;\n    };\n};"
+    },
+    {
+      "tsType": "SessionIdle",
+      "type": "session.idle",
+      "rpc": false,
+      "declaration": "export type SessionIdle = {\n    id: string;\n    created: number;\n    metadata?: {\n        [x: string]: any;\n    };\n    type: \"session.idle\";\n    location?: LocationRef;\n    data: {\n        sessionID: string;\n    };\n};"
+    },
+    {
+      "tsType": "SessionInboxCancelled",
+      "type": "session.inbox.cancelled",
+      "rpc": false,
+      "declaration": "export type SessionInboxCancelled = {\n    id: string;\n    created: number;\n    metadata?: {\n        [x: string]: any;\n    };\n    type: \"session.inbox.cancelled\";\n    durable: {\n        aggregateID: string;\n        seq: number;\n        version: 1;\n    };\n    location?: LocationRef;\n    data: {\n        sessionID: string;\n        inboxID: string;\n    };\n};"
+    },
+    {
+      "tsType": "SessionInboxDelivered",
+      "type": "session.inbox.delivered",
+      "rpc": false,
+      "declaration": "export type SessionInboxDelivered = {\n    id: string;\n    created: number;\n    metadata?: {\n        [x: string]: any;\n    };\n    type: \"session.inbox.delivered\";\n    durable: {\n        aggregateID: string;\n        seq: number;\n        version: 1;\n    };\n    location?: LocationRef;\n    data: {\n        sessionID: string;\n        inboxID: string;\n    };\n};"
+    },
+    {
+      "tsType": "SessionInboxDeliveryChanged",
+      "type": "session.inbox.delivery.changed",
+      "rpc": false,
+      "declaration": "export type SessionInboxDeliveryChanged = {\n    id: string;\n    created: number;\n    metadata?: {\n        [x: string]: any;\n    };\n    type: \"session.inbox.delivery.changed\";\n    durable: {\n        aggregateID: string;\n        seq: number;\n        version: 1;\n    };\n    location?: LocationRef;\n    data: {\n        sessionID: string;\n        inboxID: string;\n        delivery: SessionInboxDelivery;\n    };\n};"
+    },
+    {
+      "tsType": "SessionInboxEnqueued",
+      "type": "session.inbox.enqueued",
+      "rpc": false,
+      "declaration": "export type SessionInboxEnqueued = {\n    id: string;\n    created: number;\n    metadata?: {\n        [x: string]: any;\n    };\n    type: \"session.inbox.enqueued\";\n    durable: {\n        aggregateID: string;\n        seq: number;\n        version: 1;\n    };\n    location?: LocationRef;\n    data: {\n        sessionID: string;\n        inboxID: string;\n        item: SessionInboxItem;\n    };\n};"
+    },
+    {
+      "tsType": "SessionInstructionsUpdated",
+      "type": "session.instructions.updated",
+      "rpc": false,
+      "declaration": "export type SessionInstructionsUpdated = {\n    id: string;\n    created: number;\n    metadata?: {\n        [x: string]: any;\n    };\n    type: \"session.instructions.updated\";\n    durable: {\n        aggregateID: string;\n        seq: number;\n        version: 2;\n    };\n    location?: LocationRef;\n    data: {\n        sessionID: string;\n        delta: {\n            [x: string]: string | \"removed\";\n        };\n        text?: string;\n    };\n};"
+    },
+    {
+      "tsType": "SessionMetadataUpdated",
+      "type": "session.metadata.updated",
+      "rpc": false,
+      "declaration": "export type SessionMetadataUpdated = {\n    id: string;\n    created: number;\n    metadata?: {\n        [x: string]: any;\n    };\n    type: \"session.metadata.updated\";\n    durable: {\n        aggregateID: string;\n        seq: number;\n        version: 1;\n    };\n    location?: LocationRef;\n    data: {\n        sessionID: string;\n        metadata: SessionMetadata;\n    };\n};"
+    },
+    {
+      "tsType": "SessionModelSelected",
+      "type": "session.model.selected",
+      "rpc": false,
+      "declaration": "export type SessionModelSelected = {\n    id: string;\n    created: number;\n    metadata?: {\n        [x: string]: any;\n    };\n    type: \"session.model.selected\";\n    durable: {\n        aggregateID: string;\n        seq: number;\n        version: 1;\n    };\n    location?: LocationRef;\n    data: {\n        sessionID: string;\n        model: ModelRef;\n        previous?: ModelRef;\n    };\n};"
+    },
+    {
+      "tsType": "SessionMoved",
+      "type": "session.moved",
+      "rpc": false,
+      "declaration": "export type SessionMoved = {\n    id: string;\n    created: number;\n    metadata?: {\n        [x: string]: any;\n    };\n    type: \"session.moved\";\n    durable: {\n        aggregateID: string;\n        seq: number;\n        version: 1;\n    };\n    location?: LocationRef;\n    data: {\n        sessionID: string;\n        location: LocationRef;\n        projectID: string;\n        subpath?: string;\n    };\n};"
+    },
+    {
+      "tsType": "SessionPermissions",
+      "type": "session.permissions",
+      "rpc": false,
+      "declaration": "export type SessionPermissions = {\n    id: string;\n    created: number;\n    metadata?: {\n        [x: string]: any;\n    };\n    type: \"session.permissions\";\n    durable: {\n        aggregateID: string;\n        seq: number;\n        version: 1;\n    };\n    location?: LocationRef;\n    data: {\n        sessionID: string;\n        permissions: PermissionRuleset;\n    };\n};"
+    },
+    {
+      "tsType": "SessionReasoningDelta",
+      "type": "session.reasoning.delta",
+      "rpc": false,
+      "declaration": "export type SessionReasoningDelta = {\n    id: string;\n    created: number;\n    metadata?: {\n        [x: string]: any;\n    };\n    type: \"session.reasoning.delta\";\n    location?: LocationRef;\n    data: {\n        sessionID: string;\n        assistantMessageID: string;\n        ordinal: number;\n        delta: string;\n    };\n};"
+    },
+    {
+      "tsType": "SessionReasoningEnded",
+      "type": "session.reasoning.ended",
+      "rpc": false,
+      "declaration": "export type SessionReasoningEnded = {\n    id: string;\n    created: number;\n    metadata?: {\n        [x: string]: any;\n    };\n    type: \"session.reasoning.ended\";\n    durable: {\n        aggregateID: string;\n        seq: number;\n        version: 1;\n    };\n    location?: LocationRef;\n    data: {\n        sessionID: string;\n        assistantMessageID: string;\n        ordinal: number;\n        text: string;\n        state?: SessionMessageProviderState1;\n    };\n};"
+    },
+    {
+      "tsType": "SessionReasoningStarted",
+      "type": "session.reasoning.started",
+      "rpc": false,
+      "declaration": "export type SessionReasoningStarted = {\n    id: string;\n    created: number;\n    metadata?: {\n        [x: string]: any;\n    };\n    type: \"session.reasoning.started\";\n    durable: {\n        aggregateID: string;\n        seq: number;\n        version: 1;\n    };\n    location?: LocationRef;\n    data: {\n        sessionID: string;\n        assistantMessageID: string;\n        ordinal: number;\n        state?: SessionMessageProviderState1;\n    };\n};"
+    },
+    {
+      "tsType": "SessionRenamed",
+      "type": "session.renamed",
+      "rpc": false,
+      "declaration": "export type SessionRenamed = {\n    id: string;\n    created: number;\n    metadata?: {\n        [x: string]: any;\n    };\n    type: \"session.renamed\";\n    durable: {\n        aggregateID: string;\n        seq: number;\n        version: 1;\n    };\n    location?: LocationRef;\n    data: {\n        sessionID: string;\n        title: string;\n    };\n};"
+    },
+    {
+      "tsType": "SessionRetryScheduled",
+      "type": "session.retry.scheduled",
+      "rpc": false,
+      "declaration": "export type SessionRetryScheduled = {\n    id: string;\n    created: number;\n    metadata?: {\n        [x: string]: any;\n    };\n    type: \"session.retry.scheduled\";\n    durable: {\n        aggregateID: string;\n        seq: number;\n        version: 1;\n    };\n    location?: LocationRef;\n    data: {\n        sessionID: string;\n        assistantMessageID: string;\n        attempt: number;\n        at: number;\n        error: SessionStructuredError;\n    };\n};"
+    },
+    {
+      "tsType": "SessionRevertCleared",
+      "type": "session.revert.cleared",
+      "rpc": false,
+      "declaration": "export type SessionRevertCleared = {\n    id: string;\n    created: number;\n    metadata?: {\n        [x: string]: any;\n    };\n    type: \"session.revert.cleared\";\n    durable: {\n        aggregateID: string;\n        seq: number;\n        version: 1;\n    };\n    location?: LocationRef;\n    data: {\n        sessionID: string;\n    };\n};"
+    },
+    {
+      "tsType": "SessionRevertCommitted",
+      "type": "session.revert.committed",
+      "rpc": false,
+      "declaration": "export type SessionRevertCommitted = {\n    id: string;\n    created: number;\n    metadata?: {\n        [x: string]: any;\n    };\n    type: \"session.revert.committed\";\n    durable: {\n        aggregateID: string;\n        seq: number;\n        version: 1;\n    };\n    location?: LocationRef;\n    data: {\n        sessionID: string;\n        to: string;\n    };\n};"
+    },
+    {
+      "tsType": "SessionRevertStaged",
+      "type": "session.revert.staged",
+      "rpc": false,
+      "declaration": "export type SessionRevertStaged = {\n    id: string;\n    created: number;\n    metadata?: {\n        [x: string]: any;\n    };\n    type: \"session.revert.staged\";\n    durable: {\n        aggregateID: string;\n        seq: number;\n        version: 1;\n    };\n    location?: LocationRef;\n    data: {\n        sessionID: string;\n        revert: SessionRevert;\n    };\n};"
+    },
+    {
+      "tsType": "SessionShellEnded",
+      "type": "session.shell.ended",
+      "rpc": false,
+      "declaration": "export type SessionShellEnded = {\n    id: string;\n    created: number;\n    metadata?: {\n        [x: string]: any;\n    };\n    type: \"session.shell.ended\";\n    durable: {\n        aggregateID: string;\n        seq: number;\n        version: 1;\n    };\n    location?: LocationRef;\n    data: {\n        sessionID: string;\n        shell: ShellInfo;\n        output: {\n            output: string;\n            cursor: number;\n            size: number;\n            truncated: boolean;\n        };\n    };\n};"
+    },
+    {
+      "tsType": "SessionShellStarted",
+      "type": "session.shell.started",
+      "rpc": false,
+      "declaration": "export type SessionShellStarted = {\n    id: string;\n    created: number;\n    metadata?: {\n        [x: string]: any;\n    };\n    type: \"session.shell.started\";\n    durable: {\n        aggregateID: string;\n        seq: number;\n        version: 1;\n    };\n    location?: LocationRef;\n    data: {\n        sessionID: string;\n        shell: ShellInfo;\n    };\n};"
+    },
+    {
+      "tsType": "SessionSkillActivated",
+      "type": "session.skill.activated",
+      "rpc": false,
+      "declaration": "export type SessionSkillActivated = {\n    id: string;\n    created: number;\n    metadata?: {\n        [x: string]: any;\n    };\n    type: \"session.skill.activated\";\n    durable: {\n        aggregateID: string;\n        seq: number;\n        version: 1;\n    };\n    location?: LocationRef;\n    data: {\n        sessionID: string;\n        id: string;\n        name: string;\n        text: string;\n    };\n};"
+    },
+    {
+      "tsType": "SessionStatusUpdated",
+      "type": "session.status",
+      "rpc": false,
+      "declaration": "export type SessionStatusUpdated = {\n    id: string;\n    created: number;\n    metadata?: {\n        [x: string]: any;\n    };\n    type: \"session.status\";\n    location?: LocationRef;\n    data: {\n        sessionID: string;\n        status: SessionStatus;\n    };\n};"
+    },
+    {
+      "tsType": "SessionStepEnded",
+      "type": "session.step.ended",
+      "rpc": false,
+      "declaration": "export type SessionStepEnded = {\n    id: string;\n    created: number;\n    metadata?: {\n        [x: string]: any;\n    };\n    type: \"session.step.ended\";\n    durable: {\n        aggregateID: string;\n        seq: number;\n        version: 1;\n    };\n    location?: LocationRef;\n    data: {\n        sessionID: string;\n        assistantMessageID: string;\n        finish: \"stop\" | \"length\" | \"tool-calls\" | \"content-filter\" | \"error\" | \"unknown\";\n        rawFinish?: string;\n        providerState?: SessionMessageProviderState1;\n        cost: MoneyUSD;\n        tokens: TokenUsageInfo;\n        snapshot?: string;\n        files?: Array<string>;\n    };\n};"
+    },
+    {
+      "tsType": "SessionStepFailed",
+      "type": "session.step.failed",
+      "rpc": false,
+      "declaration": "export type SessionStepFailed = {\n    id: string;\n    created: number;\n    metadata?: {\n        [x: string]: any;\n    };\n    type: \"session.step.failed\";\n    durable: {\n        aggregateID: string;\n        seq: number;\n        version: 1;\n    };\n    location?: LocationRef;\n    data: {\n        sessionID: string;\n        assistantMessageID: string;\n        error: SessionStructuredError;\n        finish?: \"content-filter\";\n        rawFinish?: string;\n        providerState?: SessionMessageProviderState1;\n        cost?: MoneyUSD;\n        tokens?: TokenUsageInfo;\n        snapshot?: string;\n        files?: Array<string>;\n    };\n};"
+    },
+    {
+      "tsType": "SessionStepStarted",
+      "type": "session.step.started",
+      "rpc": false,
+      "declaration": "export type SessionStepStarted = {\n    id: string;\n    created: number;\n    metadata?: {\n        [x: string]: any;\n    };\n    type: \"session.step.started\";\n    durable: {\n        aggregateID: string;\n        seq: number;\n        version: 1;\n    };\n    location?: LocationRef;\n    data: {\n        sessionID: string;\n        assistantMessageID: string;\n        agent: string;\n        model: ModelRef;\n        snapshot?: string;\n        started: number;\n    };\n};"
+    },
+    {
+      "tsType": "SessionStepStreamed",
+      "type": "session.step.streamed",
+      "rpc": false,
+      "declaration": "export type SessionStepStreamed = {\n    id: string;\n    created: number;\n    metadata?: {\n        [x: string]: any;\n    };\n    type: \"session.step.streamed\";\n    durable: {\n        aggregateID: string;\n        seq: number;\n        version: 1;\n    };\n    location?: LocationRef;\n    data: {\n        sessionID: string;\n        assistantMessageID: string;\n    };\n};"
+    },
+    {
+      "tsType": "SessionSynthetic",
+      "type": "session.synthetic",
+      "rpc": false,
+      "declaration": "export type SessionSynthetic = {\n    id: string;\n    created: number;\n    metadata?: {\n        [x: string]: any;\n    };\n    type: \"session.synthetic\";\n    durable: {\n        aggregateID: string;\n        seq: number;\n        version: 1;\n    };\n    location?: LocationRef;\n    data: {\n        sessionID: string;\n        text: string;\n        description?: string;\n        metadata?: {\n            [x: string]: any;\n        };\n    };\n};"
+    },
+    {
+      "tsType": "SessionTextDelta",
+      "type": "session.text.delta",
+      "rpc": false,
+      "declaration": "export type SessionTextDelta = {\n    id: string;\n    created: number;\n    metadata?: {\n        [x: string]: any;\n    };\n    type: \"session.text.delta\";\n    location?: LocationRef;\n    data: {\n        sessionID: string;\n        assistantMessageID: string;\n        ordinal: number;\n        delta: string;\n    };\n};"
+    },
+    {
+      "tsType": "SessionTextEnded",
+      "type": "session.text.ended",
+      "rpc": false,
+      "declaration": "export type SessionTextEnded = {\n    id: string;\n    created: number;\n    metadata?: {\n        [x: string]: any;\n    };\n    type: \"session.text.ended\";\n    durable: {\n        aggregateID: string;\n        seq: number;\n        version: 1;\n    };\n    location?: LocationRef;\n    data: {\n        sessionID: string;\n        assistantMessageID: string;\n        ordinal: number;\n        text: string;\n        state?: SessionMessageProviderState1;\n    };\n};"
+    },
+    {
+      "tsType": "SessionTextStarted",
+      "type": "session.text.started",
+      "rpc": false,
+      "declaration": "export type SessionTextStarted = {\n    id: string;\n    created: number;\n    metadata?: {\n        [x: string]: any;\n    };\n    type: \"session.text.started\";\n    durable: {\n        aggregateID: string;\n        seq: number;\n        version: 1;\n    };\n    location?: LocationRef;\n    data: {\n        sessionID: string;\n        assistantMessageID: string;\n        ordinal: number;\n    };\n};"
+    },
+    {
+      "tsType": "SessionToolCalled",
+      "type": "session.tool.called",
+      "rpc": false,
+      "declaration": "export type SessionToolCalled = {\n    id: string;\n    created: number;\n    metadata?: {\n        [x: string]: any;\n    };\n    type: \"session.tool.called\";\n    durable: {\n        aggregateID: string;\n        seq: number;\n        version: 1;\n    };\n    location?: LocationRef;\n    data: {\n        sessionID: string;\n        assistantMessageID: string;\n        id: string;\n        input: {\n            [x: string]: any;\n        };\n        executed: boolean;\n        state?: SessionMessageProviderState1;\n    };\n};"
+    },
+    {
+      "tsType": "SessionToolFailed",
+      "type": "session.tool.failed",
+      "rpc": false,
+      "declaration": "export type SessionToolFailed = {\n    id: string;\n    created: number;\n    metadata?: {\n        [x: string]: any;\n    };\n    type: \"session.tool.failed\";\n    durable: {\n        aggregateID: string;\n        seq: number;\n        version: 2;\n    };\n    location?: LocationRef;\n    data: {\n        sessionID: string;\n        assistantMessageID: string;\n        id: string;\n        error: SessionStructuredError;\n        content?: [ToolContent1, ...Array<ToolContent1>];\n        metadata?: {\n            [x: string]: JsonValue;\n        };\n        executed: boolean;\n        resultState?: SessionMessageProviderState1;\n    };\n};"
+    },
+    {
+      "tsType": "SessionToolInputDelta",
+      "type": "session.tool.input.delta",
+      "rpc": false,
+      "declaration": "export type SessionToolInputDelta = {\n    id: string;\n    created: number;\n    metadata?: {\n        [x: string]: any;\n    };\n    type: \"session.tool.input.delta\";\n    location?: LocationRef;\n    data: {\n        sessionID: string;\n        assistantMessageID: string;\n        id: string;\n        delta: string;\n    };\n};"
+    },
+    {
+      "tsType": "SessionToolInputEnded",
+      "type": "session.tool.input.ended",
+      "rpc": false,
+      "declaration": "export type SessionToolInputEnded = {\n    id: string;\n    created: number;\n    metadata?: {\n        [x: string]: any;\n    };\n    type: \"session.tool.input.ended\";\n    durable: {\n        aggregateID: string;\n        seq: number;\n        version: 1;\n    };\n    location?: LocationRef;\n    data: {\n        sessionID: string;\n        assistantMessageID: string;\n        id: string;\n        text: string;\n    };\n};"
+    },
+    {
+      "tsType": "SessionToolInputStarted",
+      "type": "session.tool.input.started",
+      "rpc": false,
+      "declaration": "export type SessionToolInputStarted = {\n    id: string;\n    created: number;\n    metadata?: {\n        [x: string]: any;\n    };\n    type: \"session.tool.input.started\";\n    durable: {\n        aggregateID: string;\n        seq: number;\n        version: 1;\n    };\n    location?: LocationRef;\n    data: {\n        sessionID: string;\n        assistantMessageID: string;\n        id: string;\n        name: string;\n    };\n};"
+    },
+    {
+      "tsType": "SessionToolProgress",
+      "type": "session.tool.progress",
+      "rpc": false,
+      "declaration": "export type SessionToolProgress = {\n    id: string;\n    created: number;\n    metadata?: {\n        [x: string]: any;\n    };\n    type: \"session.tool.progress\";\n    location?: LocationRef;\n    data: {\n        sessionID: string;\n        assistantMessageID: string;\n        id: string;\n        metadata: {\n            [x: string]: JsonValue;\n        };\n    };\n};"
+    },
+    {
+      "tsType": "SessionToolSuccess",
+      "type": "session.tool.success",
+      "rpc": false,
+      "declaration": "export type SessionToolSuccess = {\n    id: string;\n    created: number;\n    metadata?: {\n        [x: string]: any;\n    };\n    type: \"session.tool.success\";\n    durable: {\n        aggregateID: string;\n        seq: number;\n        version: 2;\n    };\n    location?: LocationRef;\n    data: {\n        sessionID: string;\n        assistantMessageID: string;\n        id: string;\n        content: [ToolContent1, ...Array<ToolContent1>];\n        metadata?: {\n            [x: string]: JsonValue;\n        };\n        executed: boolean;\n        resultState?: SessionMessageProviderState1;\n    };\n};"
+    },
+    {
+      "tsType": "SessionUsageUpdated",
+      "type": "session.usage.updated",
+      "rpc": false,
+      "declaration": "export type SessionUsageUpdated = {\n    id: string;\n    created: number;\n    metadata?: {\n        [x: string]: any;\n    };\n    type: \"session.usage.updated\";\n    location?: LocationRef;\n    data: {\n        sessionID: string;\n        cost: MoneyUSD;\n        tokens: TokenUsageInfo;\n    };\n};"
+    },
+    {
+      "tsType": "SessionViewed",
+      "type": "session.viewed",
+      "rpc": false,
+      "declaration": "export type SessionViewed = {\n    id: string;\n    created: number;\n    metadata?: {\n        [x: string]: any;\n    };\n    type: \"session.viewed\";\n    durable: {\n        aggregateID: string;\n        seq: number;\n        version: 1;\n    };\n    location?: LocationRef;\n    data: {\n        sessionID: string;\n        idle: number;\n    };\n};"
+    },
+    {
+      "tsType": "ShellCreated",
+      "type": "shell.created",
+      "rpc": false,
+      "declaration": "export type ShellCreated = {\n    id: string;\n    created: number;\n    metadata?: {\n        [x: string]: any;\n    };\n    type: \"shell.created\";\n    location?: LocationRef;\n    data: {\n        info: ShellInfo;\n    };\n};"
+    },
+    {
+      "tsType": "ShellDeleted",
+      "type": "shell.deleted",
+      "rpc": false,
+      "declaration": "export type ShellDeleted = {\n    id: string;\n    created: number;\n    metadata?: {\n        [x: string]: any;\n    };\n    type: \"shell.deleted\";\n    location?: LocationRef;\n    data: {\n        id: string;\n    };\n};"
+    },
+    {
+      "tsType": "ShellExited",
+      "type": "shell.exited",
+      "rpc": false,
+      "declaration": "export type ShellExited = {\n    id: string;\n    created: number;\n    metadata?: {\n        [x: string]: any;\n    };\n    type: \"shell.exited\";\n    location?: LocationRef;\n    data: {\n        id: string;\n        exit?: number;\n        status: \"running\" | \"exited\" | \"timeout\" | \"killed\";\n    };\n};"
+    },
+    {
+      "tsType": "SkillUpdated",
+      "type": "skill.updated",
+      "rpc": false,
+      "declaration": "export type SkillUpdated = {\n    id: string;\n    created: number;\n    metadata?: {\n        [x: string]: any;\n    };\n    type: \"skill.updated\";\n    location?: LocationRef;\n    data: {};\n};"
+    },
+    {
+      "tsType": "TuiCommandExecute",
+      "type": "tui.command.execute",
+      "rpc": false,
+      "declaration": "export type TuiCommandExecute = {\n    id: string;\n    created: number;\n    metadata?: {\n        [x: string]: any;\n    };\n    type: \"tui.command.execute\";\n    location?: LocationRef;\n    data: {\n        command: \"session.list\" | \"session.new\" | \"session.share\" | \"session.interrupt\" | \"session.background\" | \"session.compact\" | \"session.page.up\" | \"session.page.down\" | \"session.line.up\" | \"session.line.down\" | \"session.half.page.up\" | \"session.half.page.down\" | \"session.first\" | \"session.last\" | \"prompt.clear\" | \"prompt.submit\" | \"agent.cycle\" | (string & {});\n    };\n};"
+    },
+    {
+      "tsType": "TuiPromptAppend",
+      "type": "tui.prompt.append",
+      "rpc": false,
+      "declaration": "export type TuiPromptAppend = {\n    id: string;\n    created: number;\n    metadata?: {\n        [x: string]: any;\n    };\n    type: \"tui.prompt.append\";\n    location?: LocationRef;\n    data: {\n        text: string;\n    };\n};"
+    },
+    {
+      "tsType": "TuiSessionSelect",
+      "type": "tui.session.select",
+      "rpc": false,
+      "declaration": "export type TuiSessionSelect = {\n    id: string;\n    created: number;\n    metadata?: {\n        [x: string]: any;\n    };\n    type: \"tui.session.select\";\n    location?: LocationRef;\n    data: {\n        sessionID: string;\n    };\n};"
+    },
+    {
+      "tsType": "TuiToastShow",
+      "type": "tui.toast.show",
+      "rpc": false,
+      "declaration": "export type TuiToastShow = {\n    id: string;\n    created: number;\n    metadata?: {\n        [x: string]: any;\n    };\n    type: \"tui.toast.show\";\n    location?: LocationRef;\n    data: {\n        title?: string;\n        message: string;\n        variant: \"info\" | \"success\" | \"warning\" | \"error\";\n        duration?: number | undefined;\n    };\n};"
+    },
+    {
+      "tsType": "VcsBranchUpdated",
+      "type": "vcs.branch.updated",
+      "rpc": false,
+      "declaration": "export type VcsBranchUpdated = {\n    id: string;\n    created: number;\n    metadata?: {\n        [x: string]: any;\n    };\n    type: \"vcs.branch.updated\";\n    location?: LocationRef;\n    data: {\n        branch?: string;\n    };\n};"
+    },
+    {
+      "tsType": "WebsearchUpdated",
+      "type": "websearch.updated",
+      "rpc": false,
+      "declaration": "export type WebsearchUpdated = {\n    id: string;\n    created: number;\n    metadata?: {\n        [x: string]: any;\n    };\n    type: \"websearch.updated\";\n    location?: LocationRef;\n    data: {};\n};"
+    },
+    {
+      "tsType": "WorktreeResolved",
+      "type": "worktree.resolved",
+      "rpc": false,
+      "declaration": "export type WorktreeResolved = {\n    id: string;\n    created: number;\n    metadata?: {\n        [x: string]: any;\n    };\n    type: \"worktree.resolved\";\n    durable: {\n        aggregateID: string;\n        seq: number;\n        version: 1;\n    };\n    location?: LocationRef;\n    data: {\n        projectID: string;\n        directory: string;\n        previous: string;\n        adopted?: Array<string>;\n    };\n};"
+    },
+    {
+      "tsType": "WorktreeUpdated",
+      "type": "worktree.updated",
+      "rpc": false,
+      "declaration": "export type WorktreeUpdated = {\n    id: string;\n    created: number;\n    metadata?: {\n        [x: string]: any;\n    };\n    type: \"worktree.updated\";\n    location?: LocationRef;\n    data: {\n        projectID: string;\n    };\n};"
+    }
+  ]
+}

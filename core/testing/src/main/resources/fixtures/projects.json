@@ -1,0 +1,13 @@
+[
+  {
+    "id": "c42aa3ccc1e04f703386feb3e4f519d0bcd1d408",
+    "canonical": "/home/nick/Documents/Projects/opencode-android",
+    "vcs": "git",
+    "time": {
+      "created": 1790567446435,
+      "updated": 1790567446435,
+      "active": 1790567446439
+    },
+    "sandboxes": []
+  }
+]

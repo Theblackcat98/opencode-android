@@ -139,7 +139,9 @@ async function handleCompletion(response, body) {
 
 function finishReason(step) {
   if (step.finish) return step.finish
-  return step.tool ? "tool-calls" : "stop"
+  // OpenAI spelling: the server rejects unknown finish reasons
+  // ("Provider finish_reason: ..."), so tool steps must say "tool_calls".
+  return step.tool ? "tool_calls" : "stop"
 }
 
 function bufferedMessage(step, index) {

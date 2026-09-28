@@ -1,0 +1,167 @@
+==================== model-switched msg_0e6184386001km1chm5hdx71Jv
+{
+ "id": "msg_0e6184386001km1chm5hdx71Jv",
+ "time": {
+  "created": 1790566744966
+ },
+ "type": "model-switched",
+ "model": {
+  "id": "reasoning",
+  "providerID": "fake"
+ }
+}
+==================== shell msg_shell001
+{
+ "id": "msg_shell001",
+ "metadata": {
+  "background": true
+ },
+ "time": {
+  "created": 1790566744958,
+  "completed": 1790566744960
+ },
+ "type": "shell",
+ "shellID": "sh_0e618437b00103jey01L3zlIEM",
+ "command": "echo hi",
+ "status": "exited",
+ "exit": 0,
+ "output": {
+  "output": "hi\n",
+  "cursor": 3,
+  "size": 3,
+  "truncated": false
+ }
+}
+==================== idle msg_0e6181117001nc1zEn7Bjjn8p7
+{
+ "id": "msg_0e6181117001nc1zEn7Bjjn8p7",
+ "time": {
+  "created": 1790566732055
+ },
+ "type": "idle",
+ "outcome": "succeeded"
+}
+==================== assistant msg_0e61810e6001y9Fkky0B3swomu
+{
+ "id": "msg_0e61810e6001y9Fkky0B3swomu",
+ "time": {
+  "created": 1790566732019,
+  "streamed": 1790566732046,
+  "completed": 1790566732053
+ },
+ "type": "assistant",
+ "agent": "build",
+ "model": {
+  "id": "text",
+  "providerID": "fake"
+ },
+ "content": [
+  {
+   "type": "text",
+   "text": "The fake provider streams plain text in three chunks."
+  }
+ ],
+ "snapshot": {
+  "start": "3b4c4af7145c38bab7f3602240d454feb9b31450",
+  "end": "3b4c4af7145c38bab7f3602240d454feb9b31450",
+  "files": []
+ },
+ "finish": "stop",
+ "rawFinish": "stop",
+ "cost": 0,
+ "tokens": {
+  "input": 0,
+  "output": 0,
+  "reasoning": 0,
+  "cache": {
+   "read": 0,
+   "write": 0
+  }
+ }
+}
+==================== synthetic msg_0e61810b0001PJ40JFXTs0FHQp
+{
+ "id": "msg_0e61810b0001PJ40JFXTs0FHQp",
+ "metadata": {
+  "source": "shell",
+  "shellID": "sh_0e61810a4001Ud4wZ7UHRkfy3J",
+  "state": "completed",
+  "truncated": false,
+  "exit": 0
+ },
+ "time": {
+  "created": 1790566732003
+ },
+ "text": "The following shell command was executed by the user:\n<shell id=\"sh_0e61810a4001Ud4wZ7UHRkfy3J\" state=\"completed\" command=\"echo hi\">\nhi\n\n</shell>",
+ "type": "synthetic"
+}
+==================== assistant msg_0e618109a001MZhSudhslCtbZy
+{
+ "id": "msg_0e618109a001MZhSudhslCtbZy",
+ "time": {
+  "created": 1790566731962,
+  "streamed": 1790566731990,
+  "completed": 1790566731997
+ },
+ "type": "assistant",
+ "agent": "build",
+ "model": {
+  "id": "text",
+  "providerID": "fake"
+ },
+ "content": [
+  {
+   "type": "text",
+   "text": "The fake provider streams plain text in three chunks."
+  }
+ ],
+ "snapshot": {
+  "start": "3b4c4af7145c38bab7f3602240d454feb9b31450",
+  "end": "3b4c4af7145c38bab7f3602240d454feb9b31450",
+  "files": []
+ },
+ "finish": "stop",
+ "rawFinish": "stop",
+ "cost": 0,
+ "tokens": {
+  "input": 0,
+  "output": 0,
+  "reasoning": 0,
+  "cache": {
+   "read": 0,
+   "write": 0
+  }
+ }
+}
+==================== shell msg_0e61810a9001vE2wQflpI92LcL
+{
+ "id": "msg_0e61810a9001vE2wQflpI92LcL",
+ "metadata": {
+  "background": true
+ },
+ "time": {
+  "created": 1790566731945,
+  "completed": 1790566731951
+ },
+ "type": "shell",
+ "shellID": "sh_0e61810a4001Ud4wZ7UHRkfy3J",
+ "command": "echo hi",
+ "status": "exited",
+ "exit": 0,
+ "output": {
+  "output": "hi\n",
+  "cursor": 3,
+  "size": 3,
+  "truncated": false
+ }
+}
+==================== synthetic msg_0e618108a001sBzx5FpGhsvZhn
+{
+ "id": "msg_0e618108a001sBzx5FpGhsvZhn",
+ "time": {
+  "created": 1790566731926
+ },
+ "text": "note to self",
+ "description": "probe",
+ "type": "synthetic"
+}

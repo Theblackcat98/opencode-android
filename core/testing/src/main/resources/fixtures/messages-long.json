@@ -1,0 +1,62 @@
+{
+  "data": [
+    {
+      "id": "msg_0e62142b0002vF7gKXQ3mSm56F",
+      "time": {
+        "created": 1790567334576
+      },
+      "type": "idle",
+      "outcome": "succeeded"
+    },
+    {
+      "id": "msg_0e6214270001tOEgSGiYbjUhpN",
+      "time": {
+        "created": 1790567334524,
+        "streamed": 1790567334569,
+        "completed": 1790567334575
+      },
+      "type": "assistant",
+      "agent": "build",
+      "model": {
+        "id": "long",
+        "providerID": "fake",
+        "variant": "default"
+      },
+      "content": [
+        {
+          "type": "text",
+          "text": "## Markdown heading\n\nA paragraph with a list:\n\n- one\n- two\n- three\n\nA table:\n\n| a | b |\n| - | - |\n| 1 | 2 |\n\nInline `code`, a [link](https://opencode.ai) and a fenced block:\n\n```kotlin\nval answer = 42\n```\n"
+        }
+      ],
+      "snapshot": {
+        "start": "be6e85ed324d8d774273c4045c257e8512c542c1",
+        "end": "be6e85ed324d8d774273c4045c257e8512c542c1",
+        "files": []
+      },
+      "finish": "stop",
+      "rawFinish": "stop",
+      "cost": 0,
+      "tokens": {
+        "input": 0,
+        "output": 0,
+        "reasoning": 0,
+        "cache": {
+          "read": 0,
+          "write": 0
+        }
+      }
+    },
+    {
+      "id": "msg_fixture_long",
+      "time": {
+        "created": 1790567334509
+      },
+      "text": "Give the long markdown answer.",
+      "type": "user"
+    }
+  ],
+  "cursor": {
+    "previous": "eyJpZCI6Im1zZ18wZTYyMTQyYjAwMDJ2RjdnS1hRM21TbTU2RiIsIm9yZGVyIjoiZGVzYyIsImRpcmVjdGlvbiI6InByZXZpb3VzIn0",
+    "next": "eyJpZCI6Im1zZ19maXh0dXJlX2xvbmciLCJvcmRlciI6ImRlc2MiLCJkaXJlY3Rpb24iOiJuZXh0In0"
+  }
+}

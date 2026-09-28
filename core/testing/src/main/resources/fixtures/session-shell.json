@@ -1,0 +1,31 @@
+{
+  "data": {
+    "id": "ses_fixture_shell",
+    "projectID": "c42aa3ccc1e04f703386feb3e4f519d0bcd1d408",
+    "model": {
+      "id": "shell",
+      "providerID": "fake",
+      "variant": "default"
+    },
+    "cost": 0,
+    "tokens": {
+      "input": 0,
+      "output": 0,
+      "reasoning": 0,
+      "cache": {
+        "read": 0,
+        "write": 0
+      }
+    },
+    "outcome": "succeeded",
+    "time": {
+      "created": 1790567455802,
+      "updated": 1790567455805,
+      "idle": 1790567455908
+    },
+    "title": "fixture shell",
+    "location": {
+      "directory": "/home/nick/Documents/Projects/opencode-android"
+    }
+  }
+}

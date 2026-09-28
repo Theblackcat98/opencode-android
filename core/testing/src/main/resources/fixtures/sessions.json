@@ -1,0 +1,269 @@
+{
+  "data": [
+    {
+      "id": "ses_fixture_misc",
+      "projectID": "c42aa3ccc1e04f703386feb3e4f519d0bcd1d408",
+      "model": {
+        "id": "reasoning",
+        "providerID": "fake",
+        "variant": "default"
+      },
+      "cost": 0,
+      "tokens": {
+        "input": 0,
+        "output": 0,
+        "reasoning": 0,
+        "cache": {
+          "read": 0,
+          "write": 0
+        }
+      },
+      "outcome": "succeeded",
+      "time": {
+        "created": 1790567336032,
+        "updated": 1790567336061,
+        "idle": 1790567336199
+      },
+      "title": "fixture misc",
+      "location": {
+        "directory": "/home/nick/Documents/Projects/opencode-android"
+      }
+    },
+    {
+      "id": "ses_fixture_long",
+      "projectID": "c42aa3ccc1e04f703386feb3e4f519d0bcd1d408",
+      "model": {
+        "id": "long",
+        "providerID": "fake",
+        "variant": "default"
+      },
+      "cost": 0,
+      "tokens": {
+        "input": 0,
+        "output": 0,
+        "reasoning": 0,
+        "cache": {
+          "read": 0,
+          "write": 0
+        }
+      },
+      "outcome": "succeeded",
+      "time": {
+        "created": 1790567334502,
+        "updated": 1790567334505,
+        "idle": 1790567334576
+      },
+      "title": "fixture long",
+      "location": {
+        "directory": "/home/nick/Documents/Projects/opencode-android"
+      }
+    },
+    {
+      "id": "ses_fixture_error",
+      "projectID": "c42aa3ccc1e04f703386feb3e4f519d0bcd1d408",
+      "model": {
+        "id": "error",
+        "providerID": "fake",
+        "variant": "default"
+      },
+      "cost": 0,
+      "tokens": {
+        "input": 0,
+        "output": 0,
+        "reasoning": 0,
+        "cache": {
+          "read": 0,
+          "write": 0
+        }
+      },
+      "outcome": "failed",
+      "time": {
+        "created": 1790567250174,
+        "updated": 1790567250178,
+        "idle": 1790567334379
+      },
+      "title": "fixture error",
+      "location": {
+        "directory": "/home/nick/Documents/Projects/opencode-android"
+      }
+    },
+    {
+      "id": "ses_fixture_subagent",
+      "projectID": "c42aa3ccc1e04f703386feb3e4f519d0bcd1d408",
+      "model": {
+        "id": "subagent",
+        "providerID": "fake",
+        "variant": "default"
+      },
+      "cost": 0,
+      "tokens": {
+        "input": 0,
+        "output": 0,
+        "reasoning": 0,
+        "cache": {
+          "read": 0,
+          "write": 0
+        }
+      },
+      "outcome": "succeeded",
+      "time": {
+        "created": 1790567247137,
+        "updated": 1790567247140,
+        "idle": 1790567249370
+      },
+      "title": "fixture subagent",
+      "location": {
+        "directory": "/home/nick/Documents/Projects/opencode-android"
+      }
+    },
+    {
+      "id": "ses_fixture_question",
+      "projectID": "c42aa3ccc1e04f703386feb3e4f519d0bcd1d408",
+      "model": {
+        "id": "question",
+        "providerID": "fake",
+        "variant": "default"
+      },
+      "cost": 0,
+      "tokens": {
+        "input": 0,
+        "output": 0,
+        "reasoning": 0,
+        "cache": {
+          "read": 0,
+          "write": 0
+        }
+      },
+      "outcome": "succeeded",
+      "time": {
+        "created": 1790567244100,
+        "updated": 1790567244103,
+        "idle": 1790567246031
+      },
+      "title": "fixture question",
+      "location": {
+        "directory": "/home/nick/Documents/Projects/opencode-android"
+      }
+    },
+    {
+      "id": "ses_fixture_edit",
+      "projectID": "c42aa3ccc1e04f703386feb3e4f519d0bcd1d408",
+      "model": {
+        "id": "edit",
+        "providerID": "fake",
+        "variant": "default"
+      },
+      "cost": 0,
+      "tokens": {
+        "input": 0,
+        "output": 0,
+        "reasoning": 0,
+        "cache": {
+          "read": 0,
+          "write": 0
+        }
+      },
+      "outcome": "succeeded",
+      "time": {
+        "created": 1790567241058,
+        "updated": 1790567241062,
+        "idle": 1790567242983
+      },
+      "title": "fixture edit",
+      "location": {
+        "directory": "/home/nick/Documents/Projects/opencode-android"
+      }
+    },
+    {
+      "id": "ses_fixture_shell",
+      "projectID": "c42aa3ccc1e04f703386feb3e4f519d0bcd1d408",
+      "model": {
+        "id": "shell",
+        "providerID": "fake",
+        "variant": "default"
+      },
+      "cost": 0,
+      "tokens": {
+        "input": 0,
+        "output": 0,
+        "reasoning": 0,
+        "cache": {
+          "read": 0,
+          "write": 0
+        }
+      },
+      "outcome": "succeeded",
+      "time": {
+        "created": 1790567238020,
+        "updated": 1790567238023,
+        "idle": 1790567240324
+      },
+      "title": "fixture shell",
+      "location": {
+        "directory": "/home/nick/Documents/Projects/opencode-android"
+      }
+    },
+    {
+      "id": "ses_fixture_reasoning",
+      "projectID": "c42aa3ccc1e04f703386feb3e4f519d0bcd1d408",
+      "model": {
+        "id": "reasoning",
+        "providerID": "fake",
+        "variant": "default"
+      },
+      "cost": 0,
+      "tokens": {
+        "input": 0,
+        "output": 0,
+        "reasoning": 0,
+        "cache": {
+          "read": 0,
+          "write": 0
+        }
+      },
+      "outcome": "succeeded",
+      "time": {
+        "created": 1790567236480,
+        "updated": 1790567236483,
+        "idle": 1790567236549
+      },
+      "title": "fixture reasoning",
+      "location": {
+        "directory": "/home/nick/Documents/Projects/opencode-android"
+      }
+    },
+    {
+      "id": "ses_fixture_text",
+      "projectID": "c42aa3ccc1e04f703386feb3e4f519d0bcd1d408",
+      "model": {
+        "id": "text",
+        "providerID": "fake",
+        "variant": "default"
+      },
+      "cost": 0,
+      "tokens": {
+        "input": 0,
+        "output": 0,
+        "reasoning": 0,
+        "cache": {
+          "read": 0,
+          "write": 0
+        }
+      },
+      "outcome": "succeeded",
+      "time": {
+        "created": 1790567234829,
+        "updated": 1790567234925,
+        "idle": 1790567235036
+      },
+      "title": "fixture text",
+      "location": {
+        "directory": "/home/nick/Documents/Projects/opencode-android"
+      }
+    }
+  ],
+  "cursor": {
+    "previous": "eyJhbmNob3IiOnsiaWQiOiJzZXNfZml4dHVyZV9taXNjIiwidGltZSI6MTc5MDU2NzMzNjA2MSwiZGlyZWN0aW9uIjoicHJldmlvdXMifX0",
+    "next": "eyJhbmNob3IiOnsiaWQiOiJzZXNfZml4dHVyZV90ZXh0IiwidGltZSI6MTc5MDU2NzIzNDkyNSwiZGlyZWN0aW9uIjoibmV4dCJ9fQ"
+  }
+}

@@ -1,0 +1,119 @@
+{
+  "data": [
+    {
+      "id": "msg_0e6232292002ATHu8dzmX1jQro",
+      "time": {
+        "created": 1790567457426
+      },
+      "type": "idle",
+      "outcome": "succeeded"
+    },
+    {
+      "id": "msg_0e6232274001hzNq2QERx4NBHT",
+      "time": {
+        "created": 1790567457406,
+        "streamed": 1790567457420,
+        "completed": 1790567457425
+      },
+      "type": "assistant",
+      "agent": "build",
+      "model": {
+        "id": "edit",
+        "providerID": "fake",
+        "variant": "default"
+      },
+      "content": [
+        {
+          "type": "text",
+          "text": "Edited fake-provider-target.txt."
+        }
+      ],
+      "snapshot": {
+        "start": "a74ffe7333429354a1de50977d828dc4cb900a98",
+        "end": "a74ffe7333429354a1de50977d828dc4cb900a98",
+        "files": []
+      },
+      "finish": "stop",
+      "rawFinish": "stop",
+      "cost": 0,
+      "tokens": {
+        "input": 0,
+        "output": 0,
+        "reasoning": 0,
+        "cache": {
+          "read": 0,
+          "write": 0
+        }
+      }
+    },
+    {
+      "id": "msg_0e6232241001840wnV0m5gKDyk",
+      "time": {
+        "created": 1790567457359,
+        "streamed": 1790567457383,
+        "completed": 1790567457390
+      },
+      "type": "assistant",
+      "agent": "build",
+      "model": {
+        "id": "edit",
+        "providerID": "fake",
+        "variant": "default"
+      },
+      "content": [
+        {
+          "type": "tool",
+          "id": "call_edit_1",
+          "name": "edit",
+          "executed": false,
+          "state": {
+            "status": "error",
+            "input": {
+              "filePath": "fake-provider-target.txt",
+              "oldString": "before",
+              "newString": "after"
+            },
+            "error": {
+              "type": "tool.execution",
+              "message": "Invalid arguments for tool \"edit\":\n- path: Missing key\n\nArguments provided:\n{\n  \"oldString\": \"before\",\n  \"newString\": \"after\"\n}\n\nUpdate the arguments and call the tool again."
+            }
+          },
+          "time": {
+            "created": 1790567457367,
+            "ran": 1790567457382,
+            "completed": 1790567457384
+          }
+        }
+      ],
+      "snapshot": {
+        "start": "a74ffe7333429354a1de50977d828dc4cb900a98",
+        "end": "a74ffe7333429354a1de50977d828dc4cb900a98",
+        "files": []
+      },
+      "finish": "tool-calls",
+      "rawFinish": "tool_calls",
+      "cost": 0,
+      "tokens": {
+        "input": 0,
+        "output": 0,
+        "reasoning": 0,
+        "cache": {
+          "read": 0,
+          "write": 0
+        }
+      }
+    },
+    {
+      "id": "msg_fixture_edit",
+      "time": {
+        "created": 1790567457342
+      },
+      "text": "Apply the scripted edit, then confirm.",
+      "type": "user"
+    }
+  ],
+  "cursor": {
+    "previous": "eyJpZCI6Im1zZ18wZTYyMzIyOTIwMDJBVEh1OGR6bVgxalFybyIsIm9yZGVyIjoiZGVzYyIsImRpcmVjdGlvbiI6InByZXZpb3VzIn0",
+    "next": "eyJpZCI6Im1zZ19maXh0dXJlX2VkaXQiLCJvcmRlciI6ImRlc2MiLCJkaXJlY3Rpb24iOiJuZXh0In0"
+  }
+}
