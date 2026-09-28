@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name" translatable="false">OpenCode</string>
+    <string name="home_title">Servers</string>
+    <string name="home_empty_title">No servers yet</string>
+    <string name="home_empty_body">Connect to an OpenCode V2 server on your computer. On that computer, run <tt>opencode pair</tt> to get a link and a QR code.</string>
+    <string name="home_add_server">Add server</string>
+    <string name="home_add_server_unavailable">Adding servers arrives in the next update.</string>
+</resources>

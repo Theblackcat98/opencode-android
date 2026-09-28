@@ -1,0 +1,27 @@
+# Gradle
+.gradle/
+build/
+.kotlin/
+!gradle/wrapper/gradle-wrapper.jar
+
+# Local configuration (sdk.dir, signing)
+local.properties
+*.keystore
+*.jks
+keystore.properties
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.DS_Store
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Test harness state (scripts/dev-server.sh)
+.dev-server/
+node_modules/
+
+# Roborazzi comparison output (reference images in src/test/screenshots are committed)
+**/build/outputs/roborazzi/

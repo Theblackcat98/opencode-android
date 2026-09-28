@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A terminal prompt glyph ("> _") in the OpenCode peach; placeholder until the app identity is decided. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="@color/opencode_peach"
+        android:pathData="M36,40 L50,54 L36,68 L41,68 L55,54 L41,40 Z" />
+    <path
+        android:fillColor="@color/opencode_peach"
+        android:pathData="M56,64 L72,64 L72,68 L56,68 Z" />
+</vector>
