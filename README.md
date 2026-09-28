@@ -5,11 +5,28 @@ network, or any network your phone can reach, and drives the server's full featu
 
 ## Status
 
-Phase 3, *Driving sessions*, is complete. The app pairs with one or more OpenCode servers, keeps a live event
-stream to each of them, and now **drives** them from the phone. The phase table is in
+Phase 4, *Background presence and notifications*, is complete. The app pairs with one or more OpenCode servers,
+keeps a live event stream to each of them, **drives** them from the phone, and now stays reachable while it works:
+a permission request or a question reaches a locked phone, and can be answered there. The phase table is in
 [`docs/ANDROID_APP_PLAN.md`](docs/ANDROID_APP_PLAN.md#6-phases).
 
 What works today:
+
+- **Never miss the agent**: a foreground connection service runs while any session is busy, anything is waiting
+  for you, or you have asked to stay connected, and stops after a configurable idle grace period. Its ongoing
+  notification lists the running sessions and has an Interrupt button.
+- **Answer from the lock screen**: a permission request notifies with *Allow once* and *Reject*. *Always allow* is
+  two taps, because it stores a standing rule on the server and you see the patterns first. A question that is one
+  free-text field can be typed into the notification itself, validated by the same engine the screen uses.
+- **Told what happened**: a finished turn, a finished subagent, a provider retry or a usage limit, and a server
+  update. Grouped per server and per session, summarised, and silenced by a per-session mute or quiet hours — which
+  never silence a request, because that is work that has stopped rather than news.
+- **Unread, honestly**: a session is marked seen when you actually look at it, not when its turn ended, and the
+  count is on the app's launcher shortcut.
+- **Auto-approve when you want it**: per session or everywhere, always for a limited time, always answering
+  "allow once" and never "allow always", with a visible indicator and a confirmation before it goes on. Rules the
+  server is configured to deny still hold, because a denied action never asks.
+- And from Phase 3:
 
 - **Start a session**: pick a location from the projects, from a directory the server has run in, or by browsing
   the server's filesystem; then an agent and a model, with an optional title. The agents and models offered are the

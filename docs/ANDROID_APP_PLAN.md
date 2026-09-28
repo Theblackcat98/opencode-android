@@ -221,7 +221,7 @@ phases that reuse it get cheaper as a result.
 | P1 | Connect and pair | HTTP client, auth, server registry, `EventStreamClient`, resync signal | All | Complete |
 | P2 | Live read-only view | `SyncedResource` stores, `TimelineReducer`, Markdown, code and tool renderers | P3–P10 | Complete |
 | P3 | Drive sessions (MVP) | Composer pipeline, pickers, `RequestCenter`, **forms engine** | P4, P5, P8, P9 | Complete |
-| P4 | Background and notifications | `ConnectionService`, notification and action infrastructure, unread model | P7, P8, P9, P10 | Planned |
+| P4 | Background and notifications | `ConnectionService`, notification and action infrastructure, unread model | P7, P8, P9, P10 | Complete |
 | P5 | Rich composer | Attachment pipeline, autocomplete and mention engine | P6, P8 | Planned |
 | P6 | Review and history | Diff engine and viewer, file viewer, revert and fork flows | P7, P9 | Planned |
 | P7 | Execution surfaces | WebSocket and terminal component, process panels, worktree flows | P10 | Planned |
@@ -551,8 +551,8 @@ actionable notifications.
 **Features**
 
 - **`ConnectionService`**, a foreground service.
-  - Service type `connectedDevice` (a connection to an external device over the network), with a `dataSync`
-    fallback. The final choice is validated in a P0 spike.
+  - Service type **`dataSync`**, settled by the spike this phase ran; `connectedDevice` was rejected. The
+    finding is in the Phase 4 [status](#phase-4-background-presence-and-notifications-m) below.
   - Runs while any session is busy, while any request is pending, or when "always connected" is enabled. It stops
     after a configurable idle grace period.
   - Its ongoing notification lists running sessions and offers an Interrupt action.
@@ -591,6 +591,154 @@ actionable notifications.
 - Approving from the notification shade resumes the agent.
 - A finished turn notifies.
 - No service runs while nothing is active.
+
+**Status.** Complete. Verified with 515 JVM unit-test executions and no failures — 118 test methods
+added by this phase, 41 of them under Robolectric against the real `NotificationManager`, a real
+`Service` request and a real Hilt-less `Application`. Android Lint is clean and both `play` and `fdroid`
+debug APKs assemble.
+
+**The service-type spike, which the plan left as a P0 debt.** The plan proposed `connectedDevice` with a
+`dataSync` fallback and said the final choice would be validated in a spike. The spike was not done; it is
+done here, and it went the other way. **`dataSync` is the type.**
+
+- `connectedDevice` is for *peripherals*. At runtime, AOSP's `ForegroundServiceTypePolicy` requires the app to hold
+  at least one of `CHANGE_NETWORK_STATE`, `CHANGE_WIFI_STATE`, `CHANGE_WIFI_MULTICAST_STATE`, `NFC`,
+  `TRANSMIT_IR`, a granted `BLUETOOTH_*`/`UWB_RANGING`/`RANGING`, or a granted USB device or accessory
+  permission. The app is a client of a server the user pointed it at, not of a paired device, so the only
+  permission it could honestly declare is `CHANGE_NETWORK_STATE` — for a capability it does not have. It
+  *observes* the network (`NetworkConnectivityMonitor`); it never changes it. Declaring a permission to satisfy a
+  type check is also exactly what Google Play's FGS declaration is reviewed against.
+- `dataSync` describes what the service does: fetching the server's state over the network on the user's behalf. It
+  needs no permission beyond `FOREGROUND_SERVICE`, and `FOREGROUND_SERVICE_DATA_SYNC` is the only other one
+  declared.
+- Its one real cost is Android 15's cap of six hours in any 24-hour period, delivered through `Service.onTimeout`.
+  That is a limit this design stays far below, because the service stops within minutes of nothing happening — the
+  very property the fourth exit criterion asks for. `onTimeout` stops the service and is a test-free but necessary
+  path.
+
+**A second platform constraint the spike turned up, which the plan did not mention.** Android 12+ refuses
+`startForegroundService` from the background outside a documented exemption list, and *"a permission arrived over
+a socket"* is not on it. So the app cannot start the service in response to the event that makes it necessary while
+the phone is locked. Two documented exemptions are reachable, and both are wired: the user's tap on a notification,
+and the user having turned battery optimisation off. `PresencePolicy` therefore takes a `StartExemption` rather
+than a boolean, and a start the platform would refuse is reported as `Keep(BACKGROUND_START_REFUSED)` instead of
+being attempted. The consequence for the first exit criterion is real and is stated below.
+
+**What was built.**
+
+- `PresencePolicy`, a pure function deciding whether the connection belongs in a foreground service: a session busy,
+  a request pending, or "always connected" keeps it up; a configurable idle grace period (one to ten minutes,
+  two by default) is the only thing that stops it. `PresenceController` projects the stores into the inputs;
+  `ConnectionService` carries the answer out and owns the ongoing notification, which lists the running sessions
+  and offers an Interrupt. `ConnectionServiceLauncher` is the only thing that asks the platform for a start, and
+  it does so through the same policy.
+- Seven notification channels, one per attention event the TUI has: permission (high, vibrates), question/form,
+  turn finished, subagent finished, retry/usage, server update (from `installation.*`), and the connection's own.
+  Channel ids are fixed strings, because the platform keeps a user's channel choice under the id.
+- `AttentionReconciler`, the housekeeping: a **reconciler over the state, not a handler over events**. Every way a
+  request can go away — answered here, answered on the desktop, cancelled, session deleted, server forgotten — is
+  one rule: the request is no longer pending, so there is no slot for it. That is what makes "a reply from another
+  client cancels the phone's notification" fall out of the same code as everything else, and it is why a resync
+  cannot re-notify about a turn the user has already been told about.
+- Notification actions through a `BroadcastReceiver`: allow once, reject, interrupt, open. "Allow always" is
+  **two steps** — the first tap posts a confirmation naming the patterns the server will store, and only the
+  second sends the reply — because plan §5.2 requires an explicit confirmation and a notification action has no
+  dialog to confirm in. A single free-text question is answered from the shade with a `RemoteInput`, and the answer
+  goes through the same `FormEngine` validation the on-screen renderer applies; anything with a second field, an
+  option list or a positive `minLength` is opened instead.
+- Per-session mute, per-server quiet hours and an idle grace period in DataStore, all client-side: a mute that
+  travelled to the server would silence the desktop too. Quiet hours suppress information and never a request,
+  because a request is not a message, it is work that has stopped.
+- The unread model: `session.view` is called when the session screen resumes on a session with an unseen idle
+  transition, and only then. The badge is not cleared optimistically — `session.viewed` is the server saying it
+  recorded the transition.
+- Auto-approve, client-side the way the TUI's `autoaccept` works: per session or globally, always time-limited,
+  answering `ask` requests with `once` and never `always`, with a persistent indicator on the ongoing notification
+  and a confirmation before it is turned on (§5.2). A configured `deny` rule still holds because a denied action
+  never produces a request, and the strongest form of that is the shape of `AutoApprovePolicy`: it has no rule
+  input to get wrong.
+- Android 13+ notification-permission onboarding, a per-channel list that opens the system's own channel settings
+  (the only place a channel can be changed), and guidance for battery optimisation and OEM background
+  restrictions that opens the system's list without asking for a permission the app cannot justify.
+
+**Not verified here, and why.** Three of the four exit criteria need a device, and there is no emulator and no
+hardware in this environment.
+
+- *"With the phone locked, a permission request shows a notification within about 2 s."* The decision half is a
+  test: `AttentionReconciler` puts a raised request on the permission channel in the same dispatch that raised it,
+  and `RequestCenter.permissionsById` is read un-derived for exactly that reason (a `stateIn`-derived list runs on
+  another coroutine, so a read straight after an event can see the previous list). The delivery half needs a phone:
+  it is the event arriving over a socket while the process is alive, and `NotificationManager.notify` from a
+  process the system has not killed. On top of that, the spike's second finding applies — if the service is not
+  already running, the app *cannot* start it from the background, so this criterion holds when the connection is up
+  (the service runs while a session is busy or a request is pending) and not when nothing is active and the user
+  has not opened the app.
+- *"Approving from the notification shade resumes the agent."* A `PendingIntent` reaching a `BroadcastReceiver`
+  and an HTTP call leaving it cannot be exercised without the platform delivering the broadcast. What is asserted:
+  the action encodes and decodes round trip, the broadcast is explicit and unexported, every pending intent is
+  immutable, the request codes are unique by construction over a corpus of thousands, the reply goes through the
+  same `RequestCenter` the screens use (so a retry is the same request), and every wait in the receiver is bounded
+  so a slow server fails loudly instead of hanging.
+- *"A finished turn notifies."* The state rule is a test — unread, finished, not the session on screen, not muted,
+  not quiet — and the channel, group and wording are asserted against the built `Notification`. Whether a shade
+  shows it on a real device is the device's decision.
+- *"No service runs while nothing is active."* **This one is fully decided by a test**, because the decision is
+  `PresencePolicy`'s: idle plus an elapsed grace period is a `Stop`, and the service does stop the connection with
+  it. What a device adds is the battery meter agreeing.
+
+**What was found that the plan did not anticipate.**
+
+- The reconciler-over-state shape. Event-driven notification handling needs a cancel for every way a thing can go
+  away, and forgets whichever is not listed; deriving the desired set from the state has one rule and none of
+  them to forget.
+- A `RemoteInput` cannot show which field failed. A question with a positive `minLength` is answerable from the
+  shade with one character and would then fail validation, so such a form is opened rather than answered.
+- A channel's own settings cannot be changed by the app after creation, so a per-channel switch in the settings
+  screen would be a switch that silently does nothing. Each row opens the system's channel settings instead.
+- `ShortcutManager.setBadges` is `@SystemApi` and there is no `ShortcutManagerCompat` equivalent, so a
+  third-party app cannot put a counted dot on its own icon. See deviations.
+
+**Deviations.**
+
+- **The service type is `dataSync`, not `connectedDevice`.** The spike above. The plan's own words allowed a
+  fallback, and the finding is that the fallback is the right one.
+- **The notification components live in `feature:requests`, not the app module.** Plan §4.1 gives
+  `feature/requests` "Permission and form UI, notifications" for P3 and P4, and a library module can declare
+  components. Putting `ConnectionService` and `NotificationActionReceiver` next to the channels, the builders and
+  the sink keeps the whole Phase 4 surface in one module, which is also what lets a Robolectric test assert on the
+  manifest declarations instead of only trusting them. The permissions are still declared in the app, because the
+  app is what is installed.
+- **A start the platform refuses becomes a `Keep`.** Rather than catching `ForegroundServiceStartNotAllowedException`
+  on every start, the exemption is a required input to the decision, so the refusal is a reasoned answer rather
+  than a crash. The cost is that the app relies on the service already running, which the plan's own "runs while
+  any session is busy" rule makes the normal case.
+- **The launcher badge is a label, not a dot.** `ShortcutManager.setBadges` is `@SystemApi` and
+  `ShortcutManagerCompat.setBadges` does not exist in the androidx version this project uses (verified against
+  `androidx.core` 1.19.1), so the unread count goes into a dynamic shortcut's short label ("3 unread"), which
+  every launcher shows. The counted dot needs a system launcher or a published API.
+- **Auto-approve is always time-limited.** The plan says "optionally time-limited"; the choices are 5, 15, 30 and
+  60 minutes, and there is no "until I turn it off", because an approval mode with no end is a permission that
+  cannot be taken back without noticing.
+- **`REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` is not declared.** The permission is for apps whose core function
+  breaks under doze. This one stops its service when there is nothing to do, and the guidance opens the system's
+  own list, which needs no permission.
+
+**Known limitations.**
+
+- A permission raised by the desktop while the phone is locked, with nothing running and the app closed, cannot
+  start the service and therefore cannot notify. The remedies are all user actions — opening the app, tapping the
+  notification, or exempting the app from battery optimisation — and the settings screen says so.
+- The notification-permission prompt appears in the settings screen rather than at first launch. A first-launch
+  prompt for a permission whose value is not yet visible is the pattern this app avoids everywhere else, and the
+  settings screen is where the blocked state explains itself.
+- The "Allow always" confirmation is itself a notification, so plan §5.2's confirmation has no dialog, a voice or
+  a modal — it is one more tap. It does name the patterns, which is the part that makes it a consent rather than a
+  formality.
+- A per-session mute silences a blocking request too. That is the definition of a mute, but it means a muted session
+  can be waiting with the app closed and no notification anywhere; the request is still in the inbox when the app
+  opens.
+- The ongoing notification is capped at four running sessions and three resources per permission, which is what a
+  shade row fits.
 
 ---
 
@@ -1046,7 +1194,7 @@ that delivers it.
 | P1 | 3 | Complete |
 | P2 | 12 | Complete |
 | P3 | 20 | Complete |
-| P4 | 1 | Planned |
+| P4 | 1 | Complete |
 | P5 | 10 | Planned |
 | P6 | 15 | Planned |
 | P7 | 30 | Planned |
@@ -1071,7 +1219,7 @@ and is covered by the reducer or invalidation tests.
 | P1 | `server.connected` (fired, logged, and published as the resync signal) | Complete |
 | P2 | `location.shutdown`, `models-dev.refreshed`, `model.updated`, `agent.updated`, `session.created`, `session.agent.selected`, `session.model.selected`, `session.moved`, `session.renamed`, `session.metadata.updated`, `session.permissions`, `session.viewed`, `session.usage.updated`, `session.deleted`, `session.forked`, `session.inbox.delivered`, `session.inbox.enqueued`, `session.inbox.cancelled`, `session.inbox.delivery.changed`, `session.execution.started`, `session.execution.succeeded`, `session.execution.failed`, `session.execution.interrupted`, `session.instructions.updated`, `session.synthetic`, `session.skill.activated`, `session.shell.started`, `session.shell.ended`, `session.step.started`, `session.step.streamed`, `session.step.ended`, `session.step.failed`, `session.text.started`, `session.text.delta`, `session.text.ended`, `session.reasoning.started`, `session.reasoning.delta`, `session.reasoning.ended`, `session.tool.input.started`, `session.tool.input.delta`, `session.tool.input.ended`, `session.tool.called`, `session.tool.progress`, `session.tool.success`, `session.tool.failed`, `session.retry.scheduled`, `session.compaction.started`, `session.compaction.delta`, `session.compaction.ended`, `session.compaction.failed`, `session.revert.staged`, `session.revert.cleared`, `session.revert.committed`, `project.updated`, `session.status`, `session.idle` | Complete |
 | P3 | `permission.asked`, `permission.replied`, `form.created`, `form.replied`, `form.cancelled` | Complete |
-| P4 | `installation.updated`, `installation.update-available` | Planned |
+| P4 | `installation.updated`, `installation.update-available` (recorded on `ServerDataSet`; an announced version becomes the "server update available" notification) | Complete |
 | P5 | `reference.updated`, `command.updated`, `skill.updated` | Planned |
 | P6 | `filesystem.changed`, `vcs.branch.updated` | Planned |
 | P7 | `worktree.updated`, `worktree.resolved`, `pty.created`, `pty.updated`, `pty.exited`, `pty.deleted`, `persistent-pty.added`, `persistent-pty.removed`, `shell.created`, `shell.exited`, `shell.deleted` | Planned |
