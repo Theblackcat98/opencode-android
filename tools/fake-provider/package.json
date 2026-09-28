@@ -1,0 +1,13 @@
+{
+  "name": "@opencode-android/fake-provider",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Scripted OpenAI-compatible provider used by the integration test harness.",
+  "bin": {
+    "fake-provider": "./server.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
