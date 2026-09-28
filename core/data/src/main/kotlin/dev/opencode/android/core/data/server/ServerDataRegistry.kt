@@ -8,6 +8,7 @@ import dev.opencode.android.core.network.ServerApiFactory
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -39,6 +40,7 @@ class ServerDataRegistry @Inject constructor(
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val sets = LinkedHashMap<String, ServerDataSet>()
     private val bindings = HashMap<String, Binding>()
+    private val scopes = HashMap<String, CoroutineScope>()
 
     private val _active = MutableStateFlow<ServerDataSet?>(null)
 
@@ -57,13 +59,35 @@ class ServerDataRegistry @Inject constructor(
     /** The set of one server, if it has been built. */
     fun dataSetFor(serverId: String): ServerDataSet? = sets[serverId]
 
+    /**
+     * The set of one server, built if it is not there yet.
+     *
+     * A notification action can name a server the app is not following: the user answers from the
+     * shade while the phone is on another server's home. The write only needs an API bound to that
+     * address — the confirmation of the write arrives on the stream of whichever server *is* active,
+     * and the notification is cancelled by the action's own success — so the set is built unbound and
+     * binds to events later, when that server becomes active.
+     */
+    suspend fun ensureDataSet(serverId: String): ServerDataSet? {
+        sets[serverId]?.let { return it }
+        val profile = serverRepository.getServer(serverId) ?: return null
+        val scope = newScope(profile.id)
+        return ServerDataSet(
+            serverId = profile.id,
+            api = apiFactory.createForReads(profile.baseUrl, profile.trustUserCertificates),
+            scope = scope,
+            cache = cache,
+            selfCheck = selfCheck,
+        ).also { sets[profile.id] = it }
+    }
+
     private suspend fun dataSetFor(connection: ServerConnection): ServerDataSet {
         sets[connection.serverProfile.id]?.let { existing ->
             bind(existing, connection)
             return existing
         }
         val profile = serverRepository.getServer(connection.serverProfile.id) ?: connection.serverProfile
-        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val scope = newScope(profile.id)
         val set = ServerDataSet(
             serverId = profile.id,
             api = apiFactory.createForReads(profile.baseUrl, profile.trustUserCertificates),
@@ -96,12 +120,19 @@ class ServerDataRegistry @Inject constructor(
         bindings[set.serverId] = Binding(connection, jobs)
     }
 
-    /** Forgets a removed server's read model and stops listening to its stream. */
+    /** Forgets a removed server's read model, its scope and its stream. */
     fun forget(serverId: String) {
         sets.remove(serverId)?.clear()
         bindings.remove(serverId)?.jobs?.forEach { it.cancel() }
+        // The set's collectors live in its own scope, so this is what actually stops them. Without
+        // it a removed server would keep a `stateIn` and its event application alive for the life
+        // of the process.
+        scopes.remove(serverId)?.cancel()
         if (_active.value?.serverId == serverId) _active.value = null
     }
+
+    private fun newScope(serverId: String): CoroutineScope =
+        CoroutineScope(SupervisorJob() + Dispatchers.Default).also { scopes[serverId] = it }
 
     private data class Binding(
         val connection: ServerConnection,

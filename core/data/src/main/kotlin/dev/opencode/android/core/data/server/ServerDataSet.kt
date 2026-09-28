@@ -8,6 +8,8 @@ import dev.opencode.android.core.model.ModelInfo
 import dev.opencode.android.core.model.Project
 import dev.opencode.android.core.model.event.Event
 import dev.opencode.android.core.model.event.EventPayload
+import dev.opencode.android.core.model.event.InstallationUpdateAvailable
+import dev.opencode.android.core.model.event.InstallationUpdated
 import dev.opencode.android.core.model.event.ProjectUpdated
 import dev.opencode.android.core.network.ServerApi
 import dev.opencode.android.core.data.sync.ResourceKey
@@ -65,6 +67,14 @@ class ServerDataSet(
 
     /** `fs.list`: the directory browser behind "pick a location" for a new session. */
     val browser: DirectoryBrowser = DirectoryBrowser(api, scope)
+
+    /**
+     * The server's own version, seeded from `GET /api/info` and kept current by the
+     * `installation.*` events. Phase 4 turns an announced update into a notification.
+     */
+    val installation: InstallationState = InstallationState(seed = {
+        api.getServerInfo().version
+    })
 
     private val locations = ConcurrentHashMap<String, SyncedResource<LocationInfo>>()
     private val agents = ConcurrentHashMap<String, SyncedResource<List<AgentInfo>>>()
@@ -134,6 +144,7 @@ class ServerDataSet(
 
     fun start() {
         scope.launch { projects.sync() }
+        scope.launch { installation.start() }
         sessions.start()
     }
 
@@ -183,6 +194,7 @@ class ServerDataSet(
                 scope.launch { runCatching { cache.dropLocation(serverId, directory) } }
             }
 
+            is InstallationUpdated, is InstallationUpdateAvailable -> installation.apply(event)
             else -> Unit
         }
         requests.apply(event)
@@ -216,6 +228,7 @@ class ServerDataSet(
     fun clear() {
         sessions.clear()
         requests.clear()
+        installation.clear()
         timelines.values.forEach { it.clear() }
         timelines.clear()
         _openTimelines.value = emptyList()

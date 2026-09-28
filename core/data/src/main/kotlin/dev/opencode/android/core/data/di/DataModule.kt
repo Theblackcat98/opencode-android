@@ -6,6 +6,8 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import dev.opencode.android.core.data.attention.AttentionPreferences
+import dev.opencode.android.core.data.attention.DataStoreAttentionPreferences
 import dev.opencode.android.core.data.repository.DefaultServerRepository
 import dev.opencode.android.core.data.repository.ServerRepository
 import dev.opencode.android.core.data.preferences.DataStoreModelPreferences
@@ -71,4 +73,16 @@ object DataModule {
     fun provideModelPreferences(
         @ApplicationContext context: Context,
     ): ModelPreferences = DataStoreModelPreferences(context)
+
+    /**
+     * Mute, quiet hours, the idle grace period and auto-approve (plan §6, Phase 4).
+     *
+     * All four are the client's, not the server's: a mute that travelled to the server would silence
+     * the desktop too, and the server has no idea which sessions a user wants to be left alone in.
+     */
+    @Provides
+    @Singleton
+    fun provideAttentionPreferences(
+        @ApplicationContext context: Context,
+    ): AttentionPreferences = DataStoreAttentionPreferences(context)
 }

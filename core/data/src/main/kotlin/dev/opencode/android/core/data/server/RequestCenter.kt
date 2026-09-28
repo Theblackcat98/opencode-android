@@ -61,6 +61,20 @@ class RequestCenter(
     private val _directoryOfSession = MutableStateFlow<Map<String, String>>(emptyMap())
 
     /**
+     * The pending requests as the events left them, without the derived sort.
+     *
+     * **Published so a reader does not have to go through a dispatcher.** [permissions] and [forms]
+     * are `stateIn`-derived, which is right for a screen that collects them and wrong for a caller
+     * that reads one value: the derivation runs on another coroutine, so a read straight after an
+     * event can see the previous list. The notification layer reads these, in the same dispatch as
+     * the event, and it has to see the request that just arrived.
+     */
+    val permissionsById: StateFlow<Map<String, PermissionRequest>> = _permissions.asStateFlow()
+
+    /** The pending forms, for the same reason as [permissionsById]. */
+    val formsById: StateFlow<Map<String, FormInfo>> = _forms.asStateFlow()
+
+    /**
      * One derived flow per session, cached.
      *
      * [forSession] is called from a state projection that recomposes on every session event, and a
@@ -101,6 +115,12 @@ class RequestCenter(
     val sessionsWithPending: StateFlow<Set<String>> = pending
         .map { requests -> requests.mapTo(mutableSetOf()) { it.sessionID } }
         .stateIn(scope, SharingStarted.Eagerly, emptySet())
+
+    /** The permission requests as of this instant, with no dispatcher in between. */
+    fun currentPermissions(): List<PermissionRequest> = _permissions.value.values.sortedByDescending { it.id }
+
+    /** The forms as of this instant, with no dispatcher in between. */
+    fun currentForms(): List<FormInfo> = _forms.value.values.sortedByDescending { it.id }
 
     /**
      * The directories this center has been asked about, so a resync knows where to look.

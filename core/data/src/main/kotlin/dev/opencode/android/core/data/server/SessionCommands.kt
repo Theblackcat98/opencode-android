@@ -17,6 +17,7 @@ import dev.opencode.android.core.model.SessionInfo
 import dev.opencode.android.core.model.SessionInboxInfo
 import dev.opencode.android.core.model.SessionMetadata
 import dev.opencode.android.core.model.SessionUpdateRequest
+import dev.opencode.android.core.model.SessionViewRequest
 import dev.opencode.android.core.model.SwitchAgentRequest
 import dev.opencode.android.core.model.SwitchModelRequest
 import dev.opencode.android.core.model.UserPromptPayload
@@ -191,6 +192,11 @@ class SessionCommands(
         delivery: Delivery,
     ): Result<Unit> = call {
         api.updateInboxItem(sessionID, inboxID, InboxUpdateRequest(delivery))
+    }
+
+    /** `session.view`: records that the user has seen this session's idle transition. */
+    suspend fun markViewed(sessionID: String, idleAtMillis: Long): Result<Unit> = call {
+        api.viewSession(sessionID, SessionViewRequest(idle = idleAtMillis))
     }
 
     /** A fresh `msg_…` id, exposed so a caller can show it or key a draft by it. */

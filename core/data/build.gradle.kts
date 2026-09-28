@@ -1,6 +1,9 @@
 plugins {
     alias(libs.plugins.opencode.android.library)
     alias(libs.plugins.opencode.android.hilt)
+    // The attention layer's action union rides in an Intent's extras as JSON, so this module's
+    // serialisable types are compiled with the plugin rather than reaching for reflection.
+    alias(libs.plugins.kotlin.serialization)
 }
 
 // ServerConnection, EventDispatcher, SyncedResource stores, TimelineReducer and RequestCenter
