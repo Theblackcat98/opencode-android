@@ -11,57 +11,51 @@ import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 
 /**
- * Monitors network availability.
+ * Network availability, so the event stream can stop hammering a dead network and resume the
+ * moment it comes back instead of waiting out a backoff.
  */
 interface NetworkConnectivityMonitor {
-    /** Emits true when an active internet network is available, false otherwise. */
+    /** Emits `true` while a usable network is available. */
     val isOnline: Flow<Boolean>
 
-    /** Current network availability check. */
+    /** The current value, without waiting for the first emission. */
     fun isCurrentlyOnline(): Boolean
 }
 
-/**
- * Android [ConnectivityManager] implementation of [NetworkConnectivityMonitor].
- */
+/** [NetworkConnectivityMonitor] backed by the platform [ConnectivityManager]. */
 class AndroidNetworkConnectivityMonitor(
-    private val context: Context,
+    context: Context,
 ) : NetworkConnectivityMonitor {
 
-    private val connectivityManager by lazy {
+    private val connectivityManager: ConnectivityManager? =
         context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
-    }
 
-    override fun isCurrentlyOnline(): Boolean {
-        val cm = connectivityManager ?: return false
-        val activeNetwork = cm.activeNetwork ?: return false
-        val capabilities = cm.getNetworkCapabilities(activeNetwork) ?: return false
-        return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-    }
+    override fun isCurrentlyOnline(): Boolean = isUsable(connectivityManager?.activeNetwork)
 
     override val isOnline: Flow<Boolean> = callbackFlow {
-        val cm = connectivityManager
-        if (cm == null) {
+        val manager = connectivityManager
+        if (manager == null) {
             trySend(false)
             close()
             return@callbackFlow
         }
 
-        // Send initial value
         trySend(isCurrentlyOnline())
 
         val callback = object : ConnectivityManager.NetworkCallback() {
             override fun onAvailable(network: Network) {
-                trySend(true)
+                trySend(isUsable(network))
             }
 
             override fun onLost(network: Network) {
                 trySend(isCurrentlyOnline())
             }
 
-            override fun onCapabilitiesChanged(network: Network, networkCapabilities: NetworkCapabilities) {
-                val hasInternet = networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-                trySend(hasInternet)
+            override fun onCapabilitiesChanged(
+                network: Network,
+                networkCapabilities: NetworkCapabilities,
+            ) {
+                trySend(networkCapabilities.isUsable())
             }
         }
 
@@ -69,10 +63,22 @@ class AndroidNetworkConnectivityMonitor(
             .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
             .build()
 
-        cm.registerNetworkCallback(request, callback)
-
-        awaitClose {
-            cm.unregisterNetworkCallback(callback)
-        }
+        manager.registerNetworkCallback(request, callback)
+        awaitClose { manager.unregisterNetworkCallback(callback) }
     }.distinctUntilChanged()
+
+    private fun isUsable(network: Network?): Boolean {
+        val manager = connectivityManager ?: return false
+        if (network == null) return false
+        val capabilities = manager.getNetworkCapabilities(network) ?: return false
+        return capabilities.isUsable()
+    }
+
+    /**
+     * A network counts as usable when it can reach the internet and is not restricted. Validated
+     * is deliberately not required: a LAN-only server is still reachable without internet access.
+     */
+    private fun NetworkCapabilities.isUsable(): Boolean =
+        hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+            hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED)
 }

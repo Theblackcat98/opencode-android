@@ -2,78 +2,89 @@ package dev.opencode.android.core.network
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
-import org.junit.Assert.assertTrue
-import org.junit.Before
 import org.junit.Test
 
 class SseParserTest {
 
-    private lateinit var parser: SseParser
-
-    @Before
-    fun setUp() {
-        parser = SseParser()
-    }
-
     @Test
-    fun parsesSimpleDataFrame() {
-        assertNull(parser.parseLine("data: {\"type\":\"server.connected\"}"))
+    fun dispatchesDataOnTheBlankLineThatEndsTheFrame() {
+        val parser = SseParser()
+        assertNull(parser.parseLine("""data: {"id":"1","type":"server.connected","data":{}}"""))
         val message = parser.parseLine("")
-        assertTrue(message is SseMessage.Data)
-        assertEquals("{\"type\":\"server.connected\"}", (message as SseMessage.Data).payload)
+        assertEquals(
+            SseMessage.Data("""{"id":"1","type":"server.connected","data":{}}"""),
+            message,
+        )
     }
 
     @Test
-    fun parsesMultiLineDataFrameJoinedByNewlines() {
-        assertNull(parser.parseLine("data: {\"line1\": 1,"))
-        assertNull(parser.parseLine("data:  \"line2\": 2}"))
-        val message = parser.parseLine("")
-        assertTrue(message is SseMessage.Data)
-        assertEquals("{\"line1\": 1,\n \"line2\": 2}", (message as SseMessage.Data).payload)
-    }
-
-    @Test
-    fun parsesHeartbeatComment() {
-        val message = parser.parseLine(": heartbeat")
-        assertEquals(SseMessage.Heartbeat, message)
-    }
-
-    @Test
-    fun parsesHeartbeatWithoutSpace() {
-        val message = parser.parseLine(":heartbeat")
-        assertEquals(SseMessage.Heartbeat, message)
-    }
-
-    @Test
-    fun parsesHeartbeatCaseInsensitive() {
-        val message = parser.parseLine(": Heartbeat")
-        assertEquals(SseMessage.Heartbeat, message)
-    }
-
-    @Test
-    fun parsesGenericComment() {
-        val message = parser.parseLine(": some other comment")
-        assertTrue(message is SseMessage.Comment)
-        assertEquals("some other comment", (message as SseMessage.Comment).text)
-    }
-
-    @Test
-    fun ignoresEmptyLinesWhenBufferIsEmpty() {
-        assertNull(parser.parseLine(""))
-        assertNull(parser.parseLine(""))
-    }
-
-    @Test
-    fun parsesMultipleEventsSequentially() {
+    fun joinsMultipleDataLinesWithNewlines() {
+        val parser = SseParser()
         assertNull(parser.parseLine("data: first"))
-        val msg1 = parser.parseLine("")
-        assertEquals(SseMessage.Data("first"), msg1)
-
-        val hb = parser.parseLine(": heartbeat")
-        assertEquals(SseMessage.Heartbeat, hb)
-
         assertNull(parser.parseLine("data: second"))
-        val msg2 = parser.parseLine("")
-        assertEquals(SseMessage.Data("second"), msg2)
+        assertEquals(SseMessage.Data("first\nsecond"), parser.parseLine(""))
+    }
+
+    @Test
+    fun stripsOnlyTheFirstSpaceAfterTheColon() {
+        val parser = SseParser()
+        assertNull(parser.parseLine("data:  two spaces"))
+        assertEquals(SseMessage.Data(" two spaces"), parser.parseLine(""))
+    }
+
+    @Test
+    fun handlesDataWithoutASpaceAfterTheColon() {
+        val parser = SseParser()
+        assertNull(parser.parseLine("data:tight"))
+        assertEquals(SseMessage.Data("tight"), parser.parseLine(""))
+    }
+
+    @Test
+    fun reportsHeartbeatCommentsImmediately() {
+        val parser = SseParser()
+        assertEquals(SseMessage.Heartbeat, parser.parseLine(": heartbeat"))
+        assertEquals(SseMessage.Heartbeat, parser.parseLine(":Heartbeat"))
+        assertEquals(SseMessage.Heartbeat, parser.parseLine(": heartbeat\r"))
+    }
+
+    @Test
+    fun reportsOtherComments() {
+        val parser = SseParser()
+        assertEquals(SseMessage.Comment("proxy note"), parser.parseLine(": proxy note"))
+    }
+
+    @Test
+    fun ignoresEventIdAndRetryFields() {
+        val parser = SseParser()
+        assertNull(parser.parseLine("event: message"))
+        assertNull(parser.parseLine("id: 42"))
+        assertNull(parser.parseLine("retry: 5000"))
+        assertNull(parser.parseLine("data: payload"))
+        assertEquals(SseMessage.Data("payload"), parser.parseLine(""))
+    }
+
+    @Test
+    fun blankLineWithoutDataProducesNothing() {
+        val parser = SseParser()
+        assertNull(parser.parseLine(""))
+        assertNull(parser.parseLine(""))
+    }
+
+    @Test
+    fun flushDispatchesAFrameTheStreamCutShort() {
+        val parser = SseParser()
+        assertNull(parser.parseLine("""data: {"id":"1"}"""))
+        assertEquals(SseMessage.Data("""{"id":"1"}"""), parser.flush())
+        assertNull(parser.flush())
+    }
+
+    @Test
+    fun framesStaySeparateAcrossRepeatedBlankLines() {
+        val parser = SseParser()
+        parser.parseLine("data: one")
+        assertEquals(SseMessage.Data("one"), parser.parseLine(""))
+        assertNull(parser.parseLine(""))
+        parser.parseLine("data: two")
+        assertEquals(SseMessage.Data("two"), parser.parseLine(""))
     }
 }

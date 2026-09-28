@@ -1,133 +1,165 @@
 package dev.opencode.android.core.network
 
 import dev.opencode.android.core.model.ServerInfo
-import dev.opencode.android.core.model.json.OpenCodeJson
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import okhttp3.Credentials
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import java.io.IOException
+import kotlinx.serialization.SerializationException
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
+import retrofit2.HttpException
+import java.io.InterruptedIOException
 import java.net.ConnectException
+import java.net.NoRouteToHostException
+import java.net.PortUnreachableException
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
-import java.util.concurrent.TimeUnit
 import javax.net.ssl.SSLException
 
+/** The outcome of `GET /api/info`, with every failure already classified. */
 sealed interface ServerValidationResult {
-    data class Success(val serverInfo: ServerInfo) : ServerValidationResult
+    data class Success(
+        val serverInfo: ServerInfo,
+        val versionStatus: VersionStatus,
+    ) : ServerValidationResult
+
+    /**
+     * A classified failure. [technicalDetail] is for the developer log and the event inspector;
+     * the message the user reads comes from a string resource chosen by [errorType], so this
+     * module stays free of user-facing text.
+     */
     data class Failure(
         val errorType: ValidationErrorType,
-        val userMessage: String,
         val technicalDetail: String? = null,
     ) : ServerValidationResult
 }
 
-enum class ValidationErrorType {
-    CONNECTION_REFUSED_LOCALHOST,
-    UNAUTHORIZED,
-    TLS_ERROR,
-    TIMEOUT,
-    UNSUPPORTED_VERSION,
-    UNKNOWN_HOST,
-    OTHER_NETWORK_ERROR,
+/** How the server version relates to the release this client was tested against (plan §5.1). */
+enum class VersionStatus {
+    /** The version this client is tested against, or an older one. */
+    TESTED,
+
+    /** A newer release. The connection is allowed, and the UI says the version is untested. */
+    NEWER_UNTESTED,
 }
 
+enum class ValidationErrorType {
+    /** Nothing answered on that address. Usually the server still listens on localhost only. */
+    CONNECTION_REFUSED,
+    /** The password or token was rejected: re-pair. */
+    UNAUTHORIZED,
+    /** A certificate could not be validated. */
+    TLS_ERROR,
+    /** The connection or the response timed out. */
+    TIMEOUT,
+    /** Not an OpenCode V2 server (a V1 server, or something else entirely on that port). */
+    UNSUPPORTED_VERSION,
+    /** The host name could not be resolved. */
+    UNKNOWN_HOST,
+    /** The server answered with an error status. */
+    SERVER_ERROR,
+    /** The server answered with something that is not an OpenCode server response. */
+    MALFORMED_RESPONSE,
+    /** Any other failure. */
+    UNKNOWN,
+}
+
+/**
+ * Checks that an address is a reachable OpenCode V2 server, and gates on its version (plan §5.1).
+ *
+ * The same call is the app's "test connection" and its pairing check, so it reports the failure
+ * classes the onboarding help maps to: connection refused, 401, TLS and timeout.
+ */
 class ServerValidator(
-    private val okHttpClient: OkHttpClient = OkHttpClient.Builder()
-        .connectTimeout(10, TimeUnit.SECONDS)
-        .readTimeout(10, TimeUnit.SECONDS)
-        .build(),
+    private val serverApiFactory: ServerApiFactory,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) {
     suspend fun validate(
         baseUrl: String,
         credential: String? = null,
     ): ServerValidationResult = withContext(ioDispatcher) {
-        val cleanBase = baseUrl.trimEnd('/')
-        val url = "$cleanBase/api/info"
-
-        val requestBuilder = Request.Builder()
-            .url(url)
-            .header("Accept", "application/json")
-
-        if (!credential.isNullOrBlank()) {
-            requestBuilder.header("Authorization", Credentials.basic(AuthInterceptor.AUTH_USER, credential))
+        val host = baseUrl.toHttpUrlOrNull()?.host
+        val api = try {
+            serverApiFactory.create(baseUrl)
+        } catch (e: IllegalArgumentException) {
+            return@withContext ServerValidationResult.Failure(
+                errorType = ValidationErrorType.UNKNOWN_HOST,
+                technicalDetail = e.message,
+            )
         }
 
-        val request = requestBuilder.build()
-
         try {
-            val response = okHttpClient.newCall(request).execute()
-            response.use { resp ->
-                if (resp.code == 401) {
-                    return@withContext ServerValidationResult.Failure(
-                        errorType = ValidationErrorType.UNAUTHORIZED,
-                        userMessage = "Authentication failed (401). Please check your password or re-pair this server.",
-                        technicalDetail = "HTTP 401 Unauthorized",
-                    )
-                }
-
-                val body = resp.body
-                if (!resp.isSuccessful) {
-                    val errorBody = body.string()
-                    return@withContext ServerValidationResult.Failure(
-                        errorType = ValidationErrorType.OTHER_NETWORK_ERROR,
-                        userMessage = "Server returned error: HTTP ${resp.code}",
-                        technicalDetail = errorBody,
-                    )
-                }
-
-                val bodyString = body.string()
-                val info = OpenCodeJson.decodeFromString<ServerInfo>(bodyString)
-
-                if (info.majorVersion != 2) {
-                    return@withContext ServerValidationResult.Failure(
-                        errorType = ValidationErrorType.UNSUPPORTED_VERSION,
-                        userMessage = "Server version ${info.version} is not supported. This app requires OpenCode V2.x.",
-                        technicalDetail = "Major version: ${info.majorVersion}",
-                    )
-                }
-
-                return@withContext ServerValidationResult.Success(info)
-            }
-        } catch (e: ConnectException) {
-            val isLocalhost = cleanBase.contains("localhost") || cleanBase.contains("127.0.0.1")
-            val message = if (isLocalhost) {
-                "Connection refused. On an Android device or emulator, 'localhost' refers to the phone itself. To connect to your computer, use your computer's LAN IP address or 10.0.2.2 (on Android emulator)."
+            val info = api.getServerInfo(ServerAuthCredential(credential?.takeIf { it.isNotBlank() }))
+            val status = versionStatusOf(info.version)
+            if (status == null) {
+                ServerValidationResult.Failure(
+                    errorType = ValidationErrorType.UNSUPPORTED_VERSION,
+                    technicalDetail = "Unrecognized version '${info.version}'",
+                )
             } else {
-                "The server only listens on localhost. On the computer, run `opencode service set hostname 0.0.0.0`, then `opencode service start` and `opencode pair`."
+                ServerValidationResult.Success(info, status)
             }
-            ServerValidationResult.Failure(
-                errorType = ValidationErrorType.CONNECTION_REFUSED_LOCALHOST,
-                userMessage = message,
-                technicalDetail = e.message ?: "ConnectException",
-            )
-        } catch (e: SocketTimeoutException) {
-            ServerValidationResult.Failure(
-                errorType = ValidationErrorType.TIMEOUT,
-                userMessage = "Connection timed out. Check that the server is running, the host and port are correct, and your device is on the same Wi-Fi or VPN (e.g. Tailscale).",
-                technicalDetail = e.message ?: "SocketTimeoutException",
-            )
-        } catch (e: SSLException) {
-            ServerValidationResult.Failure(
-                errorType = ValidationErrorType.TLS_ERROR,
-                userMessage = "TLS / SSL certificate error. If using a self-signed certificate, ensure the user CA is trusted in Android Settings or use an SSH tunnel / Tailscale.",
-                technicalDetail = e.message ?: "SSLException",
-            )
-        } catch (e: UnknownHostException) {
-            ServerValidationResult.Failure(
-                errorType = ValidationErrorType.UNKNOWN_HOST,
-                userMessage = "Hostname could not be resolved. Please verify the server address.",
-                technicalDetail = e.message ?: "UnknownHostException",
-            )
-        } catch (e: Exception) {
-            ServerValidationResult.Failure(
-                errorType = ValidationErrorType.OTHER_NETWORK_ERROR,
-                userMessage = "Connection failed: ${e.message ?: e.javaClass.simpleName}",
-                technicalDetail = e.stackTraceToString(),
-            )
+        } catch (e: Throwable) {
+            failureFor(e, host)
+        }
+    }
+
+    private fun failureFor(e: Throwable, host: String?): ServerValidationResult.Failure {
+        val detail = e.message ?: e.javaClass.simpleName
+        val type = when (e) {
+            is HttpException -> when (e.code()) {
+                401, 403 -> ValidationErrorType.UNAUTHORIZED
+                404 -> ValidationErrorType.UNSUPPORTED_VERSION
+                in 500..599 -> ValidationErrorType.SERVER_ERROR
+                else -> ValidationErrorType.SERVER_ERROR
+            }
+
+            is SerializationException -> ValidationErrorType.MALFORMED_RESPONSE
+            is ConnectException,
+            is NoRouteToHostException,
+            is PortUnreachableException,
+            -> ValidationErrorType.CONNECTION_REFUSED
+
+            is SocketTimeoutException,
+            is InterruptedIOException,
+            -> ValidationErrorType.TIMEOUT
+
+            is SSLException -> ValidationErrorType.TLS_ERROR
+            is UnknownHostException -> ValidationErrorType.UNKNOWN_HOST
+            else -> ValidationErrorType.UNKNOWN
+        }
+        return ServerValidationResult.Failure(
+            errorType = type,
+            technicalDetail = buildString {
+                append(e.javaClass.simpleName)
+                if (detail.isNotBlank()) append(": ").append(detail)
+                if (host != null) append(" (host ").append(host).append(')')
+            },
+        )
+    }
+
+    companion object {
+        /** The vendored spec and fixtures come from this release (plan §5.1). */
+        const val TESTED_VERSION = "2.0.18"
+        private const val TESTED_MAJOR = 2
+
+        /**
+         * `null` when the version is not an OpenCode V2 release, [VersionStatus.TESTED] for the
+         * tested range and older, and [VersionStatus.NEWER_UNTESTED] above it.
+         */
+        fun versionStatusOf(version: String): VersionStatus? {
+            val parts = version.trim().removePrefix("v").split('.')
+            val major = parts.getOrNull(0)?.toIntOrNull() ?: return null
+            if (major != TESTED_MAJOR) return null
+            val minor = parts.getOrNull(1)?.toIntOrNull() ?: return null
+            val patch = parts.getOrNull(2)?.toIntOrNull() ?: 0
+            val tested = TESTED_VERSION.removePrefix("v").split('.').map { it.toInt() }
+            val testedMinor = tested.getOrElse(1) { 0 }
+            val testedPatch = tested.getOrElse(2) { 0 }
+            return if (minor > testedMinor || (minor == testedMinor && patch > testedPatch)) {
+                VersionStatus.NEWER_UNTESTED
+            } else {
+                VersionStatus.TESTED
+            }
         }
     }
 }

@@ -3,52 +3,47 @@ package dev.opencode.android.core.network
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 
 /**
- * Represents a parsed OpenCode pairing link (features doc §2.3).
+ * A parsed `opencode pair` link (features doc §2.3).
  *
- * Link format: `http(s)://<host>:<port>/auth/connect/<code>`
- * Where `code` matches `[A-Za-z0-9_-]+`.
+ * The format is `http(s)://<host>[:port]/auth/connect/<code>`, where the code matches
+ * `[A-Za-z0-9_-]+`, works once, and expires after five minutes. A path prefix before
+ * `/auth/connect/` is kept, so a server behind a reverse-proxy subpath still works.
  */
 data class PairingLink(
+    /** Normalized base URL: `scheme://host[:port][/prefix]`, with a default port left out. */
     val baseUrl: String,
     val code: String,
 ) {
     companion object {
+        private const val DEFAULT_HTTP_PORT = 80
+        private const val DEFAULT_HTTPS_PORT = 443
+
         private val PAIRING_URL_REGEX = Regex(
-            """^(https?://[^/]+)/auth/connect/([A-Za-z0-9_-]+)/?${'$'}""",
-            RegexOption.IGNORE_CASE,
+            "^([a-zA-Z][a-zA-Z0-9+.\\-]*://[^/?#\\s]+(?:/[^\\s?#]*)?)/auth/connect/([A-Za-z0-9_-]+)/?$",
         )
 
         /**
-         * Parses a pairing URL or QR code payload.
-         * Returns `PairingLink` if valid, or `null` otherwise.
+         * Parses a scanned QR payload, a pasted link, or a shared link.
+         *
+         * Whitespace around the payload is ignored, so a QR code with padding still works, and any
+         * scheme other than `http` or `https` is rejected.
          */
         fun parse(input: String?): PairingLink? {
             if (input.isNullOrBlank()) return null
-            val trimmed = input.trim()
+            val match = PAIRING_URL_REGEX.find(input.trim()) ?: return null
+            val httpUrl = match.groupValues[1].toHttpUrlOrNull() ?: return null
 
-            val match = PAIRING_URL_REGEX.find(trimmed) ?: return null
-            val rawBaseUrl = match.groupValues[1]
-            val code = match.groupValues[2]
-
-            // Validate that the base URL is a syntactically valid HTTP/HTTPS URL
-            val httpUrl = rawBaseUrl.toHttpUrlOrNull() ?: return null
             val scheme = httpUrl.scheme.lowercase()
             if (scheme != "http" && scheme != "https") return null
 
-            // Construct normalized base URL: scheme://host[:port]
-            val portPart = if (
-                (scheme == "http" && httpUrl.port == 80) ||
-                (scheme == "https" && httpUrl.port == 443)
-            ) {
-                ""
-            } else {
-                ":${httpUrl.port}"
+            val port = when (httpUrl.port) {
+                DEFAULT_HTTP_PORT, DEFAULT_HTTPS_PORT -> ""
+                else -> ":${httpUrl.port}"
             }
-            val normalizedBaseUrl = "$scheme://${httpUrl.host}$portPart"
-
+            val prefix = httpUrl.encodedPath.trimEnd('/')
             return PairingLink(
-                baseUrl = normalizedBaseUrl,
-                code = code,
+                baseUrl = "$scheme://${httpUrl.host}$port$prefix",
+                code = match.groupValues[2],
             )
         }
     }
