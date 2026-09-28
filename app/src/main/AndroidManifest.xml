@@ -6,6 +6,24 @@
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
 
+    <!--
+      Phase 4. `POST_NOTIFICATIONS` is what lets a permission request reach a locked phone at all on
+      Android 13 and later; the app asks for it during onboarding and can be used without it.
+
+      `FOREGROUND_SERVICE_DATA_SYNC` is the type the P0 spike settled on, and the reasoning — including
+      why `connectedDevice` was rejected — is in the plan's Phase 4 status. The service and the
+      receiver that use them are declared in the requests feature, which is where the plan puts
+      notifications.
+
+      `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` is deliberately *not* declared. It exists for apps whose
+      core function is broken by doze, which this one is not: the service stops as soon as nothing is
+      active. The battery guidance in the app sends the user to the system settings screen, which
+      needs no permission, rather than asking for one it would not be allowed to keep.
+    -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+
     <application
         android:name=".OpenCodeApplication"
         android:allowBackup="false"

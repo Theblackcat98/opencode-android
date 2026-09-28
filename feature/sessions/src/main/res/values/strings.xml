@@ -156,4 +156,7 @@
     <string name="session_copied">Copied to the clipboard</string>
     <string name="session_close">Close</string>
 
+    <!-- Phase 4: per-session attention -->
+    <string name="session_attention">Notifications and auto-approve</string>
+
 </resources>

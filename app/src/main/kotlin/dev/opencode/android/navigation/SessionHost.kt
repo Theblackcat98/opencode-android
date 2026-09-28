@@ -5,6 +5,7 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -17,6 +18,8 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.opencode.android.core.data.catalog.ModelCatalog
 import dev.opencode.android.core.model.PermissionReply
@@ -25,6 +28,7 @@ import dev.opencode.android.feature.composer.ui.ComposerBar
 import dev.opencode.android.feature.composer.ui.ComposerViewModel
 import dev.opencode.android.feature.composer.ui.InboxPanel
 import dev.opencode.android.feature.composer.ui.ModelPickerSheet
+import dev.opencode.android.feature.requests.ui.AttentionSettingsSheet
 import dev.opencode.android.feature.requests.ui.RequestActions
 import dev.opencode.android.feature.requests.ui.messageRes
 import dev.opencode.android.feature.requests.ui.takesArgument
@@ -66,6 +70,7 @@ fun SessionHost(
     val uriHandler = LocalUriHandler.current
     val menu = stringResource(R.string.session_menu)
     var actionsOpen by remember { mutableStateOf(false) }
+    var attentionOpen by remember { mutableStateOf(false) }
     var inboxOpen by remember { mutableStateOf(false) }
     var agentPickerOpen by remember { mutableStateOf(false) }
     var modelPickerOpen by remember { mutableStateOf(false) }
@@ -75,6 +80,14 @@ fun SessionHost(
         timeline.open(sessionId)
         composer.open(sessionId)
         management.openSession(sessionId)
+    }
+
+    // "The user actually saw it" is a fact about which screen is in front, so it is published on
+    // resume and withdrawn on the way out (plan §6, "Unread model"). Resuming is also when the
+    // unseen idle transition is marked, through `SessionViewMarker`.
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { timeline.onScreenResumed() }
+    DisposableEffect(sessionId) {
+        onDispose { timeline.onScreenLeft() }
     }
 
     val requestActions = RequestActions(
@@ -132,6 +145,12 @@ fun SessionHost(
         },
     )
 
+    if (attentionOpen) {
+        // The per-session half of Phase 4's settings: mute and auto-approve for this session only.
+        // Composed here for the same reason the rest of this screen is (see the class comment).
+        AttentionSettingsSheet(sessionId = sessionId, onDismiss = { attentionOpen = false })
+    }
+
     if (actionsOpen) {
         SessionActionsSheet(
             title = state.title,
@@ -149,6 +168,7 @@ fun SessionHost(
                 }
             },
             onDismiss = { actionsOpen = false },
+            onOpenAttention = { actionsOpen = false; attentionOpen = true },
         )
     }
 

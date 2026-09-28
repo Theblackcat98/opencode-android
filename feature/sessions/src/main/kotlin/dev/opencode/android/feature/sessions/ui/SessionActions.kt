@@ -46,6 +46,14 @@ fun SessionActionsSheet(
     onCopyTranscript: () -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
+    /**
+     * Opens the per-session attention controls, when the caller has them to offer.
+     *
+     * A callback rather than a slot because the controls themselves live in the requests feature and
+     * a feature may not import another feature. The app module, which composes this screen, is the
+     * only place that can hold both, and it supplies the callback; `null` hides the row.
+     */
+    onOpenAttention: (() -> Unit)? = null,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var renaming by remember { mutableStateOf(false) }
@@ -62,6 +70,9 @@ fun SessionActionsSheet(
             SheetAction(R.string.session_rename) { renaming = true; onDismiss() }
             SheetAction(R.string.session_copy_message) { onCopyMessage(); onDismiss() }
             SheetAction(R.string.session_copy_transcript) { onCopyTranscript(); onDismiss() }
+            if (onOpenAttention != null) {
+                SheetAction(R.string.session_attention) { onOpenAttention() }
+            }
             SheetAction(R.string.session_delete) { confirmingDelete = true }
         }
     }

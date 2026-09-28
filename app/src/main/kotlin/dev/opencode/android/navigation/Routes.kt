@@ -17,6 +17,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
+import dev.opencode.android.OpenSessionTarget
 import dev.opencode.android.core.model.PermissionReply
 import dev.opencode.android.feature.composer.ui.ComposerViewModel
 import dev.opencode.android.feature.composer.ui.LocationChoice
@@ -108,6 +109,7 @@ data class PendingRequestsRoute(val serverId: String? = null)
 @Composable
 fun OpenCodeApp(
     sharedPayload: String? = null,
+    openSession: OpenSessionTarget? = null,
     modifier: Modifier = Modifier,
     navController: NavHostController = rememberNavController(),
 ) {
@@ -115,6 +117,14 @@ fun OpenCodeApp(
         if (!sharedPayload.isNullOrBlank()) {
             navController.navigate(AddServerRoute(initialUrl = sharedPayload))
         }
+    }
+
+    // A tapped notification lands on its session, switching to its server first so the timeline is
+    // bound to the right one. `launchSingleTop` keeps a second tap from stacking two copies.
+    LaunchedEffect(openSession) {
+        val target = openSession ?: return@LaunchedEffect
+        target.serverId?.let { navController.navigate(HomeRoute(it)) { launchSingleTop = true } }
+        navController.navigate(SessionRoute(target.serverId, target.sessionId)) { launchSingleTop = true }
     }
 
     NavHost(

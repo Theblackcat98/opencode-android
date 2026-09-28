@@ -2,6 +2,8 @@ package dev.opencode.android.feature.sessions.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import dev.opencode.android.core.data.attention.OpenSessionTracker
+import dev.opencode.android.core.data.attention.SessionViewMarker
 import dev.opencode.android.core.data.connection.ServerConnectionManager
 import dev.opencode.android.core.data.repository.ServerRepository
 import dev.opencode.android.core.data.server.PagingState
@@ -17,16 +19,18 @@ import dev.opencode.android.core.model.ModelInfo
 import dev.opencode.android.core.model.Project
 import dev.opencode.android.core.model.SessionMessage
 import dev.opencode.android.core.model.SessionStatus
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /** Everything the session list draws, and nothing else. */
@@ -234,10 +238,21 @@ private fun List<SessionRow>.filterBySearch(search: String): List<SessionRow> {
  */
 class SessionViewModel @Inject constructor(
     private val dataSets: ServerDataRegistry,
+    private val openSessions: OpenSessionTracker,
     clock: () -> Long = System::currentTimeMillis,
 ) : ViewModel() {
     private val follow = MutableStateFlow(true)
     private val openSession = MutableStateFlow<String?>(null)
+
+    /**
+     * Whether this screen is the one in front of the user.
+     *
+     * **The fact `session.view` needs, and the only place it can come from.** The event stream says
+     * a turn went idle; it does not say anyone read it. "Resumed on this session" is the closest the
+     * app gets to "actually saw the idle transition", and the plan asks for the call at exactly that
+     * moment, so the marker is set here and read by [SessionViewMarker].
+     */
+    private val onScreen = MutableStateFlow(false)
 
     val sessionId: StateFlow<String?> = openSession
 
@@ -295,6 +310,42 @@ class SessionViewModel @Inject constructor(
         openSession.value = sessionID
         set.timeline(sessionID).start()
         viewModelScope.launch { set.sessions.loadSession(sessionID) }
+    }
+
+    /**
+     * The session screen came forward.
+     *
+     * Publishes which session is on screen — the notification layer suppresses what the user is
+     * already looking at — and lets the marker below record the idle transition as seen.
+     */
+    fun onScreenResumed() {
+        onScreen.value = true
+        openSessions.set(openSession.value)
+    }
+
+    /** The session screen went away, so nothing it shows is on screen any more. */
+    fun onScreenLeft() {
+        onScreen.value = false
+        openSessions.set(null)
+    }
+
+    init {
+        viewModelScope.launch {
+            combine(
+                openSession,
+                dataSets.active.flatMapLatest { set -> set?.sessions?.info ?: flowOf(emptyMap()) },
+                onScreen,
+            ) { id, info, screen -> Triple(id, info, screen) }
+                .collect { (id, info, screen) ->
+                    if (!screen || id == null) return@collect
+                    val set = dataSets.active.value ?: return@collect
+                    val mark = SessionViewMarker.requestFor(info[id]) ?: return@collect
+                    // The badge is not cleared optimistically: `session.viewed` is the server saying
+                    // it has recorded the transition, which is the plan's "the server echoes" rule
+                    // applied to the client's own write.
+                    set.commands.markViewed(mark.sessionId, mark.idleAtMillis)
+                }
+        }
     }
 
     fun setFollowing(following: Boolean) {
