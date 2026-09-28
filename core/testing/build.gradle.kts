@@ -9,4 +9,6 @@ dependencies {
     api(libs.kotlinx.serialization.json)
     api(libs.junit4)
     implementation(libs.okhttp)
+
+    testImplementation(projects.core.model)
 }

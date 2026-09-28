@@ -215,19 +215,19 @@ Each phase lists what it **builds on** and which **reusable building blocks** it
 what makes the order efficient: every block is built once, at the moment the first feature needs it, and the later
 phases that reuse it get cheaper as a result.
 
-| Phase | Theme | Main building blocks introduced | Reused by |
-| --- | --- | --- | --- |
-| P0 | Foundation | Build system, schema models, fixture harness, fake provider, CI | All |
-| P1 | Connect and pair | HTTP client, auth, server registry, `EventStreamClient`, resync signal | All |
-| P2 | Live read-only view | `SyncedResource` stores, `TimelineReducer`, Markdown, code and tool renderers | P3–P10 |
-| P3 | Drive sessions (MVP) | Composer pipeline, pickers, `RequestCenter`, **forms engine** | P4, P5, P8, P9 |
-| P4 | Background and notifications | `ConnectionService`, notification and action infrastructure, unread model | P7, P8, P9, P10 |
-| P5 | Rich composer | Attachment pipeline, autocomplete and mention engine | P6, P8 |
-| P6 | Review and history | Diff engine and viewer, file viewer, revert and fork flows | P7, P9 |
-| P7 | Execution surfaces | WebSocket and terminal component, process panels, worktree flows | P10 |
-| P8 | Integrations | OAuth, key and command login flows, MCP and plugin management | P9 |
-| P9 | Configuration | Config explorer and validated file editor | P10 |
-| P10 | Insights and release | Stats, RPC console, adaptive polish, release pipeline | n/a |
+| Phase | Theme | Main building blocks introduced | Reused by | Status |
+| --- | --- | --- | --- | --- |
+| P0 | Foundation | Build system, schema models, fixture harness, fake provider, CI | All | Complete |
+| P1 | Connect and pair | HTTP client, auth, server registry, `EventStreamClient`, resync signal | All | Ready to start |
+| P2 | Live read-only view | `SyncedResource` stores, `TimelineReducer`, Markdown, code and tool renderers | P3–P10 | Planned |
+| P3 | Drive sessions (MVP) | Composer pipeline, pickers, `RequestCenter`, **forms engine** | P4, P5, P8, P9 | Planned |
+| P4 | Background and notifications | `ConnectionService`, notification and action infrastructure, unread model | P7, P8, P9, P10 | Planned |
+| P5 | Rich composer | Attachment pipeline, autocomplete and mention engine | P6, P8 | Planned |
+| P6 | Review and history | Diff engine and viewer, file viewer, revert and fork flows | P7, P9 | Planned |
+| P7 | Execution surfaces | WebSocket and terminal component, process panels, worktree flows | P10 | Planned |
+| P8 | Integrations | OAuth, key and command login flows, MCP and plugin management | P9 | Planned |
+| P9 | Configuration | Config explorer and validated file editor | P10 | Planned |
+| P10 | Insights and release | Stats, RPC console, adaptive polish, release pipeline | n/a | Planned |
 
 Relative size: S is small, M is medium, L is large.
 
@@ -260,6 +260,8 @@ Relative size: S is small, M is medium, L is large.
 - CI is green.
 - Fixtures recorded from a real 2.0.18 server decode without loss.
 - The debug APK launches to an empty shell.
+
+**Status.** Complete. Verified with contract unit tests decoding all 2.0.18 server fixtures without loss, live-server integration tests against `scripts/dev-server.sh`, Android Lint passing, and debug APKs assembled.
 
 ---
 
@@ -933,18 +935,19 @@ that delivers it.
 
 **Operations per phase.**
 
-| Phase | Operations |
-| --- | --- |
-| P1 | 3 |
-| P2 | 12 |
-| P3 | 20 |
-| P4 | 1 |
-| P5 | 10 |
-| P6 | 15 |
-| P7 | 30 |
-| P8 | 27 |
-| P9 | 11 |
-| P10 | 9 |
+| Phase | Operations | Status |
+| --- | --- | --- |
+| P0 | Foundation (models, fixtures, harness, CI) | Complete |
+| P1 | 3 | Planned |
+| P2 | 12 | Planned |
+| P3 | 20 | Planned |
+| P4 | 1 | Planned |
+| P5 | 10 | Planned |
+| P6 | 15 | Planned |
+| P7 | 30 | Planned |
+| P8 | 27 | Planned |
+| P9 | 11 | Planned |
+| P10 | 9 | Planned |
 
 Total: 138 (136 spec operations plus the 2 pairing routes).
 
@@ -953,21 +956,23 @@ Total: 138 (136 spec operations plus the 2 pairing routes).
 ## 8. Event coverage matrix
 
 All 94 event types in `@opencode/client` 2.0.18: 93 named types plus the `rpc.*` family. An event is assigned to
-the phase that first *acts* on it. From P2 on, every event also appears in the Event inspector and is covered by the
-reducer or invalidation tests.
+the phase that first *acts* on it. In Phase 0, all 94 types are defined in the sealed `EventPayload` hierarchy (`EventTypes`),
+and tested against recorded real-server events without loss. From P2 on, every event also appears in the Event inspector
+and is covered by the reducer or invalidation tests.
 
-| Phase | Events handled |
-| --- | --- |
-| P1 | `server.connected` |
-| P2 | `location.shutdown`, `models-dev.refreshed`, `model.updated`, `agent.updated`, `session.created`, `session.agent.selected`, `session.model.selected`, `session.moved`, `session.renamed`, `session.metadata.updated`, `session.permissions`, `session.viewed`, `session.usage.updated`, `session.deleted`, `session.forked`, `session.inbox.delivered`, `session.inbox.enqueued`, `session.inbox.cancelled`, `session.inbox.delivery.changed`, `session.execution.started`, `session.execution.succeeded`, `session.execution.failed`, `session.execution.interrupted`, `session.instructions.updated`, `session.synthetic`, `session.skill.activated`, `session.shell.started`, `session.shell.ended`, `session.step.started`, `session.step.streamed`, `session.step.ended`, `session.step.failed`, `session.text.started`, `session.text.delta`, `session.text.ended`, `session.reasoning.started`, `session.reasoning.delta`, `session.reasoning.ended`, `session.tool.input.started`, `session.tool.input.delta`, `session.tool.input.ended`, `session.tool.called`, `session.tool.progress`, `session.tool.success`, `session.tool.failed`, `session.retry.scheduled`, `session.compaction.started`, `session.compaction.delta`, `session.compaction.ended`, `session.compaction.failed`, `session.revert.staged`, `session.revert.cleared`, `session.revert.committed`, `project.updated`, `session.status`, `session.idle` |
-| P3 | `permission.asked`, `permission.replied`, `form.created`, `form.replied`, `form.cancelled` |
-| P4 | `installation.updated`, `installation.update-available` |
-| P5 | `reference.updated`, `command.updated`, `skill.updated` |
-| P6 | `filesystem.changed`, `vcs.branch.updated` |
-| P7 | `worktree.updated`, `worktree.resolved`, `pty.created`, `pty.updated`, `pty.exited`, `pty.deleted`, `persistent-pty.added`, `persistent-pty.removed`, `shell.created`, `shell.exited`, `shell.deleted` |
-| P8 | `credential.updated`, `credential.switched`, `integration.updated`, `provider.updated`, `plugin.updated`, `websearch.updated`, `mcp.status.changed`, `mcp.resources.changed` |
-| P9 | `config.updated` |
-| P10 | `tui.prompt.append`, `tui.command.execute`, `tui.toast.show`, `tui.session.select`, `rpc.<rpcID>.<event>` |
+| Phase | Events handled | Status |
+| --- | --- | --- |
+| P0 | All 94 event types modeled in `EventPayload` / `EventTypes`, contract-tested against recorded fixtures | Complete |
+| P1 | `server.connected` | Planned |
+| P2 | `location.shutdown`, `models-dev.refreshed`, `model.updated`, `agent.updated`, `session.created`, `session.agent.selected`, `session.model.selected`, `session.moved`, `session.renamed`, `session.metadata.updated`, `session.permissions`, `session.viewed`, `session.usage.updated`, `session.deleted`, `session.forked`, `session.inbox.delivered`, `session.inbox.enqueued`, `session.inbox.cancelled`, `session.inbox.delivery.changed`, `session.execution.started`, `session.execution.succeeded`, `session.execution.failed`, `session.execution.interrupted`, `session.instructions.updated`, `session.synthetic`, `session.skill.activated`, `session.shell.started`, `session.shell.ended`, `session.step.started`, `session.step.streamed`, `session.step.ended`, `session.step.failed`, `session.text.started`, `session.text.delta`, `session.text.ended`, `session.reasoning.started`, `session.reasoning.delta`, `session.reasoning.ended`, `session.tool.input.started`, `session.tool.input.delta`, `session.tool.input.ended`, `session.tool.called`, `session.tool.progress`, `session.tool.success`, `session.tool.failed`, `session.retry.scheduled`, `session.compaction.started`, `session.compaction.delta`, `session.compaction.ended`, `session.compaction.failed`, `session.revert.staged`, `session.revert.cleared`, `session.revert.committed`, `project.updated`, `session.status`, `session.idle` | Planned |
+| P3 | `permission.asked`, `permission.replied`, `form.created`, `form.replied`, `form.cancelled` | Planned |
+| P4 | `installation.updated`, `installation.update-available` | Planned |
+| P5 | `reference.updated`, `command.updated`, `skill.updated` | Planned |
+| P6 | `filesystem.changed`, `vcs.branch.updated` | Planned |
+| P7 | `worktree.updated`, `worktree.resolved`, `pty.created`, `pty.updated`, `pty.exited`, `pty.deleted`, `persistent-pty.added`, `persistent-pty.removed`, `shell.created`, `shell.exited`, `shell.deleted` | Planned |
+| P8 | `credential.updated`, `credential.switched`, `integration.updated`, `provider.updated`, `plugin.updated`, `websearch.updated`, `mcp.status.changed`, `mcp.resources.changed` | Planned |
+| P9 | `config.updated` | Planned |
+| P10 | `tui.prompt.append`, `tui.command.execute`, `tui.toast.show`, `tui.session.select`, `rpc.<rpcID>.<event>` | Planned |
 
 ---
 
