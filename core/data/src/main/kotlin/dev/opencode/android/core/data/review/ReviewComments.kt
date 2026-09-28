@@ -54,8 +54,14 @@ data class ReviewComment(
     /** The lines the comment is about, so the prompt can carry them without re-reading the file. */
     val preview: String? = null,
 ) {
-    /** The web app's `selection` spelling. */
-    val selection: String get() = range.toSuffix().removePrefix("#")
+    /**
+     * The web app's `selection` spelling.
+     *
+     * A selection of one line is a bare number, which is the web app's own spelling for "one line"
+     * and what a person would write; a range is `start-end`.
+     */
+    val selection: String
+        get() = if (range.end == null || range.end == range.start) "${range.start}" else "${range.start}-${range.end}"
 
     /** The `file:` URI a comment's line range attaches as, which is how it reaches the agent. */
     fun attachmentUri(location: String?): String =
@@ -164,7 +170,7 @@ object ReviewComments {
 
     private fun single(comment: ReviewComment): String = buildString {
         append("Comment on ").append(comment.path)
-        append(':').append(comment.range.toSuffix()).append(" — ").append(comment.text)
+        append('#').append(comment.selection).append(" — ").append(comment.text)
         comment.preview?.takeIf { it.isNotBlank() }?.let {
             append("\n")
             append(it.trimEnd())

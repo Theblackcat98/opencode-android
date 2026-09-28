@@ -199,6 +199,11 @@ object UnifiedDiff {
             if (line.startsWith(HEADER_OLD_FILE)) {
                 headerPath(line.removePrefix(HEADER_OLD_FILE))?.let { previousPath = it }
             }
+            // A line before the first hunk that is not a version-control header is kept. That is
+            // what makes "this is not a patch" a value the viewer can show rather than a file with
+            // no changes: a text that arrived where a patch was expected is the server's answer and
+            // hiding it would leave the reviewer looking at an empty file.
+            if (!line.isVersionControlHeader()) unparsed += line
             index++
         }
 
@@ -363,6 +368,9 @@ object UnifiedDiff {
         return out
     }
 
+    /** The version-control header lines a `git diff` writes before its first hunk. */
+    private fun String.isVersionControlHeader(): Boolean = VERSION_CONTROL_HEADERS.any { startsWith(it) }
+
     internal fun String.isBinaryMarker(): Boolean =
         startsWith("Binary files ") || startsWith("GIT binary patch")
 
@@ -416,6 +424,30 @@ object UnifiedDiff {
 
     /** How many leading lines of a file block are header lines rather than hunks. */
     private const val HEADER_SCAN_LINES = 8
+
+    /**
+     * The header lines `git diff` writes above the first `@@`.
+     *
+     * `--- ` is here *only* for the pre-hunk scan. Inside a hunk body `--- ` is a perfectly ordinary
+     * removed line whose text is `-- something`, which is why the body loop terminates on `@@`
+     * alone and never consults this list.
+     */
+    private val VERSION_CONTROL_HEADERS = listOf(
+        "diff --git ",
+        "index ",
+        "--- ",
+        "+++ ",
+        "new file mode ",
+        "deleted file mode ",
+        "old mode ",
+        "new mode ",
+        "similarity index ",
+        "dissimilarity index ",
+        "rename from ",
+        "rename to ",
+        "copy from ",
+        "copy to ",
+    )
 }
 
 /**
@@ -446,7 +478,9 @@ internal data class HunkHeader(
                 oldCount = oldRange.count,
                 newStart = newRange.start,
                 newCount = newRange.count,
-                heading = line.substringAfter("@@", "").trim(),
+                // The heading is what follows the closing `@@`, and the line opens with one, so
+                // both markers are consumed. `substringAfter` finds the first, hence the second.
+                heading = line.substringAfter("@@", "").substringAfter("@@", "").trim(),
             )
         }
 

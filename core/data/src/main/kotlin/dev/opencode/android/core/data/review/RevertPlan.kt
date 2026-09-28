@@ -219,8 +219,12 @@ object CommentSelection {
      */
     fun previewOf(lines: List<DiffLine>, range: LineRange): String? {
         if (lines.isEmpty()) return null
+        // The range is a **new-file** range, because `?start=&end=` on an attachment is, and so the
+        // filter is on the new number. A removed line has none and is therefore not quoted: the
+        // server will not send it either, and quoting it would tell the agent about a line the
+        // attachment does not contain.
         val selected = lines.filter { line ->
-            val number = line.anchorNumber
+            val number = line.newNumber ?: return@filter false
             number >= range.start && (range.end == null || number <= range.end)
         }
         if (selected.isEmpty()) return null
