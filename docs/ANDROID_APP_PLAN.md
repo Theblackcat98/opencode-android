@@ -222,7 +222,7 @@ phases that reuse it get cheaper as a result.
 | P2 | Live read-only view | `SyncedResource` stores, `TimelineReducer`, Markdown, code and tool renderers | P3–P10 | Complete |
 | P3 | Drive sessions (MVP) | Composer pipeline, pickers, `RequestCenter`, **forms engine** | P4, P5, P8, P9 | Complete |
 | P4 | Background and notifications | `ConnectionService`, notification and action infrastructure, unread model | P7, P8, P9, P10 | Complete |
-| P5 | Rich composer | Attachment pipeline, autocomplete and mention engine | P6, P8 | Planned |
+| P5 | Rich composer | Attachment pipeline, autocomplete and mention engine | P6, P8 | Complete |
 | P6 | Review and history | Diff engine and viewer, file viewer, revert and fork flows | P7, P9 | Planned |
 | P7 | Execution surfaces | WebSocket and terminal component, process panels, worktree flows | P10 | Planned |
 | P8 | Integrations | OAuth, key and command login flows, MCP and plugin management | P9 | Planned |
@@ -786,6 +786,141 @@ hardware in this environment.
 - Every TUI composer feature is available: `/`, `@`, `!`, attachments, `/btw`, `/compact`, history and stash.
 - Fake-provider assertions confirm that attachments reach the model.
 
+**Status.** Complete. Verified with 735 JVM unit-test executions and no failures — 220 of them added
+by this phase, plus 11 live integration tests against a real `opencode serve` 2.0.18 driven by the
+scripted fake provider. Android Lint is clean, both `play` and `fdroid` debug APKs assemble, and
+Roborazzi compares 51 screenshots (10 of them new). The second exit criterion is settled end to end:
+a file attachment's content is in the recorded provider request.
+
+**What was built.**
+
+- **A mention and autocomplete engine, in pure code.** `ComposerTrigger` decides where a trigger is
+  *allowed* — `/` and `!` only at the start of the input, `@` only at a word boundary — and which
+  range a completion replaces. `MentionScanner` reads the mentions a prompt carries, including the
+  `#20-45` line range, and `CompletionEngine` ranks files, directories, references and agents by how
+  sure it is, then by kind, then alphabetically, so the list does not move under a finger as the
+  server's ranking changes. `ServerPath` turns a server path into a `file:` URI and into the short
+  spelling the text field carries, percent-encoding what a URL cannot hold.
+- **`PromptAssembler`, which decides what one send does.** A leading `!` is a shell line, a leading
+  `/name` is a server command if the server defines one and an app action if not, and everything else
+  is a message. A mention is an agent when it names one and a file otherwise; a file attached twice is
+  sent once and keeps its mention range; a client command that takes no arguments refuses an
+  attachment rather than dropping it.
+- **The attachment pipeline.** `AttachmentPolicy` applies the server's own rules: a format the model is
+  never sent is blocked, an image a model declares no input for is a confirmation the user has to give
+  (plan §5.2), an `http(s)` URI is refused, and the 20 MiB decoded limit is exact at the boundary.
+  `ImageDownscale` decides the dimensions — never up, fitted to 2000 px, halved until the Base64 fits
+  5 MiB — and the platform half reads the bounds, decodes with `inSampleSize`, re-encodes and measures
+  the result, halving again if the estimate was optimistic. Three sources: the photo picker, the camera
+  through a cache-scoped `FileProvider`, and `OpenDocument`.
+- **Context awareness as a line of words.** `ComposerContextRow` says what the next send will carry
+  and what the text will *mean*, which is the difference between typing `/compact` and pressing send.
+  `ComposerProblemRow` says what is stopping the send and offers the one button that clears it.
+- **The three file-based catalogs** — `command.list`, `skill.list`, `reference.list` — as
+  `SyncedResource`s keyed by location, invalidated by exactly the three events Phase 5 acts on first,
+  and re-read on reconnect. `FileSearch` is the debounced `fs.find` behind `@`: one request per burst
+  of keystrokes, the previous results kept while the next load runs.
+- **History, stash and drafts**, client-side and per server or per session, because the server has no
+  concept of any of the three and a draft that travelled to the server would be a state the TUI cannot
+  see. `HistoryCursor` remembers the sentence being written while the cursor walks into the past.
+- **`/btw` and `/compact`.** The side question answers in a sheet with a copy button and never enters
+  the transcript; compaction shows progress and reports a busy session as the conflict it is.
+- **A full-screen editor**, and the composer's client commands mapped to the composition root, which is
+  the only place that knows the navigation graph.
+
+**Not verified here, and why.** The parts of the two exit criteria that are about a person holding a
+phone cannot be decided here, and there is no emulator and no device.
+
+- *"Every TUI composer feature is available."* What is decided: every trigger's rules, every
+  completion's contents and ordering, every attachment's verdict, what a send assembles, the history
+  and stash state machines, the strings on screen in nine captured states at 1.0× and 1.5×, and the
+  manifest the camera and the share target depend on. What a device adds: the real IME — a real
+  soft keyboard's composing regions, its autocorrect and its swipe typing all change the caret
+  arithmetic that decides which trigger is under it; the picker, the camera app and the documents UI,
+  which are three contracts with other apps; and a person reading a completion row at arm's length
+  rather than a screenshot of one.
+- *"Attachments reach the model."* Decided on a real 2.0.18 server: the request arrives, the server
+  reads a `file:` attachment and records its bytes, and the fake provider's own request log contains
+  the file's content. Not decided: a real phone's encoder, a real camera and a real content provider,
+  and a model that declares image input — the only models this harness can script declare `input:
+  ["text"]`, which is why the *negative* case is the one asserted here and the positive one is not.
+
+**What was found that the plan did not anticipate.**
+
+- **`PromptRequest.files` was the wrong shape, and the attachment path could not have worked.** Phase
+  3 sent `Prompt.FileAttachment` — base64, mime, source — where the route takes
+  `PromptInput.FileAttachment`, which is a `uri` and nothing else (features doc §6, and the spec's two
+  distinct schemas). The composer had no attachments to send, so nothing had ever exercised it. The
+  two are now separate types, and the wire shape is asserted in a test and confirmed by a live server
+  that reads a `file:` URI and hands the content to the model.
+- **`fs.find` answers with paths relative to the location, not absolute ones.** Verified against a
+  live 2.0.18 server. The P2 rule — never normalize a path the server gave you — still holds, because
+  the spelling is kept; but a relative path has to be resolved before it is a `file:` URI, and the
+  location is the only base the client has. `ServerPath.resolve` is that function, and the live test
+  asserts the server's spelling is relative so the test cannot quietly pass on an absolute one.
+- **`experimental.session.skill` is not served by 2.0.18.** The route answers `404` even for a skill
+  `skill.list` lists. That is the capability detection the plan asks for working as intended, and it
+  is why attaching the skill on the next prompt — which `skills[]` always supports — is the primary
+  path and activation is a bonus.
+- **A text-only model does not receive a `data:` image, and the server accepts it anyway.** Verified
+  live: the picture is stored on the user message, and nothing in the provider's request mentions it.
+  So the composer's warning is not a precaution, and "Send anyway" is asking the user to agree to
+  something the model will not see.
+- **A completion list is rebuilt on every keystroke, so its order is a correctness property.** Two
+  entries that match equally well must have a stable order, and the natural string order puts
+  `Apple.kt` before `a.ts` because upper case sorts first. The engine sorts case-insensitively.
+
+**Deviations.**
+
+- **`onTextChange` carries the caret.** `ComposerBar` takes `(String, Int)` rather than the `String`
+  Phase 3 had. Material's field does not hand the caret to a `String`-valued `onValueChange`, and the
+  caret is what decides which trigger the list is completing: a mention in the middle of a sentence is
+  not the one at the start of a line.
+- **The composer's state flow is `Eagerly`, not `WhileSubscribed`.** The view model reads it while no
+  screen is collecting, to compute completions from the current catalogs; a derived flow that is not
+  running would answer with its initial value and offer a stale catalog. The cost is one collector for
+  the composer's lifetime, which is the screen's lifetime.
+- **`/undo`, `/redo` and `/diff` are not in the palette.** They are real TUI commands and they are
+  Phase 6 operations (`session.revert.*` and `session.diff`). A palette row that cannot do what it says
+  is worse than a missing row, so they arrive with the operations.
+- **The seven new controls are icon buttons on the send row, not chips.** Six more chips in a row that
+  already scrolls is a row whose last items nobody finds, and the paperclip is the most-used of them.
+  Every button is 48 dp and carries a content description, because an icon with no name is unusable
+  with TalkBack.
+- **The camera needs a `FileProvider` in the app manifest.** It is declared with `cache-path` only: a
+  capture that outlived its prompt, or that another app could write to, would be worse than no camera.
+  `CAMERA` stays a runtime permission the app asks for only when the user picks the camera.
+- **`/new` navigates to the home with the new-session sheet already open.** The new-session flow is a
+  sheet over the home rather than a destination, so `HomeRoute` grew one boolean rather than the
+  composer growing a knowledge of the graph.
+
+**Known limitations.**
+
+- **A mention inside a fenced code block is still a mention.** The composer is not a Markdown editor
+  and does not track fences, so a fenced `@decorator` completes like any other token. The TUI has the
+  same property; nothing about the request is wrong, only the offer.
+- **A `#` that is not a line range stays part of the file name.** `@src/a#b.ts` attaches `src/a#b.ts`
+  rather than `src/a.ts`, because dropping the fragment would attach a different file than the user
+  named. `@src/a.ts#45-20` is a backwards range and is treated the same way.
+- **The Base64 budget is enforced by re-encoding, at most six times.** A picture whose content
+  compresses worse than the estimate is encoded, measured, halved and encoded again. Past six halvings
+  the result is what it is, and the policy checks the real bytes: over 20 MiB decoded is blocked with a
+  reason rather than sent.
+- **The photo picker offers images and `OpenDocument` offers everything.** A PDF picked through
+  `OpenDocument` is accepted, classified as a format the model is not sent, and blocked in the
+  composer rather than rejected by the picker — which is the honest place for it, because the rule is
+  the server's and the picker does not know it.
+- **The `@` list needs the server.** There is no local filesystem to search, so `@` completion of a
+  path is exactly as good as the last `fs.find` and no better. A reference and an agent complete
+  offline, because those catalogs are already loaded.
+- **A draft is written after a pause and lost if the process dies inside it.** A DataStore write is a
+  write, and a phone that is killed inside 400 ms of the last keystroke loses that sentence; the
+  window is the price of not writing a preference file per keystroke.
+- **The share-sheet target is declared and its filter is tested; nothing routes a shared payload into
+  a session yet.** `MainActivity` already handles a `SEND` intent for pairing links, and the composer
+  accepts text and an image, but the wiring that opens a new or existing session from a shared image
+  is Phase 6's "review comments" work, which is where a shared text or diff is most useful.
+
 ---
 
 ### Phase 6: Review, diffs, files and history control (L)
@@ -1195,7 +1330,7 @@ that delivers it.
 | P2 | 12 | Complete |
 | P3 | 20 | Complete |
 | P4 | 1 | Complete |
-| P5 | 10 | Planned |
+| P5 | 10 | Complete |
 | P6 | 15 | Planned |
 | P7 | 30 | Planned |
 | P8 | 27 | Planned |
@@ -1220,7 +1355,7 @@ and is covered by the reducer or invalidation tests.
 | P2 | `location.shutdown`, `models-dev.refreshed`, `model.updated`, `agent.updated`, `session.created`, `session.agent.selected`, `session.model.selected`, `session.moved`, `session.renamed`, `session.metadata.updated`, `session.permissions`, `session.viewed`, `session.usage.updated`, `session.deleted`, `session.forked`, `session.inbox.delivered`, `session.inbox.enqueued`, `session.inbox.cancelled`, `session.inbox.delivery.changed`, `session.execution.started`, `session.execution.succeeded`, `session.execution.failed`, `session.execution.interrupted`, `session.instructions.updated`, `session.synthetic`, `session.skill.activated`, `session.shell.started`, `session.shell.ended`, `session.step.started`, `session.step.streamed`, `session.step.ended`, `session.step.failed`, `session.text.started`, `session.text.delta`, `session.text.ended`, `session.reasoning.started`, `session.reasoning.delta`, `session.reasoning.ended`, `session.tool.input.started`, `session.tool.input.delta`, `session.tool.input.ended`, `session.tool.called`, `session.tool.progress`, `session.tool.success`, `session.tool.failed`, `session.retry.scheduled`, `session.compaction.started`, `session.compaction.delta`, `session.compaction.ended`, `session.compaction.failed`, `session.revert.staged`, `session.revert.cleared`, `session.revert.committed`, `project.updated`, `session.status`, `session.idle` | Complete |
 | P3 | `permission.asked`, `permission.replied`, `form.created`, `form.replied`, `form.cancelled` | Complete |
 | P4 | `installation.updated`, `installation.update-available` (recorded on `ServerDataSet`; an announced version becomes the "server update available" notification) | Complete |
-| P5 | `reference.updated`, `command.updated`, `skill.updated` | Planned |
+| P5 | `reference.updated`, `command.updated`, `skill.updated` (recorded on `ServerDataSet.composerCatalogs`; the empty payload invalidates the named location, or every location the client has open when the frame carries none) | Complete |
 | P6 | `filesystem.changed`, `vcs.branch.updated` | Planned |
 | P7 | `worktree.updated`, `worktree.resolved`, `pty.created`, `pty.updated`, `pty.exited`, `pty.deleted`, `persistent-pty.added`, `persistent-pty.removed`, `shell.created`, `shell.exited`, `shell.deleted` | Planned |
 | P8 | `credential.updated`, `credential.switched`, `integration.updated`, `provider.updated`, `plugin.updated`, `websearch.updated`, `mcp.status.changed`, `mcp.resources.changed` | Planned |

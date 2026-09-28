@@ -5,12 +5,31 @@ network, or any network your phone can reach, and drives the server's full featu
 
 ## Status
 
-Phase 4, *Background presence and notifications*, is complete. The app pairs with one or more OpenCode servers,
-keeps a live event stream to each of them, **drives** them from the phone, and now stays reachable while it works:
-a permission request or a question reaches a locked phone, and can be answered there. The phase table is in
+Phase 5, *Rich composer and context*, is complete. The app pairs with one or more OpenCode servers, keeps a
+live event stream to each of them, **drives** them from the phone, stays reachable while it works, and now says
+what a prompt is about to carry before it sends it. The phase table is in
 [`docs/ANDROID_APP_PLAN.md`](docs/ANDROID_APP_PLAN.md#6-phases).
 
 What works today:
+
+- **A prompt that says what it will carry**: one line under the box names whether it is a message, a command, a
+  shell line or an app action, how many attachments and skills ride along, and whether it steers or queues. What
+  is stopping the send is said next to it, with a button that clears it.
+- **`@` mentions that are files, folders, references and agents**: type `@` and the list is ranked by how sure the
+  client is, folders before files, and stable between keystrokes. `@src/a.ts#20-45` attaches those twenty-six
+  lines. An address is not a mention, and a slash in the middle of a sentence is not a command.
+- **`/` commands and `!` shell lines**: the server's own commands and its MCP prompts, plus the app's own
+  `/new`, `/sessions`, `/models`, `/agents`, `/compact`, `/btw` and `/editor`. A project that defines a command of
+  the same name gets it.
+- **Attachments from the phone**: the photo picker, the camera and any file, downscaled to the server's image
+  defaults and re-encoded off the main thread. A picture the selected model declares no image input for is sent
+  only after the user says so, and a format the model is never sent is refused with a reason rather than
+  dropped silently. Files on the server are attached by path, with a line range if you want one.
+- **History, stash and drafts**: per server and per session, on the device, with buttons rather than the arrow
+  keys a terminal would use, and a full-screen editor for a long sentence.
+- **`/btw` asks a side question** about the session's context and answers in a sheet with a copy button, without
+  touching the transcript. `/compact` summarises it, with live progress.
+- And from Phase 4:
 
 - **Never miss the agent**: a foreground connection service runs while any session is busy, anything is waiting
   for you, or you have asked to stay connected, and stops after a configurable idle grace period. Its ongoing
