@@ -4,13 +4,13 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -24,6 +24,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -40,20 +41,31 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.opencode.android.core.network.ConnectionEventType
 import dev.opencode.android.core.network.ConnectionLogEntry
+import dev.opencode.android.core.network.ConnectionState
+import dev.opencode.android.core.network.DisconnectCause
+import dev.opencode.android.core.network.VersionStatus
 import dev.opencode.android.feature.servers.R
-import java.text.SimpleDateFormat
+import java.text.DateFormat
 import java.util.Date
-import java.util.Locale
 
+/**
+ * Everything known about one server: its identity and reachable URLs, the live connection state,
+ * the resync counter, and the connection history (plan §6, Phase 1).
+ *
+ * The history is not decoration: when a phone cannot stay connected, this is the only place that
+ * says whether the cause was the network, the credential, or the server dropping the stream.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ServerStatusScreen(
     onNavigateBack: () -> Unit,
+    onEditServer: (String) -> Unit,
     onOpenInspector: (String) -> Unit,
+    onPairAgain: (String) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: ServerStatusViewModel = hiltViewModel(),
 ) {
@@ -61,7 +73,7 @@ fun ServerStatusScreen(
     val profile = uiState.profile
 
     Scaffold(
-        modifier = modifier.testTag("server_status_screen"),
+        modifier = modifier.testTag(ServerStatusTags.SCREEN),
         topBar = {
             TopAppBar(
                 title = { Text(profile?.name ?: stringResource(R.string.status_title)) },
@@ -69,7 +81,7 @@ fun ServerStatusScreen(
                     IconButton(onClick = onNavigateBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
+                            contentDescription = stringResource(R.string.status_navigate_back),
                         )
                     }
                 },
@@ -77,7 +89,7 @@ fun ServerStatusScreen(
                     if (profile != null) {
                         IconButton(
                             onClick = { onOpenInspector(profile.id) },
-                            modifier = Modifier.testTag("status_inspector_button"),
+                            modifier = Modifier.testTag(ServerStatusTags.INSPECTOR_BUTTON),
                         ) {
                             Icon(
                                 imageVector = Icons.Default.BugReport,
@@ -103,135 +115,35 @@ fun ServerStatusScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding),
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
+                contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                // Header Card
-                item {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                        ),
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            ) {
-                                HealthStatusDot(health = profile.health)
-                                Text(
-                                    text = profile.name,
-                                    style = MaterialTheme.typography.titleLarge,
-                                )
-                                if (profile.isDefault) {
-                                    DefaultServerBadge()
-                                }
-                                if (profile.isCleartext) {
-                                    UnencryptedBadge()
-                                }
-                            }
+                item(key = "header") {
+                    StatusHeaderCard(
+                        uiState = uiState,
+                        onTest = viewModel::testConnection,
+                        onReconnect = viewModel::reconnectNow,
+                        onEdit = { onEditServer(profile.id) },
+                        onSetDefault = viewModel::setDefault,
+                    )
+                }
 
-                            Text(
-                                text = profile.baseUrl,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-
-                            Spacer(modifier = Modifier.height(8.dp))
-
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Button(
-                                    onClick = viewModel::testConnection,
-                                    enabled = !uiState.isTesting,
-                                    modifier = Modifier.weight(1f),
-                                ) {
-                                    if (uiState.isTesting) {
-                                        CircularProgressIndicator(
-                                            modifier = Modifier.size(16.dp),
-                                            strokeWidth = 2.dp,
-                                            color = MaterialTheme.colorScheme.onPrimary,
-                                        )
-                                        Spacer(modifier = Modifier.width(8.dp))
-                                    } else {
-                                        Icon(Icons.Default.Refresh, contentDescription = null)
-                                        Spacer(modifier = Modifier.width(6.dp))
-                                    }
-                                    Text(stringResource(R.string.status_test_connection))
-                                }
-
-                                if (!profile.isDefault) {
-                                    OutlinedButton(
-                                        onClick = viewModel::setDefault,
-                                        modifier = Modifier.weight(1f),
-                                    ) {
-                                        Text(stringResource(R.string.servers_set_default))
-                                    }
-                                }
-                            }
-
-                            uiState.testMessage?.let { msg ->
-                                Text(
-                                    text = msg,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = if (msg.contains("successfully", ignoreCase = true)) {
-                                        MaterialTheme.colorScheme.primary
-                                    } else {
-                                        MaterialTheme.colorScheme.error
-                                    },
-                                    modifier = Modifier.padding(top = 4.dp),
-                                )
-                            }
-                        }
+                if (uiState.connectionState.causeRequiresRePair()) {
+                    item(key = "reauth") {
+                        RePairCard(
+                            onPairAgain = { onPairAgain(profile.id) },
+                            onEdit = { onEditServer(profile.id) },
+                        )
                     }
                 }
 
-                // Server Technical Info (from GET /api/info)
                 uiState.serverInfo?.let { info ->
-                    item {
-                        Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(16.dp),
-                        ) {
-                            Column(
-                                modifier = Modifier.padding(16.dp),
-                                verticalArrangement = Arrangement.spacedBy(8.dp),
-                            ) {
-                                Text(
-                                    text = "Server Details",
-                                    style = MaterialTheme.typography.titleMedium,
-                                )
-
-                                InfoRow(label = stringResource(R.string.status_version), value = info.version)
-                                InfoRow(label = stringResource(R.string.status_pid), value = info.pid.toString())
-                                InfoRow(label = stringResource(R.string.status_tmp_path), value = info.paths.tmp)
-
-                                if (info.urls.isNotEmpty()) {
-                                    Text(
-                                        text = stringResource(R.string.status_reachable_urls) + ":",
-                                        style = MaterialTheme.typography.labelMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                    info.urls.forEach { url ->
-                                        Text(
-                                            text = "• $url",
-                                            style = MaterialTheme.typography.bodySmall,
-                                            fontFamily = FontFamily.Monospace,
-                                            modifier = Modifier.padding(start = 8.dp),
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
+                    item(key = "info") { ServerInfoCard(uiState = uiState) }
                 }
 
-                // Connection History Log
-                item {
+                item(key = "resync") { ResyncCard(resyncCount = uiState.resyncCount) }
+
+                item(key = "logs-header") {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -250,19 +162,267 @@ fun ServerStatusScreen(
                 }
 
                 if (uiState.connectionLogs.isEmpty()) {
-                    item {
+                    item(key = "logs-empty") {
                         Text(
-                            text = "No connection events logged yet.",
+                            text = stringResource(R.string.status_no_logs),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                 } else {
-                    items(uiState.connectionLogs, key = { it.id }) { log ->
-                        ConnectionLogItem(log = log)
+                    items(uiState.connectionLogs, key = { it.id }) { log -> ConnectionLogItem(log = log) }
+                }
+            }
+        }
+    }
+
+    uiState.checkError?.let { error ->
+        val currentProfile = profile
+        ConnectionErrorDialog(
+            error = error,
+            technicalDetail = uiState.checkTechnicalDetail,
+            onPairAgain = {
+                viewModel.clearCheckError()
+                if (currentProfile != null) onPairAgain(currentProfile.id)
+            },
+            onDismiss = viewModel::clearCheckError,
+            onEditServer = if (currentProfile != null) {
+                {
+                    viewModel.clearCheckError()
+                    onEditServer(currentProfile.id)
+                }
+            } else {
+                null
+            },
+        )
+    }
+}
+
+object ServerStatusTags {
+    const val SCREEN = "server_status_screen"
+    const val INSPECTOR_BUTTON = "status_inspector_button"
+    const val TEST_CONNECTION_BUTTON = "status_test_connection_button"
+    const val RECONNECT_BUTTON = "status_reconnect_button"
+}
+
+private fun ConnectionState.causeRequiresRePair(): Boolean =
+    this is ConnectionState.Disconnected && cause == DisconnectCause.AUTHORIZATION_REQUIRED
+
+@Composable
+private fun StatusHeaderCard(
+    uiState: ServerStatusUiState,
+    onTest: () -> Unit,
+    onReconnect: () -> Unit,
+    onEdit: () -> Unit,
+    onSetDefault: () -> Unit,
+) {
+    val profile = uiState.profile ?: return
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+        ),
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                HealthStatusDot(health = profile.health)
+                Text(text = profile.name, style = MaterialTheme.typography.titleLarge)
+                if (profile.isDefault) DefaultServerBadge()
+                if (profile.isCleartext) UnencryptedBadge()
+            }
+
+            Text(
+                text = profile.baseUrl,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+
+            Text(
+                text = stringResource(R.string.status_info_row, stringResource(R.string.state_label), stringResource(uiState.connectionState.labelRes())),
+                style = MaterialTheme.typography.bodySmall,
+            )
+
+            val lastSeenAt = profile.lastSeenAt
+            if (lastSeenAt != null) {
+                Text(
+                    text = stringResource(
+                        R.string.status_info_row,
+                        stringResource(R.string.status_last_seen),
+                        ClockFormatter.dateTime(lastSeenAt),
+                    ),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(
+                    onClick = onTest,
+                    enabled = !uiState.isTesting,
+                    modifier = Modifier
+                        .weight(1f)
+                        .testTag(ServerStatusTags.TEST_CONNECTION_BUTTON),
+                ) {
+                    if (uiState.isTesting) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.height(16.dp),
+                            strokeWidth = 2.dp,
+                            color = MaterialTheme.colorScheme.onPrimary,
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                    } else {
+                        Icon(Icons.Default.Refresh, contentDescription = null)
+                        Spacer(modifier = Modifier.width(6.dp))
+                    }
+                    Text(stringResource(R.string.status_test_connection))
+                }
+
+                OutlinedButton(
+                    onClick = onReconnect,
+                    modifier = Modifier
+                        .weight(1f)
+                        .testTag(ServerStatusTags.RECONNECT_BUTTON),
+                ) {
+                    Text(stringResource(R.string.status_reconnect))
+                }
+            }
+
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(onClick = onEdit, modifier = Modifier.weight(1f)) {
+                    Text(stringResource(R.string.servers_edit))
+                }
+                if (!profile.isDefault) {
+                    OutlinedButton(onClick = onSetDefault, modifier = Modifier.weight(1f)) {
+                        Text(stringResource(R.string.servers_set_default))
                     }
                 }
             }
+
+            if (uiState.serverInfo != null && uiState.checkError == null) {
+                Text(
+                    text = stringResource(R.string.status_test_ok, uiState.serverInfo.version),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            }
+        }
+    }
+}
+
+/** The re-pair prompt a rotated password leads to (plan §6, Phase 1, exit criteria). */
+@Composable
+private fun RePairCard(
+    onPairAgain: () -> Unit,
+    onEdit: () -> Unit,
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.errorContainer,
+            contentColor = MaterialTheme.colorScheme.onErrorContainer,
+        ),
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.status_reauth_title),
+                style = MaterialTheme.typography.titleMedium,
+            )
+            Text(
+                text = stringResource(R.string.status_reauth_body),
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(onClick = onPairAgain) { Text(stringResource(R.string.servers_repair)) }
+                OutlinedButton(onClick = onEdit) { Text(stringResource(R.string.servers_edit)) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ServerInfoCard(uiState: ServerStatusUiState) {
+    val info = uiState.serverInfo ?: return
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.status_details_title),
+                style = MaterialTheme.typography.titleMedium,
+            )
+            InfoRow(label = stringResource(R.string.status_version), value = info.version)
+            InfoRow(label = stringResource(R.string.status_pid), value = info.pid.toString())
+            InfoRow(label = stringResource(R.string.status_tmp_path), value = info.paths.tmp)
+
+            if (info.urls.isNotEmpty()) {
+                HorizontalDivider()
+                Text(
+                    text = stringResource(R.string.status_reachable_urls),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                info.urls.forEach { url ->
+                    Text(
+                        text = url,
+                        style = MaterialTheme.typography.bodySmall,
+                        fontFamily = FontFamily.Monospace,
+                    )
+                }
+            }
+
+            if (uiState.versionStatus == VersionStatus.NEWER_UNTESTED) {
+                HorizontalDivider()
+                Text(
+                    text = stringResource(R.string.status_version_untested),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.tertiary,
+                )
+            }
+        }
+    }
+}
+
+/**
+ * The resync counter.
+ *
+ * The stream has no replay, so every `server.connected` means a store must re-read its state over
+ * REST. Showing the count makes the mechanism visible while debugging a connection.
+ */
+@Composable
+private fun ResyncCard(resyncCount: Long) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.status_resync_count, resyncCount),
+                style = MaterialTheme.typography.titleSmall,
+            )
+            Text(
+                text = stringResource(R.string.status_resync_description),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }
@@ -278,18 +438,22 @@ private fun InfoRow(label: String, value: String) {
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        Text(
-            text = value,
-            style = MaterialTheme.typography.bodySmall,
-            fontFamily = FontFamily.Monospace,
-        )
+        Text(text = value, style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace)
     }
 }
 
 @Composable
 private fun ConnectionLogItem(log: ConnectionLogEntry) {
-    val timeFormat = SimpleDateFormat("HH:mm:ss.SSS", Locale.getDefault())
+    val timeFormat = ClockFormatter.timeWithMillis(log.timestamp)
     val formattedTime = timeFormat.format(Date(log.timestamp))
+    val badgeColor = when (log.type) {
+        ConnectionEventType.CONNECTED, ConnectionEventType.RESYNC -> MaterialTheme.colorScheme.primaryContainer
+        ConnectionEventType.CONNECTING, ConnectionEventType.HEARTBEAT -> MaterialTheme.colorScheme.secondaryContainer
+        ConnectionEventType.ERROR, ConnectionEventType.WATCHDOG_TIMEOUT, ConnectionEventType.EVENTS_DROPPED ->
+            MaterialTheme.colorScheme.errorContainer
+
+        ConnectionEventType.DISCONNECTED, ConnectionEventType.EVENT_RECEIVED -> MaterialTheme.colorScheme.surfaceVariant
+    }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -309,25 +473,13 @@ private fun ConnectionLogItem(log: ConnectionLogEntry) {
                 fontFamily = FontFamily.Monospace,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-
-            val badgeColor = when (log.type) {
-                ConnectionEventType.CONNECTED, ConnectionEventType.RESYNC -> MaterialTheme.colorScheme.primaryContainer
-                ConnectionEventType.CONNECTING, ConnectionEventType.HEARTBEAT -> MaterialTheme.colorScheme.secondaryContainer
-                ConnectionEventType.ERROR, ConnectionEventType.WATCHDOG_TIMEOUT -> MaterialTheme.colorScheme.errorContainer
-                ConnectionEventType.DISCONNECTED, ConnectionEventType.EVENT_RECEIVED -> MaterialTheme.colorScheme.surfaceVariant
-            }
-
             Box(
                 modifier = Modifier
                     .background(badgeColor, RoundedCornerShape(4.dp))
                     .padding(horizontal = 4.dp, vertical = 2.dp),
             ) {
-                Text(
-                    text = log.type.name,
-                    style = MaterialTheme.typography.labelSmall,
-                )
+                Text(text = log.type.name, style = MaterialTheme.typography.labelSmall)
             }
-
             Text(
                 text = log.message,
                 style = MaterialTheme.typography.bodySmall,

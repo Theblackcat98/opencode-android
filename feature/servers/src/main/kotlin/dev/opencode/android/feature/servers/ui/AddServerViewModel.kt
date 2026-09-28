@@ -5,11 +5,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.opencode.android.core.data.connection.ServerConnectionManager
-import dev.opencode.android.core.data.repository.ServerHealth
+import dev.opencode.android.core.data.repository.AddServerErrorType
+import dev.opencode.android.core.data.repository.AddServerOutcome
 import dev.opencode.android.core.data.repository.ServerRepository
 import dev.opencode.android.core.network.PairingLink
-import dev.opencode.android.core.network.ServerValidationResult
-import dev.opencode.android.core.network.ServerValidator
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -17,175 +16,171 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+/** The three ways to add a server (plan §6, Phase 1). */
+enum class AddServerTab { SCAN, PASTE, MANUAL }
+
 data class AddServerUiState(
-    val selectedTab: Int = 0, // 0 = Scan QR, 1 = Paste Link, 2 = Manual
+    val selectedTab: AddServerTab = AddServerTab.SCAN,
     val pairingLinkInput: String = "",
-    val manualUrlInput: String = "http://",
+    val manualUrlInput: String = "",
     val manualNameInput: String = "",
     val manualPasswordInput: String = "",
-    val isConnecting: Boolean = false,
-    val errorMessage: String? = null,
-    val errorDetail: String? = null,
-    val isSuccess: Boolean = false,
-    val createdServerId: String? = null,
-)
+    val trustUserCertificates: Boolean = false,
+    val isWorking: Boolean = false,
+    val error: AddServerErrorType? = null,
+    val errorTechnicalDetail: String? = null,
+    val addedServerId: String? = null,
+) {
+    /** The URL field only shows its hint while the user has not typed anything. */
+    val showUrlHint: Boolean get() = manualUrlInput.isEmpty()
+}
 
+/**
+ * Drives the add-server screen for all three paths.
+ *
+ * The screen owns no network logic: it hands a parsed [PairingLink] or a typed address to
+ * [ServerRepository], which returns an [AddServerOutcome] whose error class already selects the
+ * help text. That keeps "nothing is listening" and "wrong password" in one place, and keeps
+ * `feature:servers` free of request handling.
+ */
 @HiltViewModel
 class AddServerViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val serverRepository: ServerRepository,
-    private val serverValidator: ServerValidator,
     private val connectionManager: ServerConnectionManager,
 ) : ViewModel() {
 
-    private val initialUrl: String? = savedStateHandle["initialUrl"]
+    private val sharedLink: String? = savedStateHandle["initialUrl"]
+
+    /**
+     * When set, the screen repairs this server's credential instead of adding a new profile,
+     * which is what a rotated password or a revoked token needs.
+     */
+    private val replaceServerId: String? = savedStateHandle["replaceServerId"]
+
+    val isRePairing: Boolean get() = replaceServerId != null
 
     private val _uiState = MutableStateFlow(
         AddServerUiState(
-            selectedTab = if (initialUrl.isNullOrBlank()) 0 else 1,
-            pairingLinkInput = initialUrl ?: "",
-        )
+            // A shared or deep-linked link is text, so it lands on the paste tab with the payload
+            // already filled in rather than asking the user to retype what they just shared.
+            selectedTab = if (sharedLink.isNullOrBlank()) AddServerTab.SCAN else AddServerTab.PASTE,
+            pairingLinkInput = sharedLink.orEmpty(),
+        ),
     )
     val uiState: StateFlow<AddServerUiState> = _uiState.asStateFlow()
 
-    fun selectTab(index: Int) {
-        _uiState.update { it.copy(selectedTab = index, errorMessage = null) }
+    fun selectTab(tab: AddServerTab) = _uiState.update {
+        it.copy(selectedTab = tab, error = null, errorTechnicalDetail = null)
     }
 
-    fun updatePairingLinkInput(input: String) {
-        _uiState.update { it.copy(pairingLinkInput = input, errorMessage = null) }
+    fun updatePairingLinkInput(input: String) = _uiState.update {
+        it.copy(pairingLinkInput = input, error = null, errorTechnicalDetail = null)
     }
 
-    fun updateManualUrlInput(input: String) {
-        _uiState.update { it.copy(manualUrlInput = input, errorMessage = null) }
+    fun updateManualUrlInput(input: String) = _uiState.update {
+        it.copy(manualUrlInput = input, error = null, errorTechnicalDetail = null)
     }
 
-    fun updateManualNameInput(input: String) {
-        _uiState.update { it.copy(manualNameInput = input) }
-    }
+    fun updateManualNameInput(input: String) = _uiState.update { it.copy(manualNameInput = input) }
 
-    fun updateManualPasswordInput(input: String) {
-        _uiState.update { it.copy(manualPasswordInput = input) }
-    }
+    fun updateManualPasswordInput(input: String) = _uiState.update { it.copy(manualPasswordInput = input) }
 
-    fun clearError() {
-        _uiState.update { it.copy(errorMessage = null, errorDetail = null) }
-    }
+    fun setTrustUserCertificates(trust: Boolean) = _uiState.update { it.copy(trustUserCertificates = trust) }
 
-    fun onQrCodeScanned(qrContent: String) {
-        if (_uiState.value.isConnecting) return
+    fun clearError() = _uiState.update { it.copy(error = null, errorTechnicalDetail = null) }
 
-        val pairingLink = PairingLink.parse(qrContent)
-        if (pairingLink != null) {
-            pairWithLink(pairingLink)
-        } else {
-            // Check if it's a raw URL
-            val clean = qrContent.trim()
-            if (clean.startsWith("http://") || clean.startsWith("https://")) {
-                _uiState.update {
-                    it.copy(
-                        selectedTab = 2,
-                        manualUrlInput = clean,
-                        errorMessage = "Scanned server URL without pairing code. Please enter password manually.",
-                    )
-                }
-            } else {
-                _uiState.update {
-                    it.copy(errorMessage = "Scanned QR code does not contain a valid OpenCode pairing link.")
-                }
+    /** The camera could not start, so pasting the link is the way forward. */
+    fun onCameraUnavailable() = selectTab(AddServerTab.PASTE)
+
+    /**
+     * A scanned, pasted or shared payload. A full pairing link is redeemed; a bare server address
+     * cannot be, so it moves to the manual tab with the address filled in and the password left to
+     * the user.
+     */
+    fun onPayloadReceived(payload: String) {
+        if (_uiState.value.isWorking) return
+        PairingLink.parse(payload)?.let { link ->
+            _uiState.update { it.copy(pairingLinkInput = payload) }
+            pairWithLink(link)
+            return
+        }
+        when {
+            // A bare address cannot be redeemed, and in re-pair mode it must not create a second
+            // profile for the same server either.
+            payload.toServerBaseUrlOrNull() != null && !isRePairing -> _uiState.update {
+                it.copy(
+                    selectedTab = AddServerTab.MANUAL,
+                    manualUrlInput = payload.trim(),
+                    error = AddServerErrorType.PAIRING_CODE_REJECTED,
+                )
             }
+
+            else -> _uiState.update { it.copy(error = AddServerErrorType.PAIRING_CODE_REJECTED) }
         }
     }
 
     fun pairWithPastedLink() {
-        val input = _uiState.value.pairingLinkInput.trim()
-        val pairingLink = PairingLink.parse(input)
-        if (pairingLink == null) {
-            _uiState.update {
-                it.copy(errorMessage = "Invalid pairing link. Format must be: http(s)://<host>:<port>/auth/connect/<code>")
-            }
+        val link = PairingLink.parse(_uiState.value.pairingLinkInput)
+        if (link == null) {
+            _uiState.update { it.copy(error = AddServerErrorType.PAIRING_CODE_REJECTED) }
             return
         }
-        pairWithLink(pairingLink)
+        pairWithLink(link)
     }
 
-    private fun pairWithLink(pairingLink: PairingLink) {
-        _uiState.update { it.copy(isConnecting = true, errorMessage = null, errorDetail = null) }
-
-        viewModelScope.launch {
-            val result = serverRepository.redeemAndAddPairingLink(pairingLink)
-            result.fold(
-                onSuccess = { profile ->
-                    connectionManager.connectServer(profile, viewModelScope)
-                    _uiState.update {
-                        it.copy(
-                            isConnecting = false,
-                            isSuccess = true,
-                            createdServerId = profile.id,
-                        )
-                    }
-                },
-                onFailure = { error ->
-                    _uiState.update {
-                        it.copy(
-                            isConnecting = false,
-                            errorMessage = error.message ?: "Pairing redemption failed",
-                            errorDetail = error.stackTraceToString(),
-                        )
-                    }
-                },
+    fun connectManually() {
+        val state = _uiState.value
+        val url = state.manualUrlInput.trim()
+        if (url.toServerBaseUrlOrNull() == null) {
+            _uiState.update { it.copy(error = AddServerErrorType.UNREACHABLE) }
+            return
+        }
+        add {
+            serverRepository.addManualServer(
+                name = state.manualNameInput,
+                baseUrl = url,
+                password = state.manualPasswordInput.ifBlank { null },
+                trustUserCertificates = state.trustUserCertificates,
             )
         }
     }
 
-    fun connectManual() {
-        val url = _uiState.value.manualUrlInput.trim()
-        val name = _uiState.value.manualNameInput.trim()
-        val pass = _uiState.value.manualPasswordInput
-
-        if (!url.startsWith("http://") && !url.startsWith("https://")) {
-            _uiState.update { it.copy(errorMessage = "Server URL must start with http:// or https://") }
-            return
+    private fun pairWithLink(link: PairingLink) = add {
+        val existing = replaceServerId
+        if (existing != null) {
+            serverRepository.rePairServer(id = existing, pairingLink = link)
+        } else {
+            serverRepository.addPairedServer(
+                pairingLink = link,
+                trustUserCertificates = _uiState.value.trustUserCertificates,
+            )
         }
+    }
 
-        _uiState.update { it.copy(isConnecting = true, errorMessage = null, errorDetail = null) }
-
+    /**
+     * Runs one add attempt, then connects the new profile. On success the id is published so the
+     * screen can leave; on failure the class is published so the dialog can show the matching help.
+     */
+    private fun add(block: suspend () -> AddServerOutcome) {
+        if (_uiState.value.isWorking) return
+        _uiState.update { it.copy(isWorking = true, error = null, errorTechnicalDetail = null) }
         viewModelScope.launch {
-            when (val validation = serverValidator.validate(url, pass.ifBlank { null })) {
-                is ServerValidationResult.Failure -> {
-                    _uiState.update {
-                        it.copy(
-                            isConnecting = false,
-                            errorMessage = validation.userMessage,
-                            errorDetail = validation.technicalDetail,
-                        )
-                    }
+            when (val outcome = block()) {
+                is AddServerOutcome.Success -> {
+                    _uiState.update { it.copy(isWorking = false, addedServerId = outcome.profile.id) }
+                    // A re-pair replaces the credential, so the cached client, which was built
+                    // around the rejected one, is dropped before reconnecting.
+                    if (replaceServerId != null) connectionManager.refreshServer(outcome.profile.id)
+                    connectionManager.connectServer(outcome.profile, viewModelScope)
                 }
-                is ServerValidationResult.Success -> {
-                    val info = validation.serverInfo
-                    val resolvedName = name.ifBlank {
-                        info.urls.firstOrNull() ?: url
-                    }
 
-                    val serverId = serverRepository.addServer(
-                        name = resolvedName,
-                        baseUrl = url,
-                        credential = pass.ifBlank { null },
+                is AddServerOutcome.Failure -> _uiState.update {
+                    it.copy(
+                        isWorking = false,
+                        error = outcome.errorType,
+                        errorTechnicalDetail = outcome.technicalDetail,
                     )
-                    serverRepository.updateHealth(serverId, ServerHealth.CONNECTED)
-
-                    val profile = serverRepository.getServer(serverId)
-                    if (profile != null) {
-                        connectionManager.connectServer(profile, viewModelScope)
-                    }
-
-                    _uiState.update {
-                        it.copy(
-                            isConnecting = false,
-                            isSuccess = true,
-                            createdServerId = serverId,
-                        )
-                    }
                 }
             }
         }

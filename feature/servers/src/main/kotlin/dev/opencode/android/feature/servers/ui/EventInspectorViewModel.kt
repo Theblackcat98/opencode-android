@@ -19,14 +19,22 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 data class EventInspectorUiState(
+    val serverId: String? = null,
     val serverName: String = "",
-    val connectionState: ConnectionState = ConnectionState.Disconnected(),
+    val connectionState: ConnectionState = ConnectionState.Idle,
     val searchQuery: String = "",
     val isPaused: Boolean = false,
     val selectedEvent: InspectedEvent? = null,
     val copiedMessage: String? = null,
 )
 
+/**
+ * The developer event inspector: a live list of the frames the connection receives, with the raw
+ * JSON of the selected one (plan §6, Phase 1).
+ *
+ * Every later phase debugs through this screen, so it is a first-class feature rather than a
+ * leftover. It follows one server: the one named by the route, or the default.
+ */
 @HiltViewModel
 class EventInspectorViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
@@ -34,87 +42,76 @@ class EventInspectorViewModel @Inject constructor(
     private val connectionManager: ServerConnectionManager,
 ) : ViewModel() {
 
-    private val serverIdArg: String? = savedStateHandle["serverId"]
+    private val requestedServerId: String? = savedStateHandle["serverId"]
 
     private val _uiState = MutableStateFlow(EventInspectorUiState())
     val uiState: StateFlow<EventInspectorUiState> = _uiState.asStateFlow()
 
-    private val rawEvents = MutableStateFlow<List<InspectedEvent>>(emptyList())
+    private val events = MutableStateFlow<List<InspectedEvent>>(emptyList())
 
-    val filteredEvents: StateFlow<List<InspectedEvent>> = combine(
-        rawEvents,
-        _uiState,
-    ) { events, state ->
+    /**
+     * The filtered list. Filtering the type and the raw payload together is what makes this useful
+     * for a payload whose type is unknown.
+     */
+    val filteredEvents: StateFlow<List<InspectedEvent>> = combine(events, _uiState) { all, state ->
         val query = state.searchQuery.trim().lowercase()
-        if (query.isBlank()) {
-            events
+        if (query.isEmpty()) {
+            all
         } else {
-            events.filter { event ->
-                event.type.lowercase().contains(query) ||
-                    event.rawJson.lowercase().contains(query)
+            all.filter { event ->
+                event.type.lowercase().contains(query) || event.rawJson.lowercase().contains(query)
             }
         }
     }.stateIn(
         scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5000),
+        started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),
         initialValue = emptyList(),
     )
 
     init {
-        initializeInspector()
+        followServer()
     }
 
-    private fun initializeInspector() {
+    private fun followServer() {
         viewModelScope.launch {
-            val serverId = serverIdArg ?: serverRepository.getAllServers().firstOrNull { it.isDefault }?.id
-            if (serverId != null) {
-                val profile = serverRepository.getServer(serverId)
-                _uiState.update { it.copy(serverName = profile?.name ?: "Event Inspector") }
+            val serverId = requestedServerId
+                ?: serverRepository.getAllServers().firstOrNull { it.isDefault }?.id
+                ?: return@launch
+            val profile = serverRepository.getServer(serverId) ?: return@launch
+            val connection = connectionManager.connectServer(profile, viewModelScope)
+            _uiState.update { it.copy(serverId = serverId, serverName = profile.name) }
 
-                if (profile != null) {
-                    val conn = connectionManager.connectServer(profile, viewModelScope)
-
-                    launch {
-                        conn.connectionState.collect { state ->
-                            _uiState.update { it.copy(connectionState = state) }
-                        }
-                    }
-
-                    launch {
-                        conn.inspectedEvents.collect { list ->
-                            if (!_uiState.value.isPaused) {
-                                rawEvents.value = list
-                            }
-                        }
-                    }
+            launch {
+                connection.connectionState.collect { state ->
+                    _uiState.update { it.copy(connectionState = state) }
+                }
+            }
+            launch {
+                connection.inspectedEvents.collect { list ->
+                    // Pausing keeps the list frozen without dropping the client's own buffer, so
+                    // resuming shows everything that arrived meanwhile.
+                    if (!_uiState.value.isPaused) events.value = list
                 }
             }
         }
     }
 
-    fun updateSearchQuery(query: String) {
-        _uiState.update { it.copy(searchQuery = query) }
-    }
+    fun updateSearchQuery(query: String) = _uiState.update { it.copy(searchQuery = query) }
 
-    fun togglePause() {
-        _uiState.update { it.copy(isPaused = !it.isPaused) }
-    }
+    fun togglePause() = _uiState.update { it.copy(isPaused = !it.isPaused) }
 
     fun clearEvents() {
         viewModelScope.launch {
-            val serverId = serverIdArg ?: serverRepository.getAllServers().firstOrNull { it.isDefault }?.id
-            if (serverId != null) {
-                connectionManager.getConnection(serverId)?.client?.clearInspectedEvents()
-            }
-            rawEvents.value = emptyList()
+            _uiState.value.serverId?.let { connectionManager.getConnection(it)?.client?.clearInspectedEvents() }
+            events.value = emptyList()
         }
     }
 
-    fun selectEvent(event: InspectedEvent?) {
-        _uiState.update { it.copy(selectedEvent = event) }
-    }
+    fun selectEvent(event: InspectedEvent?) = _uiState.update { it.copy(selectedEvent = event) }
 
-    fun setCopiedMessage(message: String?) {
-        _uiState.update { it.copy(copiedMessage = message) }
+    fun setCopiedMessage(message: String?) = _uiState.update { it.copy(copiedMessage = message) }
+
+    private companion object {
+        const val STOP_TIMEOUT_MILLIS = 5_000L
     }
 }

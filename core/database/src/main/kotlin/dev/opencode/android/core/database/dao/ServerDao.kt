@@ -12,10 +12,12 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface ServerDao {
 
-    @Query("SELECT * FROM servers ORDER BY createdAt DESC")
+    // `createdAt` alone leaves the order undefined when two servers are added in the same
+    // millisecond, which makes the registry jump around; the name is a stable tie-breaker.
+    @Query("SELECT * FROM servers ORDER BY createdAt DESC, name ASC")
     fun observeAll(): Flow<List<ServerEntity>>
 
-    @Query("SELECT * FROM servers ORDER BY createdAt DESC")
+    @Query("SELECT * FROM servers ORDER BY createdAt DESC, name ASC")
     suspend fun getAll(): List<ServerEntity>
 
     @Query("SELECT * FROM servers WHERE id = :id")

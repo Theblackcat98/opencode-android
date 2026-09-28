@@ -28,13 +28,21 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
-            <!-- Pairing link deep link handler (http://.../auth/connect/<code>) -->
+            <!--
+              Pairing links, opened from a browser or handed over by another app:
+              http(s)://<any-lan-host>:<port>/auth/connect/<code>. The host is a wildcard because a
+              pairing link carries whatever address the server printed, and the app has to claim the
+              path shape rather than one address.
+            -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
+
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
+
                 <data android:scheme="http" />
                 <data android:scheme="https" />
+                <data android:host="*" />
                 <data android:pathPrefix="/auth/connect/" />
             </intent-filter>
 

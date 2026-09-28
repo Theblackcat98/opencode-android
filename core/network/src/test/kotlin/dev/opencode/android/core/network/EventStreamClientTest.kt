@@ -4,6 +4,7 @@ import app.cash.turbine.test
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,6 +19,7 @@ import mockwebserver3.MockWebServer
 import mockwebserver3.RecordedRequest
 import okhttp3.Credentials
 import okhttp3.OkHttpClient
+import dev.opencode.android.core.testing.Fixtures
 import okio.BufferedSink
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -42,30 +44,56 @@ class EventStreamClientTest {
 
     @After
     fun tearDown() {
+        // The client holds a socket with no read timeout, so it is stopped before the server goes
+        // away: otherwise `close()` waits on a connection nobody ends.
+        if (::client.isInitialized) client.stop()
         scope.cancel()
         server.close()
     }
 
+    /**
+     * Every test body runs inside one timeout.
+     *
+     * These tests drive real sockets and wait on flows. An unbounded wait turns a broken
+     * expectation into a hung Gradle test task with no output at all, which is far more expensive
+     * to diagnose than a failure, so the whole body is bounded.
+     */
+    private fun eventStreamTest(body: suspend CoroutineScope.() -> Unit) = runBlocking<Unit> {
+        try {
+            withTimeout(AWAIT_MILLIS) { body() }
+        } catch (timeout: TimeoutCancellationException) {
+            // A bare "timed out" says nothing about where the client got to, and the connection
+            // log is the only record of it.
+            val log = if (::client.isInitialized) {
+                client.logs.value.joinToString(separator = " | ") { "${it.type}: ${it.message}" }
+            } else {
+                "(the client was never built)"
+            }
+            throw AssertionError("Timed out after ${AWAIT_MILLIS}ms. Connection log: $log", timeout)
+        }
+    }
+
     @Test
-    fun connectsAndFiresTheResyncSignalOnServerConnected() = runBlocking<Unit> {
+    fun connectsAndFiresTheResyncSignalOnServerConnected() = eventStreamTest {
         server.enqueue(sseResponse(SERVER_CONNECTED_FRAME))
         client = newClient()
 
-        client.state.first { it is ConnectionState.Connected }
+        // The signal has no replay, so the collector is attached before the stream is started.
         client.resyncSignals.test {
             client.start(scope)
             assertEquals(Unit, awaitItem())
         }
+        awaitConnected()
         assertEquals(1, client.inspectedEvents.value.size)
         assertEquals(EventStreamClient.SERVER_CONNECTED, client.inspectedEvents.value.first().type)
     }
 
     @Test
-    fun requestsTheEventStreamWithTheCredentialAsBasicAuth() = runBlocking<Unit> {
+    fun requestsTheEventStreamWithTheCredentialAsBasicAuth() = eventStreamTest {
         server.enqueue(sseResponse(SERVER_CONNECTED_FRAME))
         client = newClient(credential = "session-token")
-
-        client.state.first { it is ConnectionState.Connected }
+        client.start(scope)
+        awaitConnected()
 
         val recorded = server.takeRequest()
         assertEquals(EventStreamClient.EVENT_PATH, recorded.url.encodedPath)
@@ -77,87 +105,93 @@ class EventStreamClientTest {
     }
 
     @Test
-    fun sendsNoCredentialWhenTheServerHasNoPassword() = runBlocking<Unit> {
+    fun sendsNoCredentialWhenTheServerHasNoPassword() = eventStreamTest {
         server.enqueue(sseResponse(SERVER_CONNECTED_FRAME))
         client = newClient(credential = null)
-
-        client.state.first { it is ConnectionState.Connected }
+        client.start(scope)
+        awaitConnected()
 
         assertEquals(null, server.takeRequest().headers["Authorization"])
     }
 
     @Test
-    fun publishesEveryDecodedEvent() = runBlocking<Unit> {
+    fun publishesEveryDecodedEvent() = eventStreamTest {
         server.enqueue(
             sseResponse(
                 SERVER_CONNECTED_FRAME +
-                    eventFrame("session.created", """{"sessionID":"ses_1"}""") +
-                    eventFrame("session.status", """{"status":"idle"}"""),
+                    eventFrame("session.created") +
+                    eventFrame("model.updated"),
             ),
         )
         client = newClient()
-
-        client.state.first { it is ConnectionState.Connected }
-        waitForInspectedEvents(2)
+        client.start(scope)
+        awaitConnected()
+        waitForInspectedEvents(3)
 
         val types = client.inspectedEvents.value.map { it.type }
-        assertEquals(listOf(EventStreamClient.SERVER_CONNECTED, "session.created", "session.status").reversed(), types)
+        assertEquals(
+            listOf(EventStreamClient.SERVER_CONNECTED, "session.created", "model.updated").reversed(),
+            types,
+        )
         assertTrue(client.inspectedEvents.value.all { it.rawJson.isNotBlank() && it.index > 0 })
     }
 
     @Test
-    fun refusesAStreamThatDoesNotStartWithServerConnected() = runBlocking<Unit> {
-        server.enqueue(sseResponse(eventFrame("session.created", """{"sessionID":"ses_1"}""")))
+    fun refusesAStreamThatDoesNotStartWithServerConnected() = eventStreamTest {
+        server.enqueue(sseResponse(eventFrame("session.created")))
         server.enqueue(sseResponse(SERVER_CONNECTED_FRAME))
         client = newClient(backoffMillis = 20)
 
         client.start(scope)
 
-        withTimeout(10_000) {
+        withTimeout(AWAIT_MILLIS) {
             client.logs.first { logs ->
                 logs.any { it.message.contains("did not start with server.connected") }
             }
         }
         // The unusable stream is dropped and the client recovers on the next attempt.
-        client.state.first { it is ConnectionState.Connected }
+        awaitConnected()
     }
 
     @Test
-    fun heartbeatsCountAsActivitySoTheWatchdogStaysQuiet() = runBlocking<Unit> {
+    fun heartbeatsCountAsActivitySoTheWatchdogStaysQuiet() = eventStreamTest {
+        // The heartbeats are spread out in time on purpose: a stream that delivers all of them at
+        // once would go quiet afterwards, and the watchdog would be right to fire.
         server.enqueue(
             sseResponse(
-                SERVER_CONNECTED_FRAME + ": heartbeat\n\n".repeat(6),
-                keepOpenMillis = 400,
+                SERVER_CONNECTED_FRAME,
+                keepOpenMillis = HEARTBEAT_WINDOW_MILLIS,
+                heartbeatEveryMillis = HEARTBEAT_PERIOD_MILLIS,
             ),
         )
         server.enqueue(sseResponse(SERVER_CONNECTED_FRAME))
-        client = newClient(watchdogMillis = 300, watchdogCheckMillis = 40)
+        client = newClient(watchdogMillis = 600, watchdogCheckMillis = 40)
 
         client.start(scope)
 
-        withTimeout(10_000) {
+        awaitConnected()
+        withTimeout(AWAIT_MILLIS) {
             client.logs.first { logs -> logs.count { it.type == ConnectionEventType.HEARTBEAT } >= 3 }
         }
-        delay(500)
+        delay(HEARTBEAT_WINDOW_MILLIS)
         assertTrue(
             "The watchdog fired while heartbeats were arriving",
             client.logs.value.none { it.type == ConnectionEventType.WATCHDOG_TIMEOUT },
         )
-        assertTrue(client.state.value is ConnectionState.Connected)
     }
 
     @Test
-    fun theWatchdogDropsAQuietStreamAndReconnects() = runBlocking<Unit> {
+    fun theWatchdogDropsAQuietStreamAndReconnects() = eventStreamTest {
         server.enqueue(sseResponse(SERVER_CONNECTED_FRAME, keepOpenMillis = 3_000))
-        server.enqueue(sseResponse(SERVER_CONNECTED_FRAME + eventFrame("session.deleted", """{"sessionID":"s"}""")))
+        server.enqueue(sseResponse(SERVER_CONNECTED_FRAME + eventFrame("session.created")))
         client = newClient(watchdogMillis = 300, watchdogCheckMillis = 40, backoffMillis = 30)
 
         client.start(scope)
 
-        withTimeout(15_000) {
-            client.state.first { it is ConnectionState.Connected }
+        withTimeout(AWAIT_MILLIS) {
+            awaitConnected()
             client.logs.first { logs -> logs.any { it.type == ConnectionEventType.WATCHDOG_TIMEOUT } }
-            client.inspectedEvents.first { events -> events.any { it.type == "session.deleted" } }
+            client.inspectedEvents.first { events -> events.any { it.type == "session.created" } }
         }
         assertEquals(2, client.logs.value.count { it.type == ConnectionEventType.CONNECTED })
         assertTrue(
@@ -167,23 +201,24 @@ class EventStreamClientTest {
     }
 
     @Test
-    fun reconnectsWhenTheServerClosesTheStream() = runBlocking<Unit> {
+    fun reconnectsWhenTheServerClosesTheStream() = eventStreamTest {
+        server.enqueue(sseResponse(SERVER_CONNECTED_FRAME, finishes = true))
         server.enqueue(sseResponse(SERVER_CONNECTED_FRAME))
-        server.enqueue(sseResponse(SERVER_CONNECTED_FRAME, keepOpenMillis = 3_000))
         client = newClient(backoffMillis = 30)
 
         client.start(scope)
 
-        withTimeout(10_000) {
+        withTimeout(AWAIT_MILLIS) {
             client.logs.first { logs -> logs.count { it.type == ConnectionEventType.CONNECTED } >= 2 }
         }
-        val closed = client.logs.value.any { it.message.contains("closed the event stream") }
-        assertTrue("Expected a closed-stream log entry", closed)
-        assertTrue(client.state.value is ConnectionState.Connected)
+        assertTrue(
+            "Expected a closed-stream log entry",
+            client.logs.value.any { it.message.contains("closed the event stream") },
+        )
     }
 
     @Test
-    fun aRejectedCredentialStopsRetryingUntilTheAppAsksAgain() = runBlocking<Unit> {
+    fun aRejectedCredentialStopsRetryingUntilTheAppAsksAgain() = eventStreamTest {
         server.dispatcher = object : Dispatcher() {
             override fun dispatch(request: RecordedRequest): MockResponse =
                 MockResponse.Builder().code(401).body("{}").build()
@@ -192,7 +227,7 @@ class EventStreamClientTest {
 
         client.start(scope)
 
-        withTimeout(10_000) {
+        withTimeout(AWAIT_MILLIS) {
             client.state.first { it is ConnectionState.Disconnected && it.cause == DisconnectCause.AUTHORIZATION_REQUIRED }
         }
         val failed = client.state.value as ConnectionState.Disconnected
@@ -207,7 +242,7 @@ class EventStreamClientTest {
     }
 
     @Test
-    fun reportsAConnectionRefusedServerWithoutHammeringIt() = runBlocking<Unit> {
+    fun reportsAConnectionRefusedServerWithoutHammeringIt() = eventStreamTest {
         val closed = MockWebServer().apply { start() }
         val unusedUrl = closed.url("/").toString()
         closed.close()
@@ -221,18 +256,20 @@ class EventStreamClientTest {
 
         client.start(scope)
 
-        withTimeout(10_000) {
-            client.state.first { it is ConnectionState.Disconnected && it.cause == DisconnectCause.CONNECTION_REFUSED }
-        }
-        val failing = client.state.value as ConnectionState.Disconnected
+        val failing = withTimeout(AWAIT_MILLIS) {
+            client.state.first {
+                it is ConnectionState.Disconnected &&
+                    it.cause == DisconnectCause.CONNECTION_REFUSED &&
+                    (it.retryInMillis ?: 0L) > 0L
+            }
+        } as ConnectionState.Disconnected
         assertEquals(true, failing.willRetry)
-        assertTrue((failing.retryInMillis ?: 0) > 0)
         assertTrue(client.logs.value.any { it.message.contains("Nothing answered") })
     }
 
     @Test
-    fun aSlowConsumerNeverStallsTheReader() = runBlocking<Unit> {
-        val frames = (1..40).joinToString("") { eventFrame("session.status", """{"n":$it}""") }
+    fun aSlowConsumerNeverStallsTheReader() = eventStreamTest {
+        val frames = (1..40).joinToString("") { eventFrame("model.updated", it) }
         server.enqueue(sseResponse(SERVER_CONNECTED_FRAME + frames, keepOpenMillis = 2_000))
         client = newClient(bufferedEvents = 4)
 
@@ -246,7 +283,7 @@ class EventStreamClientTest {
 
         client.start(scope)
 
-        withTimeout(15_000) {
+        withTimeout(AWAIT_MILLIS) {
             client.inspectedEvents.first { events -> events.size >= 41 }
         }
         assertEquals("The reader stopped early", 41, client.inspectedEvents.value.size)
@@ -258,9 +295,10 @@ class EventStreamClientTest {
     }
 
     @Test
-    fun followsNetworkLossAndRecovery() = runBlocking<Unit> {
+    fun followsNetworkLossAndRecovery() = eventStreamTest {
         val online = MutableStateFlow(true)
-        server.enqueue(sseResponse(SERVER_CONNECTED_FRAME, keepOpenMillis = 5_000))
+        server.enqueue(sseResponse(SERVER_CONNECTED_FRAME))
+        server.enqueue(sseResponse(SERVER_CONNECTED_FRAME))
         client = newClient(
             connectivityMonitor = object : NetworkConnectivityMonitor {
                 override val isOnline = online
@@ -269,43 +307,44 @@ class EventStreamClientTest {
         )
 
         client.start(scope)
-        client.state.first { it is ConnectionState.Connected }
+        awaitConnected()
 
         online.value = false
-        withTimeout(10_000) { client.state.first { it is ConnectionState.Suspended } }
+        withTimeout(AWAIT_MILLIS) { client.state.first { it is ConnectionState.Suspended } }
         assertTrue(client.logs.value.any { it.message.contains(EventStreamClient.NO_NETWORK_REASON) })
 
         online.value = true
-        withTimeout(10_000) { client.state.first { it is ConnectionState.Connected } }
+        // Coming back online reconnects, so the second connection is waited for explicitly.
+        awaitConnected(times = 2)
     }
 
     @Test
-    fun runsInTheForegroundOnly() = runBlocking<Unit> {
+    fun runsInTheForegroundOnly() = eventStreamTest {
         server.enqueue(sseResponse(SERVER_CONNECTED_FRAME, keepOpenMillis = 5_000))
         server.enqueue(sseResponse(SERVER_CONNECTED_FRAME, keepOpenMillis = 5_000))
         client = newClient(backoffMillis = 20)
 
         client.start(scope)
-        client.state.first { it is ConnectionState.Connected }
+        awaitConnected()
 
         client.setForeground(false)
-        withTimeout(10_000) {
+        withTimeout(AWAIT_MILLIS) {
             client.state.first { it is ConnectionState.Suspended && it.reason == EventStreamClient.BACKGROUND_REASON }
         }
-        assertTrue(client.state.value !is ConnectionState.Connected)
+        assertTrue(client.logs.value.any { it.message.contains(EventStreamClient.BACKGROUND_REASON) })
 
         client.setForeground(true)
-        withTimeout(10_000) { client.state.first { it is ConnectionState.Connected } }
+        awaitConnected(times = 2)
         assertEquals(2, client.logs.value.count { it.type == ConnectionEventType.CONNECTED })
     }
 
     @Test
-    fun keepsTheConnectionLogBounded() = runBlocking<Unit> {
+    fun keepsTheConnectionLogBounded() = eventStreamTest {
         server.enqueue(sseResponse(SERVER_CONNECTED_FRAME + ": heartbeat\n\n".repeat(20)))
         client = newClient(maxLogEntries = 5)
 
         client.start(scope)
-        withTimeout(10_000) {
+        withTimeout(AWAIT_MILLIS) {
             client.logs.first { logs -> logs.count { it.type == ConnectionEventType.HEARTBEAT } >= 5 }
         }
         waitUntil { client.logs.value.size == 5 }
@@ -313,12 +352,15 @@ class EventStreamClientTest {
     }
 
     @Test
-    fun clearLogsAndClearInspectedEventsEmptyTheBuffers() = runBlocking<Unit> {
-        server.enqueue(sseResponse(SERVER_CONNECTED_FRAME + eventFrame("session.created", """{"sessionID":"s"}""")))
+    fun clearLogsAndClearInspectedEventsEmptyTheBuffers() = eventStreamTest {
+        server.enqueue(sseResponse(SERVER_CONNECTED_FRAME + eventFrame("session.created")))
         client = newClient()
-
-        client.state.first { it is ConnectionState.Connected }
+        client.start(scope)
+        awaitConnected()
         waitForInspectedEvents(2)
+        // The log entry for a frame is written after the frame is recorded, so the wait is on the
+        // log as well: clearing while the reader is still mid-frame would race.
+        waitUntil { client.logs.value.count { it.type == ConnectionEventType.EVENT_RECEIVED } >= 2 }
 
         client.clearLogs()
         client.clearInspectedEvents()
@@ -328,39 +370,62 @@ class EventStreamClientTest {
     }
 
     @Test
-    fun stopEndsTheStreamAndIsIdempotent() = runBlocking<Unit> {
+    fun stopEndsTheStreamAndIsIdempotent() = eventStreamTest {
         server.enqueue(sseResponse(SERVER_CONNECTED_FRAME, keepOpenMillis = 5_000))
         client = newClient()
 
         client.start(scope)
-        client.state.first { it is ConnectionState.Connected }
+        awaitConnected()
 
         client.stop()
         client.stop()
 
-        withTimeout(10_000) {
+        withTimeout(AWAIT_MILLIS) {
             client.state.first { it is ConnectionState.Disconnected && it.reason == EventStreamClient.STOPPED_REASON }
         }
     }
 
     @Test
-    fun aStreamWithAnUndecodableFrameKeepsRunning() = runBlocking<Unit> {
+    fun reconnectNowDropsALiveStreamAndConnectsAgain() = eventStreamTest {
+        // Two long-lived responses: a "reconnect now" while connected has to drop the first socket
+        // rather than wait for it to end on its own.
+        server.enqueue(sseResponse(SERVER_CONNECTED_FRAME, keepOpenMillis = 5_000))
+        server.enqueue(sseResponse(SERVER_CONNECTED_FRAME, keepOpenMillis = 5_000))
+        client = newClient(backoffMillis = 30)
+        client.start(scope)
+        awaitConnected()
+
+        client.reconnectNow()
+
+        awaitConnected(times = 2)
+        assertEquals(2, client.resyncCount.value)
+        assertTrue(
+            "The reconnect must be recorded, or the history shows a reconnect with no cause",
+            client.logs.value.any { it.message.contains(EventStreamClient.RECONNECT_REASON) },
+        )
+    }
+
+    @Test
+    fun aStreamWithAnUndecodableFrameKeepsRunning() = eventStreamTest {
         server.enqueue(
             sseResponse(
                 SERVER_CONNECTED_FRAME +
                     "data: {not json}\n\n" +
-                    eventFrame("session.created", """{"sessionID":"ses_1"}"""),
+                    eventFrame("session.created"),
             ),
         )
         client = newClient()
 
         client.start(scope)
 
-        withTimeout(10_000) {
+        withTimeout(AWAIT_MILLIS) {
             client.inspectedEvents.first { events -> events.any { it.type == "session.created" } }
         }
         assertTrue(client.logs.value.any { it.message.contains("did not decode") })
-        assertTrue(client.state.value is ConnectionState.Connected)
+        assertTrue(
+            "A frame that does not decode must not end the stream",
+            client.logs.value.count { it.type == ConnectionEventType.CONNECTED } >= 1,
+        )
     }
 
     @Test
@@ -400,19 +465,32 @@ class EventStreamClientTest {
         maxLogEntries = maxLogEntries,
     )
 
-    private fun sseResponse(body: String, keepOpenMillis: Long = 0): MockResponse {
+    private fun sseResponse(
+        body: String,
+        keepOpenMillis: Long = 0,
+        heartbeatEveryMillis: Long = 0,
+        finishes: Boolean = false,
+    ): MockResponse {
         val payload = body
         val responseBody = object : MockResponseBody {
-            override val contentLength: Long = -1L
+            // A declared content length is what lets the client see the end of the stream: a
+            // response of unknown length is chunked and, with a streaming body, never terminates.
+            // `finishes` therefore models a server that closed the connection cleanly, which is what
+            // a restart looks like; the default models a live server that just goes quiet.
+            override val contentLength: Long = if (finishes) payload.toByteArray().size.toLong() else -1L
 
             override fun writeTo(sink: BufferedSink) {
                 sink.writeUtf8(payload)
                 sink.flush()
-                if (keepOpenMillis > 0) {
-                    try {
-                        Thread.sleep(keepOpenMillis)
-                    } catch (_: InterruptedException) {
+                if (heartbeatEveryMillis > 0) {
+                    val deadline = System.currentTimeMillis() + keepOpenMillis
+                    while (System.currentTimeMillis() < deadline) {
+                        if (!sleep(heartbeatEveryMillis)) return
+                        sink.writeUtf8(HEARTBEAT_FRAME)
+                        sink.flush()
                     }
+                } else if (keepOpenMillis > 0) {
+                    sleep(keepOpenMillis)
                 }
             }
         }
@@ -423,15 +501,47 @@ class EventStreamClientTest {
             .build()
     }
 
-    private fun eventFrame(type: String, data: String): String =
-        "data: {\"id\":\"evt_$type\",\"created\":1790567234829,\"type\":\"$type\",\"data\":$data}\n\n"
+    /**
+     * One SSE frame carrying an event recorded from a real 2.0.18 server.
+     *
+     * The recorded bodies are used rather than hand-written ones because a hand-written payload that
+     * does not decode is silently skipped by the client, which turns a broken expectation into a
+     * wait for an event that can never arrive.
+     */
+    private fun eventFrame(type: String, occurrence: Int = 1): String {
+        val recorded = recordedEvents.firstOrNull { it.contains("\"type\":\"$type\"") }
+            ?: error("No recorded $type event in the fixtures")
+        val withId = recorded.replaceFirst(Regex("\"id\":\"[^\"]+\""), "\"id\":\"evt_${type}_$occurrence\"")
+        return "data: $withId\n\n"
+    }
+
+    /**
+     * Waits until the client has seen `server.connected` at least once.
+     *
+     * The connection log is used rather than [ConnectionState] because the state is transient: a
+     * response that ends immediately can be seen as `Connected` and then `Disconnected` before a
+     * collector subscribes, and a `StateFlow` only ever holds the latest value.
+     */
+    private suspend fun awaitConnected(times: Int = 1) {
+        withTimeout(AWAIT_MILLIS) {
+            client.logs.first { logs -> logs.count { it.type == ConnectionEventType.CONNECTED } >= times }
+        }
+    }
 
     private suspend fun waitForInspectedEvents(count: Int) {
-        withTimeout(10_000) { client.inspectedEvents.first { it.size >= count } }
+        withTimeout(AWAIT_MILLIS) { client.inspectedEvents.first { it.size >= count } }
+    }
+
+    /** Sleeps on the response-writing thread, returning false when the test is tearing down. */
+    private fun sleep(millis: Long): Boolean = try {
+        Thread.sleep(millis)
+        true
+    } catch (_: InterruptedException) {
+        false
     }
 
     private suspend fun waitUntil(condition: () -> Boolean) {
-        withTimeout(10_000) {
+        withTimeout(AWAIT_MILLIS) {
             while (!condition()) {
                 delay(20)
             }
@@ -439,6 +549,16 @@ class EventStreamClientTest {
     }
 
     private companion object {
+        /** Real 2.0.18 events, recorded by the Phase 0 fixture harness. */
+        val recordedEvents: List<String> by lazy { Fixtures.events() }
+        /**
+         * Every wait is bounded. An unbounded `first { }` on a state that never changes hangs the
+         * whole Gradle test task with no output, which is worse than a failure.
+         */
+        const val AWAIT_MILLIS = 20_000L
+        const val HEARTBEAT_WINDOW_MILLIS = 2_000L
+        const val HEARTBEAT_PERIOD_MILLIS = 150L
+        const val HEARTBEAT_FRAME = ": heartbeat\n\n"
         val SERVER_CONNECTED_FRAME =
             "data: {\"id\":\"evt_connected\",\"type\":\"server.connected\",\"data\":{}}\n\n"
     }

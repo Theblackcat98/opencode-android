@@ -2,6 +2,8 @@ package dev.opencode.android.core.data.security
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.security.keystore.KeyGenParameterSpec
+import android.security.keystore.KeyProperties
 import android.util.Base64
 import java.nio.ByteBuffer
 import java.security.KeyStore
@@ -18,101 +20,86 @@ interface SecureCredentialStore {
     fun clearAll()
 }
 
+/** Raised when the platform Keystore cannot be used and no fallback was allowed. */
+class CredentialStoreUnavailableException(message: String, cause: Throwable? = null) :
+    IllegalStateException(message, cause)
+
 /**
- * Android Keystore-backed AES-256-GCM encrypted credential store.
+ * Android Keystore-backed AES-256-GCM credential store (plan §5.2).
  *
- * Encrypts auth tokens and passwords before writing them to persistent storage,
- * fulfilling the requirement from docs/ANDROID_APP_PLAN.md:
- * "returns a token, which is stored encrypted with Android Keystore."
+ * The AES key is generated inside the Keystore and never leaves it, so the stored bytes are
+ * useless on a different device. Each value carries its own random IV, and a tampered record
+ * fails to decrypt and reads back as no credential, which sends the app down the re-pair path
+ * instead of authenticating with something the attacker chose.
+ *
+ * [allowInsecureFallbackKey] exists for JVM tests, where the platform Keystore does not exist. It
+ * keeps the key in the same preferences file, which protects nothing, so it is off by default and
+ * the app fails loudly instead: a device that cannot use the Keystore cannot hold a token.
  */
 class AndroidKeystoreCredentialStore(
     context: Context,
     private val keyAlias: String = DEFAULT_KEY_ALIAS,
     prefName: String = PREFS_NAME,
+    private val allowInsecureFallbackKey: Boolean = false,
+    preferences: SharedPreferences? = null,
 ) : SecureCredentialStore {
 
-    private val prefs: SharedPreferences = context.getSharedPreferences(prefName, Context.MODE_PRIVATE)
+    private val prefs: SharedPreferences =
+        preferences ?: context.getSharedPreferences(prefName, Context.MODE_PRIVATE)
 
-    private val secretKey: SecretKey by lazy {
-        getOrCreateSecretKey()
-    }
+    private val secretKey: SecretKey by lazy { getOrCreateSecretKey() }
 
-    private fun getOrCreateSecretKey(): SecretKey {
-        return try {
-            val keyStore = KeyStore.getInstance(ANDROID_KEYSTORE)
-            keyStore.load(null)
+    private fun getOrCreateSecretKey(): SecretKey = try {
+        val keyStore = KeyStore.getInstance(ANDROID_KEYSTORE)
+        keyStore.load(null)
 
-            if (!keyStore.containsAlias(keyAlias)) {
-                val keyGenerator = KeyGenerator.getInstance("AES", ANDROID_KEYSTORE)
-                val spec = android.security.keystore.KeyGenParameterSpec.Builder(
-                    keyAlias,
-                    android.security.keystore.KeyProperties.PURPOSE_ENCRYPT or
-                        android.security.keystore.KeyProperties.PURPOSE_DECRYPT,
-                )
-                    .setBlockModes(android.security.keystore.KeyProperties.BLOCK_MODE_GCM)
-                    .setEncryptionPaddings(android.security.keystore.KeyProperties.ENCRYPTION_PADDING_NONE)
-                    .setKeySize(256)
-                    .build()
-                keyGenerator.init(spec)
-                keyGenerator.generateKey()
-            } else {
-                keyStore.getKey(keyAlias, null) as SecretKey
-            }
-        } catch (_: Exception) {
-            // Fallback for non-Android JVM environments (e.g. unit tests without AndroidKeyStore)
-            getOrCreateFallbackKey()
-        }
-    }
-
-    private fun getOrCreateFallbackKey(): SecretKey {
-        val fallbackRaw = prefs.getString(FALLBACK_KEY_PREF, null)
-        return if (fallbackRaw != null) {
-            val decoded = Base64.decode(fallbackRaw, Base64.NO_WRAP)
-            SecretKeySpec(decoded, "AES")
+        if (keyStore.containsAlias(keyAlias)) {
+            keyStore.getKey(keyAlias, null) as SecretKey
         } else {
-            val keyGen = KeyGenerator.getInstance("AES")
-            keyGen.init(256)
-            val generated = keyGen.generateKey()
-            val encoded = Base64.encodeToString(generated.encoded, Base64.NO_WRAP)
-            prefs.edit().putString(FALLBACK_KEY_PREF, encoded).apply()
-            generated
+            KeyGenerator.getInstance("AES", ANDROID_KEYSTORE).apply {
+                init(
+                    KeyGenParameterSpec.Builder(
+                        keyAlias,
+                        KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT,
+                    )
+                        .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
+                        .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
+                        .setKeySize(KEY_SIZE_BITS)
+                        // Nothing else on the device should be able to use this key to decrypt.
+                        .setUserAuthenticationRequired(false)
+                        .build(),
+                )
+            }.generateKey()
+        }
+    } catch (e: Exception) {
+        if (allowInsecureFallbackKey) fallbackKey()
+        else throw CredentialStoreUnavailableException(
+            "The Android Keystore is unavailable, so credentials cannot be stored safely",
+            e,
+        )
+    }
+
+    private fun fallbackKey(): SecretKey {
+        val stored = prefs.getString(FALLBACK_KEY_PREF, null)
+        if (stored != null) {
+            return SecretKeySpec(Base64.decode(stored, Base64.NO_WRAP), "AES")
+        }
+        return KeyGenerator.getInstance("AES").apply { init(KEY_SIZE_BITS) }.generateKey().also { key ->
+            prefs.edit()
+                .putString(FALLBACK_KEY_PREF, Base64.encodeToString(key.encoded, Base64.NO_WRAP))
+                .apply()
         }
     }
 
     override fun getCredential(serverId: String): String? {
-        val encryptedBase64 = prefs.getString(KEY_PREFIX + serverId, null) ?: return null
-        return try {
-            val encryptedBytes = Base64.decode(encryptedBase64, Base64.NO_WRAP)
-            val byteBuffer = ByteBuffer.wrap(encryptedBytes)
-            val ivLength = byteBuffer.get().toInt()
-            val iv = ByteArray(ivLength)
-            byteBuffer.get(iv)
-            val cipherText = ByteArray(byteBuffer.remaining())
-            byteBuffer.get(cipherText)
-
-            val cipher = Cipher.getInstance(AES_GCM_NO_PADDING)
-            val spec = GCMParameterSpec(GCM_TAG_LENGTH_BITS, iv)
-            cipher.init(Cipher.DECRYPT_MODE, secretKey, spec)
-            val plainBytes = cipher.doFinal(cipherText)
-            String(plainBytes, Charsets.UTF_8)
-        } catch (_: Exception) {
-            null
-        }
+        val encoded = prefs.getString(KEY_PREFIX + serverId, null) ?: return null
+        return runCatching { decrypt(encoded) }.getOrNull()
     }
 
     override fun saveCredential(serverId: String, tokenOrPassword: String) {
-        val cipher = Cipher.getInstance(AES_GCM_NO_PADDING)
-        cipher.init(Cipher.ENCRYPT_MODE, secretKey)
-        val iv = cipher.iv
-        val cipherText = cipher.doFinal(tokenOrPassword.toByteArray(Charsets.UTF_8))
-
-        val byteBuffer = ByteBuffer.allocate(1 + iv.size + cipherText.size)
-        byteBuffer.put(iv.size.toByte())
-        byteBuffer.put(iv)
-        byteBuffer.put(cipherText)
-
-        val encryptedBase64 = Base64.encodeToString(byteBuffer.array(), Base64.NO_WRAP)
-        prefs.edit().putString(KEY_PREFIX + serverId, encryptedBase64).apply()
+        prefs.edit()
+            .putString(KEY_PREFIX + serverId, encrypt(tokenOrPassword))
+            .apply()
     }
 
     override fun removeCredential(serverId: String) {
@@ -123,20 +110,46 @@ class AndroidKeystoreCredentialStore(
         prefs.edit().clear().apply()
     }
 
+    private fun encrypt(plainText: String): String {
+        val cipher = Cipher.getInstance(AES_GCM_NO_PADDING)
+        cipher.init(Cipher.ENCRYPT_MODE, secretKey)
+        val iv = cipher.iv
+        val cipherText = cipher.doFinal(plainText.toByteArray(Charsets.UTF_8))
+        val buffer = ByteBuffer.allocate(IV_LENGTH_BYTES + iv.size + cipherText.size)
+        buffer.putShort(iv.size.toShort())
+        buffer.put(iv)
+        buffer.put(cipherText)
+        return Base64.encodeToString(buffer.array(), Base64.NO_WRAP)
+    }
+
+    private fun decrypt(encoded: String): String {
+        val buffer = ByteBuffer.wrap(Base64.decode(encoded, Base64.NO_WRAP))
+        val ivLength = buffer.short.toInt() and 0xFFFF
+        require(ivLength in 1..buffer.remaining()) { "The stored credential record is truncated" }
+        val iv = ByteArray(ivLength)
+        buffer.get(iv)
+        val cipherText = ByteArray(buffer.remaining())
+        buffer.get(cipherText)
+
+        val cipher = Cipher.getInstance(AES_GCM_NO_PADDING)
+        cipher.init(Cipher.DECRYPT_MODE, secretKey, GCMParameterSpec(GCM_TAG_LENGTH_BITS, iv))
+        return String(cipher.doFinal(cipherText), Charsets.UTF_8)
+    }
+
     companion object {
         private const val ANDROID_KEYSTORE = "AndroidKeyStore"
         private const val DEFAULT_KEY_ALIAS = "opencode_credentials_master_key"
         private const val PREFS_NAME = "opencode_secure_credentials"
         private const val KEY_PREFIX = "cred_"
-        private const val FALLBACK_KEY_PREF = "fallback_master_key"
+        private const val FALLBACK_KEY_PREF = "insecure_fallback_key"
         private const val AES_GCM_NO_PADDING = "AES/GCM/NoPadding"
         private const val GCM_TAG_LENGTH_BITS = 128
+        private const val KEY_SIZE_BITS = 256
+        private const val IV_LENGTH_BYTES = 2
     }
 }
 
-/**
- * In-memory test implementation of [SecureCredentialStore].
- */
+/** In-memory [SecureCredentialStore], for tests and for fakes. */
 class InMemoryCredentialStore : SecureCredentialStore {
     private val storage = mutableMapOf<String, String>()
 

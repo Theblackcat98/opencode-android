@@ -35,5 +35,10 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     implementation(libs.kotlinx.serialization.json)
 
+    // The QR decoder is a distribution concern: ML Kit's bundled model in the Play build, ZXing in
+    // the F-Droid build so the APK never needs Google Play Services (plan §3).
+    "playImplementation"(libs.mlkit.barcode.scanning)
+    "fdroidImplementation"(libs.zxing.core)
+
     testImplementation(projects.core.testing)
 }

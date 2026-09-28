@@ -76,10 +76,11 @@ class ServerValidator(
     suspend fun validate(
         baseUrl: String,
         credential: String? = null,
+        trustUserCertificates: Boolean = false,
     ): ServerValidationResult = withContext(ioDispatcher) {
         val host = baseUrl.toHttpUrlOrNull()?.host
         val api = try {
-            serverApiFactory.create(baseUrl)
+            serverApiFactory.create(baseUrl, trustUserCertificates = trustUserCertificates)
         } catch (e: IllegalArgumentException) {
             return@withContext ServerValidationResult.Failure(
                 errorType = ValidationErrorType.UNKNOWN_HOST,
@@ -89,7 +90,7 @@ class ServerValidator(
 
         try {
             val info = api.getServerInfo(ServerAuthCredential(credential?.takeIf { it.isNotBlank() }))
-            val status = versionStatusOf(info.version)
+            val status = versionStatusOf(info)
             if (status == null) {
                 ServerValidationResult.Failure(
                     errorType = ValidationErrorType.UNSUPPORTED_VERSION,
@@ -141,6 +142,19 @@ class ServerValidator(
         /** The vendored spec and fixtures come from this release (plan §5.1). */
         const val TESTED_VERSION = "2.0.18"
         private const val TESTED_MAJOR = 2
+
+        /**
+         * `null` when the server is not an OpenCode V2 release, [VersionStatus.TESTED] for the
+         * tested range and older, and [VersionStatus.NEWER_UNTESTED] above it.
+         *
+         * The reported [ServerInfo.majorVersion] wins over the string, because a version string
+         * that does not parse is exactly the case that must not be trusted.
+         */
+        fun versionStatusOf(info: ServerInfo): VersionStatus? {
+            val parsed = versionStatusOf(info.version) ?: return null
+            val major = info.majorVersion
+            return if (major != null && major != TESTED_MAJOR) null else parsed
+        }
 
         /**
          * `null` when the version is not an OpenCode V2 release, [VersionStatus.TESTED] for the

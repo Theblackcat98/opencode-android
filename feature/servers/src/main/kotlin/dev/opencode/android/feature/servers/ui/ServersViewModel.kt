@@ -21,24 +21,23 @@ class ServersViewModel @Inject constructor(
     val servers: StateFlow<List<ServerProfile>> = serverRepository.observeServers()
         .stateIn(
             scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
+            started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),
             initialValue = emptyList(),
         )
 
     fun setDefaultServer(serverId: String) {
-        viewModelScope.launch {
-            serverRepository.setDefaultServer(serverId)
-        }
+        viewModelScope.launch { serverRepository.setDefaultServer(serverId) }
     }
 
     fun deleteServer(serverId: String) {
         viewModelScope.launch {
+            // Stop the stream first, so nothing tries to use a credential that is about to go.
             connectionManager.disconnectServer(serverId)
             serverRepository.removeServer(serverId)
         }
     }
 
-    fun connectServer(profile: ServerProfile) {
-        connectionManager.connectServer(profile, viewModelScope)
+    private companion object {
+        const val STOP_TIMEOUT_MILLIS = 5_000L
     }
 }

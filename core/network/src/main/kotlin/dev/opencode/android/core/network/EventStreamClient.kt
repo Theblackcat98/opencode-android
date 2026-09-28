@@ -222,6 +222,16 @@ class EventStreamClient(
     private val _resyncSignals = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     val resyncSignals: SharedFlow<Unit> = _resyncSignals.asSharedFlow()
 
+    /**
+     * How many times [resyncSignals] has fired since the client was created.
+     *
+     * The stream has no replay, so a store that subscribes after a `server.connected` would miss
+     * the signal. A store that remembers the count it last acted on can tell it missed one, and
+     * resync anyway.
+     */
+    private val _resyncCount = MutableStateFlow(0L)
+    val resyncCount: StateFlow<Long> = _resyncCount.asStateFlow()
+
     private val foreground = MutableStateFlow(true)
     private val online = MutableStateFlow(true)
     private val running = MutableStateFlow(false)
@@ -259,13 +269,32 @@ class EventStreamClient(
                 loopJob = scope.launch { connectionLoop() }
                 monitorJob = connectivityMonitor?.let { monitor ->
                     online.value = monitor.isCurrentlyOnline()
-                    scope.launch { monitor.isOnline.distinctUntilChanged().collect { online.value = it } }
+                    scope.launch { followNetwork(monitor) }
                 }
             }
             alreadyRunning
         }
         if (started) {
             retryNow.trySend(Unit)
+        }
+    }
+
+    /**
+     * Follows network availability.
+     *
+     * Losing the network has to drop the socket here rather than wait for it to break on its own: a
+     * TCP connection to a network that has gone away can stay open for a long time, and a client
+     * that only notices on the next write would sit in `Connected` while nothing arrives. Coming
+     * back skips the remaining backoff, because the network, not the server, was the problem.
+     */
+    private suspend fun followNetwork(monitor: NetworkConnectivityMonitor) {
+        monitor.isOnline.distinctUntilChanged().collect { isOnline ->
+            val wasOnline = online.value
+            online.value = isOnline
+            when {
+                !isOnline -> cancelCall(NO_NETWORK_REASON)
+                !wasOnline -> retryNow.trySend(Unit)
+            }
         }
     }
 
@@ -281,8 +310,15 @@ class EventStreamClient(
         _state.value = ConnectionState.Disconnected(reason = reason, willRetry = false)
     }
 
-    /** Drops the current connection and reconnects without waiting out the backoff. */
+    /**
+     * Drops the current connection and reconnects at once.
+     *
+     * The socket has to go rather than just asking for a retry: a connected client is inside a
+     * blocking read on the stream, so a retry request would sit unread until the stream ended on its
+     * own, which is exactly what a user pressing "Reconnect now" is trying to avoid.
+     */
     fun reconnectNow() {
+        cancelCall(RECONNECT_REASON)
         retryNow.trySend(Unit)
     }
 
@@ -351,8 +387,21 @@ class EventStreamClient(
 
                 is StreamOutcome.Cancelled -> {
                     val reason = outcome.reason
-                    when (reason) {
-                        WATCHDOG_REASON -> _state.value = pendingRetry(reason, DisconnectCause.WATCHDOG)
+                    when {
+                        // A quiet stream, and an explicit reconnect, are both disconnects the user
+                        // needs to see: without the entry the history would show a reconnect with no
+                        // explanation of why.
+                        reason == WATCHDOG_REASON -> {
+                            log(ConnectionEventType.DISCONNECTED, reason)
+                            _state.value = pendingRetry(reason, DisconnectCause.WATCHDOG)
+                        }
+
+                        reason == RECONNECT_REASON -> {
+                            log(ConnectionEventType.DISCONNECTED, reason)
+                            _state.value = pendingRetry(reason, DisconnectCause.SERVER_CLOSED)
+                        }
+
+                        // Background and offline drops are already logged by the loop head.
                         else -> _state.value = ConnectionState.Suspended(reason)
                     }
                     if (!running.value) break
@@ -361,7 +410,9 @@ class EventStreamClient(
 
                 is StreamOutcome.Failed -> {
                     val failure = outcome.failure
-                    log(ConnectionEventType.ERROR, "Event stream failed: ${failure.detail}")
+                    // The reason is the sentence the status screen shows, so it belongs in the
+                    // history too; the detail is what a developer needs.
+                    log(ConnectionEventType.ERROR, "${failure.reason} (${failure.detail})")
                     if (failure.cause == DisconnectCause.AUTHORIZATION_REQUIRED) {
                         // A backoff cannot fix a rejected credential, so wait for the app to
                         // re-pair and ask for a retry instead of hammering the server.
@@ -439,7 +490,7 @@ class EventStreamClient(
         response.use { opened ->
             if (!opened.isSuccessful) {
                 val status = opened.code
-                val body = runCatching { opened.body?.string() }.getOrNull().orEmpty().take(ERROR_BODY_LIMIT)
+                val body = runCatching { opened.body.string() }.getOrNull().orEmpty().take(ERROR_BODY_LIMIT)
                 currentCall = null
                 if (status == 401 || status == 403) {
                     return@withContext StreamOutcome.Failed(
@@ -460,12 +511,6 @@ class EventStreamClient(
             }
 
             val body = opened.body
-            if (body == null) {
-                currentCall = null
-                return@withContext StreamOutcome.Failed(
-                    StreamFailure(DisconnectCause.SERVER_CLOSED, "The event stream had no body", "No body"),
-                )
-            }
 
             val reader = SseParser.reader(body.byteStream())
             val parser = SseParser()
@@ -497,6 +542,7 @@ class EventStreamClient(
                     val message = parser.parseLine(line) ?: continue
                     val activityAt = now()
                     lastActivity.set(activityAt)
+                    updateLastActivity(activityAt)
                     when (message) {
                         is SseMessage.Heartbeat -> log(ConnectionEventType.HEARTBEAT, "Heartbeat")
                         is SseMessage.Comment -> Unit
@@ -516,7 +562,6 @@ class EventStreamClient(
                                 onServerConnected(activityAt)
                             }
                             recordEvent(event, message.payload, activityAt)
-                            updateLastActivity(activityAt)
                         }
                     }
                 }
@@ -549,6 +594,7 @@ class EventStreamClient(
         _state.value = ConnectionState.Connected(connectedAt = at, lastActivityAt = at)
         log(ConnectionEventType.CONNECTED, "Connected: the server sent $SERVER_CONNECTED")
         log(ConnectionEventType.RESYNC, "Firing the resync signal on $SERVER_CONNECTED")
+        _resyncCount.value += 1
         _resyncSignals.tryEmit(Unit)
     }
 
@@ -672,6 +718,7 @@ class EventStreamClient(
         const val BACKGROUND_REASON = "The app is in the background"
         const val NO_NETWORK_REASON = "No network"
         const val WATCHDOG_REASON = "The event stream went quiet"
+        const val RECONNECT_REASON = "Reconnecting on request"
         private const val ERROR_BODY_LIMIT = 500
         private const val REPORT_DROPPED_EVERY = 50L
     }

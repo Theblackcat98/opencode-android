@@ -1,11 +1,11 @@
 package dev.opencode.android.feature.servers.ui
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
@@ -17,6 +17,14 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import dev.opencode.android.feature.servers.R
 
+/**
+ * The onboarding help: the exact commands, then the two ways to reach a server without opening the
+ * network to it (plan §2.3, §6 Phase 1).
+ *
+ * The commands are shown as selectable monospace text, because a user has to type them into a
+ * terminal on another machine; making them copyable is the difference between this being useful
+ * and being a description of a fix.
+ */
 @Composable
 fun OnboardingGuideCard(
     modifier: Modifier = Modifier,
@@ -30,7 +38,7 @@ fun OnboardingGuideCard(
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Text(
                 text = stringResource(R.string.onboarding_guide_title),
@@ -38,29 +46,76 @@ fun OnboardingGuideCard(
                 color = MaterialTheme.colorScheme.onSurface,
             )
 
-            GuideSection(
-                title = stringResource(R.string.onboarding_step_pair),
-                description = stringResource(R.string.onboarding_step_pair_desc),
-                command = "opencode pair",
-            )
-
-            GuideSection(
+            GuideStep(
                 title = stringResource(R.string.onboarding_step_lan),
+                command = stringResource(R.string.onboarding_step_lan_commands),
                 description = stringResource(R.string.onboarding_step_lan_desc),
-                command = "opencode service set hostname 0.0.0.0",
             )
 
-            GuideSection(
+            GuideStep(
+                title = stringResource(R.string.onboarding_step_pair),
+                command = stringResource(R.string.onboarding_step_pair_command),
+                description = stringResource(R.string.onboarding_step_pair_desc),
+            )
+
+            GuideStep(
+                title = stringResource(R.string.onboarding_step_serve),
+                command = stringResource(R.string.onboarding_step_serve_command),
+                description = stringResource(R.string.onboarding_step_serve_desc),
+            )
+
+            GuideStep(
                 title = stringResource(R.string.onboarding_step_ssh),
+                command = stringResource(R.string.onboarding_step_ssh_command),
                 description = stringResource(R.string.onboarding_step_ssh_desc),
-                command = "ssh -N -L 4096:localhost:4096 user@host",
             )
 
             GuideSection(
                 title = stringResource(R.string.onboarding_step_tailscale),
                 description = stringResource(R.string.onboarding_step_tailscale_desc),
             )
+
+            Text(
+                text = stringResource(R.string.onboarding_https_note),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
+    }
+}
+
+@Composable
+private fun GuideStep(
+    title: String,
+    command: String,
+    description: String,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.primary,
+        )
+        SelectionContainer {
+            Text(
+                text = command,
+                style = MaterialTheme.typography.bodySmall,
+                fontFamily = FontFamily.Monospace,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(8.dp),
+                color = MaterialTheme.colorScheme.onTertiaryContainer,
+            )
+        }
+        Text(
+            text = description,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 
@@ -68,10 +123,12 @@ fun OnboardingGuideCard(
 private fun GuideSection(
     title: String,
     description: String,
-    command: String? = null,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
         Text(
             text = title,
             style = MaterialTheme.typography.labelLarge,
@@ -82,20 +139,5 @@ private fun GuideSection(
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        if (command != null) {
-            Text(
-                text = command,
-                style = MaterialTheme.typography.bodySmall,
-                fontFamily = FontFamily.Monospace,
-                color = MaterialTheme.colorScheme.onTertiaryContainer,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(
-                        color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f),
-                        shape = RoundedCornerShape(6.dp),
-                    )
-                    .padding(horizontal = 8.dp, vertical = 6.dp),
-            )
-        }
     }
 }

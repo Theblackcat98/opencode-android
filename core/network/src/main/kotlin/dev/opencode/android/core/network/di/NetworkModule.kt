@@ -11,6 +11,7 @@ import dev.opencode.android.core.network.AndroidUserCertificateSource
 import dev.opencode.android.core.network.NetworkConnectivityMonitor
 import dev.opencode.android.core.network.PairingClient
 import dev.opencode.android.core.network.ServerApiFactory
+import dev.opencode.android.core.network.ServerCredentialCache
 import dev.opencode.android.core.network.ServerTls
 import dev.opencode.android.core.network.ServerValidator
 import dev.opencode.android.core.network.UserCertificateSource
@@ -23,8 +24,19 @@ import javax.inject.Singleton
 object NetworkModule {
 
     /**
-     * The one HTTP client every server shares, so connections, threads and the auth interceptor
-     * are pooled rather than duplicated per server.
+     * The in-memory credential cache the auth interceptor reads. `core:data` writes it whenever
+     * the Keystore-backed store changes.
+     */
+    @Provides
+    @Singleton
+    fun provideServerCredentialCache(): ServerCredentialCache = ServerCredentialCache()
+
+    /**
+     * The one HTTP client every server shares, so connections, threads and timeouts are pooled
+     * rather than duplicated per server.
+     *
+     * It carries no auth interceptor on purpose: [ServerApiFactory] attaches one to the client it
+     * derives per server, so a request-scoped credential always wins over the cached one.
      */
     @Provides
     @Singleton
@@ -57,7 +69,8 @@ object NetworkModule {
     fun provideServerApiFactory(
         okHttpClient: OkHttpClient,
         serverTls: ServerTls,
-    ): ServerApiFactory = ServerApiFactory(okHttpClient, serverTls)
+        credentialCache: ServerCredentialCache,
+    ): ServerApiFactory = ServerApiFactory(okHttpClient, serverTls, credentialCache)
 
     @Provides
     @Singleton

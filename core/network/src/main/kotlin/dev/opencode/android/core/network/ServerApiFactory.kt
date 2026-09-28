@@ -13,7 +13,12 @@ import okhttp3.MediaType.Companion.toMediaType
  *
  * The app talks to several servers, each with its own base URL, credential and default directory,
  * so the Retrofit instance cannot be a singleton: every server gets its own, sharing one
- * [OkHttpClient] (and therefore one connection pool, one dispatcher and the auth interceptor).
+ * [OkHttpClient] and therefore one connection pool and one dispatcher.
+ *
+ * Authentication is attached here, not on the shared client, so that a request-scoped
+ * [ServerAuthCredential] is always the one that wins: a call that passes a credential (the pairing
+ * check, a credential that is not in the cache yet) must not be overridden by whatever the cache
+ * happens to hold for that host.
  *
  * A non-null [directory] is sent as `location[directory]` on every request, which is how almost
  * every endpoint is scoped (features doc §2.6).
@@ -21,6 +26,7 @@ import okhttp3.MediaType.Companion.toMediaType
 class ServerApiFactory(
     private val okHttpClient: OkHttpClient,
     private val serverTls: ServerTls = ServerTls(okHttpClient, UserCertificateSource { emptyList() }),
+    private val credentialProvider: CredentialProvider? = null,
 ) {
     fun create(
         baseUrl: String,
@@ -28,17 +34,14 @@ class ServerApiFactory(
         trustUserCertificates: Boolean = false,
     ): ServerApi {
         val base = baseUrl.toServerBaseUrl()
-        val scoped = serverTls.clientFor(trustUserCertificates)
-        val client = if (directory.isNullOrBlank()) {
-            scoped
-        } else {
-            scoped.newBuilder()
-                .addInterceptor(LocationInterceptor(directoryProvider = { directory }))
-                .build()
+        var builder = serverTls.clientFor(trustUserCertificates).newBuilder()
+            .addInterceptor(AuthInterceptor(credentialProvider = credentialProvider))
+        if (!directory.isNullOrBlank()) {
+            builder = builder.addInterceptor(LocationInterceptor(directoryProvider = { directory }))
         }
         return Retrofit.Builder()
             .baseUrl(base)
-            .client(client)
+            .client(builder.build())
             .addConverterFactory(OpenCodeJson.asConverterFactory(JSON_MEDIA_TYPE))
             .build()
             .create(ServerApi::class.java)
@@ -50,6 +53,10 @@ private val JSON_MEDIA_TYPE = "application/json".toMediaType()
 /**
  * Normalizes a user-entered or scanned server address into a base URL Retrofit accepts: an
  * `http`/`https` scheme, a host, an optional port, an optional path prefix, and a trailing slash.
+ *
+ * The trailing slash is required, not cosmetic: Retrofit resolves an endpoint against the base URL
+ * by string replacement, so a base of `https://host/opencode` would resolve `api/info` to
+ * `https://host/api/info` and silently drop the prefix.
  *
  * A bare `host:port` is accepted as `http://host:port` because that is how a LAN address gets
  * typed, and a query or fragment is dropped because the API answers on fixed paths.
@@ -65,8 +72,9 @@ fun String.toServerBaseUrl(): String {
     if (url.host.isBlank()) {
         throw IllegalArgumentException("A server address needs a host: $this")
     }
+    val path = url.encodedPath.trimEnd('/')
     return url.newBuilder()
-        .encodedPath(if (url.encodedPath.isBlank()) "/" else url.encodedPath)
+        .encodedPath("$path/")
         .query(null)
         .fragment(null)
         .build()
