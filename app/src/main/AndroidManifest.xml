@@ -70,7 +70,34 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:mimeType="text/plain" />
             </intent-filter>
+
+            <!--
+              Phase 5. "Send to OpenCode": a share-sheet target that puts text or a picture into a
+              session. Two filters, because the same action is offered for text and for an image and
+              a chooser that shows the app twice is worse than one that shows it once.
+            -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+                <data android:mimeType="image/*" />
+            </intent-filter>
         </activity>
+
+        <!--
+          The camera is one of the three attachment sources, and it is the only one that needs a URI
+          this app owns. The provider is scoped to `cache-path`, so a capture cannot be reached by
+          another app after the prompt has been sent, and the app never keeps the file.
+        -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.captures"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
     </application>
 
 </manifest>

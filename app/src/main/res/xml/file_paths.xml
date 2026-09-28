@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The camera is the only source the app writes to itself: a photo the user takes is written into the
+  cache directory and read back through the same URI the camera app was given, which is why the path
+  is `cache-path` and not a file or external path. Nothing here is durable — an abandoned capture is
+  a file the system may reclaim at any time — and the app does not keep the picture: it is re-encoded
+  into the prompt and the original is never referenced again.
+-->
+<paths>
+    <cache-path
+        name="captures"
+        path="captures/" />
+</paths>

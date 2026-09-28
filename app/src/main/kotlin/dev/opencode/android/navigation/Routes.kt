@@ -71,7 +71,17 @@ data class EventInspectorRoute(val serverId: String? = null)
  * manager pick the server it is already following.
  */
 @Serializable
-data class HomeRoute(val serverId: String? = null)
+data class HomeRoute(
+    val serverId: String? = null,
+    /**
+     * Open the new-session sheet as soon as the home appears.
+     *
+     * The composer's `/new` client command needs the new-session flow, and that flow is a sheet over
+     * the home rather than a destination of its own. Asking the home to open it on arrival is what
+     * keeps `/new` one tap instead of one tap plus a second one.
+     */
+    val openNewSession: Boolean = false,
+)
 
 /**
  * The session list, with [projectId] narrowing it to one project.
@@ -176,7 +186,7 @@ fun OpenCodeApp(
 
         composable<HomeRoute> { entry ->
             val route = entry.toRoute<HomeRoute>()
-            var newSessionOpen by remember { mutableStateOf(false) }
+            var newSessionOpen by remember { mutableStateOf(route.openNewSession) }
             HomeRoute(
                 serverId = route.serverId,
                 onSessionClick = { sessionId ->
@@ -218,6 +228,19 @@ fun OpenCodeApp(
                 sessionId = route.sessionId,
                 onNavigateBack = { navController.popBackStack() },
                 onSessionDeleted = { navController.popBackStack() },
+                // The composer's client commands: `/sessions` and `/new` navigate, and the
+                // composition root is the only place that knows this graph.
+                onOpenSessionList = {
+                    navController.navigate(SessionListRoute(serverId = route.serverId))
+                },
+                onNewSession = {
+                    // `/new`: the new-session flow is a sheet over the home, so this is the home with
+                    // the sheet already open. `popUpTo` the session so Back returns where it was.
+                    navController.navigate(HomeRoute(route.serverId, openNewSession = true)) {
+                        popUpTo(SessionRoute(route.serverId, route.sessionId)) { inclusive = true }
+                        launchSingleTop = true
+                    }
+                },
             )
         }
 

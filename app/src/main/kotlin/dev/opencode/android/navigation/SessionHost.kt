@@ -25,9 +25,14 @@ import dev.opencode.android.core.data.catalog.ModelCatalog
 import dev.opencode.android.core.model.PermissionReply
 import dev.opencode.android.feature.composer.ui.AgentPickerSheet
 import dev.opencode.android.feature.composer.ui.ComposerBar
+import dev.opencode.android.feature.composer.ui.ComposerEffect
 import dev.opencode.android.feature.composer.ui.ComposerViewModel
+import dev.opencode.android.feature.composer.ui.FullScreenEditor
 import dev.opencode.android.feature.composer.ui.InboxPanel
 import dev.opencode.android.feature.composer.ui.ModelPickerSheet
+import dev.opencode.android.feature.composer.ui.SideQuestionSheet
+import dev.opencode.android.feature.composer.ui.SkillPicker
+import dev.opencode.android.feature.composer.ui.StashList
 import dev.opencode.android.feature.requests.ui.AttentionSettingsSheet
 import dev.opencode.android.feature.requests.ui.RequestActions
 import dev.opencode.android.feature.requests.ui.messageRes
@@ -50,12 +55,19 @@ import dev.opencode.android.feature.sessions.ui.SessionViewModel
  *
  * **Deleting leaves the screen.** Once `session.remove` succeeds the transcript is gone from the
  * server's point of view, so staying on it would show a conversation that no longer exists.
+ *
+ * **Phase 5 is why this file grew: the composer's client commands navigate.** `/new`, `/sessions`,
+ * `/models` and `/agents` are the app's own actions, and the composer cannot perform them because
+ * it may not know this graph. It emits a [ComposerEffect] and this function carries it out; that is
+ * the same arrangement P3 used for the pickers, extended to the command palette.
  */
 @Composable
 fun SessionHost(
     sessionId: String,
     onNavigateBack: () -> Unit,
     onSessionDeleted: () -> Unit,
+    onOpenSessionList: () -> Unit = {},
+    onNewSession: () -> Unit = {},
     modifier: Modifier = Modifier,
     timeline: SessionViewModel = hiltViewModel(),
     composer: ComposerViewModel = hiltViewModel(),
@@ -74,12 +86,37 @@ fun SessionHost(
     var inboxOpen by remember { mutableStateOf(false) }
     var agentPickerOpen by remember { mutableStateOf(false) }
     var modelPickerOpen by remember { mutableStateOf(false) }
+    var skillsOpen by remember { mutableStateOf(false) }
+    var stashOpen by remember { mutableStateOf(false) }
+    var editorOpen by rememberSaveable { mutableStateOf(false) }
+    var attachOpen by remember { mutableStateOf(false) }
     var modelSearch by rememberSaveable { mutableStateOf("") }
+
+    val pickAttachment = rememberAttachmentPicker(
+        onPicked = composer::attachImage,
+        onCameraUnavailable = { attachOpen = false },
+    )
 
     LaunchedEffect(sessionId) {
         timeline.open(sessionId)
         composer.open(sessionId)
         management.openSession(sessionId)
+    }
+
+    // The composer's one-shot actions. A `LaunchedEffect` with the effect flow as the key collects
+    // each effect exactly once, which is what a `StateFlow` of the same thing could not promise.
+    LaunchedEffect(composer) {
+        composer.effect.collect { effect ->
+            when (effect) {
+                ComposerEffect.NewSession -> onNewSession()
+                ComposerEffect.SessionList -> onOpenSessionList()
+                ComposerEffect.OpenAgentPicker -> agentPickerOpen = true
+                ComposerEffect.OpenModelPicker -> modelPickerOpen = true
+                ComposerEffect.OpenEditor -> editorOpen = true
+                // Focus is the field's own business; the empty box is the visible part of the send.
+                ComposerEffect.FocusComposer -> Unit
+            }
+        }
     }
 
     // "The user actually saw it" is a fact about which screen is in front, so it is published on
@@ -134,6 +171,16 @@ fun SessionHost(
                 onOpenModelPicker = { modelPickerOpen = true },
                 onCycleAgent = composer::cycleAgent,
                 onCycleVariant = composer::cycleVariant,
+                onSelectCompletion = composer::applyCompletion,
+                onRemoveAttachment = composer::removeAttachment,
+                onAttach = { attachOpen = true },
+                onOpenSkills = { skillsOpen = true },
+                onOlderHistory = composer::olderHistory,
+                onNewerHistory = composer::newerHistory,
+                onStash = composer::stashCurrent,
+                onOpenStash = { stashOpen = true },
+                onOpenEditor = { editorOpen = true },
+                onSendConfirmed = { composer.send(confirmed = true) },
                 errorMessage = composerError,
                 onDismissError = composer::dismissError,
             )
@@ -202,6 +249,50 @@ fun SessionHost(
             onDismiss = { modelPickerOpen = false },
             favorites = favorites,
             recents = recents,
+        )
+    }
+
+    if (skillsOpen) {
+        SkillPicker(
+            skills = composerState.availableSkills,
+            attached = composerState.skills.map { it.id }.toSet(),
+            onToggle = composer::toggleSkill,
+            onActivate = composer::activateSkill,
+            onDismiss = { skillsOpen = false },
+        )
+    }
+
+    if (stashOpen) {
+        StashList(
+            stash = composerState.stash,
+            onPop = composer::popStash,
+            onRestore = composer::restoreStash,
+            onDismiss = { stashOpen = false },
+        )
+    }
+
+    composerState.sideQuestion?.let { question ->
+        SideQuestionSheet(state = question, onDismiss = composer::dismissSideQuestion)
+    }
+
+    if (editorOpen) {
+        FullScreenEditor(
+            initialText = composerState.text,
+            onDone = { text ->
+                editorOpen = false
+                composer.setText(text)
+            },
+            onDismiss = { editorOpen = false },
+        )
+    }
+
+    if (attachOpen) {
+        AttachSourceSheet(
+            onPick = { source ->
+                attachOpen = false
+                pickAttachment(source)
+            },
+            onDismiss = { attachOpen = false },
         )
     }
 }
