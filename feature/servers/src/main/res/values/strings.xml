@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Servers List -->
+    <string name="servers_title">Servers</string>
+    <string name="servers_empty_title">No servers configured</string>
+    <string name="servers_empty_subtitle">Pair with your computer running OpenCode to get started.</string>
+    <string name="servers_add_server">Add Server</string>
+    <string name="servers_set_default">Set as Default</string>
+    <string name="servers_default_badge">Default</string>
+    <string name="servers_unencrypted_badge">Unencrypted</string>
+    <string name="servers_status">Status</string>
+    <string name="servers_edit">Edit</string>
+    <string name="servers_delete">Delete</string>
+    <string name="servers_delete_confirm_title">Delete Server?</string>
+    <string name="servers_delete_confirm_message">Are you sure you want to remove \"%1$s\"? Any stored credentials for this server will be deleted.</string>
+
+    <!-- Health States -->
+    <string name="health_connected">Connected</string>
+    <string name="health_connecting">Connecting</string>
+    <string name="health_disconnected">Disconnected</string>
+    <string name="health_error">Connection Error</string>
+
+    <!-- Add Server / Pairing -->
+    <string name="add_server_title">Add Server</string>
+    <string name="tab_scan_qr">Scan QR</string>
+    <string name="tab_paste_link">Paste Link</string>
+    <string name="tab_manual">Manual</string>
+    <string name="qr_instructions">Point your camera at the QR code shown by running opencode pair in your terminal.</string>
+    <string name="qr_permission_required">Camera permission is required to scan QR codes.</string>
+    <string name="qr_grant_permission">Grant Permission</string>
+    <string name="paste_link_label">Pairing Link</string>
+    <string name="paste_link_hint">http://192.168.1.100:4096/auth/connect/code</string>
+    <string name="paste_from_clipboard">Paste from Clipboard</string>
+    <string name="pair_and_connect">Pair &amp; Connect</string>
+    <string name="server_name_label">Server Name (optional)</string>
+    <string name="server_name_hint">e.g. Workstation, MacBook, Home Lab</string>
+    <string name="server_url_label">Server URL</string>
+    <string name="server_url_hint">http://192.168.1.100:4096</string>
+    <string name="server_password_label">Password or Token (optional)</string>
+    <string name="server_password_hint">Server password or pairing session token</string>
+    <string name="connect_and_save">Connect &amp; Save</string>
+
+    <!-- Onboarding Guide -->
+    <string name="onboarding_guide_title">Setup &amp; Remote Access Guide</string>
+    <string name="onboarding_step_pair">1. Get a pairing code</string>
+    <string name="onboarding_step_pair_desc">Run opencode pair in your terminal to display a QR code and pairing link.</string>
+    <string name="onboarding_step_lan">2. Allow connections on your LAN</string>
+    <string name="onboarding_step_lan_desc">By default, OpenCode listens only on localhost. To allow access from your phone on the same Wi-Fi:\n• opencode service set hostname 0.0.0.0\n• opencode service start\n• opencode pair</string>
+    <string name="onboarding_step_ssh">3. SSH Port Forwarding</string>
+    <string name="onboarding_step_ssh_desc">If you don\'t want to bind to 0.0.0.0, forward port 4096 over SSH:\n• ssh -N -L 4096:localhost:4096 user@host\nThen connect to http://localhost:4096 on this device.</string>
+    <string name="onboarding_step_tailscale">4. Tailscale &amp; VPN</string>
+    <string name="onboarding_step_tailscale_desc">With Tailscale installed on both your computer and phone, use your computer\'s Tailscale IP or MagicDNS hostname (e.g. http://my-mac:4096).</string>
+
+    <!-- Server Status Screen -->
+    <string name="status_title">Server Status</string>
+    <string name="status_version">Version</string>
+    <string name="status_pid">Process ID</string>
+    <string name="status_reachable_urls">Reachable URLs</string>
+    <string name="status_tmp_path">Temp Directory</string>
+    <string name="status_test_connection">Test Connection</string>
+    <string name="status_connection_logs">Connection History Log</string>
+    <string name="status_clear_logs">Clear Logs</string>
+
+    <!-- Developer Event Inspector -->
+    <string name="inspector_title">Event Inspector</string>
+    <string name="inspector_search_hint">Filter by event type (e.g. server, session)</string>
+    <string name="inspector_pause">Pause Feed</string>
+    <string name="inspector_resume">Resume Feed</string>
+    <string name="inspector_clear">Clear Events</string>
+    <string name="inspector_empty">No events received yet. Connect to a server to see live SSE frames.</string>
+    <string name="inspector_event_detail">Event Details</string>
+    <string name="inspector_copy_json">Copy JSON</string>
+    <string name="inspector_copied">Copied JSON to clipboard</string>
+</resources>

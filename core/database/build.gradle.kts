@@ -1,9 +1,18 @@
 plugins {
     alias(libs.plugins.opencode.android.library)
+    alias(libs.plugins.opencode.android.room)
+    alias(libs.plugins.opencode.android.hilt)
 }
 
-// Room (servers, cached sessions and messages, drafts, favorites, stash) arrives with its first
-// table in P1; the `opencode.android.room` convention plugin is ready for it.
 dependencies {
     api(projects.core.model)
+    implementation(libs.kotlinx.coroutines.core)
+
+    testImplementation(projects.core.testing)
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.turbine)
+    testImplementation(libs.androidx.test.core)
+    testImplementation(libs.androidx.test.ext.junit)
+    testImplementation(libs.robolectric)
 }
+

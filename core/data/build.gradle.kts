@@ -7,11 +7,17 @@ plugins {
 // arrive in P1 to P3.
 dependencies {
     api(projects.core.model)
-    implementation(projects.core.network)
+    api(projects.core.network)
+    api(libs.okhttp)
     implementation(projects.core.database)
     implementation(libs.kotlinx.coroutines.core)
 
     testImplementation(projects.core.testing)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.turbine)
+    testImplementation(libs.okhttp.mockwebserver)
+    testImplementation(libs.androidx.test.core)
+    testImplementation(libs.androidx.test.ext.junit)
+    testImplementation(libs.androidx.room.runtime)
+    testImplementation(libs.robolectric)
 }

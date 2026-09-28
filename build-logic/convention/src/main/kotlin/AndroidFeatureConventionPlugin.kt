@@ -20,6 +20,7 @@ class AndroidFeatureConventionPlugin : Plugin<Project> {
             add("implementation", project(":core:data"))
             add("implementation", project(":core:designsystem"))
             add("implementation", libs.library("androidx-compose-material3"))
+            add("implementation", libs.library("androidx-compose-material-icons-extended"))
             add("implementation", libs.library("androidx-lifecycle-runtime-compose"))
             add("implementation", libs.library("androidx-lifecycle-viewmodel-compose"))
             add("implementation", libs.library("androidx-navigation-compose"))
