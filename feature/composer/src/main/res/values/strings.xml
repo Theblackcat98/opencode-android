@@ -21,6 +21,84 @@
     <string name="composer_queue_on_long_press">Held to queue</string>
     <string name="composer_hint_queue">Queued</string>
 
+    <!-- Phase 5: the rich composer -->
+
+    <!-- Triggers and modes -->
+    <string name="composer_mode_prompt">Message</string>
+    <string name="composer_mode_shell">Shell</string>
+    <string name="composer_mode_command">Command</string>
+    <string name="composer_shell_hint">Shell command</string>
+    <string name="composer_shell_send">Run</string>
+
+    <!-- Completion list -->
+    <string name="completion_file">File</string>
+    <string name="completion_directory">Folder</string>
+    <string name="completion_reference">Reference</string>
+    <string name="completion_agent">Agent</string>
+    <string name="completion_command">Command</string>
+    <string name="completion_mcp_command">MCP prompt</string>
+    <string name="completion_client_command">App command</string>
+    <string name="composer_completions_open">Completions</string>
+
+    <!-- Attachments -->
+    <string name="composer_attach">Attach</string>
+    <string name="composer_attach_photo">Photo</string>
+    <string name="composer_attach_camera">Camera</string>
+    <string name="composer_attach_file">File</string>
+    <string name="composer_attach_server_file">File on the server</string>
+    <string name="composer_attachments">Attachments %1$d</string>
+    <string name="composer_attachment_image">Image</string>
+    <string name="composer_attachment_text">Text</string>
+    <string name="composer_attachment_binary">Not sent to the model</string>
+    <string name="composer_attachment_directory">Folder</string>
+    <string name="composer_attachment_size">%1$s</string>
+    <string name="composer_attachment_remove">Remove %1$s</string>
+    <string name="composer_attachment_blocked">%1$s is not sent to the model, so it would be lost. Remove it or pick another file.</string>
+    <string name="composer_attachment_needs_confirm">%1$s cannot be seen by the model %2$s. Send it anyway?</string>
+    <string name="composer_attachment_send_anyway">Send anyway</string>
+    <string name="composer_attachment_unreadable">That file could not be read: %1$s</string>
+    <string name="composer_no_session">Open a session to send anything.</string>
+
+    <!-- Skills -->
+    <string name="composer_skills">Skills</string>
+    <string name="composer_add_skill">Add a skill</string>
+    <string name="composer_skills_count">Skills %1$d</string>
+    <string name="composer_search_failed">The file list could not be read. The mentions below are what this client already knew.</string>
+    <string name="composer_skill_attached">Skill %1$s</string>
+    <string name="composer_skill_activate">Activate in this session</string>
+    <string name="composer_skill_none">This location has no skill.</string>
+
+    <!-- History and stash -->
+    <string name="composer_history_older">Older prompt</string>
+    <string name="composer_history_newer">Newer prompt</string>
+    <string name="composer_stash">Stash</string>
+    <string name="composer_stash_pop">Pop the stash</string>
+    <string name="composer_stash_list">Stash</string>
+    <string name="composer_stash_empty">The stash is empty.</string>
+    <string name="composer_stash_restore">Put this back: %1$s</string>
+    <string name="composer_stash_restore_short">Put back</string>
+    <string name="composer_stashed">Stashed %1$d</string>
+    <string name="composer_editor">Full-screen editor</string>
+    <string name="composer_draft_restored">Draft restored</string>
+
+    <!-- Side questions and compaction -->
+    <string name="composer_btw_title">Side question</string>
+    <string name="composer_btw_answer">Answer</string>
+    <string name="composer_btw_waiting">Thinking about it</string>
+    <string name="composer_btw_copy">Copy the answer</string>
+    <string name="composer_btw_failed">The side question failed: %1$s</string>
+    <string name="composer_compact">Compact</string>
+    <string name="composer_compacting">Compacting</string>
+    <string name="composer_close">Close</string>
+
+    <!-- What the prompt will carry -->
+    <string name="composer_context_summary">Sends: %1$s</string>
+    <string name="composer_context_text">the message</string>
+    <string name="composer_context_shell">a shell command</string>
+    <string name="composer_context_command">command %1$s</string>
+    <string name="composer_context_client">an app action</string>
+    <string name="composer_context_none">nothing yet</string>
+
     <!-- Inbox panel -->
     <string name="inbox_title">Inbox</string>
     <string name="inbox_empty">Nothing is waiting to be sent.</string>

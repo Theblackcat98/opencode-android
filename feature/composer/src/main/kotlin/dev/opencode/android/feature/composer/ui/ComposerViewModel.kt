@@ -5,7 +5,27 @@ import androidx.lifecycle.viewModelScope
 import dev.opencode.android.core.data.action.ActionError
 import dev.opencode.android.core.data.catalog.AgentCatalog
 import dev.opencode.android.core.data.catalog.ModelCatalog
+import dev.opencode.android.core.data.action.ActionErrorKind
+import dev.opencode.android.core.data.composer.Assembly
+import dev.opencode.android.core.data.composer.AttachmentDraft
+import dev.opencode.android.core.data.composer.AttachmentPolicy
+import dev.opencode.android.core.data.composer.AttachmentVerdict
+import dev.opencode.android.core.data.composer.ClientAction
+import dev.opencode.android.core.data.composer.Completion
+import dev.opencode.android.core.data.composer.CompletionEngine
+import dev.opencode.android.core.data.composer.ComposerCatalog
+import dev.opencode.android.core.data.composer.ComposerInput
+import dev.opencode.android.core.data.composer.ComposerMemory
+import dev.opencode.android.core.data.composer.HistoryCursor
+import dev.opencode.android.core.data.composer.PromptAssembler
+import dev.opencode.android.core.data.composer.PromptHistory
+import dev.opencode.android.core.data.composer.PromptIntent
+import dev.opencode.android.core.data.composer.PromptProblem
+import dev.opencode.android.core.data.composer.StashEntry
+import dev.opencode.android.core.data.composer.TriggerKind
+import dev.opencode.android.core.data.composer.detectTrigger
 import dev.opencode.android.core.data.preferences.ModelPreferences
+import dev.opencode.android.core.data.server.FileSearchState
 import dev.opencode.android.core.data.server.PendingRequest
 import dev.opencode.android.core.data.server.ServerDataRegistry
 import dev.opencode.android.core.data.server.ServerDataSet
@@ -13,6 +33,7 @@ import dev.opencode.android.core.data.server.SessionActivity
 import dev.opencode.android.core.data.server.actionErrorOrNull
 import dev.opencode.android.core.data.timeline.PendingInboxItem
 import dev.opencode.android.core.model.AgentInfo
+import dev.opencode.android.core.model.CommandInfo
 import dev.opencode.android.core.model.Delivery
 import dev.opencode.android.core.model.FormAnswer
 import dev.opencode.android.core.model.FormInfo
@@ -20,18 +41,79 @@ import dev.opencode.android.core.model.ModelInfo
 import dev.opencode.android.core.model.ModelRef
 import dev.opencode.android.core.model.PermissionReply
 import dev.opencode.android.core.model.PermissionRequest
+import dev.opencode.android.core.model.PromptSkillInput
+import dev.opencode.android.core.model.ReferenceInfo
+import dev.opencode.android.core.model.SkillInfo
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+
+/**
+ * What the composer is currently in the middle of, and what the user should be told about it.
+ *
+ * The problem is a separate field from the error because they are different promises: an [ActionError]
+ * says a call the server answered failed, while a [ComposerProblem] says this client is not going to
+ * make the call. The second one is decided by [PromptAssembler] before anything leaves the phone.
+ */
+enum class ComposerProblem {
+    /** An attachment the model will not be sent, so the prompt would silently lose it. */
+    ATTACHMENT_BLOCKED,
+
+    /** An attachment that is only sendable once the user has been told and agreed (plan §5.2). */
+    ATTACHMENT_NEEDS_CONFIRMATION,
+
+    /** The picked file could not be read or decoded. */
+    ATTACHMENT_UNREADABLE,
+
+    /** The picker is looking at no session, so there is nowhere to send anything. */
+    NO_SESSION,
+
+    /** The `fs.find` search behind `@` failed; the mention list is showing what it has. */
+    SEARCH_FAILED,
+}
+
+/** The answer to a `/btw` side question, and whether it is still being produced. */
+data class SideQuestion(
+    val question: String,
+    val answer: String? = null,
+    val loading: Boolean = true,
+    val failure: String? = null,
+) {
+    val answered: Boolean get() = answer != null
+}
+
+/**
+ * A one-shot thing the composer asks the screen to do, rather than something it can express in its
+ * own state.
+ *
+ * Navigation and opening a picker belong to the composition root, and a `Channel` is what keeps them
+ * one-shot: a `StateFlow` of "open the model picker" would reopen it on every recomposition after a
+ * configuration change.
+ */
+sealed interface ComposerEffect {
+    data object NewSession : ComposerEffect
+    data object SessionList : ComposerEffect
+    data object OpenAgentPicker : ComposerEffect
+    data object OpenModelPicker : ComposerEffect
+    data object OpenEditor : ComposerEffect
+
+    /** The box is empty and ready; what to do about focus is the screen's business. */
+    data object FocusComposer : ComposerEffect
+}
 
 /** The composer's own state, as far as it is the client's and not the server's. */
 data class ComposerUiState(
@@ -54,8 +136,25 @@ data class ComposerUiState(
     val pending: List<PendingInboxItem> = emptyList(),
     val requests: List<PendingRequest> = emptyList(),
     val directory: String? = null,
+    // ------------------------------------------------------------------ Phase 5: rich composer
+    val attachments: List<AttachmentDraft> = emptyList(),
+    val skills: List<PromptSkillInput> = emptyList(),
+    val availableSkills: List<SkillInfo> = emptyList(),
+    val serverCommands: List<CommandInfo> = emptyList(),
+    val references: List<ReferenceInfo> = emptyList(),
+    val completions: List<Completion> = emptyList(),
+    val trigger: TriggerKind? = null,
+    val intent: PromptIntent? = null,
+    val searchingFiles: Boolean = false,
+    val history: List<String> = emptyList(),
+    val stash: List<StashEntry> = emptyList(),
+    val problem: ComposerProblem? = null,
+    /** The attachment that needs confirming, so the row can name it. */
+    val problemDetail: String? = null,
+    val sideQuestion: SideQuestion? = null,
+    val compacting: Boolean = false,
 ) {
-    val canSend: Boolean get() = text.isNotBlank() && !sending
+    val canSend: Boolean get() = !sending && problem == null && assemblyIsSendable()
 
     /** The variant currently selected, which the cycle button advances. */
     val variant: String? get() = model?.variant
@@ -73,6 +172,27 @@ data class ComposerUiState(
             return models.firstOrNull { it.id == current.id && it.providerID == current.providerID }
                 ?.let { ModelCatalog.nextVariant(it, current.variant) }
         }
+
+    /** Whether the box is in shell mode, which changes the hint and the send button. */
+    val shellMode: Boolean get() = trigger == TriggerKind.SHELL
+
+    /** The catalog entry of the selected model, which is what decides about pictures. */
+    val modelInfo: ModelInfo? get() = models.firstOrNull { it.id == model?.id && it.providerID == model?.providerID }
+
+    /** What the prompt will carry, for the context row: the count, not the contents. */
+    val carriedAttachments: Int get() = attachments.size
+
+    /** Whether a confirmation is being asked for, which is the only "send anyway" in the composer. */
+    val needsConfirmation: Boolean get() = problem == ComposerProblem.ATTACHMENT_NEEDS_CONFIRMATION
+
+    /** Whether the box has anything a send could act on at all. */
+    private fun assemblyIsSendable(): Boolean {
+        val intent = intent
+        return when (intent) {
+            is PromptIntent.Client -> intent.text.isNotEmpty()
+            else -> text.isNotBlank() || attachments.isNotEmpty()
+        }
+    }
 }
 
 /**
@@ -87,26 +207,70 @@ data class ComposerUiState(
  * **A failed action reports and changes nothing.** Every write returns a failure class rather than
  * throwing, and the composer's text is only cleared on success, so a dropped connection leaves the
  * user's words in the box instead of losing them.
+ *
+ * **The composer decides nothing about the text itself.** What a send means, which mentions attach
+ * and whether an attachment may go are [PromptAssembler]'s; this class collects the pieces, asks it,
+ * and carries out the answer. The one judgement it does make is which catalog to complete from, and
+ * that is a projection of the session's location like everything else.
  */
-@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+@OptIn(ExperimentalCoroutinesApi::class)
 class ComposerViewModel @Inject constructor(
     private val dataSets: ServerDataRegistry,
     private val modelPreferences: ModelPreferences,
+    private val memory: ComposerMemory,
+    private val attachmentReader: AttachmentReader,
 ) : ViewModel() {
 
     private val local = MutableStateFlow(LocalState())
     private val sessionID = MutableStateFlow<String?>(null)
+    private val effects = Channel<ComposerEffect>(Channel.BUFFERED)
+
+    /** The one-shot actions the composition root carries out. */
+    val effect: Flow<ComposerEffect> = effects.receiveAsFlow()
 
     private data class LocalState(
         val text: String = "",
+        val cursor: Int = 0,
         val delivery: Delivery = Delivery.Steer,
         val resume: Boolean = false,
         val sending: Boolean = false,
         val error: ActionError? = null,
+        val attachments: List<AttachmentDraft> = emptyList(),
+        val skills: List<PromptSkillInput> = emptyList(),
+        val completions: List<Completion> = emptyList(),
+        val trigger: TriggerKind? = null,
+        val problem: ComposerProblem? = null,
+        val problemDetail: String? = null,
+        val historyCursor: HistoryCursor = HistoryCursor(),
+        val sideQuestion: SideQuestion? = null,
+        val compacting: Boolean = false,
+        val loadedDraft: Boolean = false,
     )
 
-    /** The state of the open session's composer, or an idle one before a session is opened. */
-    val state: StateFlow<ComposerUiState> = combine(sessionID, local, dataSets.active) { id, mine, set ->
+    /** The prompt history of the active server, newest first, and the stash beside it. */
+    private val memoryState: StateFlow<Pair<List<String>, List<StashEntry>>> = dataSets.active
+        .map { it?.serverId }
+        .distinctUntilChanged()
+        .flatMapLatest { serverId ->
+            if (serverId == null) {
+                flowOf(emptyList<String>() to emptyList())
+            } else {
+                combine(memory.history(serverId), memory.stash(serverId)) { history, stash -> history to stash }
+            }
+        }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList<String>() to emptyList())
+
+
+    /**
+     * The state of the open session's composer, or an idle one before a session is opened.
+     *
+     * `Eagerly` and not `WhileSubscribed`, because the view model also reads this while no screen is
+     * collecting: a completion list is computed from the current catalogs, and a derived `StateFlow`
+     * that is not running would answer with its initial value and offer a stale catalog. The cost is
+     * one collector for the composer's lifetime, which is the screen's lifetime.
+     */
+    val state: StateFlow<ComposerUiState> = combine(sessionID, local, dataSets.active, memoryState) { id, mine, set, memory ->
+        val (history, stash) = memory
         if (id == null || set == null) {
             return@combine ComposerUiState(
                 text = mine.text,
@@ -114,11 +278,23 @@ class ComposerViewModel @Inject constructor(
                 resume = mine.resume,
                 sending = mine.sending,
                 error = mine.error,
+                attachments = mine.attachments,
+                skills = mine.skills,
+                completions = mine.completions,
+                trigger = mine.trigger,
+                problem = mine.problem,
+                problemDetail = mine.problemDetail,
+                sideQuestion = mine.sideQuestion,
+                compacting = mine.compacting,
             )
         }
         val info = set.sessions.info.value[id]
         val directory = info?.location?.directory
         val models = directory?.let { set.models(it).value }.orEmpty()
+        val commands = directory?.let { set.composerCatalogs.commands(it).value }.orEmpty()
+        val skills = directory?.let { set.composerCatalogs.skills(it).value }.orEmpty()
+        val references = directory?.let { set.composerCatalogs.references(it).value }.orEmpty()
+        val search = set.composerCatalogs.files.state.value
         ComposerUiState(
             sessionID = id,
             text = mine.text,
@@ -135,8 +311,23 @@ class ComposerViewModel @Inject constructor(
             pending = set.timeline(id).state.value.pending,
             requests = set.requests.forSession(id).value,
             directory = directory,
+            attachments = mine.attachments,
+            skills = mine.skills,
+            availableSkills = skills,
+            serverCommands = commands,
+            references = references,
+            completions = mine.completions,
+            trigger = mine.trigger,
+            intent = PromptAssembler.intentOf(mine.text, commands),
+            searchingFiles = search.loading,
+            history = history,
+            stash = stash,
+            problem = mine.problem,
+            problemDetail = mine.problemDetail,
+            sideQuestion = mine.sideQuestion,
+            compacting = mine.compacting,
         )
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT), ComposerUiState())
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, ComposerUiState())
 
     /** The requests waiting anywhere on this server, for the global inbox badge. */
     val allRequests: StateFlow<List<PendingRequest>> = dataSets.active
@@ -166,14 +357,29 @@ class ComposerViewModel @Inject constructor(
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT), emptyList())
 
+    init {
+        // The `fs.find` results are what the `@` list is completed from, so a response has to
+        // recompute the completions. `refresh` only asks for a search when the query actually moved,
+        // which is what stops this from feeding itself.
+        viewModelScope.launch {
+            dataSets.active.flatMapLatest { set -> set?.composerCatalogs?.files?.state ?: flowOf(FileSearchState()) }
+                .collect { refresh() }
+        }
+    }
+
+    /** The history and stash of the active server, read by the history walk. */
+    private val lastHistory: List<String> get() = memoryState.value.first
+
     /**
      * Opens a session: the composer follows it, its timeline loads, and the catalogs the pickers
      * read are fetched for the session's location.
      *
      * The catalogs are location-scoped, so a session reached by tapping it in the list has never
      * loaded them — only the new-session flow has, and only for the location the user chose there.
-     * [SyncedResource.sync] is a no-op when the value is not stale, so this costs one request per
-     * catalog the first time and nothing afterwards.
+     * [dev.opencode.android.core.data.sync.SyncedResource.sync] is a no-op when the value is not
+     * stale, so this costs one request per catalog the first time and nothing afterwards. Phase 5
+     * adds the three file-based catalogs, because a `/` palette with no commands in it would be
+     * useless.
      */
     fun open(sessionID: String) {
         val set = dataSets.active.value ?: return
@@ -183,11 +389,24 @@ class ComposerViewModel @Inject constructor(
             val directory = set.sessions.loadSession(sessionID)?.location?.directory ?: return@launch
             set.agents(directory).sync()
             set.models(directory).sync()
+            set.composerCatalogs.commands(directory).sync()
+            set.composerCatalogs.skills(directory).sync()
+            set.composerCatalogs.references(directory).sync()
+            restoreDraft(directory, sessionID)
         }
     }
 
-    fun setText(text: String) {
-        local.value = local.value.copy(text = text, error = null)
+    fun setText(text: String, cursor: Int = text.length) {
+        local.value = local.value.copy(
+            text = text,
+            cursor = cursor.coerceIn(0, text.length),
+            // Typing clears the last complaint: it is about the previous text.
+            error = null,
+            problem = null,
+            problemDetail = null,
+        )
+        refresh()
+        persistDraft()
     }
 
     fun setDelivery(delivery: Delivery) {
@@ -202,32 +421,356 @@ class ComposerViewModel @Inject constructor(
     }
 
     /**
-     * Sends the text as a prompt.
+     * Sends the box.
      *
-     * The id is generated before the call by [SessionCommands], which is what makes a retry safe,
-     * and the pending item appears immediately; the server's `session.inbox.enqueued` event
-     * reconciles it. The box is only cleared once the server accepted the prompt.
+     * What it does is [PromptAssembler]'s decision, not this method's: the assembled value is a
+     * prompt, a command, a shell line, a client action or a refusal, and each is carried out the way
+     * the server's API says. The box is only cleared on success, and a client action that opens
+     * something clears it because nothing was sent.
+     *
+     * [confirmed] is the user's answer to "this model cannot see this image", and it applies to this
+     * one send only.
      */
-    fun send(delivery: Delivery = local.value.delivery) {
+    fun send(delivery: Delivery = local.value.delivery, confirmed: Boolean = false) {
         val id = sessionID.value ?: return
         val set = dataSets.active.value ?: return
-        val text = local.value.text.trim()
-        if (text.isEmpty() || local.value.sending) return
-        local.value = local.value.copy(sending = true, error = null)
-        viewModelScope.launch {
-            val result = set.commands.prompt(
-                sessionID = id,
-                text = text,
+        if (local.value.sending) return
+        val snapshot = state.value
+        val assembly = PromptAssembler.assemble(
+            input = ComposerInput(
+                text = local.value.text,
+                attachments = local.value.attachments,
+                skills = local.value.skills,
                 delivery = delivery,
-                resume = local.value.resume.takeIf { it },
+                resume = local.value.resume,
+                location = snapshot.directory,
+                model = snapshot.modelInfo,
+                serverCommands = snapshot.serverCommands,
+                agents = snapshot.agents,
+            ),
+            confirmed = confirmed,
+        )
+        when (assembly) {
+            is Assembly.Client -> performClient(assembly.action, assembly.text)
+
+            is Assembly.Prompt -> {
+                local.value = local.value.copy(sending = true, error = null, problem = null)
+                viewModelScope.launch {
+                    val result = set.commands.prompt(
+                        sessionID = id,
+                        text = assembly.request.text,
+                        delivery = delivery,
+                        resume = assembly.request.resume,
+                        files = assembly.request.files,
+                        agents = assembly.request.agents,
+                        skills = assembly.request.skills,
+                    )
+                    onSent(result.actionErrorOrNull, assembly.request.text)
+                }
+            }
+
+            is Assembly.Command -> {
+                local.value = local.value.copy(sending = true, error = null, problem = null)
+                viewModelScope.launch {
+                    val result = set.commands.runCommand(
+                        sessionID = id,
+                        name = assembly.request.name,
+                        text = assembly.request.text,
+                        delivery = delivery,
+                        files = assembly.request.files,
+                        agents = assembly.request.agents,
+                        skills = assembly.request.skills,
+                    )
+                    onSent(result.actionErrorOrNull, assembly.request.text)
+                }
+            }
+
+            is Assembly.Shell -> {
+                local.value = local.value.copy(sending = true, error = null, problem = null)
+                viewModelScope.launch {
+                    val error = set.commands.runShell(id, assembly.request.command).actionErrorOrNull
+                    onSent(error, "!${assembly.request.command}")
+                }
+            }
+
+            is Assembly.Refused -> refuse(assembly.problem)
+
+            Assembly.Empty -> Unit
+        }
+    }
+
+    private fun performClient(action: ClientAction, text: String) {
+        when (action) {
+            ClientAction.NEW_SESSION -> {
+                clearComposer()
+                effects.trySend(ComposerEffect.NewSession)
+            }
+
+            ClientAction.SESSION_LIST -> {
+                clearComposer()
+                effects.trySend(ComposerEffect.SessionList)
+            }
+
+            ClientAction.MODEL_PICKER -> {
+                clearComposer()
+                effects.trySend(ComposerEffect.OpenModelPicker)
+            }
+
+            ClientAction.AGENT_PICKER -> {
+                clearComposer()
+                effects.trySend(ComposerEffect.OpenAgentPicker)
+            }
+
+            // `/editor` moves the text to the full-screen editor and leaves the way it came.
+            ClientAction.EDITOR -> effects.trySend(ComposerEffect.OpenEditor)
+
+            ClientAction.COMPACT -> compact()
+
+            ClientAction.SIDE_QUESTION -> ask(text)
+        }
+    }
+
+    /** `session.compact`. A busy session is a conflict the composer reports rather than retries. */
+    fun compact() {
+        val id = sessionID.value ?: return
+        val set = dataSets.active.value ?: return
+        local.value = local.value.copy(compacting = true, error = null)
+        viewModelScope.launch {
+            val error = set.commands.compact(id, local.value.delivery).actionErrorOrNull
+            local.value = local.value.copy(
+                compacting = false,
+                error = error,
+                text = if (error == null) "" else local.value.text,
             )
+        }
+    }
+
+    /**
+     * `session.generate`: the `/btw` side question.
+     *
+     * The one driving call that answers with a body, because the answer is for the user and has
+     * nowhere in the timeline to go. The question stays on screen while it is being produced, and a
+     * failure keeps it so it can be retried rather than retyped.
+     */
+    fun ask(question: String) {
+        val id = sessionID.value ?: return
+        val set = dataSets.active.value ?: return
+        if (question.isBlank()) return
+        local.value = local.value.copy(sideQuestion = SideQuestion(question), text = "", error = null)
+        viewModelScope.launch {
+            val result = set.commands.generate(id, question)
             val error = result.actionErrorOrNull
-            local.value = if (error == null) {
-                local.value.copy(text = "", sending = false, resume = false)
-            } else {
-                local.value.copy(sending = false, error = error)
+            local.value = local.value.copy(
+                sideQuestion = SideQuestion(
+                    question = question,
+                    answer = result.getOrNull(),
+                    loading = false,
+                    failure = error?.message,
+                ),
+            )
+        }
+    }
+
+    fun dismissSideQuestion() {
+        local.value = local.value.copy(sideQuestion = null)
+    }
+
+    // ------------------------------------------------------------------ attachments
+
+    /**
+     * Adds the image the picker returned.
+     *
+     * The read and the re-encode happen off the main thread inside [AttachmentReader]; this method
+     * only records the result. A file the phone cannot read is a problem in the composer rather than
+     * a crash, because a camera app that hands back nothing is a normal thing to survive.
+     */
+    fun attachImage(source: android.net.Uri) {
+        local.value = local.value.copy(problem = null, problemDetail = null)
+        viewModelScope.launch {
+            val draft = attachmentReader.readImage(source)
+            draft.fold(
+                onSuccess = { addAttachment(it) },
+                onFailure = {
+                    local.value = local.value.copy(
+                        problem = ComposerProblem.ATTACHMENT_UNREADABLE,
+                        problemDetail = it.message,
+                    )
+                },
+            )
+        }
+    }
+
+    /** Adds a file or directory that lives on the server, which the phone never reads. */
+    fun attachServerFile(path: String, name: String, type: String) {
+        val directory = state.value.directory
+        addAttachment(attachmentReader.serverFile(path, name, type, directory))
+    }
+
+    /** Adds a reference directory from `reference.list`. */
+    fun attachReference(path: String, name: String) {
+        val directory = state.value.directory
+        addAttachment(attachmentReader.reference(path, name, directory))
+    }
+
+    fun removeAttachment(id: String) {
+        local.value = local.value.copy(
+            attachments = local.value.attachments.filterNot { it.id == id },
+            problem = null,
+            problemDetail = null,
+        )
+    }
+
+    private fun addAttachment(draft: AttachmentDraft) {
+        val model = state.value.modelInfo
+        val verdict = AttachmentPolicy.verify(draft, model)
+        val next = local.value.attachments + draft
+        local.value = local.value.copy(
+            attachments = next,
+            problem = problemOf(verdict),
+            problemDetail = detailOf(verdict, draft),
+        )
+    }
+
+    private fun problemOf(verdict: AttachmentVerdict): ComposerProblem? = when (verdict) {
+        AttachmentVerdict.Ok -> null
+        is AttachmentVerdict.NeedsConfirmation -> ComposerProblem.ATTACHMENT_NEEDS_CONFIRMATION
+        is AttachmentVerdict.Blocked -> ComposerProblem.ATTACHMENT_BLOCKED
+    }
+
+    private fun detailOf(verdict: AttachmentVerdict, draft: AttachmentDraft): String? = when (verdict) {
+        AttachmentVerdict.Ok -> null
+        is AttachmentVerdict.NeedsConfirmation -> draft.label
+        is AttachmentVerdict.Blocked -> draft.label
+    }
+
+    private fun refuse(problem: PromptProblem) {
+        local.value = local.value.copy(
+            problem = when (problem) {
+                PromptProblem.ATTACHMENT_BLOCKED -> ComposerProblem.ATTACHMENT_BLOCKED
+                PromptProblem.ATTACHMENT_NEEDS_CONFIRMATION -> ComposerProblem.ATTACHMENT_NEEDS_CONFIRMATION
+                PromptProblem.NO_SESSION -> ComposerProblem.NO_SESSION
+                PromptProblem.EMPTY -> null
+            },
+            problemDetail = null,
+        )
+    }
+
+    // ------------------------------------------------------------------ mentions, commands, skills
+
+    /** Replaces the trigger under the caret with [completion] and puts the caret after it. */
+    fun applyCompletion(completion: Completion) {
+        val current = local.value
+        val span = detectTrigger(current.text, current.cursor) ?: return
+        val text = current.text
+        val updated = text.substring(0, span.start) + completion.insertText + text.substring(span.end)
+        local.value = current.copy(
+            text = updated,
+            cursor = span.start + completion.insertText.length,
+            problem = null,
+            problemDetail = null,
+        )
+        refresh()
+        persistDraft()
+    }
+
+    /** Dismisses the completion list, for a keyboard action that has nothing to complete. */
+    fun dismissCompletions() {
+        if (local.value.completions.isEmpty()) return
+        local.value = local.value.copy(completions = emptyList(), trigger = null)
+        dataSets.active.value?.composerCatalogs?.files?.clear()
+    }
+
+    /** Attaches or detaches a skill, which travels on the next prompt as `skills[]`. */
+    fun toggleSkill(id: String) {
+        val current = local.value.skills
+        local.value = local.value.copy(
+            skills = if (current.any { it.id == id }) current.filterNot { it.id == id } else current + PromptSkillInput(id),
+            problem = null,
+        )
+    }
+
+    /**
+     * `experimental.session.skill`: activates a skill in the running session.
+     *
+     * Experimental, so a missing route is the expected answer on a server without it, and the
+     * fallback is the thing the API always has: attach it on the next prompt.
+     */
+    fun activateSkill(id: String) {
+        val session = sessionID.value ?: return
+        val set = dataSets.active.value ?: return
+        viewModelScope.launch {
+            val error = set.commands.activateSkill(session, id, resume = null).actionErrorOrNull
+            if (error != null && error.kind == ActionErrorKind.NOT_FOUND) {
+                toggleSkill(id)
+            } else if (error != null) {
+                local.value = local.value.copy(error = error)
             }
         }
+    }
+
+    // ------------------------------------------------------------------ history and stash
+
+    fun olderHistory() = moveHistory(older = true)
+
+    fun newerHistory() = moveHistory(older = false)
+
+    private fun moveHistory(older: Boolean) {
+        val current = local.value
+        val history = lastHistory
+        val cursor = if (older) {
+            PromptHistory.older(history, current.historyCursor)
+        } else {
+            PromptHistory.newer(history, current.historyCursor)
+        }
+        val text = cursor.text(history)
+        local.value = current.copy(historyCursor = cursor, text = text, cursor = text.length, problem = null)
+        refresh()
+        persistDraft()
+    }
+
+    /** Puts the box away. The text is the stash; the attachments stay, because a chip is not text. */
+    fun stashCurrent() {
+        val serverId = dataSets.active.value?.serverId ?: return
+        val text = local.value.text
+        if (text.isBlank()) return
+        viewModelScope.launch {
+            memory.pushStash(serverId, StashEntry(id = "st${System.currentTimeMillis()}", text = text, created = System.currentTimeMillis()))
+            clearComposer()
+        }
+    }
+
+    /** Takes the most recent stashed prompt back into the box. */
+    fun popStash() {
+        val serverId = dataSets.active.value?.serverId ?: return
+        viewModelScope.launch {
+            val entry = memory.popStash(serverId) ?: return@launch
+            restore(entry)
+        }
+    }
+
+    /**
+     * Takes one stashed prompt back into the box, whichever one the row named.
+     *
+     * A row that popped the newest while claiming to restore itself would be the most confusing
+     * control in the composer, so the row carries the id and the pop is a separate action.
+     */
+    fun restoreStash(entry: StashEntry) {
+        val serverId = dataSets.active.value?.serverId ?: return
+        viewModelScope.launch {
+            memory.dropStash(serverId, entry.id)
+            restore(entry)
+        }
+    }
+
+    private fun restore(entry: StashEntry) {
+        local.value = local.value.copy(
+            text = entry.text,
+            cursor = entry.text.length,
+            problem = null,
+            problemDetail = null,
+        )
+        refresh()
+        persistDraft()
     }
 
     /** `session.interrupt`, optionally resuming pending steering input. */
@@ -268,6 +811,9 @@ class ComposerViewModel @Inject constructor(
                 local.value = local.value.copy(error = error)
             } else {
                 modelPreferences.markUsed(serverId, model)
+                // A model that takes images changes whether the pending attachment is sendable, so
+                // the verdict is recomputed rather than left as it was decided.
+                recheckAttachments()
             }
         }
     }
@@ -299,9 +845,9 @@ class ComposerViewModel @Inject constructor(
     /** Answers a permission request. The event removes it; a failure leaves it pending. */
     fun replyPermission(request: PermissionRequest, decision: PermissionReply, feedback: String? = null) =
         withSession { set, _ ->
-        val error = set.requests.replyPermission(request, decision, feedback)
-        if (error != null) local.value = local.value.copy(error = error)
-    }
+            val error = set.requests.replyPermission(request, decision, feedback)
+            if (error != null) local.value = local.value.copy(error = error)
+        }
 
     /** Answers a form. */
     fun submitForm(form: FormInfo, answer: FormAnswer) = withSession { set, _ ->
@@ -319,6 +865,117 @@ class ComposerViewModel @Inject constructor(
         local.value = local.value.copy(error = null)
     }
 
+    // ------------------------------------------------------------------ internals
+
+    /**
+     * Recomputes what the box means and what it can offer.
+     *
+     * Called after every text change and after every `fs.find` response, which is the only way the
+     * two can be kept in step. The search is only asked for when the query has actually moved, so a
+     * response cannot trigger the request that produced it.
+     */
+    private fun refresh() {
+        val set = dataSets.active.value
+        val current = local.value
+        val span = detectTrigger(current.text, current.cursor)
+        val snapshot = state.value
+        if (set != null && span != null && span.kind == TriggerKind.MENTION && span.query.isNotEmpty()) {
+            val directory = snapshot.directory
+            if (directory != null) {
+                val search = set.composerCatalogs.files
+                if (search.state.value.query != span.query || search.state.value.directory != directory) {
+                    search.search(directory, span.query)
+                }
+            }
+        } else {
+            set?.composerCatalogs?.files?.clear()
+        }
+        val catalog = ComposerCatalog(
+            agents = snapshot.agents,
+            commands = snapshot.serverCommands,
+            references = snapshot.references,
+            files = set?.composerCatalogs?.files?.state?.value?.results.orEmpty(),
+            location = snapshot.directory,
+        )
+        val completions = if (span == null) emptyList() else CompletionEngine.complete(current.text, current.cursor, catalog)
+        // A failed search is reported rather than shown as an empty list: "nothing matched" and "the
+        // server said no" are different facts and only one of them is the user's fault to fix.
+        val searchFailed = set?.composerCatalogs?.files?.state?.value?.error != null
+        val problem = if (searchFailed && span?.kind == TriggerKind.MENTION) {
+            current.problem ?: ComposerProblem.SEARCH_FAILED
+        } else {
+            current.problem
+        }
+        if (completions == current.completions && span?.kind == current.trigger && problem == current.problem) return
+        local.value = current.copy(completions = completions, trigger = span?.kind, problem = problem)
+    }
+
+    private fun recheckAttachments() {
+        val model = state.value.modelInfo
+        val first = local.value.attachments.firstNotNullOfOrNull { AttachmentPolicy.verify(it, model) }
+        local.value = local.value.copy(problem = problemOf(first ?: AttachmentVerdict.Ok), problemDetail = null)
+    }
+
+    private fun onSent(error: ActionError?, text: String) {
+        if (error != null) {
+            // The box keeps its words and its attachments; a dropped connection must not lose either.
+            local.value = local.value.copy(sending = false, error = error)
+            return
+        }
+        val serverId = dataSets.active.value?.serverId
+        if (serverId != null) viewModelScope.launch { memory.record(serverId, text) }
+        clearComposer()
+        effects.trySend(ComposerEffect.FocusComposer)
+    }
+
+    private fun clearComposer() {
+        val serverId = dataSets.active.value?.serverId
+        val session = sessionID.value
+        local.value = local.value.copy(
+            text = "",
+            cursor = 0,
+            sending = false,
+            resume = false,
+            attachments = emptyList(),
+            skills = emptyList(),
+            completions = emptyList(),
+            trigger = null,
+            problem = null,
+            problemDetail = null,
+            historyCursor = HistoryCursor(),
+        )
+        if (serverId != null && session != null) {
+            viewModelScope.launch { memory.setDraft(serverId, session, "") }
+        }
+    }
+
+    /**
+     * Saves the unsent text, debounced.
+     *
+     * A draft is the one piece of this screen a person would be angry to lose — it is the sentence
+     * they have not sent yet — so it is written on a pause rather than on every keystroke, and it is
+     * written off the UI thread by the store.
+     */
+    private fun persistDraft() {
+        val serverId = dataSets.active.value?.serverId ?: return
+        val session = sessionID.value ?: return
+        val text = local.value.text
+        viewModelScope.launch {
+            delay(DRAFT_DEBOUNCE_MILLIS)
+            memory.setDraft(serverId, session, text)
+        }
+    }
+
+    private fun restoreDraft(directory: String, session: String) {
+        if (local.value.loadedDraft) return
+        val serverId = dataSets.active.value?.serverId ?: return
+        viewModelScope.launch {
+            val draft = memory.draft(serverId, session).first()
+            local.value = local.value.copy(text = draft, cursor = draft.length, loadedDraft = true)
+            refresh()
+        }
+    }
+
     private fun withSession(block: suspend (ServerDataSet, String) -> Unit) {
         val id = sessionID.value ?: return
         val set = dataSets.active.value ?: return
@@ -327,5 +984,8 @@ class ComposerViewModel @Inject constructor(
 
     private companion object {
         const val STOP_TIMEOUT = 5_000L
+
+        /** Long enough to be one pause, short enough to survive a quick switch of screens. */
+        const val DRAFT_DEBOUNCE_MILLIS = 400L
     }
 }
