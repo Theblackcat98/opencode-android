@@ -38,7 +38,6 @@
     <string name="qr_grant_permission">Allow camera</string>
     <string name="qr_camera_unavailable">The camera could not be started. Paste the pairing link instead.</string>
     <string name="qr_scanner_label">Camera preview for scanning the OpenCode pairing code</string>
-    <string name="qr_scanned">Pairing code scanned. Connecting…</string>
 
     <string name="paste_link_label">Pairing link</string>
     <string name="paste_link_hint">http://192.168.1.100:4096/auth/connect/…</string>
