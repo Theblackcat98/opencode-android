@@ -6,6 +6,8 @@ import dev.opencode.android.core.data.action.ActionError
 import dev.opencode.android.core.data.action.toActionError
 import dev.opencode.android.core.data.capability.ExperimentalRoute
 import dev.opencode.android.core.data.capability.RouteAvailability
+import dev.opencode.android.core.data.composer.FileReadResult
+import dev.opencode.android.core.data.preferences.ExperimentalPreferences
 import dev.opencode.android.core.data.review.CommentSelection
 import dev.opencode.android.core.data.review.DiffHunk
 import dev.opencode.android.core.data.review.FileNode
@@ -30,6 +32,7 @@ import dev.opencode.android.core.model.SessionRevert
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Dispatchers
@@ -63,11 +66,22 @@ data class ReviewUiState(
     val branches: List<String> = emptyList(),
     val basePickerOpen: Boolean = false,
     val comments: List<ReviewComment> = emptyList(),
+    /** The comment list is open over the diff, which is a sheet here and a pane later. */
+    val commentsOpen: Boolean = false,
     /** The comment being written, which is the draft of one line range. */
     val commentDraft: CommentDraft? = null,
     val stagedRevert: SessionRevert? = null,
     val restoredFiles: List<RestoredFile> = emptyList(),
     val filesOpen: Boolean = false,
+    /** The changed-files tree is open over the diff, which is a sheet on a phone and a pane later. */
+    val treeOpen: Boolean = false,
+    /** The `fs.find` query and its answers, which is the browser's quick open. */
+    val searchQuery: String = "",
+    val searchResults: List<FileSystemEntry> = emptyList(),
+    /** A write is in flight, which disables the edit action. */
+    val writing: Boolean = false,
+    /** What the last write did, or `null` when nothing has been written this session. */
+    val writeNotice: WriteOutcome? = null,
     val loading: Boolean = false,
     val error: ActionError? = null,
     /** Whether the user has allowed remote file writes at all (plan §5.2, the setting). */
@@ -108,6 +122,21 @@ data class ReviewUiState(
         }
 }
 
+/**
+ * What a remote write did, as a value the screen turns into a sentence.
+ *
+ * The view model holds no strings (plan §5.4: every string is externalized), so a refusal the app
+ * knows the reason for is a [SwitchedOff] and a refusal from the server is a [Failed] carrying the
+ * server's own message. A write is a dangerous action (plan §5.2), so the outcome is always said.
+ */
+sealed interface WriteOutcome {
+    /** The setting is off, or the server does not have the route, so nothing was sent. */
+    data object SwitchedOff : WriteOutcome
+
+    /** The server refused, and this is what it said. */
+    data class Failed(val message: String) : WriteOutcome
+}
+
 /** The comment being written on one line range. */
 data class CommentDraft(
     val path: String,
@@ -142,6 +171,7 @@ data class PromptParts(
  */
 class ReviewViewModel @Inject constructor(
     private val dataSets: ServerDataRegistry,
+    private val experimental: ExperimentalPreferences,
 ) : ViewModel() {
 
     private data class LocalState(
@@ -154,6 +184,10 @@ class ReviewViewModel @Inject constructor(
         val split: Boolean? = null,
         val editingEnabled: Boolean = false,
         val filesOpen: Boolean = false,
+        val treeOpen: Boolean = false,
+        val commentsOpen: Boolean = false,
+        val searchQuery: String = "",
+        val searchResults: List<FileSystemEntry> = emptyList(),
     )
 
     private val local = MutableStateFlow(LocalState())
@@ -161,6 +195,19 @@ class ReviewViewModel @Inject constructor(
 
     /** The published review. */
     val state: StateFlow<ReviewUiState> = _state.asStateFlow()
+
+    init {
+        // The file-write switch is the user's grant, and the file viewer reads it rather than taking
+        // it as an argument: a screen that could pass `true` would be a screen that could offer a
+        // write the user never agreed to. The flow is the stored value read back, so a switch that
+        // did not stick is visible rather than assumed.
+        viewModelScope.launch {
+            experimental.settings.collect { settings ->
+                local.value = local.value.copy(editingEnabled = settings.fileWrites)
+                _state.value = _state.value.copy(editingEnabled = settings.fileWrites)
+            }
+        }
+    }
 
     /**
      * The file browser's state, projected from the store.
@@ -183,7 +230,14 @@ class ReviewViewModel @Inject constructor(
         viewModelScope.launch { set?.files?.list(directory, path) }
     }
 
-    /** `fs.read`: the bytes of one file, for the viewer. */
+    /**
+     * `fs.read`: the bytes of one file, for the viewer.
+     *
+     * **The route answers the whole body**, so the size is known only after the read — and the
+     * server's `FileSystem.Entry` carries no size to check against, which is why the cap is a cap on
+     * what is *drawn* ([VIEWER_MAX_LINES]) rather than one on what is fetched. Guessing a size from a
+     * file name is the kind of estimate that is wrong on exactly the file a user wanted to open.
+     */
     fun readFile(entry: FileSystemEntry) {
         val directory = _state.value.directory ?: return
         viewModelScope.launch {
@@ -201,6 +255,53 @@ class ReviewViewModel @Inject constructor(
     fun goUp() {
         val parent = files.value.parent ?: return
         listFiles(parent)
+    }
+
+    /** `fs.find`: the quick-open search over the same location the browser lists. */
+    fun searchFiles(query: String) {
+        val directory = _state.value.directory ?: return
+        if (query.isBlank()) {
+            local.value = local.value.copy(searchResults = emptyList(), searchQuery = query)
+            _state.value = _state.value.copy(searchResults = emptyList(), searchQuery = query)
+            return
+        }
+        viewModelScope.launch {
+            val results = set?.files?.find(directory, query)?.getOrNull().orEmpty()
+            local.value = local.value.copy(searchResults = results, searchQuery = query)
+            _state.value = _state.value.copy(searchResults = results, searchQuery = query)
+        }
+    }
+
+    /**
+     * `experimental.fs.write`, behind the setting and the probe (plan §5.2).
+     *
+     * The route is experimental, so a `404` is the expected answer from some servers and the honest
+     * thing to do with it is record that and hide the action — which is what [recordCapability] is
+     * for. The write itself is the server's: [FileReader.write] reads the file back afterwards,
+     * because a call that returned `200` and left different bytes on disk is a case the user has to
+     * be told about rather than a success.
+     */
+    fun writeFile(file: FileReadResult, text: String) {
+        val directory = _state.value.directory ?: return
+        if (!_state.value.editingUsable) {
+            _state.value = _state.value.copy(writeNotice = WriteOutcome.SwitchedOff)
+            return
+        }
+        _state.value = _state.value.copy(writing = true, writeNotice = null)
+        viewModelScope.launch {
+            val result = set?.files?.write(directory, file.path, text)
+            val error = result?.exceptionOrNull()?.toActionError()
+            recordCapability(ExperimentalRoute.FS_WRITE, error)
+            _state.value = _state.value.copy(
+                writing = false,
+                writeNotice = error?.let { WriteOutcome.Failed(it.message.orEmpty()) },
+            )
+        }
+    }
+
+    /** Clears the write's outcome, which a screen does when it re-reads the file. */
+    fun clearWriteNotice() {
+        _state.value = _state.value.copy(writeNotice = null)
     }
 
     private val set get() = dataSets.active.value
@@ -223,6 +324,8 @@ class ReviewViewModel @Inject constructor(
             commentDraft = local.value.commentDraft,
             editingEnabled = local.value.editingEnabled,
             filesOpen = local.value.filesOpen,
+            treeOpen = local.value.treeOpen,
+            commentsOpen = local.value.commentsOpen,
         )
         if (directory != null) {
             set?.vcs(directory)?.let { store -> fold(store.state.value) }
@@ -353,6 +456,19 @@ class ReviewViewModel @Inject constructor(
     }
 
     /**
+     * Opens the list of filed comments.
+     *
+     * A comment is the one thing a review produces that leaves the screen — it goes with the next
+     * prompt — so a user needs to see how many there are and be able to take one back. The badge on
+     * the bar is the count; this is the list behind it.
+     */
+    fun toggleComments() {
+        val open = !local.value.commentsOpen
+        local.value = local.value.copy(commentsOpen = open)
+        _state.value = _state.value.copy(commentsOpen = open)
+    }
+
+    /**
      * Files the comment.
      *
      * The preview is the selected lines of the diff, taken here rather than in the composable, so the
@@ -381,6 +497,7 @@ class ReviewViewModel @Inject constructor(
         store.removeComment(index)
         foldComments()
     }
+
 
     /**
      * The comments, the metadata and the readable text a prompt carrying them needs.
@@ -418,15 +535,31 @@ class ReviewViewModel @Inject constructor(
         _state.value = _state.value.copy(capabilities = store.capabilities.value)
     }
 
-    fun setEditingEnabled(enabled: Boolean) {
-        local.value = local.value.copy(editingEnabled = enabled)
-        _state.value = _state.value.copy(editingEnabled = enabled)
-    }
-
+    /**
+     * Opens or closes the file browser, and lists the location's root when it opens.
+     *
+     * The listing is here rather than in the caller because a browser that opens on an empty list
+     * says "this directory is empty" about a directory nothing has asked the server about. That is a
+     * lie the user cannot tell from the truth, so the first call always happens with the sheet.
+     */
     fun toggleFiles() {
         val open = !local.value.filesOpen
         local.value = local.value.copy(filesOpen = open)
         _state.value = _state.value.copy(filesOpen = open)
+        if (open) listFiles()
+    }
+
+    /**
+     * The changed-files tree, which the review's own files are listed in.
+     *
+     * A separate sheet from the file browser on purpose: one lists what the *agent changed* and the
+     * other lists what is on the *server's disk*, and a user looking for a file they remember
+     * editing is looking at the second.
+     */
+    fun toggleTree() {
+        val open = !local.value.treeOpen
+        local.value = local.value.copy(treeOpen = open)
+        _state.value = _state.value.copy(treeOpen = open)
     }
 
     fun dismissError() {
@@ -461,3 +594,14 @@ class ReviewViewModel @Inject constructor(
 
     private fun fold(vcs: VcsState) = foldVcs(vcs)
 }
+
+/**
+ * How many lines of a file the viewer draws.
+ *
+ * The route answers the whole body, so a file of a million lines arrives whole; this is the cap on
+ * what is *composed*, and the viewer says how many lines it left out rather than stopping silently.
+ * A cap on what is fetched would need a size the server does not report (`FileSystem.Entry` carries
+ * a path and a type and nothing else), and an estimate from a file name is wrong on exactly the file
+ * a user opened to look at.
+ */
+const val VIEWER_MAX_LINES: Int = 2_000

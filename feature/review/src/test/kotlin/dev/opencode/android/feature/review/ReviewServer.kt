@@ -74,6 +74,24 @@ class ReviewServer(
         null
     }
 
+    /**
+     * The `Content-Type` of the last request whose path contains [fragment].
+     *
+     * `experimental.fs.write` answers `415` for `text/plain` and `200` for
+     * `application/octet-stream` (verified live against 2.0.18), so the media type a write sends is
+     * a property of the request rather than of a mock, and it has to be assertable.
+     */
+    fun lastMediaType(fragment: String): String? {
+        var index = recorded.size - 1
+        while (index >= 0) {
+            if (recorded[index].url.encodedPath.contains(fragment)) {
+                return recorded[index].headers["Content-Type"]
+            }
+            index--
+        }
+        return null
+    }
+
     fun close() {
         server.close()
     }

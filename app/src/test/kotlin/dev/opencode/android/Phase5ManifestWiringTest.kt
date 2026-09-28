@@ -47,11 +47,25 @@ class Phase5ManifestWiringTest {
     }
 
     @Test
-    fun `the provider exposes one cache path and no durable one`() {
-        assertEquals("one cache path, and only one", 1, paths.elements("cache-path").size)
+    fun `every path the provider exposes is in the cache, and each is a subdirectory`() {
+        // Phase 5 declared `captures/` for the camera. Phase 6 added `shares/`, because `fs.read`
+        // answers with a body and sharing a file the server holds means writing those bytes somewhere
+        // this app may grant a URI for. Both are cache subdirectories and nothing else: a durable
+        // path would hand a capture — or a server's file — to every other app on the phone, and a
+        // path at the cache root would expose both.
+        val cachePaths = paths.elements("cache-path")
+        assertEquals("every exposed path is a cache subdirectory", 2, cachePaths.size)
+        assertEquals(
+            listOf("captures/", "shares/"),
+            cachePaths.map { it.attribute("path") }.sorted(),
+        )
         assertTrue(
             "a durable path would outlive the prompt",
             paths.elements("external-path").isEmpty() && paths.elements("files-path").isEmpty(),
+        )
+        assertTrue(
+            "a grant must not cover the whole cache, only the two directories",
+            paths.elements("cache-path").none { it.attribute("path").isBlank() || it.attribute("path") == "/" },
         )
     }
 

@@ -19,11 +19,16 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.AccountTree
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Comment
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DoneAll
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.InsertDriveFile
 import androidx.compose.material3.AssistChip
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -31,9 +36,12 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -48,6 +56,7 @@ import dev.opencode.android.core.data.review.DiffLine
 import dev.opencode.android.core.data.review.DiffLineKind
 import dev.opencode.android.core.data.review.FileNode
 import dev.opencode.android.core.data.review.ParsedFile
+import dev.opencode.android.core.data.review.ReviewComment
 import dev.opencode.android.core.data.review.ReviewScope
 import dev.opencode.android.core.designsystem.code.CodeLanguage
 import dev.opencode.android.core.designsystem.diff.DiffPair
@@ -88,6 +97,10 @@ fun ReviewScreen(
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier,
     contentDescription: String? = null,
+    onOpenFiles: () -> Unit = {},
+    onOpenTree: () -> Unit = {},
+    onOpenComments: () -> Unit = {},
+    onRemoveComment: (Int) -> Unit = {},
 ) {
     val colors = DiffColors.of()
     Column(modifier = modifier.fillMaxSize()) {
@@ -99,6 +112,30 @@ fun ReviewScreen(
                         Icons.AutoMirrored.Filled.KeyboardArrowLeft,
                         contentDescription = stringResource(R.string.action_dismiss),
                     )
+                }
+            },
+            actions = {
+                // The two lists a review is read by: the files the agent changed, and the server's
+                // own filesystem. Both are actions on the bar rather than tabs, because neither
+                // replaces the diff — they sit over it, and the diff is what is behind them.
+                IconButton(onClick = onOpenTree) {
+                    Icon(Icons.Filled.AccountTree, stringResource(R.string.review_file_tree))
+                }
+                IconButton(onClick = onOpenFiles) {
+                    Icon(Icons.Filled.Folder, stringResource(R.string.files_open))
+                }
+                // The comments are the one thing a review produces that leaves the screen, so they get
+                // a badge rather than a row: the count is the number of things that will go with the
+                // next prompt, and a reviewer needs it without opening anything.
+                if (state.comments.isNotEmpty()) {
+                    BadgedBox(badge = { Badge { Text(state.comments.size.toString()) } }) {
+                        IconButton(onClick = onOpenComments) {
+                            Icon(
+                                Icons.Filled.Comment,
+                                stringResource(R.string.review_comment_count, state.comments.size),
+                            )
+                        }
+                    }
                 }
             },
         )
@@ -172,6 +209,127 @@ fun ReviewScreen(
             onSelect = onSelectBase,
             onDismiss = onOpenBasePicker,
         )
+    }
+
+    if (state.commentsOpen) {
+        ReviewCommentsSheet(
+            comments = state.comments,
+            onRemove = onRemoveComment,
+            onDismiss = onOpenComments,
+        )
+    }
+
+    if (state.treeOpen) {
+        ReviewFileTreeSheet(
+            state = state,
+            onOpenFile = { path ->
+                onOpenFile(path)
+                onOpenTree()
+            },
+            onDismiss = onOpenTree,
+        )
+    }
+}
+
+/**
+ * The changed-files tree as a sheet.
+ *
+ * Separate from the sheet-less [ReviewFileTree] for the same reason the file browser's body is: a
+ * `ModalBottomSheet` animates in, so a screenshot of the composable would photograph an empty
+ * rectangle. The body is the part this app owns and the part worth photographing.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ReviewFileTreeSheet(
+    state: ReviewUiState,
+    onOpenFile: (String) -> Unit,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState, modifier = modifier) {
+        FileTreeContent(state = state, onOpenFile = onOpenFile)
+    }
+}
+
+/**
+ * The comments a review has filed, and the way to take one back.
+ *
+ * **They are listed, not edited.** A comment's content becomes a prompt the agent reads, so changing
+ * one after the fact would leave the review and the prompt disagreeing about what was asked for. A
+ * comment is either right or it is removed and written again.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ReviewCommentsSheet(
+    comments: List<ReviewComment>,
+    onRemove: (Int) -> Unit,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState, modifier = modifier) {
+        CommentListContent(comments = comments, onRemove = onRemove)
+    }
+}
+
+/**
+ * The comment rows, without the sheet.
+ *
+ * See [FileBrowserContent] for why: a `ModalBottomSheet` animates in, so a screenshot of the
+ * composable would photograph an empty rectangle, and this app's baselines are its review artifact.
+ */
+@Composable
+fun CommentListContent(
+    comments: List<ReviewComment>,
+    onRemove: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier = modifier.fillMaxWidth().padding(bottom = 24.dp)) {
+        Text(
+            text = stringResource(R.string.review_comment_count, comments.size),
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+        )
+        HorizontalDivider()
+        comments.forEachIndexed { index, comment ->
+            ListItem(
+                headlineContent = { Text(comment.text) },
+                supportingContent = {
+                    Text(stringResource(R.string.review_comment_on, comment.path, comment.selection))
+                },
+                trailingContent = {
+                    IconButton(onClick = { onRemove(index) }) {
+                        Icon(Icons.Filled.Delete, stringResource(R.string.review_comment_remove))
+                    }
+                },
+            )
+            HorizontalDivider()
+        }
+    }
+}
+
+/** The tree's own content: a heading and the rows. See [ReviewFileTreeSheet] for why it is apart. */
+@Composable
+fun FileTreeContent(
+    state: ReviewUiState,
+    onOpenFile: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier = modifier.fillMaxWidth().padding(bottom = 24.dp)) {
+        Text(
+            text = stringResource(R.string.review_file_tree),
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+        )
+        Text(
+            text = stringResource(R.string.review_progress, state.reviewed.size, state.files.size),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = 16.dp),
+        )
+        HorizontalDivider()
+        ReviewFileTree(state = state, onOpenFile = onOpenFile)
     }
 }
 
@@ -472,13 +630,17 @@ fun ReviewFileTree(
     modifier: Modifier = Modifier,
     expanded: Boolean = true,
 ) {
-    val nodes = if (expanded) state.tree.all().filter { it.isDirectory || it.files.isEmpty() || true } else listOf(state.tree)
+    val nodes = if (expanded) state.tree.all() else listOf(state.tree)
     LazyColumn(modifier = modifier.fillMaxWidth()) {
         items(nodes, key = { it.path.ifEmpty { it.name } }) { node ->
             FileTreeRow(
                 node = node,
                 current = node.path == state.currentFile?.file,
-                reviewed = state.reviewed.contains(node.path),
+                // The reviewed set is keyed by the *change*, not the path: a scope can list one
+                // path twice, and a mark belongs to the row the user marked. So the row asks the
+                // diff for the key rather than composing one, because a key the tree invents is a
+                // key the progress count does not have.
+                reviewed = state.files.any { it.file == node.path && state.reviewed.contains(it.key) },
                 onOpenFile = onOpenFile,
             )
         }

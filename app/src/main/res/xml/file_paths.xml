@@ -1,13 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  The camera is the only source the app writes to itself: a photo the user takes is written into the
-  cache directory and read back through the same URI the camera app was given, which is why the path
-  is `cache-path` and not a file or external path. Nothing here is durable — an abandoned capture is
-  a file the system may reclaim at any time — and the app does not keep the picture: it is re-encoded
-  into the prompt and the original is never referenced again.
+  Two cache subdirectories, and both are cache on purpose.
+
+  `captures/` is the camera's: a photo the user takes is written into the cache directory and read
+  back through the same URI the camera app was given, which is why the path is `cache-path` and not a
+  file or external path. Nothing here is durable — an abandoned capture is a file the system may
+  reclaim at any time — and the app does not keep the picture: it is re-encoded into the prompt and
+  the original is never referenced again.
+
+  `shares/` is Phase 6's: `fs.read` answers with a body, so sharing a file the server holds means
+  writing those bytes somewhere this app may grant a URI for. It is the cache directory for the same
+  reason — a file the user merely looked at must not outlive the session on the device — and it is a
+  separate subdirectory so a grant for one does not expose the other.
 -->
 <paths>
     <cache-path
         name="captures"
         path="captures/" />
+    <cache-path
+        name="shares"
+        path="shares/" />
 </paths>

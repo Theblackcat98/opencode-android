@@ -217,6 +217,132 @@ class ReviewScreenshotTest {
     }
 
     @Test
+    fun fileTreeSheet() = capture("review-file-tree-sheet") {
+        FileTreeContent(state = reviewState(), onOpenFile = {})
+    }
+
+    @Test
+    fun fileViewerText() = capture("review-file-viewer") {
+        FileBrowserContent(
+            directory = "/home/dev/project",
+            path = "/home/dev/project/src/main/kotlin",
+            entries = listOf(
+                dev.opencode.android.core.model.FileSystemEntry(
+                    path = "/home/dev/project/src/main/kotlin/A.kt",
+                    type = dev.opencode.android.core.model.FileSystemEntry.EntryType.FILE,
+                ),
+            ),
+            reading = "/home/dev/project/src/main/kotlin/A.kt",
+            content = textFile(),
+            loading = false,
+            error = null,
+            canEdit = true,
+            selection = LineSelection(anchor = 2, end = 4),
+            onEnter = {},
+            onUp = {},
+            onRead = {},
+            onAttach = {},
+            onAttachLines = { _, _ -> },
+            onShare = {},
+            onDownload = {},
+        )
+    }
+
+    @Test
+    fun fileBrowserSearching() = capture("review-file-search") {
+        FileBrowserContent(
+            directory = "/home/dev/project",
+            path = null,
+            entries = emptyList(),
+            reading = null,
+            content = null,
+            loading = false,
+            error = null,
+            searchQuery = "Unified",
+            searchResults = listOf(
+                dev.opencode.android.core.model.FileSystemEntry(
+                    path = "src/main/kotlin/UnifiedDiff.kt",
+                    type = dev.opencode.android.core.model.FileSystemEntry.EntryType.FILE,
+                ),
+            ),
+            onEnter = {},
+            onUp = {},
+            onRead = {},
+        )
+    }
+
+    @Test
+    fun historyPanel() = capture("review-history") {
+        HistoryPanel(
+            state = historyState(),
+            onPreviousPrompt = {},
+            onNextPrompt = {},
+            onSearchChange = {},
+            onOpenContext = {},
+            onCloseContext = {},
+            onSanitizeChange = {},
+            onExportJson = {},
+            onExportMarkdown = {},
+            onImport = {},
+            onDismissTransfer = {},
+        )
+    }
+
+    @Test
+    fun historyPanelInDarkTheme() = capture("review-history-dark", dark = true) {
+        HistoryPanel(
+            state = historyState().copy(contextOpen = true, context = contextEntries()),
+            onPreviousPrompt = {},
+            onNextPrompt = {},
+            onSearchChange = {},
+            onOpenContext = {},
+            onCloseContext = {},
+            onSanitizeChange = {},
+            onExportJson = {},
+            onExportMarkdown = {},
+            onImport = {},
+            onDismissTransfer = {},
+        )
+    }
+
+    @Test
+    fun historyPanelAtLargeFont() = capture("review-history-large-font", fontScale = 1.5f) {
+        HistoryPanel(
+            state = historyState().copy(contextOpen = true, context = contextEntries()),
+            onPreviousPrompt = {},
+            onNextPrompt = {},
+            onSearchChange = {},
+            onOpenContext = {},
+            onCloseContext = {},
+            onSanitizeChange = {},
+            onExportJson = {},
+            onExportMarkdown = {},
+            onImport = {},
+            onDismissTransfer = {},
+        )
+    }
+
+    @Test
+    fun experimentalSwitches() = capture("review-experimental") {
+        ExperimentalSettingsContent(
+            fileWrites = true,
+            sessionTransfer = false,
+            onFileWritesChange = {},
+            onSessionTransferChange = {},
+        )
+    }
+
+    @Test
+    fun experimentalSwitchesInDarkTheme() = capture("review-experimental-dark", dark = true) {
+        ExperimentalSettingsContent(
+            fileWrites = false,
+            sessionTransfer = true,
+            onFileWritesChange = {},
+            onSessionTransferChange = {},
+        )
+    }
+
+    @Test
     fun baseBranchPicker() = capture("review-base-picker") {
         BaseBranchContent(
             branches = listOf("main", "develop", "phase-6"),
@@ -255,8 +381,9 @@ class ReviewScreenshotTest {
             onUp = {},
             onRead = {},
             onAttach = {},
-            onAttachLines = {},
+            onAttachLines = { _, _ -> },
             onShare = {},
+            onDownload = {},
         )
     }
 
@@ -285,14 +412,40 @@ class ReviewScreenshotTest {
             onUp = {},
             onRead = {},
             onAttach = {},
-            onAttachLines = {},
+            onAttachLines = { _, _ -> },
             onShare = {},
+            onDownload = {},
+        )
+    }
+
+    @Test
+    fun commentList() = capture("review-comment-list") {
+        CommentListContent(
+            comments = listOf(
+                CommentSelection.onDiff(
+                    "src/main/kotlin/UnifiedDiff.kt",
+                    12,
+                    18,
+                    "a line that is only a context line still gets a number",
+                    emptyList(),
+                ),
+                CommentSelection.onDiff(
+                    "docs/ANDROID_APP_PLAN.md",
+                    930,
+                    930,
+                    "the split threshold is named in the plan, not in a layout file",
+                    emptyList(),
+                ),
+            ),
+            onRemove = {},
         )
     }
 
     @Test
     fun contextInspector() = capture("review-context") {
-        ContextPreviewContent()
+        // The real section, not a copy of its rows: a baseline drawn from a test-local row is a
+        // baseline of the row, and it keeps passing after the row it was copied from has changed.
+        ContextSection(state = historyState().copy(context = contextEntries()), onClose = {})
     }
 
     // ------------------------------------------------------------------ fixtures
@@ -402,46 +555,63 @@ class ReviewScreenshotTest {
         }
     }
 
-    /** The context inspector's rows, as the sheet shows them. */
-    @Composable
-    private fun ContextPreviewContent() {
-        val entries = SessionContextInspector.inspect(
-            listOf(
-                SessionMessage.User(
-                    id = "msg_1",
-                    time = SessionMessage.CreatedTime(1),
-                    text = "add a wrap toggle to the diff viewer",
-                ),
-                SessionMessage.Assistant(
-                    id = "msg_2",
-                    time = SessionMessage.Assistant.Time(created = 2, completed = 3),
-                    agent = "build",
-                    model = ModelRef(id = "text", providerID = "fake"),
-                    content = listOf(
-                        AssistantContent.Text("Added a wrap toggle and a split view for wide layouts."),
-                    ),
-                    snapshot = SessionMessage.Assistant.Snapshot(start = "a", end = "b", files = listOf("src/a.kt")),
-                ),
+    /** The context the inspector summarizes, which is a real prompt and a real answer. */
+    private fun contextEntries(): List<SessionContextInspector.Entry> = SessionContextInspector.inspect(
+        listOf(
+            SessionMessage.User(
+                id = "msg_1",
+                time = SessionMessage.CreatedTime(1),
+                text = "add a wrap toggle to the diff viewer",
             ),
-        )
-        Column(
-            modifier = Modifier.fillMaxSize().padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            entries.forEach { entry ->
-                Column {
-                    Text2(entry.type, "${entry.characters} chars")
-                    Text2(entry.preview, "")
-                }
-            }
-        }
-    }
+            SessionMessage.Assistant(
+                id = "msg_2",
+                time = SessionMessage.Assistant.Time(created = 2, completed = 3),
+                agent = "build",
+                model = ModelRef(id = "text", providerID = "fake"),
+                content = listOf(
+                    AssistantContent.Text("Added a wrap toggle and a split view for wide layouts."),
+                ),
+                snapshot = SessionMessage.Assistant.Snapshot(start = "a", end = "b", files = listOf("src/a.kt")),
+            ),
+        ),
+    )
 
-    @Composable
-    private fun Text2(primary: String, secondary: String) {
-        Text(
-            text = if (secondary.isEmpty()) primary else "$primary — $secondary",
-            style = MaterialTheme.typography.bodyMedium,
+    /** The history panel's state: three prompts, a search, an open context and a refusal. */
+    private fun historyState(): HistoryUiState = HistoryUiState(
+        sessionID = "ses_1",
+        open = true,
+        prompts = listOf(
+            HistoryPrompt("msg_1", "add a wrap toggle to the diff viewer"),
+            HistoryPrompt("msg_3", "the split view has to pair a removal with its addition"),
+            HistoryPrompt("msg_5", "now let a comment on a line reach the next prompt"),
+        ),
+        cursor = 1,
+        search = "split",
+        hits = listOf(
+            HistoryHit("msg_3", "User", "the split view has to pair a removal with its addition"),
+        ),
+        context = contextEntries(),
+        transferUsable = true,
+        exportSanitize = true,
+        transfer = TransferResult.Refused("not-found"),
+    )
+
+    /** A text file the viewer shows, with the bytes and the classification agreeing. */
+    private fun textFile(): dev.opencode.android.core.data.composer.FileReadResult {
+        val body = """
+            package dev.opencode.android.feature.review
+
+            /** The review screen: the scope picker and the diff. */
+            class ReviewScreen(val state: ReviewUiState) {
+                fun openFile(path: String) = state.copy(position = ReviewPosition(path))
+            }
+        """.trimIndent()
+        return dev.opencode.android.core.data.composer.FileReadResult(
+            path = "/home/dev/project/src/main/kotlin/ReviewScreen.kt",
+            bytes = body.toByteArray(),
+            kind = dev.opencode.android.core.data.composer.FileContentKind.TEXT,
+            mime = "text/plain",
+            text = body,
         )
     }
 

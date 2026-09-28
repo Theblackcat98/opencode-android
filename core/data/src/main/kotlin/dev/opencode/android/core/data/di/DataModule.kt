@@ -12,7 +12,9 @@ import dev.opencode.android.core.data.composer.ComposerMemory
 import dev.opencode.android.core.data.composer.DataStoreComposerMemory
 import dev.opencode.android.core.data.repository.DefaultServerRepository
 import dev.opencode.android.core.data.repository.ServerRepository
+import dev.opencode.android.core.data.preferences.DataStoreExperimentalPreferences
 import dev.opencode.android.core.data.preferences.DataStoreModelPreferences
+import dev.opencode.android.core.data.preferences.ExperimentalPreferences
 import dev.opencode.android.core.data.preferences.ModelPreferences
 import dev.opencode.android.core.data.security.AndroidKeystoreCredentialStore
 import dev.opencode.android.core.data.security.SecureCredentialStore
@@ -87,6 +89,20 @@ object DataModule {
     fun provideAttentionPreferences(
         @ApplicationContext context: Context,
     ): AttentionPreferences = DataStoreAttentionPreferences(context)
+
+    /**
+     * The experimental switches (plan §4.2, §5.2).
+     *
+     * They are the client's for the same reason a mute is: the server has no opinion about whether
+     * *this* app may write to it, and a setting that travelled would turn the desktop's features off
+     * as well. Off by default, because a route under `/api/experimental/` may be gone on the next
+     * release and a feature that is off until asked for cannot break.
+     */
+    @Provides
+    @Singleton
+    fun provideExperimentalPreferences(
+        @ApplicationContext context: Context,
+    ): ExperimentalPreferences = DataStoreExperimentalPreferences(context)
 
     /**
      * The composer's client-side memory: per-session drafts, per-server prompt history and the

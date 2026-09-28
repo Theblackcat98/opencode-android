@@ -131,18 +131,25 @@ class FileReader(
         /**
          * What [bytes] are, as a pure function of the content and the name.
          *
-         * A NUL byte or a malformed UTF-8 sequence is binary, whatever the extension says; a body
-         * that decodes and has no control characters is text; the image types are pictures. An
-         * empty file is text, because a viewer that shows nothing is better than a download button
-         * for a file with no bytes.
+         * **The type the server sent decides, and only then the bytes.** An image is an image
+         * because the server said so; its bytes are not UTF-8 by definition, so a `NUL` or a strict
+         * UTF-8 test run first would classify every picture as a binary and the image branch below
+         * would be unreachable — which is exactly what it was before this ordering was fixed, and
+         * exactly the kind of thing a test that passed a text body through it would not find.
+         *
+         * Once the server has not said "image", the bytes decide: a `NUL` byte or a malformed UTF-8
+         * sequence is binary whatever the extension says, a body that decodes and has no control
+         * characters is text, and the extension only picks the language for one. An empty file is
+         * text, because a viewer that shows nothing is better than a download button for a file
+         * with no bytes.
          */
         fun classify(path: String, bytes: ByteArray, mime: String?): FileReadResult {
             val type = mime?.substringBefore(';')?.trim()?.lowercase()
             val kind = when {
                 bytes.isEmpty() -> FileContentKind.TEXT
+                type != null && AttachmentPolicy.classify(type) == AttachmentKind.IMAGE -> FileContentKind.IMAGE
                 bytes.any { it == 0.toByte() } -> FileContentKind.BINARY
                 !isValidUtf8(bytes) -> FileContentKind.BINARY
-                type != null && AttachmentPolicy.classify(type) == AttachmentKind.IMAGE -> FileContentKind.IMAGE
                 AttachmentPolicy.classify(type) == AttachmentKind.BINARY && looksBinary(bytes) -> FileContentKind.BINARY
                 else -> FileContentKind.TEXT
             }

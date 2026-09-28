@@ -62,31 +62,15 @@
     <string name="review_comment_on">%1$s:%2$s</string>
     <string name="review_comment_empty">An empty comment is not sent.</string>
 
-    <!-- Revert, redo and fork -->
-    <string name="revert_title">Undo</string>
-    <string name="revert_stage">Undo to here</string>
-    <string name="revert_stage_body">The files this turn changed are restored, and the prompt goes back into the composer. The session is stopped first and any queued prompt is cancelled.</string>
-    <string name="revert_confirm">Undo this turn</string>
-    <string name="revert_staged">Undo staged</string>
-    <string name="revert_staged_files">%1$d files restored</string>
-    <string name="revert_staged_none">The transcript is rolled back; the working copy was not snapshotted, so no file changed.</string>
-    <string name="revert_redo">Redo</string>
-    <string name="revert_redo_body">Take the rollback back. The files are put the way they were and the composer keeps what you have typed.</string>
-    <string name="revert_in_progress">Working…</string>
-    <string name="revert_send_commits_first">The revert is committed before this prompt is sent.</string>
-    <string name="revert_blocked">A revert is in progress.</string>
-    <string name="revert_failed_interrupt">The session would not stop, so nothing was rolled back.</string>
-    <string name="revert_failed_cancel">A queued prompt could not be cancelled, so nothing was rolled back.</string>
-    <string name="revert_failed_stage">The server refused the rollback.</string>
-    <string name="revert_restored_prompt">The prompt is back in the composer.</string>
-
-    <!-- Fork -->
-    <string name="fork_title">Fork</string>
-    <string name="fork_from_here">Fork from here</string>
-    <string name="fork_from_here_body">A copy of this session with everything before this message removed.</string>
-    <string name="fork_origin">Forked from %1$s</string>
-    <string name="fork_boundary_before">before this message</string>
-    <string name="fork_boundary_through">through this message</string>
+    <!--
+      Undo, redo and fork have no strings of their own here on purpose. Their UI belongs to the two
+      features that own it: the timeline offers "undo to here" and "fork from here" on a user message,
+      and the composer shows the staged-revert banner and the commit-then-send note. A second set of
+      sentences here would be a second thing to translate and a second thing to disagree, so the
+      Phase 6 module declares none of them. The one message a review does own is a failure, and it
+      says which step failed because "the undo did not work" is not actionable.
+    -->
+    <string name="revert_failed_step">%1$s: %2$s</string>
 
     <!-- File browser and viewer -->
     <string name="files_title">Files</string>
@@ -101,19 +85,18 @@
     <string name="files_share">Share</string>
     <string name="files_download">Download</string>
     <string name="files_binary">This file cannot be shown. Share or download it instead.</string>
-    <string name="files_too_large">%1$s is larger than the viewer will open.</string>
-    <string name="files_line_range">Lines %1$s</string>
-    <string name="files_select_start">Select the first line</string>
-    <string name="files_select_end">Select the last line</string>
+    <string name="files_too_large">%1$s more lines. Open the file on the server to read them.</string>
+    <string name="files_line_range">Selected %1$s. Tap a line to change it.</string>
     <string name="files_edit">Edit on the server</string>
-    <string name="files_edit_body">This writes to the machine the agent is working on. It is an experimental route and it is off unless you turn it on.</string>
+    <string name="files_edit_body">This replaces the whole file on the machine the agent is working on. It is an experimental route, and it is off unless you turn it on.</string>
+    <string name="files_edit_save">Write it</string>
     <string name="files_edit_saved">Saved. %1$s</string>
+    <string name="files_edit_failed">The server refused the write: %1$s</string>
     <string name="files_edit_off">Remote editing is off.</string>
-    <string name="files_changed">%1$s changed on the server</string>
-    <string name="files_bytes">%1$s</string>
+    <string name="files_loading">Reading…</string>
+    <string name="files_no_results">No file matches.</string>
 
     <!-- History tools -->
-    <string name="history_title">History</string>
     <string name="history_jump">Jump to a message</string>
     <string name="history_previous_prompt">Previous prompt</string>
     <string name="history_next_prompt">Next prompt</string>
@@ -126,12 +109,10 @@
     <string name="history_export_body">Exporting a transcript is an experimental route; the app hides it if this server does not have it.</string>
     <string name="history_export_done">Exported %1$d messages.</string>
     <string name="history_import">Import</string>
-    <string name="history_import_body">A session the server already has is refused, and parents must be imported before their children.</string>
     <string name="history_import_done">Imported as %1$s.</string>
     <string name="context_title">Context</string>
-    <string name="context_body">%1$d messages after the last compaction, %2$s of text.</string>
+    <string name="context_body">%1$d messages after the last compaction, %2$d characters.</string>
     <string name="context_empty">Nothing after the last compaction.</string>
-    <string name="context_entry">%1$s · %2$s</string>
     <string name="context_files">%1$d files</string>
 
     <!-- Experimental switches -->
@@ -141,9 +122,7 @@
     <string name="experimental_export">Export and import sessions</string>
     <string name="experimental_export_body">Uses the experimental export and import routes. Hidden when this server does not have them.</string>
     <string name="experimental_unavailable">This server does not have that route.</string>
-    <string name="experimental_probing">Checking this server…</string>
 
     <string name="action_retry">Try again</string>
     <string name="action_dismiss">Dismiss</string>
-    <string name="action_share">Share</string>
 </resources>
