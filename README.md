@@ -5,11 +5,33 @@ network, or any network your phone can reach, and drives the server's full featu
 
 ## Status
 
-Phase 2, *Projects, sessions and the live timeline*, is complete. The app pairs with one or more OpenCode servers,
-keeps a live event stream to each of them, and shows what they are doing. The phase table is in
+Phase 3, *Driving sessions*, is complete. The app pairs with one or more OpenCode servers, keeps a live event
+stream to each of them, and now **drives** them from the phone. The phase table is in
 [`docs/ANDROID_APP_PLAN.md`](docs/ANDROID_APP_PLAN.md#6-phases).
 
 What works today:
+
+- **Start a session**: pick a location from the projects, from a directory the server has run in, or by browsing
+  the server's filesystem; then an agent and a model, with an optional title. The agents and models offered are the
+  ones *that* location defines.
+- **Talk to the agent**: steer by default, queue through a toggle or a long press on send, and `resume` for input
+  that should wait for a turn. The prompt is on screen the moment you send it, and a network retry sends the same
+  prompt rather than a second one.
+- **Control a running turn**: stop it, optionally resuming what you had already typed, or send its blocking tools to
+  the background so it can finish.
+- **Approve and answer**: a request dock in the session, and a global inbox across every session, for permissions
+  and questions. "Always allow" shows the exact patterns it will store before it stores them, and a rejection can
+  carry a note back to the agent.
+- **Every form, one engine**: string, multiselect, boolean, number, integer and external-link fields, with the
+  server's own conditional visibility and validation. A question renders beside the tool that asked it, web-search
+  consent as a dialog, and an MCP elicitation as a sheet that names the server.
+- **Pickers**: agents with their colors and descriptions and a cycle button; models grouped by provider with
+  search, capability badges, context size, price, variants, and recents and favorites kept on the device.
+- **Manage a session**: rename it, edit its metadata, delete it with a warning that names the subagents that go
+  with it, and copy one message or the whole conversation as text.
+- **See what went wrong**: a busy indicator, a retry countdown with the provider's own call to action and link, a
+  structured error card, and a "no model available" empty state that says how to fix it.
+- And from Phase 2:
 
 - A per-server home: the projects with their repository and checkout, the sessions with a live execution, and the
   most recent sessions.

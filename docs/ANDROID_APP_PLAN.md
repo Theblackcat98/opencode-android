@@ -220,7 +220,7 @@ phases that reuse it get cheaper as a result.
 | P0 | Foundation | Build system, schema models, fixture harness, fake provider, CI | All | Complete |
 | P1 | Connect and pair | HTTP client, auth, server registry, `EventStreamClient`, resync signal | All | Complete |
 | P2 | Live read-only view | `SyncedResource` stores, `TimelineReducer`, Markdown, code and tool renderers | P3–P10 | Complete |
-| P3 | Drive sessions (MVP) | Composer pipeline, pickers, `RequestCenter`, **forms engine** | P4, P5, P8, P9 | Planned |
+| P3 | Drive sessions (MVP) | Composer pipeline, pickers, `RequestCenter`, **forms engine** | P4, P5, P8, P9 | Complete |
 | P4 | Background and notifications | `ConnectionService`, notification and action infrastructure, unread model | P7, P8, P9, P10 | Planned |
 | P5 | Rich composer | Attachment pipeline, autocomplete and mention engine | P6, P8 | Planned |
 | P6 | Review and history | Diff engine and viewer, file viewer, revert and fork flows | P7, P9 | Planned |
@@ -478,6 +478,66 @@ replay-equals-projection test covers.
 
 **Exit criteria.** Against the fake provider in CI and a real provider by hand, entirely from the phone: create a
 session, prompt, approve a shell permission, answer a question, queue a follow-up, interrupt, and resume.
+
+**Status.** Complete. Verified with 377 JVM unit tests (108 of them added by this phase) and 16 integration tests
+(5 of them added by this phase) against a real 2.0.18 server started by `scripts/dev-server.sh`, Android Lint
+clean, and both `play` and `fdroid` debug APKs assembled. The criterion is a scenario rather than a function, so
+it is driven end to end: `LiveDrivingIntegrationTest` creates a session, prompts it, blocks the turn on a
+scripted question, parks a queued follow-up, switches its delivery to steer, interrupts the live execution with
+`resume=true`, lets the follow-up land, and then compares the transcript the app assembled against the server's
+own projection. A second test asks for a shell permission through session-scoped rules, answers it once, and
+asserts the tool then ran; a third answers a question form and checks the server recorded the answer; a fourth
+proves every driving operation is reachable and that a location resync adopts the server's pending requests.
+Every wait is bounded and names what it was waiting for.
+
+Driving that scenario against a live server found four things no unit test would have:
+
+- `session.interrupt` answers with a bare `SessionInterruptResponse`, not the `{data: …}` wrapper every other route
+  uses. The spec says so and the server confirms it; wrapping it failed to decode.
+- `session.inbox.delivery.changed` had no reducer handler at all, because Phase 2 only read the inbox. Switching a
+  parked prompt from queue to steer silently did nothing.
+- The `form.*` and `permission.*` events named a session without implementing `EventPayload.SessionScoped`, so
+  nothing that dispatches by session could see them.
+- A queued prompt on an *idle* session is delivered at once, and `interrupted` is false unless there is a live
+  execution to interrupt. Both are the server's documented rules, so the scenario blocks the turn on a question —
+  the only window in which a parked prompt and a real interrupt both exist.
+
+**Not verified here, and why.** The criterion says "entirely from the phone", and there is no emulator and no
+device here, so the physical half of it is unverified: real touch input, the camera-free QR path, on-device
+rendering at real densities, TalkBack, and "a real provider by hand". The scripted fake provider stands in for a
+real one, and a provider that streams differently — tool calls in several deltas, a permission on a real key
+exhaustion, an MCP server that elicits mid-answer — is exactly what a real provider adds and what a fake one
+cannot. The 1.5x Roborazzi baseline is the closest available proxy for a large-display, large-font reading of
+these screens, and it is what caught the clipped "Reject" button. The remaining device work belongs to the manual
+matrix in [§5.3](#53-testing-strategy).
+
+**Deviations.**
+
+- **The session screen is composed in the app module.** A feature depends on the core modules only (see the feature
+  convention plugin), and the session screen is genuinely made of three features: the timeline and its management
+  in `sessions`, the composer and the pickers in `composer`, the dock and the form renderers in `requests`. Putting
+  the wiring in the navigation host is the only arrangement that keeps the rule, so the app module holds
+  `SessionHost` and `NewSessionHost` and holds no logic: the state is the server's projection and the actions are
+  the operations.
+- **One Retrofit interface, not one per tag.** [§4.1](#41-modules) describes API interfaces per tag. `ServerApi`
+  keeps its Phase 1 and Phase 2 methods and gains the Phase 3 ones in a marked section, because splitting them
+  means either two Retrofit instances over the same OkHttp client — two generated proxies, one connection pool, no
+  behavioural gain — or changing the factory's contract that every caller injects. The section comments mark
+  where the split would go.
+- **Integration configuration is readable from a Gradle property** as well as the environment. A long-lived Gradle
+  daemon does not see the environment of a client that starts after it, and a run that silently skipped is worse
+  than a run that failed; CI sets the environment and is unaffected.
+
+**Known limitations.**
+
+- The model picker's favorites and recents are per server and read from DataStore; the new-session sheet is
+  currently handed empty lists, so a model pinned from a session does not show as pinned in the picker the new
+  session opens. The store and the flows exist; the sheet is not wired to them yet.
+- A permission request whose `save` is empty cannot be answered "always": the button is disabled, because there
+  would be nothing to store and the server would reject it. `session.permission.create` is a Phase 10 operation, so
+  no request in this phase can be raised any other way.
+- The "no model available" empty state explains how to connect a provider and points at the CLI. There is no
+  in-app login; that is Phase 8, as the plan says.
 
 ---
 
@@ -985,7 +1045,7 @@ that delivers it.
 | P0 | Foundation (models, fixtures, harness, CI) | Complete |
 | P1 | 3 | Complete |
 | P2 | 12 | Complete |
-| P3 | 20 | Planned |
+| P3 | 20 | Complete |
 | P4 | 1 | Planned |
 | P5 | 10 | Planned |
 | P6 | 15 | Planned |
@@ -1010,7 +1070,7 @@ and is covered by the reducer or invalidation tests.
 | P0 | All 94 event types modeled in `EventPayload` / `EventTypes`, contract-tested against recorded fixtures | Complete |
 | P1 | `server.connected` (fired, logged, and published as the resync signal) | Complete |
 | P2 | `location.shutdown`, `models-dev.refreshed`, `model.updated`, `agent.updated`, `session.created`, `session.agent.selected`, `session.model.selected`, `session.moved`, `session.renamed`, `session.metadata.updated`, `session.permissions`, `session.viewed`, `session.usage.updated`, `session.deleted`, `session.forked`, `session.inbox.delivered`, `session.inbox.enqueued`, `session.inbox.cancelled`, `session.inbox.delivery.changed`, `session.execution.started`, `session.execution.succeeded`, `session.execution.failed`, `session.execution.interrupted`, `session.instructions.updated`, `session.synthetic`, `session.skill.activated`, `session.shell.started`, `session.shell.ended`, `session.step.started`, `session.step.streamed`, `session.step.ended`, `session.step.failed`, `session.text.started`, `session.text.delta`, `session.text.ended`, `session.reasoning.started`, `session.reasoning.delta`, `session.reasoning.ended`, `session.tool.input.started`, `session.tool.input.delta`, `session.tool.input.ended`, `session.tool.called`, `session.tool.progress`, `session.tool.success`, `session.tool.failed`, `session.retry.scheduled`, `session.compaction.started`, `session.compaction.delta`, `session.compaction.ended`, `session.compaction.failed`, `session.revert.staged`, `session.revert.cleared`, `session.revert.committed`, `project.updated`, `session.status`, `session.idle` | Complete |
-| P3 | `permission.asked`, `permission.replied`, `form.created`, `form.replied`, `form.cancelled` | Planned |
+| P3 | `permission.asked`, `permission.replied`, `form.created`, `form.replied`, `form.cancelled` | Complete |
 | P4 | `installation.updated`, `installation.update-available` | Planned |
 | P5 | `reference.updated`, `command.updated`, `skill.updated` | Planned |
 | P6 | `filesystem.changed`, `vcs.branch.updated` | Planned |
