@@ -263,7 +263,8 @@ private fun NewSessionHost(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val created by viewModel.created.collectAsStateWithLifecycle()
-    val uriHandler = LocalUriHandler.current
+    val favorites by viewModel.modelFavorites.collectAsStateWithLifecycle()
+    val recents by viewModel.modelRecents.collectAsStateWithLifecycle()
 
     LaunchedEffect(created) {
         val sessionId = created ?: return@LaunchedEffect
@@ -273,8 +274,8 @@ private fun NewSessionHost(
 
     NewSessionSheet(
         state = state,
-        favorites = emptyList(),
-        recents = emptyList(),
+        favorites = favorites,
+        recents = recents,
         modelSearch = "",
         onTitleChange = viewModel::setTitle,
         onSelectProject = viewModel::selectLocation,

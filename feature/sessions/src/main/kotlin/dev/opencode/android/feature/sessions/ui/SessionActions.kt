@@ -2,14 +2,11 @@ package dev.opencode.android.feature.sessions.ui
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -145,40 +142,6 @@ fun RenameDialog(
 private fun SheetAction(labelRes: Int, onClick: () -> Unit) {
     TextButton(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
         Text(stringResource(labelRes), modifier = Modifier.fillMaxWidth())
-    }
-}
-
-/** The overflow menu in the session top bar, which is where the actions live. */
-@Composable
-fun SessionOverflowMenu(
-    expanded: Boolean,
-    onExpandedChange: (Boolean) -> Unit,
-    onRename: () -> Unit,
-    onCopyMessage: () -> Unit,
-    onCopyTranscript: () -> Unit,
-    onDelete: () -> Unit,
-) {
-    Row {
-        DropdownMenu(expanded = expanded, onDismissRequest = { onExpandedChange(false) }) {
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.session_rename)) },
-                onClick = { onExpandedChange(false); onRename() },
-            )
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.session_copy_message)) },
-                onClick = { onExpandedChange(false); onCopyMessage() },
-            )
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.session_copy_transcript)) },
-                onClick = { onExpandedChange(false); onCopyTranscript() },
-            )
-            DropdownMenuItem(
-                text = {
-                    Text(stringResource(R.string.session_delete), color = MaterialTheme.colorScheme.error)
-                },
-                onClick = { onExpandedChange(false); onDelete() },
-            )
-        }
     }
 }
 

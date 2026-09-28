@@ -40,6 +40,12 @@ fun ModelPickerSheet(
     onToggleFavorite: (ModelRef) -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
+    /**
+     * The models this device pinned and used recently, which the server does not know about
+     * (features doc §8). They come first, because they are what the user reached for last time.
+     */
+    favorites: List<ModelRef> = emptyList(),
+    recents: List<ModelRef> = emptyList(),
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState, modifier = modifier) {
@@ -56,6 +62,28 @@ fun ModelPickerSheet(
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp),
             )
+            // Favorites and recents first, and only while a search is not narrowing the catalog:
+            // pinning a model is a standing choice, so it should not be a section a search hides.
+            if (search.isBlank()) {
+                PinnedSection(
+                    title = stringResource(R.string.model_favorites),
+                    refs = favorites,
+                    groups = groups,
+                    selected = selected,
+                    onSelect = onSelect,
+                    onSelectVariant = onSelectVariant,
+                    onToggleFavorite = onToggleFavorite,
+                )
+                PinnedSection(
+                    title = stringResource(R.string.model_recents),
+                    refs = recents,
+                    groups = groups,
+                    selected = selected,
+                    onSelect = onSelect,
+                    onSelectVariant = onSelectVariant,
+                    onToggleFavorite = onToggleFavorite,
+                )
+            }
             if (groups.isEmpty()) {
                 ModelEmptyState()
                 return@Column
@@ -87,6 +115,49 @@ fun ModelPickerSheet(
     }
 }
 
+/**
+ * One of the client's own sections: the models it pinned or used recently.
+ *
+ * A pinned or recent model the current catalog does not list is skipped rather than shown as a
+ * broken row, because a picker entry the user cannot select is worse than its absence.
+ */
+@Composable
+private fun PinnedSection(
+    title: String,
+    refs: List<ModelRef>,
+    groups: List<ModelCatalog.ProviderGroup>,
+    selected: ModelRef?,
+    onSelect: (ModelRef) -> Unit,
+    onSelectVariant: (ModelRef, String) -> Unit,
+    onToggleFavorite: (ModelRef) -> Unit,
+) {
+    val entries = groups.asSequence()
+        .flatMap { it.entries }
+        .filter { entry -> refs.any { it.id == entry.info.id && it.providerID == entry.info.providerID } }
+        .toList()
+    if (entries.isEmpty()) return
+    ModelSectionHeader(title)
+    entries.forEach { entry ->
+        val ref = entry.ref
+        ModelRow(
+            name = entry.info.name,
+            ref = ref,
+            supportsTools = entry.supportsTools,
+            supportsImages = entry.supportsImageInput,
+            contextTokens = entry.info.limit.context,
+            inputCost = entry.inputCost,
+            outputCost = entry.outputCost,
+            selected = selected?.id == ref.id && selected.providerID == ref.providerID,
+            isFavorite = entry.isFavorite,
+            variants = ModelCatalog.variantsOf(entry.info).map { it.id },
+            activeVariant = selected?.variant,
+            onSelect = { onSelect(ref) },
+            onSelectVariant = { variant -> onSelectVariant(ref, variant) },
+            onToggleFavorite = { onToggleFavorite(ref) },
+        )
+    }
+}
+
 /** The agent picker, as a sheet, which is the only presentation a phone has room for. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -106,25 +177,6 @@ fun AgentPickerSheet(
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
             )
             AgentPicker(agents = agents, selected = selected, onSelect = onSelect)
-        }
-    }
-}
-
-/** A standalone variant chooser, for the model picker when a model has many variants. */
-@Composable
-fun VariantRow(
-    variants: List<String>,
-    active: String?,
-    onSelect: (String) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        variants.forEach { variant ->
-            FilterChip(
-                selected = variant == active,
-                onClick = { onSelect(variant) },
-                label = { Text(stringResource(R.string.model_variant, variant)) },
-            )
         }
     }
 }

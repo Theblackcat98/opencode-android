@@ -26,6 +26,8 @@ import dev.opencode.android.feature.composer.ui.ComposerViewModel
 import dev.opencode.android.feature.composer.ui.InboxPanel
 import dev.opencode.android.feature.composer.ui.ModelPickerSheet
 import dev.opencode.android.feature.requests.ui.RequestActions
+import dev.opencode.android.feature.requests.ui.messageRes
+import dev.opencode.android.feature.requests.ui.takesArgument
 import dev.opencode.android.feature.requests.ui.RequestDock
 import dev.opencode.android.feature.sessions.R
 import dev.opencode.android.feature.sessions.ui.SessionActionsSheet
@@ -86,6 +88,16 @@ fun SessionHost(
         onOpenLink = { uriHandler.openUri(it) },
     )
 
+    // The failure wording lives in the requests feature so there is one mapping for the whole app;
+    // the composer takes it ready-made because a feature may not import another feature.
+    val composerError = composerState.error?.let { error ->
+        if (error.takesArgument) {
+            stringResource(error.kind.messageRes(), error.message)
+        } else {
+            stringResource(error.kind.messageRes())
+        }
+    }
+
     SessionScreen(
         state = state,
         onNavigateBack = onNavigateBack,
@@ -109,6 +121,8 @@ fun SessionHost(
                 onOpenModelPicker = { modelPickerOpen = true },
                 onCycleAgent = composer::cycleAgent,
                 onCycleVariant = composer::cycleVariant,
+                errorMessage = composerError,
+                onDismissError = composer::dismissError,
             )
         },
         menuSlot = {
@@ -166,6 +180,8 @@ fun SessionHost(
             onSelectVariant = { ref, variant -> composer.selectModel(ref.copy(variant = variant)) },
             onToggleFavorite = composer::toggleFavorite,
             onDismiss = { modelPickerOpen = false },
+            favorites = favorites,
+            recents = recents,
         )
     }
 }

@@ -31,7 +31,6 @@
     <string name="form_custom_hint">Type your own answer</string>
     <string name="form_required">Required</string>
     <string name="form_optional">Optional</string>
-    <string name="form_open_link">Open the link to continue</string>
     <string name="form_external">Open</string>
     <string name="form_sending">Sending the answer</string>
     <string name="form_mcp_title">%1$s needs something</string>
@@ -62,7 +61,6 @@
     <string name="requests_inbox_empty_title">Nothing is waiting</string>
     <string name="requests_inbox_empty_subtitle">When the agent needs a permission or an answer, it appears here and in the session.</string>
     <string name="requests_inbox_open_session">Open the session</string>
-    <string name="requests_inbox_count">%1$d waiting</string>
 
     <!-- Failure messages -->
     <string name="action_error_unauthorized">The server rejected this device. Pair it again.</string>

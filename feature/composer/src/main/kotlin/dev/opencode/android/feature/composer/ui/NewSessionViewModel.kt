@@ -20,7 +20,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -93,7 +95,7 @@ data class NewSessionUiState(
 @OptIn(ExperimentalCoroutinesApi::class)
 class NewSessionViewModel @Inject constructor(
     private val dataSets: ServerDataRegistry,
-    @Suppress("unused") private val modelPreferences: ModelPreferences,
+    private val modelPreferences: ModelPreferences,
 ) : ViewModel() {
 
     private val local = MutableStateFlow(LocalState())
@@ -161,6 +163,31 @@ class NewSessionViewModel @Inject constructor(
 
     /** The id of the session that was created, for the caller to navigate to. */
     val created: StateFlow<String?> = createdSession.asStateFlow()
+
+    /**
+     * The models this device pinned and used recently on this server.
+     *
+     * The client owns these (features doc §8), so they are read from the store rather than from the
+     * server, and they follow the active server the way the session's picker does.
+     */
+    val modelFavorites: StateFlow<List<ModelRef>> = dataSets.active
+        .map { it?.serverId }
+        .distinctUntilChanged()
+        .flatMapLatest { serverId -> serverId?.let(modelPreferences::favorites) ?: flowOf(emptyList()) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT), emptyList())
+
+    /** The models used most recently on this server, newest first. */
+    val modelRecents: StateFlow<List<ModelRef>> = dataSets.active
+        .map { it?.serverId }
+        .distinctUntilChanged()
+        .flatMapLatest { serverId -> serverId?.let(modelPreferences::recents) ?: flowOf(emptyList()) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT), emptyList())
+
+    /** Pins or unpins a model, which the new-session sheet's picker offers too. */
+    fun toggleFavorite(model: ModelRef) {
+        val serverId = dataSets.active.value?.serverId ?: return
+        viewModelScope.launch { modelPreferences.toggleFavorite(serverId, model) }
+    }
 
     fun setTitle(title: String) {
         local.value = local.value.copy(title = title)

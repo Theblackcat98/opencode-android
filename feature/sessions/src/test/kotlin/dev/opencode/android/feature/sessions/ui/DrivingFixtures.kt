@@ -37,6 +37,39 @@ object DrivingFixtures {
         delivery = Delivery.Queue,
         agent = "build",
         model = ModelRef("text", "fake", "default"),
+        // The catalogs, so the baseline shows the cycle buttons the plan asks for: without an
+        // agent and a model to cycle through there is nothing for them to do.
+        agents = listOf(
+            AgentInfo(
+                id = "build",
+                name = "build",
+                description = "Implements and verifies a change end to end.",
+                mode = "primary",
+                color = "#3B82F6",
+            ),
+            AgentInfo(
+                id = "plan",
+                name = "plan",
+                description = "Researches a task and writes an implementation plan.",
+                mode = "primary",
+                color = "#10B981",
+            ),
+        ),
+        models = listOf(
+            ModelInfo(
+                id = "text",
+                modelID = "text",
+                providerID = "fake",
+                name = "Fake text",
+                variants = listOf(
+                    ModelInfo.Variant("low"),
+                    ModelInfo.Variant("default"),
+                    ModelInfo.Variant("high"),
+                ),
+                cost = listOf(ModelInfo.Cost(input = 3.0, output = 12.0)),
+                limit = ModelInfo.Limit(context = 200_000, output = 4_096),
+            ),
+        ),
         hasAnyModel = true,
         busy = true,
         pending = listOf(

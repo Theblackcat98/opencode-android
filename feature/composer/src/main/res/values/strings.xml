@@ -3,6 +3,7 @@
 
     <!-- Composer -->
     <string name="composer_hint">Message the agent</string>
+    <string name="composer_dismiss">Dismiss</string>
     <string name="composer_send">Send</string>
     <string name="composer_sending">Sending</string>
     <string name="composer_delivery_steer">Steer</string>
@@ -34,7 +35,6 @@
     <!-- Agent picker -->
     <string name="agent_picker_title">Agent</string>
     <string name="agent_no_description">No description</string>
-    <string name="agent_selected">Selected</string>
     <string name="agent_cycles_to">Next: %1$s</string>
     <string name="agent_no_selectable">This location has no agent that can be selected.</string>
 
@@ -43,21 +43,15 @@
     <string name="model_search">Search models</string>
     <string name="model_favorites">Favorites</string>
     <string name="model_recents">Recent</string>
-    <string name="model_default_badge">Default</string>
     <string name="model_favorite_toggle">Pin this model</string>
     <string name="model_capability_tools">Tools</string>
     <string name="model_capability_image">Images</string>
     <string name="model_context">%1$s context</string>
     <string name="model_cost">%1$s in, %2$s out per million tokens</string>
     <string name="model_variant">Variant %1$s</string>
-    <string name="model_disabled">Disabled</string>
-    <string name="model_status_alpha">Alpha</string>
-    <string name="model_status_beta">Beta</string>
-    <string name="model_status_deprecated">Deprecated</string>
     <string name="model_empty">No model matches. Connect a provider on the server first.</string>
     <string name="model_none_available">No model available</string>
     <string name="model_none_available_body">This server has no model configured, so a new session cannot start a turn. Connect a provider on the computer, or run `opencode auth login`, then pull to refresh.</string>
-    <string name="model_variants_label">Reasoning effort</string>
 
     <!-- New session -->
     <string name="new_session_title">New session</string>
@@ -78,7 +72,6 @@
     <string name="new_session_browse_empty">Nothing here</string>
     <string name="new_session_browse_loading">Listing the directory</string>
     <string name="new_session_no_agents">No agent to choose; the server default will be used.</string>
-    <string name="new_session_pick_first">Choose an agent</string>
     <string name="new_session_create_failed">Could not start the session: %1$s</string>
     <string name="new_session_open">New session</string>
 

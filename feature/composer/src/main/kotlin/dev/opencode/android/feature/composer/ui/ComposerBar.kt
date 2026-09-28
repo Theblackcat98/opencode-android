@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -34,8 +35,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.unit.dp
-import dev.opencode.android.core.data.catalog.AgentCatalog
-import dev.opencode.android.core.model.AgentInfo
 import dev.opencode.android.core.model.Delivery
 import dev.opencode.android.feature.composer.R
 
@@ -68,10 +67,26 @@ fun ComposerBar(
     onOpenModelPicker: () -> Unit,
     onCycleAgent: () -> Unit,
     onCycleVariant: () -> Unit,
+    /**
+     * The last failed action, already worded.
+     *
+     * Resolved by the caller rather than here: a feature may not import another feature, the failure
+     * wording belongs to one place so it cannot drift, and the composition root is where the two
+     * meet. `null` when the last action succeeded.
+     */
+    errorMessage: String? = null,
+    onDismissError: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     Surface(modifier = modifier.fillMaxWidth(), tonalElevation = 3.dp) {
         Column(Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
+            // A server with no usable model cannot start a turn, and a composer that silently does
+            // nothing is the worst way to learn that. The plan's empty state says how to fix it;
+            // logging in from the phone is Phase 8.
+            if (!state.hasAnyModel) {
+                NoModelAvailable()
+            }
+            errorMessage?.let { ErrorRow(message = it, onDismiss = onDismissError) }
             OutlinedTextField(
                 value = state.text,
                 onValueChange = onTextChange,
@@ -80,68 +95,86 @@ fun ComposerBar(
                 maxLines = 6,
                 enabled = !state.sending,
             )
+            // The chips get their own line. Sharing one with Stop, Background and send meant the
+            // delivery toggle — the control the plan puts first — sat behind a horizontal scroll and
+            // was clipped by the buttons beside it.
             Row(
-                modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                modifier = Modifier.fillMaxWidth().padding(top = 4.dp).horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                // The cycle buttons the plan asks for: one tap to the next agent or the next
+                // reasoning effort, without opening a picker.
+                if (state.nextAgent != null) {
+                    AssistChip(
+                        onClick = onCycleAgent,
+                        label = { Text(stringResource(R.string.composer_next_agent)) },
+                    )
+                }
+                state.nextVariant?.takeIf { it != state.variant }?.let { next ->
+                    AssistChip(
+                        onClick = onCycleVariant,
+                        label = { Text(stringResource(R.string.model_variant, next)) },
+                    )
+                }
+                FilterChip(
+                    selected = state.delivery == Delivery.Queue,
+                    onClick = {
+                        onDeliveryChange(
+                            if (state.delivery == Delivery.Queue) Delivery.Steer else Delivery.Queue,
+                        )
+                    },
+                    label = {
+                        Text(
+                            stringResource(
+                                if (state.delivery == Delivery.Queue) {
+                                    R.string.composer_delivery_queue
+                                } else {
+                                    R.string.composer_delivery_steer
+                                },
+                            ),
+                        )
+                    },
+                )
+                FilterChip(
+                    selected = state.resume,
+                    onClick = { onResumeChange(!state.resume) },
+                    label = { Text(stringResource(R.string.composer_resume)) },
+                )
+                state.agent?.let { agent ->
+                    AssistChip(
+                        onClick = onOpenAgentPicker,
+                        label = { Text(agent, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                    )
+                }
+                state.model?.let { model ->
+                    AssistChip(
+                        onClick = onOpenModelPicker,
+                        label = {
+                            Text(
+                                model.variant?.let { "${model.id}#$it" } ?: model.id,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        },
+                    )
+                }
+                if (state.pending.isNotEmpty()) {
+                    AssistChip(
+                        onClick = onOpenInbox,
+                        label = { Text(stringResource(R.string.composer_inbox, state.pending.size)) },
+                        colors = AssistChipDefaults.assistChipColors(
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                        ),
+                    )
+                }
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
             ) {
-                Row(
-                    modifier = Modifier.weight(1f).horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    FilterChip(
-                        selected = state.delivery == Delivery.Queue,
-                        onClick = {
-                            onDeliveryChange(
-                                if (state.delivery == Delivery.Queue) Delivery.Steer else Delivery.Queue,
-                            )
-                        },
-                        label = {
-                            Text(
-                                stringResource(
-                                    if (state.delivery == Delivery.Queue) {
-                                        R.string.composer_delivery_queue
-                                    } else {
-                                        R.string.composer_delivery_steer
-                                    },
-                                ),
-                            )
-                        },
-                    )
-                    FilterChip(
-                        selected = state.resume,
-                        onClick = { onResumeChange(!state.resume) },
-                        label = { Text(stringResource(R.string.composer_resume)) },
-                    )
-                    state.agent?.let { agent ->
-                        AssistChip(
-                            onClick = onOpenAgentPicker,
-                            label = { Text(agent, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                        )
-                    }
-                    state.model?.let { model ->
-                        AssistChip(
-                            onClick = onOpenModelPicker,
-                            label = {
-                                Text(
-                                    model.variant?.let { "${model.id}#$it" } ?: model.id,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
-                            },
-                        )
-                    }
-                    if (state.pending.isNotEmpty()) {
-                        AssistChip(
-                            onClick = onOpenInbox,
-                            label = { Text(stringResource(R.string.composer_inbox, state.pending.size)) },
-                            colors = AssistChipDefaults.assistChipColors(
-                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                            ),
-                        )
-                    }
-                }
+                Spacer(Modifier.weight(1f))
                 if (state.busy) {
                     TextButton(onClick = { onInterrupt(false) }) {
                         Text(stringResource(R.string.composer_interrupt))
@@ -214,33 +247,24 @@ fun SendButton(
     }
 }
 
-/** The cycle buttons, which is all the agent and variant pickers need on a phone. */
+/** A failed action, with the wording the composition root resolved. */
 @Composable
-fun CycleChips(
-    agent: String?,
-    nextAgent: AgentInfo?,
-    variant: String?,
-    nextVariant: String?,
-    onCycleAgent: () -> Unit,
-    onCycleVariant: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Row(
-        modifier = modifier.horizontalScroll(rememberScrollState()),
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-        verticalAlignment = Alignment.CenterVertically,
+private fun ErrorRow(message: String, onDismiss: () -> Unit) {
+    Surface(
+        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+        color = MaterialTheme.colorScheme.errorContainer,
+        contentColor = MaterialTheme.colorScheme.onErrorContainer,
     ) {
-        if (agent != null && nextAgent != null) {
-            AssistChip(
-                onClick = onCycleAgent,
-                label = { Text(stringResource(R.string.agent_cycles_to, AgentCatalog.label(nextAgent))) },
+        Row(
+            modifier = Modifier.padding(start = 12.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = message,
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.weight(1f),
             )
-        }
-        if (variant != null && nextVariant != null && nextVariant != variant) {
-            AssistChip(
-                onClick = onCycleVariant,
-                label = { Text(stringResource(R.string.model_variant, nextVariant)) },
-            )
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.composer_dismiss)) }
         }
     }
 }
