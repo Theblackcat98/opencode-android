@@ -25,3 +25,18 @@ data class Paged<T>(
         val next: String? = null,
     )
 }
+
+/**
+ * `POST /api/session/{id}/generate` (schema `SessionGenerateResponse`): the answer to a side
+ * question.
+ *
+ * The route answers with the same `{data}` wrapper as everything else rather than with bare
+ * `{text}`, so the client decodes [SessionGenerateResponse] and not [SessionGenerateResult] — a
+ * mismatch here would fail on every `/btw`.
+ */
+@Serializable
+data class SessionGenerateResponse(val data: SessionGenerateResult)
+
+/** The text `session.generate` produced. */
+@Serializable
+data class SessionGenerateResult(val text: String)

@@ -69,6 +69,15 @@ class ServerDataSet(
     val browser: DirectoryBrowser = DirectoryBrowser(api, scope)
 
     /**
+     * The composer's catalogs: `command.list`, `skill.list`, `reference.list` and the `fs.find`
+     * search behind `@` completion.
+     *
+     * They are location-scoped and read once, so they are [SyncedResource]s like the agents and
+     * models, and `command.updated`, `skill.updated` and `reference.updated` invalidate them.
+     */
+    val composerCatalogs: ComposerCatalogs = ComposerCatalogs(serverId, api, scope)
+
+    /**
      * The server's own version, seeded from `GET /api/info` and kept current by the
      * `installation.*` events. Phase 4 turns an announced update into a notification.
      */
@@ -164,6 +173,7 @@ class ServerDataSet(
         models.values.forEach { it.invalidate() }
         defaultModels.values.forEach { it.invalidate() }
         timelines.values.forEach { it.resync() }
+        composerCatalogs.resync()
         val directories = (locations.keys + requests.knownDirectories).toSet()
         if (directories.isEmpty()) {
             scope.launch { requests.resync(null) }
@@ -184,6 +194,12 @@ class ServerDataSet(
                 defaultModels.values.forEach { it.invalidate() }
             }
 
+            // The three file-based catalogs the composer completes from. All three events carry an
+            // empty payload, so the location in the envelope is the only thing to act on, and an
+            // event without one means every location the client has open.
+            is EventPayload.CommandUpdated, is EventPayload.SkillUpdated, is EventPayload.ReferenceUpdated ->
+                composerCatalogs.invalidate(event.location?.directory)
+
             is EventPayload.LocationShutdown -> {
                 val directory = event.location?.directory ?: return
                 locations.remove(directory)?.clear()
@@ -191,6 +207,7 @@ class ServerDataSet(
                 models.remove(directory)?.clear()
                 defaultModels.remove(directory)?.clear()
                 requests.dropLocation(directory)
+                composerCatalogs.dropLocation(directory)
                 scope.launch { runCatching { cache.dropLocation(serverId, directory) } }
             }
 
@@ -237,5 +254,6 @@ class ServerDataSet(
         models.clear()
         defaultModels.clear()
         projects.clear()
+        composerCatalogs.clear()
     }
 }

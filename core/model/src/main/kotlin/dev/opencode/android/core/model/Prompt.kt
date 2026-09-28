@@ -77,3 +77,56 @@ data class UserPromptPayload(
     val skills: List<PromptSkillAttachment>? = null,
     val metadata: Map<String, JsonElement>? = null,
 )
+
+/**
+ * The mime type and payload of a `data:` URL, or `null` for any other scheme.
+ *
+ * `data:[<mediatype>][;base64],<data>`: the type ends at the first `;` or `,` and is empty when the
+ * URL omits it, which the API allows and which this reports as `""` rather than guessing `text/plain`.
+ */
+fun dataUrlParts(uri: String): Pair<String, String>? {
+    if (!uri.startsWith("data:")) return null
+    val comma = uri.indexOf(',')
+    if (comma < 0) return null
+    val header = uri.substring("data:".length, comma)
+    val payload = uri.substring(comma + 1)
+    val mime = header.substringBefore(';')
+    return mime to payload
+}
+
+/**
+ * A request-shaped attachment, rendered as the stored shape a user message carries.
+ *
+ * **For the optimistic item only.** The composer shows a prompt on screen before the server has
+ * confirmed it (plan §4.2's one permitted optimism), and the message that is shown has to have the
+ * same shape as the one that replaces it — the same chips, in the same place — or the transcript
+ * visibly rearranges itself when the event arrives.
+ *
+ * **The bytes are deliberately not copied.** A five-megabyte picture is already in memory once as the
+ * draft the user picked; a second copy inside a pending item, which lives until the event arrives,
+ * is the kind of doubling that makes an OutOfMemoryError on a mid-range phone. What the copy keeps is
+ * the honest part: the source (`inline` or the `file:` URI) and the name, which is all the chip
+ * renders.
+ */
+fun PromptFileInput.toPreviewAttachment(): PromptFileAttachment {
+    val data = dataUrlParts(uri)
+    return when {
+        data != null -> PromptFileAttachment(
+            data = "",
+            mime = data.first,
+            source = PromptFileSource.Inline,
+            name = name,
+            mention = mention,
+        )
+
+        else -> PromptFileAttachment(
+            data = "",
+            // A `file:` URI says nothing about the type, and the server's echo is what knows. The
+            // chip falls back to the name, which the composer always sets.
+            mime = "",
+            source = PromptFileSource.Uri(uri.substringBefore('?')),
+            name = name,
+            mention = mention,
+        )
+    }
+}

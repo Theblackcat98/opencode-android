@@ -1,6 +1,7 @@
 package dev.opencode.android.core.network
 
 import dev.opencode.android.core.model.AgentInfo
+import dev.opencode.android.core.model.CommandInfo
 import dev.opencode.android.core.model.DataResponse
 import dev.opencode.android.core.model.FileSystemEntry
 import dev.opencode.android.core.model.FormDetail
@@ -17,13 +18,22 @@ import dev.opencode.android.core.model.PermissionReplyPayload
 import dev.opencode.android.core.model.PermissionRequest
 import dev.opencode.android.core.model.Project
 import dev.opencode.android.core.model.PromptRequest
+import dev.opencode.android.core.model.ReferenceInfo
 import dev.opencode.android.core.model.ServerInfo
+import dev.opencode.android.core.model.SessionCommandRequest
+import dev.opencode.android.core.model.SessionCompactRequest
 import dev.opencode.android.core.model.SessionCreateRequest
+import dev.opencode.android.core.model.SessionEnvironmentRequest
+import dev.opencode.android.core.model.SessionGenerateRequest
+import dev.opencode.android.core.model.SessionGenerateResponse
 import dev.opencode.android.core.model.SessionInboxInfo
 import dev.opencode.android.core.model.SessionInfo
 import dev.opencode.android.core.model.SessionMessage
+import dev.opencode.android.core.model.SessionShellRequest
 import dev.opencode.android.core.model.SessionUpdateRequest
 import dev.opencode.android.core.model.SessionViewRequest
+import dev.opencode.android.core.model.SkillActivationRequest
+import dev.opencode.android.core.model.SkillInfo
 import dev.opencode.android.core.model.SwitchAgentRequest
 import dev.opencode.android.core.model.SwitchModelRequest
 import retrofit2.http.Body
@@ -32,6 +42,7 @@ import retrofit2.http.GET
 import retrofit2.http.Headers
 import retrofit2.http.PATCH
 import retrofit2.http.POST
+import retrofit2.http.PUT
 import retrofit2.http.Path
 import retrofit2.http.Query
 import retrofit2.http.Tag
@@ -360,4 +371,115 @@ interface ServerApi {
         @Query(LocationParam.QUERY_KEY) directory: String? = null,
         @Query("path") path: String? = null,
     ): LocationScoped<List<FileSystemEntry>>
+
+    // ---------------------------------------------------------- Phase 5: rich composer
+
+    /**
+     * `command.list`: the prompt templates a location defines, including MCP prompts named
+     * `<server>:<prompt>` (features doc §11).
+     */
+    @GET("api/command")
+    suspend fun listCommands(
+        @Query(LocationParam.QUERY_KEY) directory: String? = null,
+    ): LocationScoped<List<CommandInfo>>
+
+    /** `skill.list`: the skills a location defines, with their whole body. */
+    @GET("api/skill")
+    suspend fun listSkills(
+        @Query(LocationParam.QUERY_KEY) directory: String? = null,
+    ): LocationScoped<List<SkillInfo>>
+
+    /**
+     * `reference.list`: the directories and cloned repositories the server can attach.
+     *
+     * A reference attaches by passing its path as a directory `file:` attachment, so the client
+     * never reads the files itself (features doc §19).
+     */
+    @GET("api/reference")
+    suspend fun listReferences(
+        @Query(LocationParam.QUERY_KEY) directory: String? = null,
+    ): LocationScoped<List<ReferenceInfo>>
+
+    /**
+     * `fs.find`: the ranked recursive search behind `@` completion.
+     *
+     * [type] is `file` or `directory` and [limit] is a string on the wire even though it is a
+     * number, which the spec spells out. Verified against a live 2.0.18 server: the entries come
+     * back **relative to the location**, so the client keeps the server's spelling and resolves it
+     * against the location when it turns the path into a `file:` URI.
+     */
+    @GET("api/fs/find")
+    suspend fun findFiles(
+        @Query(LocationParam.QUERY_KEY) directory: String? = null,
+        @Query("query") query: String,
+        @Query("type") type: String? = null,
+        @Query("limit") limit: String? = null,
+    ): LocationScoped<List<FileSystemEntry>>
+
+    /**
+     * `session.command`: runs a command template.
+     *
+     * `204`; the echo is the `session.inbox.enqueued` event, which carries the text the template
+     * produced, so there is nothing to read back.
+     */
+    @POST("api/session/{sessionID}/command")
+    suspend fun runCommand(
+        @Path("sessionID") sessionID: String,
+        @Body body: SessionCommandRequest,
+    ): Unit
+
+    /**
+     * `session.shell`: the composer's `!command` mode.
+     *
+     * `204`; `session.shell.started` and `session.shell.ended {output}` carry the result into the
+     * timeline. A client-supplied [SessionShellRequest.id] is what makes a retry not run the command
+     * a second time.
+     */
+    @POST("api/session/{sessionID}/shell")
+    suspend fun runShell(
+        @Path("sessionID") sessionID: String,
+        @Body body: SessionShellRequest,
+    ): Unit
+
+    /**
+     * `session.compact`: manual compaction (`/compact`).
+     *
+     * Answers with the inbox item it enqueued, and `409` while the session is busy. The streamed
+     * summary arrives through `session.compaction.delta` and lands as a compaction message.
+     */
+    @POST("api/session/{sessionID}/compact")
+    suspend fun compact(
+        @Path("sessionID") sessionID: String,
+        @Body body: SessionCompactRequest,
+    ): DataResponse<SessionInboxInfo>
+
+    /** `session.generate`: a side question about the session's context (`/btw`). `{data: {text}}`. */
+    @POST("api/session/{sessionID}/generate")
+    suspend fun generate(
+        @Path("sessionID") sessionID: String,
+        @Body body: SessionGenerateRequest,
+    ): SessionGenerateResponse
+
+    /**
+     * `session.environment`: the variables this session's tools run with.
+     *
+     * `PUT` with the whole map, so removing a variable is sending the map without it.
+     */
+    @PUT("api/session/{sessionID}/environment")
+    suspend fun setSessionEnvironment(
+        @Path("sessionID") sessionID: String,
+        @Body body: SessionEnvironmentRequest,
+    ): Unit
+
+    /**
+     * `experimental.session.skill`: activates a skill in the running session.
+     *
+     * Experimental, so it is only ever called after a capability probe said the route exists, and
+     * the composer falls back to attaching the skill on the next prompt when it does not.
+     */
+    @POST("api/experimental/session/{sessionID}/skill")
+    suspend fun activateSkill(
+        @Path("sessionID") sessionID: String,
+        @Body body: SkillActivationRequest,
+    ): Unit
 }

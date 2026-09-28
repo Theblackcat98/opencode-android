@@ -10,17 +10,26 @@ import dev.opencode.android.core.model.LocationPublicRef
 import dev.opencode.android.core.model.ModelRef
 import dev.opencode.android.core.model.PermissionRule
 import dev.opencode.android.core.model.PromptAgentAttachment
+import dev.opencode.android.core.model.PromptFileInput
 import dev.opencode.android.core.model.PromptRequest
 import dev.opencode.android.core.model.PromptSkillAttachment
+import dev.opencode.android.core.model.PromptSkillInput
+import dev.opencode.android.core.model.SessionCommandRequest
+import dev.opencode.android.core.model.SessionCompactRequest
 import dev.opencode.android.core.model.SessionCreateRequest
-import dev.opencode.android.core.model.SessionInfo
+import dev.opencode.android.core.model.SessionEnvironmentRequest
+import dev.opencode.android.core.model.SessionGenerateRequest
 import dev.opencode.android.core.model.SessionInboxInfo
+import dev.opencode.android.core.model.SessionInfo
 import dev.opencode.android.core.model.SessionMetadata
+import dev.opencode.android.core.model.SessionShellRequest
 import dev.opencode.android.core.model.SessionUpdateRequest
 import dev.opencode.android.core.model.SessionViewRequest
+import dev.opencode.android.core.model.SkillActivationRequest
 import dev.opencode.android.core.model.SwitchAgentRequest
 import dev.opencode.android.core.model.SwitchModelRequest
 import dev.opencode.android.core.model.UserPromptPayload
+import dev.opencode.android.core.model.toPreviewAttachment
 import dev.opencode.android.core.network.ServerApi
 import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.json.JsonElement
@@ -87,21 +96,28 @@ class SessionCommands(
      * Returns the inbox item the server enqueued, whose id is the client-generated `msg_…` this call
      * used. The text is mirrored into the timeline as a pending item first, so the prompt is on
      * screen immediately; the server's `session.inbox.enqueued` event reconciles it under the same id.
+     *
+     * [files] travels in the `PromptInput.FileAttachment` shape — an `uri`, not the stored message's
+     * base64 and mime — because that is what the route accepts. The optimistic item renders the
+     * same chips the server's echo will by decoding that URI back into a
+     * [PromptFileAttachment], so the pending message and the confirmed one look the same.
      */
     suspend fun prompt(
         sessionID: String,
         text: String,
         delivery: Delivery = Delivery.Steer,
         resume: Boolean? = null,
+        files: List<PromptFileInput>? = null,
         agents: List<PromptAgentAttachment>? = null,
-        skills: List<PromptSkillAttachment>? = null,
+        skills: List<PromptSkillInput>? = null,
         metadata: Map<String, JsonElement>? = null,
     ): Result<SessionInboxInfo> {
         val messageID = ids.nextMessageID()
         val payload = UserPromptPayload(
             text = text,
+            files = files?.map { it.toPreviewAttachment() },
             agents = agents,
-            skills = skills,
+            skills = skills?.map { PromptSkillAttachment(id = it.id, name = it.id, mention = it.mention) },
             metadata = metadata,
         )
         // The optimistic item. The id matches the request, so the event that confirms it replaces
@@ -119,6 +135,7 @@ class SessionCommands(
                 body = PromptRequest(
                     id = messageID,
                     text = text,
+                    files = files,
                     agents = agents,
                     skills = skills,
                     metadata = metadata,
@@ -132,6 +149,115 @@ class SessionCommands(
             // will never be sent. The composer keeps the text and offers the send again.
             timeline(sessionID)?.dropPending(messageID)
         }
+    }
+
+    /**
+     * `session.command`: runs a command template.
+     *
+     * `204`; the echo is the inbox event the server emits, so there is nothing to read back. The id
+     * is generated the same way a prompt's is and the same pending item is shown, because from the
+     * user's point of view a command is a message with a different way of getting there.
+     */
+    suspend fun runCommand(
+        sessionID: String,
+        name: String,
+        text: String,
+        delivery: Delivery = Delivery.Steer,
+        files: List<PromptFileInput>? = null,
+        agents: List<PromptAgentAttachment>? = null,
+        skills: List<PromptSkillInput>? = null,
+        metadata: Map<String, JsonElement>? = null,
+    ): Result<Unit> {
+        val messageID = ids.nextMessageID()
+        timeline(sessionID)?.showPending(
+            PendingInboxItem(
+                id = messageID,
+                created = ids.now(),
+                item = InboxItem.User(
+                    UserPromptPayload(
+                        text = text,
+                        files = files?.map { it.toPreviewAttachment() },
+                        agents = agents,
+                        skills = skills?.map { PromptSkillAttachment(id = it.id, name = it.id, mention = it.mention) },
+                        metadata = metadata,
+                    ),
+                    delivery,
+                ),
+            ),
+        )
+        return call {
+            api.runCommand(
+                sessionID = sessionID,
+                body = SessionCommandRequest(
+                    name = name,
+                    text = text,
+                    files = files,
+                    agents = agents,
+                    skills = skills,
+                    metadata = metadata,
+                    delivery = delivery,
+                ),
+            )
+        }.onFailure { timeline(sessionID)?.dropPending(messageID) }
+    }
+
+    /**
+     * `session.shell`: the composer's `!command` mode.
+     *
+     * `204`; `session.shell.started` and `session.shell.ended {output}` put the result in the
+     * timeline. The client-generated id is what makes a retry not run the command twice, which for a
+     * command with a side effect is the whole point.
+     */
+    suspend fun runShell(
+        sessionID: String,
+        command: String,
+    ): Result<Unit> = call {
+        api.runShell(sessionID, SessionShellRequest(id = ids.nextMessageID(), command = command))
+    }
+
+    /**
+     * `session.compact`: manual compaction (`/compact`).
+     *
+     * Answers with the inbox item it enqueued, and a busy session is a `409` the caller reports
+     * rather than retries.
+     */
+    suspend fun compact(
+        sessionID: String,
+        delivery: Delivery = Delivery.Steer,
+    ): Result<SessionInboxInfo> = call {
+        api.compact(sessionID, SessionCompactRequest(id = ids.nextMessageID(), delivery = delivery)).data
+    }
+
+    /**
+     * `session.generate`: a side question about the session's context (`/btw`).
+     *
+     * The only driving call that answers with a body rather than an event, because the answer is
+     * for the user and has nowhere else to go. It does not enter the timeline.
+     */
+    suspend fun generate(sessionID: String, prompt: String): Result<String> = call {
+        api.generate(sessionID, SessionGenerateRequest(prompt)).data.text
+    }
+
+    /** `session.environment`: the variables this session's tools run with. `PUT`, so the whole map. */
+    suspend fun setEnvironment(
+        sessionID: String,
+        variables: Map<String, String>,
+    ): Result<Unit> = call {
+        api.setSessionEnvironment(sessionID, SessionEnvironmentRequest(variables))
+    }
+
+    /**
+     * `experimental.session.skill`: activates a skill in the running session.
+     *
+     * Experimental, so a `404` here is the expected answer on a server without the route and the
+     * composer falls back to attaching the skill on the next prompt.
+     */
+    suspend fun activateSkill(
+        sessionID: String,
+        skill: String,
+        resume: Boolean? = null,
+    ): Result<Unit> = call {
+        api.activateSkill(sessionID, SkillActivationRequest(id = skill, resume = resume))
     }
 
     /**

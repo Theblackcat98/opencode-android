@@ -8,6 +8,8 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import dev.opencode.android.core.data.attention.AttentionPreferences
 import dev.opencode.android.core.data.attention.DataStoreAttentionPreferences
+import dev.opencode.android.core.data.composer.ComposerMemory
+import dev.opencode.android.core.data.composer.DataStoreComposerMemory
 import dev.opencode.android.core.data.repository.DefaultServerRepository
 import dev.opencode.android.core.data.repository.ServerRepository
 import dev.opencode.android.core.data.preferences.DataStoreModelPreferences
@@ -85,4 +87,18 @@ object DataModule {
     fun provideAttentionPreferences(
         @ApplicationContext context: Context,
     ): AttentionPreferences = DataStoreAttentionPreferences(context)
+
+    /**
+     * The composer's client-side memory: per-session drafts, per-server prompt history and the
+     * stash (plan §6, Phase 5, "Ergonomics").
+     *
+     * All three are the client's, for the same reason a mute is: a draft or a stashed prompt that
+     * travelled to the server would be a state the TUI and the web app cannot see, and the server has
+     * no concept of either.
+     */
+    @Provides
+    @Singleton
+    fun provideComposerMemory(
+        @ApplicationContext context: Context,
+    ): ComposerMemory = DataStoreComposerMemory(context)
 }
