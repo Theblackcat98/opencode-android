@@ -5,11 +5,22 @@ servers, run before each release. Plan §6's second exit criterion is that the r
 passes it.
 
 **It was not run. There is no device, no emulator and no second device in this environment**, so
-this document is the matrix and the procedure, not a result. Nothing in the repository claims the
+this document is the matrix and the procedure, not a result, and part of it cannot be run against the
+current build (see below). Nothing in the repository claims the
 release candidate passed it, and this is the one exit criterion Phase 10 does not meet.
 
 Run it and record the outcome in the *Result* column of each row. A row with a blank result is
 untested, not passed.
+
+## Rows that cannot pass yet
+
+**37 rows test a feature that is not reachable in the app**, and are marked **blocked** in the *Result* column
+with the [Phase 11](./ANDROID_APP_PLAN.md#phase-11-screens-adaptive-ui-and-the-release-l) item that has to be
+built first (H1–H4, for instance, need the usage dashboard linked into navigation). Blocked is neither passed
+nor failed: it means the row cannot be run against this build. The matrix was written from the plan's feature
+list, not from what was built, so these rows stay in it because the plan still promises the feature. As each
+item lands, replace *blocked* with a blank and run the row. **A release is not ready while any row is blocked
+either.**
 
 ## What is needed to run it
 
@@ -47,10 +58,10 @@ no `POST_NOTIFICATIONS` permission, and the smallest screens.
 | B4 | A wrong password reports "re-pair" and does not crash or hang | |
 | B5 | An `https://` server with a self-signed certificate, with the CA installed, connects | |
 | B6 | An `https://` server with a self-signed certificate, **without** the CA, refuses and says why | |
-| B7 | The LAN prober is **off by default** and finds the server when switched on | |
-| B8 | The LAN prober can be cancelled mid-scan and stops immediately | |
-| B9 | "Pair another device" shows a QR, and the second device redeems it | |
-| B10 | "Pair another device" is **hidden** on a server that answers 404 to `POST /api/pair` | |
+| B7 | The LAN prober is **off by default** and finds the server when switched on | **blocked** — LAN prober not built (11.8) |
+| B8 | The LAN prober can be cancelled mid-scan and stops immediately | **blocked** — LAN prober not built (11.8) |
+| B9 | "Pair another device" shows a QR, and the second device redeems it | **blocked** — no screen (11.7) |
+| B10 | "Pair another device" is **hidden** on a server that answers 404 to `POST /api/pair` | **blocked** — no screen (11.7) |
 | B11 | Removing a server removes its token from the keystore | |
 
 ## C. The read path
@@ -105,7 +116,7 @@ no `POST_NOTIFICATIONS` permission, and the smallest screens.
 | G2 | A command-based login completes and the credential appears | |
 | G3 | A cancelled or expired login says so rather than appearing to hang | |
 | G4 | An MCP server is added, connected and disconnected | |
-| G5 | A plugin is listed, updated, and its RPC console calls a method | |
+| G5 | A plugin is listed, updated, and its RPC console calls a method | **blocked** — the plugin list can be tested; the RPC console half has no screen (11.3) |
 | G6 | The config explorer shows a document, and editing it validates before saving | |
 | G7 | The **write confirmation names the global file** for the global shell setting | |
 | G8 | A failed write leaves the previous document intact and says why | |
@@ -114,18 +125,18 @@ no `POST_NOTIFICATIONS` permission, and the smallest screens.
 
 | # | Check | Result |
 | --- | --- | --- |
-| H1 | The usage dashboard loads and the heatmap, streak, totals and per-model usage render | |
-| H2 | Changing the date range or the project re-queries and the numbers change | |
-| H3 | Tool reliability shows successes, failures and a p50 duration | |
-| H4 | **The dashboard is hidden** on a server with no `/api/experimental/session/stats` | |
-| H5 | The quick-ask widget generates and shows the text | |
-| H6 | The RPC console sends JSON and renders the answer, including an error | |
-| H7 | The RPC console **refuses** an rpc id or method that would break the URL | |
-| H8 | The session log viewer replays and stops at `log.synced` | |
-| H9 | A synthetic note appears in the transcript labelled as synthetic, not as a user message | |
-| H10 | "Wait until idle" blocks until the turn ends, and can be stopped | |
-| H11 | A plugin-created permission request **blocks the agent** and is labelled as plugin-created | |
-| H12 | A plugin-created form renders through the normal form engine | |
+| H1 | The usage dashboard loads and the heatmap, streak, totals and per-model usage render | **blocked** — screen exists but is not reachable (11.1) |
+| H2 | Changing the date range or the project re-queries and the numbers change | **blocked** — not reachable (11.1) |
+| H3 | Tool reliability shows successes, failures and a p50 duration | **blocked** — not reachable (11.1) |
+| H4 | **The dashboard is hidden** on a server with no `/api/experimental/session/stats` | **blocked** — not reachable (11.1) |
+| H5 | The quick-ask widget generates and shows the text | **blocked** — no screen (11.6) |
+| H6 | The RPC console sends JSON and renders the answer, including an error | **blocked** — no screen (11.3) |
+| H7 | The RPC console **refuses** an rpc id or method that would break the URL | **blocked** — no screen (11.3) |
+| H8 | The session log viewer replays and stops at `log.synced` | **blocked** — no screen (11.4) |
+| H9 | A synthetic note appears in the transcript labelled as synthetic, not as a user message | **blocked** — no screen (11.5) |
+| H10 | "Wait until idle" blocks until the turn ends, and can be stopped | **blocked** — no screen (11.5) |
+| H11 | A plugin-created permission request **blocks the agent** and is labelled as plugin-created | **blocked** — no screen (11.5) |
+| H12 | A plugin-created form renders through the normal form engine | **blocked** — no screen (11.5) |
 
 ## I. TUI control events
 
@@ -133,29 +144,29 @@ Run these with a TUI connected to the same server as a second client.
 
 | # | Check | Result |
 | --- | --- | --- |
-| I1 | A toast in the TUI appears as a snackbar in the app | |
-| I2 | **Follow-desktop is off by default**: selecting a session in the TUI does not move the phone | |
-| I3 | With follow-desktop on, selecting a session in the TUI moves the phone | |
-| I4 | With follow-desktop on, TUI prompt text appears in the app's composer | |
-| I5 | Turning follow-desktop back off stops both immediately | |
-| I6 | A TUI command that would change server state is **offered, not performed** | |
-| I7 | A command this build does not know is shown verbatim rather than dropped | |
-| I8 | A plugin's `rpc.*` event appears in the event viewer | |
+| I1 | A toast in the TUI appears as a snackbar in the app | **blocked** — nothing collects `TuiControl` (11.2) |
+| I2 | **Follow-desktop is off by default**: selecting a session in the TUI does not move the phone | **blocked** — 11.2 |
+| I3 | With follow-desktop on, selecting a session in the TUI moves the phone | **blocked** — 11.2 |
+| I4 | With follow-desktop on, TUI prompt text appears in the app's composer | **blocked** — 11.2 |
+| I5 | Turning follow-desktop back off stops both immediately | **blocked** — 11.2 |
+| I6 | A TUI command that would change server state is **offered, not performed** | **blocked** — 11.2 |
+| I7 | A command this build does not know is shown verbatim rather than dropped | **blocked** — 11.2 |
+| I8 | A plugin's `rpc.*` event appears in the event viewer | **blocked** — no viewer (11.3) |
 
 ## J. Adaptive layout and input
 
 | # | Check | Result |
 | --- | --- | --- |
-| J1 | On A5 and A7 the list-detail panes show side by side, not stacked | |
-| J2 | Rotating a tablet swaps between the two pane arrangements without losing scroll | |
-| J3 | On A8, resizing the window across the list-detail breakpoint reflows | |
-| J4 | Ctrl+P opens the command palette on a device with a keyboard (A8) | |
-| J5 | A leader-key combination runs the same action | |
-| J6 | The command palette is reachable **without** a keyboard, by touch | |
-| J7 | Session tabs open, switch and close | |
-| J8 | The widget shows running sessions and pending approvals | |
-| J9 | The Quick Settings tile starts and stops the connection | |
-| J10 | App shortcuts from the launcher land on the right screen | |
+| J1 | On A5 and A7 the list-detail panes show side by side, not stacked | **blocked** — not built (11.12) |
+| J2 | Rotating a tablet swaps between the two pane arrangements without losing scroll | **blocked** — not built (11.12) |
+| J3 | On A8, resizing the window across the list-detail breakpoint reflows | **blocked** — not built (11.12) |
+| J4 | Ctrl+P opens the command palette on a device with a keyboard (A8) | **blocked** — not built (11.9) |
+| J5 | A leader-key combination runs the same action | **blocked** — not built (11.9) |
+| J6 | The command palette is reachable **without** a keyboard, by touch | **blocked** — not built (11.9) |
+| J7 | Session tabs open, switch and close | **blocked** — not built (11.11) |
+| J8 | The widget shows running sessions and pending approvals | **blocked** — not built (11.10) |
+| J9 | The Quick Settings tile starts and stops the connection | **blocked** — not built (11.10) |
+| J10 | App shortcuts from the launcher land on the right screen | **blocked** — not built (11.10) |
 
 ## K. Accessibility
 
@@ -187,8 +198,8 @@ Run on A1 (smallest) and A3, with TalkBack on and the font size at the platform 
 | M1 | The Play APK is signed and installs over the previous version | |
 | M2 | The F-Droid APK is signed and installs | |
 | M3 | Both flavors have a distinct application id and can be installed side by side | |
-| M4 | The in-app changelog shows this release | |
-| M5 | The published compatibility matrix matches what was tested | |
+| M4 | The in-app changelog shows this release | **blocked** — not built (11.15) |
+| M5 | The published compatibility matrix matches what was tested | **blocked** — not built (11.15) |
 | M6 | The internal Play track accepts the bundle, then closed, then production | |
 | M7 | GitHub Releases carries both APKs and the mapping files | |
 
@@ -197,5 +208,5 @@ Run on A1 (smallest) and A3, with TalkBack on and the font size at the platform 
 Replace the blank with `pass`, `fail` or `n/a` and a note. For a failure, the note is the symptom
 and the device, not the diagnosis — a diagnosis belongs in an issue.
 
-**A release is not ready while any row is blank.** "Not run" and "passed" are different answers, and
+**A release is not ready while any row is blank or blocked.** "Not run" and "passed" are different answers, and
 this document currently contains only the first.

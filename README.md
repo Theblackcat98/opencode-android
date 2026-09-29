@@ -5,33 +5,42 @@ network, or any network your phone can reach, and drives the server's full featu
 
 ## Status
 
-All eleven phases, P0 to P10, are complete. The app pairs with one or more OpenCode servers, keeps a live event
-stream to each of them, **drives** them from the phone, stays reachable while it works, says what a prompt is
-about to carry before it sends it, shows what the agent changed and lets you take it back, gives you a real
-terminal, a command panel, the subagent tree and parallel worktrees, manages the server's own accounts,
-providers, MCP servers, plugins and configuration, and now shows you what you have been spending and what the
-desktop TUI is doing. The phase table is in
+Phases P0 to P9 are complete. **P10 is complete on its exit criterion, which is coverage, and not on its
+feature list**; the work that is left is Phase 11 in the plan. The app pairs with one or more OpenCode
+servers, keeps a live event stream to each of them, **drives** them from the phone, stays reachable while it
+works, says what a prompt is about to carry before it sends it, shows what the agent changed and lets you take it
+back, gives you a real terminal, a command panel, the subagent tree and parallel worktrees, and manages the
+server's own accounts, providers, MCP servers, plugins and configuration. The phase table is in
 [`docs/ANDROID_APP_PLAN.md`](docs/ANDROID_APP_PLAN.md#6-phases).
 
 **Every operation and every event type the plan's matrices list is implemented and tested**: 138 of 138
-operations declared, wired and tested, and 94 of 94 event types handled and tested. The audit of what the
-matrices claimed and the code did not back is in [`docs/COVERAGE.md`](docs/COVERAGE.md), and CI fails on a
-regression rather than trusting a document.
+operations declared, wired and tested, and 94 of 94 event types handled and tested. "Wired" means production
+code in `core/data` reaches the operation, not that a screen does. The audit of what the matrices claimed and the
+code did not back is in [`docs/COVERAGE.md`](docs/COVERAGE.md), and CI fails on a regression rather than
+trusting a document.
 
 **This is not a shipped release.** There is no device, emulator or second device in the build
 environment, so the manual test matrix has not been run; and no signing material exists, so no signed
 artifact was produced. Both are stated plainly in [`docs/RELEASE.md`](docs/RELEASE.md) rather than
 implied otherwise.
 
-**What P10 did and did not finish.** P10's exit criterion is coverage, and that is met. The *wire and
-state* half of the phase is built and tested; the *screen* half is not. Everything below is a real
-data-layer capability reachable and covered, but only the TUI control events are wired to a surface a
-user can see. There is no insights screen, no RPC console screen, no widget, no Quick Settings tile,
-no command palette, no LAN prober and no theme import yet. The plan's scope list for the phase is in
-[`docs/ANDROID_APP_PLAN.md`](docs/ANDROID_APP_PLAN.md#phase-10-insights-extensibility-adaptive-ui-and-release-m);
-the gap between it and this list is the honest measure of what is left.
+**What is left.** [Phase 11 in the plan](docs/ANDROID_APP_PLAN.md#phase-11-screens-adaptive-ui-and-the-release-l)
+is the single list. In short:
 
-Built and tested in P10:
+- **Built and not reachable:** the usage dashboard. It has a screen, a view model and a screen-content test,
+  and nothing in the app's navigation opens it.
+- **Data layer only, no screen:** the RPC console and `rpc.*` event viewer, the session-log viewer, synthetic
+  notes, wait-until-idle, programmatic permission and form creation, quick ask, and pair another device. The four
+  `tui.*` events are decoded and reduced into `TuiControl`, but nothing collects it, so a TUI toast does not yet
+  appear on the phone.
+- **Nothing exists:** the LAN prober, the OpenCode theme import, the command palette and leader keys, session
+  tabs, adaptive list-detail layouts, the home-screen widget, the Quick Settings tile, app shortcuts, baseline
+  profiles, the in-app changelog and the compatibility matrix.
+- **Needs a human, a device or an account:** the manual test matrix, a keystore and a signed artifact, the Play
+  track, the GitHub release, accessibility finding A-1, and three owner decisions on the keystore key, the message
+  cache and an app-lock switch.
+
+Built and tested in P10 (data layer, plus the one unreachable screen above):
 
 - **The nine remaining operations**, on `ServerApi` and over real HTTP: `experimental.session.stats`
   (range, project, time zone and tool detail, decoded into a heatmap, a streak, cost and token totals,
@@ -40,9 +49,9 @@ Built and tested in P10:
   `experimental.session.wait` and `POST /api/pair`. Every one of the plan's 138 operations is now
   declared, wired and tested.
 - **The four TUI control events and the plugin `rpc.*` family**, which had payload classes since P0 and
-  no handler. A toast becomes a snackbar; an opt-in "follow desktop" mode mirrors the TUI's session and
-  composer and is off by default; a command that would change server state is offered rather than
-  performed.
+  no handler. `TuiControl` turns a toast into a snackbar model, holds an opt-in "follow desktop" mode that is
+  off by default, and marks a command that would change server state as offered rather than performed. **No
+  screen consumes it yet.**
 - **Every remaining coverage gap** the audit found: twelve operations with no production caller, and
   twenty-four more that production called but nothing asserted.
 - **Quality work that was owed.** ktlint and detekt are applied to every module and fail `check`; they
@@ -259,7 +268,7 @@ eval "$(./scripts/dev-server.sh start)"
 | Document | Contents |
 | --- | --- |
 | [`docs/OPENCODE_V2_FEATURES.md`](docs/OPENCODE_V2_FEATURES.md) | Every OpenCode V2 feature, and how each one can be read or driven through the server API: endpoints, events, auth and pairing, and the feature's limits |
-| [`docs/ANDROID_APP_PLAN.md`](docs/ANDROID_APP_PLAN.md) | Architecture, tech stack, and a phased plan from P0 to P10. Includes coverage matrices that map every API operation and event type to a phase. |
+| [`docs/ANDROID_APP_PLAN.md`](docs/ANDROID_APP_PLAN.md) | Architecture, tech stack, and a phased plan from P0 to P11, where P11 is everything not yet done. Includes coverage matrices that map every API operation and event type to a phase. |
 | [`docs/COVERAGE.md`](docs/COVERAGE.md) | The §7 and §8 coverage audit: what the matrices claimed, what the code actually backed, and how the claim is now checked by the build |
 | [`docs/MANUAL_TEST_MATRIX.md`](docs/MANUAL_TEST_MATRIX.md) | The pre-release manual matrix — devices, servers, features, accessibility — with a *Result* column for a human to fill |
 | [`docs/RELEASE.md`](docs/RELEASE.md) | Signing, the Play track progression, the F-Droid specifics, and what a release still has to do |

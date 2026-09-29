@@ -94,7 +94,8 @@ properties it asserts are the ones a mock cannot see:
 
 `tui.toast.show`, `tui.prompt.append`, `tui.session.select`, `tui.command.execute` and the
 `rpc.<id>.<event>` family had payload classes since P0 and no handler. They now go to `TuiControl`
-through `ServerDataSet.apply`, and the behaviour is asserted: a toast becomes a snackbar at the
+through `ServerDataSet.apply`, and the behaviour of `TuiControl` is asserted (no screen collects it
+yet; see the limitations below): a toast is mapped to a snackbar model at the
 server's own variant, prompt text and session selection are ignored while follow-desktop is off, and a
 command that would change server state is offered rather than performed.
 
@@ -145,6 +146,15 @@ node tools/gen-event-payloads.mjs --check  # the corpus is current
 
 ## Known limitations
 
+- **"Wired" is not "reachable from a screen".** A row is wired when production code in `core/data` (or a
+  feature module) reaches it through the call chain, and the twelve rows closed in the first table above
+  were closed by adding a method on a store or surface. Nothing checks that a screen calls that
+  method. The nine Phase 10 operations are the clear case: all nine are wired, and only
+  `experimental.session.stats` is called from a view model, on a screen that no navigation route opens.
+  The same holds for the `tui.*` events, which are handled by `TuiControl` and collected by nothing in
+  `feature` or `app`. So "138 of 138" is a statement about the API and event surface, not about what a
+  user can do; the second is tracked in Phase 11 of the plan, and its exit criterion asks for a
+  navigation test to prove it.
 - **The rules are syntactic.** "Wired" means a production declaration on the call chain is named
   somewhere in a test source, and "tested" means the name appears. It cannot tell whether the
   assertion is a good one. That is why the new tests assert wire properties rather than

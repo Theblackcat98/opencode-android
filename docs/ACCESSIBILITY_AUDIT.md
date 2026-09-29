@@ -1,5 +1,10 @@
 # Accessibility audit — Phase 10
 
+**Scope.** This audits the screens that exist. The usage dashboard is included in the mechanical checks
+(no unlabelled controls, no literal strings) but has no screenshot baseline and is not reachable from the
+app. The widget, the tile, the command palette, session tabs, the adaptive layouts and the theme import do
+not exist and are not audited; each will need this audit run over it (Phase 11).
+
 Plan §5.4 asks for TalkBack semantics, dynamic type and contrast checks. This is the audit, against
 the code as it stands, with the checklist exercised mechanically where it can be and written down
 where it cannot.
@@ -68,11 +73,11 @@ give the pairs their contrast, so the risk is concentrated in two places and bot
 a colour tool rather than a code reading:
 
 - the code typography, which is a fixed palette not drawn from the `ColorScheme` (see §5);
-- the OpenCode theme import, which maps arbitrary user tokens onto a Material scheme and could
-  produce a pair below 4.5:1.
+- the OpenCode theme import, which does not exist yet (Phase 11 item 11.13) and, when built, maps
+  arbitrary user tokens onto a Material scheme and could produce a pair below 4.5:1.
 
 **What a human must do:** compute the contrast of every foreground/background pair the code palette
-and a sample OpenCode theme can produce. Both are finite and checkable offline; nothing here does it.
+and, once the import exists, a sample OpenCode theme can produce. Both are finite and checkable offline; nothing here does it.
 
 ### 4. TalkBack flow — **not verified here**
 
@@ -94,11 +99,11 @@ it is not. This needs `liveRegion = LiveRegionMode.Polite` on the status line, a
 how often — a `text.delta` storm announced per frame would be unusable, so it belongs on the turn
 boundary (`session.execution.succeeded`, `permission.asked`), not on the stream.
 
-**Finding A-2.** The keyboard-shortcut layer added in this phase (Ctrl+P for the command palette,
-leader-key combinations) is a *visible* feature and has no non-keyboard equivalent yet: a
-switch-access or switch-scan user cannot reach it. The commands themselves are reachable through
-their screens, so nothing is unreachable — but the shortcuts should not be described in the UI as
-the primary way to do something until there is a second route.
+**Finding A-2 (a requirement on a feature that does not exist yet).** The keyboard-shortcut layer, meaning
+Ctrl+P for the command palette and leader-key combinations, is not built: it is Phase 11 item 11.9. When it
+is, it must have a non-keyboard route, because a switch-access or switch-scan user cannot reach a shortcut,
+and the UI must not describe a shortcut as the primary way to do something until a second route exists.
+Nothing is unreachable today, since every command is reachable through its own screen.
 
 ### 5. The WebView terminal — **a special case, and the hardest one to make accessible**
 
@@ -142,8 +147,8 @@ or a switch.
 
 1. Fix **A-1**: a live region on the turn boundary, not on the stream. It is a small change and it
    is the difference between the app being usable and not with a screen reader.
-2. Run the contrast check over the code palette and over a sample imported OpenCode theme. Both are
-   finite sets and can be done offline.
+2. Run the contrast check over the code palette, and over a sample imported OpenCode theme once the
+   import exists. Both are finite sets and can be done offline.
 3. Capture the 1.5× baselines' siblings at 2.0× for the timeline and the composer specifically, which
    are the two that scroll.
 4. Run the app on a device with TalkBack and the largest font size, and record what breaks. That is

@@ -92,9 +92,11 @@ writes. Each has a confirmation in front of it:
 - **Experimental file writes** — `WriteConfirmationDialog` in `feature/admin/…/ConfigEditorScreen.kt:147`,
   shown after the schema validation produced a `WritePlan` naming every key that will change.
 
-Two more that the plan does not name but that this phase added, confirmed for the same reason:
+Two more that the plan does not name but that Phase 10 added:
 `InsightsSurface.createPermissionRequest` (it gates the agent exactly as a tool's request does) and
-`experimental.session.wait` (a long request the user cannot stop).
+`experimental.session.wait` (a long request the user cannot stop). **Neither has a confirmation yet,
+because neither has a screen.** The surface's comments say the screen must confirm before sending, and
+that is a requirement on Phase 11 item 11.5, not something the code enforces today.
 
 ## 5. The manifest
 
@@ -126,6 +128,12 @@ This is the finding most likely to rot, because it depends on nobody adding a `L
 - The reviews in this document are code reading. None of it was run: there is no device, so the
   WebView's actual behaviour, the Keystore's behaviour on a specific device, and the notification
   permission flows are all unexercised.
-- The LAN prober (`feature/insights`) is a network scanner and is described in its own file: opt-in,
-  off by default, cancellable, and it treats `401 {"_tag":"UnauthorizedError"}` as a fingerprint
-  rather than something to authenticate against.
+- **The LAN prober does not exist.** An earlier version of this document described one in
+  `feature/insights`; there is no such code. It is Phase 11 item 11.8, and it is a network scanner, so
+  this review has to be extended when it is written. The requirements to review it against are that it
+  is opt-in, off by default, cancellable, and treats `401 {"_tag":"UnauthorizedError"}` as a
+  fingerprint rather than something to authenticate against.
+- The OpenCode theme import (11.13) reads files from the server and maps them onto the app's colours,
+  and the widget, Quick Settings tile and app shortcuts (11.10) add new entry points and exported
+  components. None exists, so none is reviewed here, and section 5's "one exported component" holds only
+  until they do.
