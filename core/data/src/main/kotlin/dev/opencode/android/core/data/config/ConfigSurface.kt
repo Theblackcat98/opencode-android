@@ -338,11 +338,17 @@ class ConfigSurface(
      * after a write and the server's answer is the only trustworthy one.
      *
      * @param keys the top-level keys [plan] touched, for the "is it effective" diagnostic.
+     * @param expectInConfig whether the file is one `config.get` reports. A configuration file is;
+     *   an agent, command, skill or `AGENTS.md` is not, because the server reads those through its own
+     *   catalogs rather than through the configuration chain — and asking "is your file in the
+     *   configuration list?" about a file that is never in it would report every definition edit as one
+     *   the server is ignoring.
      */
     suspend fun commit(
         plan: WritePlan,
         directory: String?,
         keys: Set<String> = emptySet(),
+        expectInConfig: Boolean = true,
         reload: Boolean = true,
     ): Result<WriteOutcome> {
         val written = files.write(directory, plan.target, plan.text)
@@ -354,18 +360,47 @@ class ConfigSurface(
         }
         fsWriteState.value = RouteAvailability.Present
         val readBack = written.getOrThrow()
-        if (reload) reloadLocations()
-        val report = reloadReport(directory, plan.target, keys)
+        // **A failed reload is reported, not swallowed.** It was swallowed until a live test caught it:
+        // a location the server has loaded and that has since been deleted makes `location.reload`
+        // answer `404`, and the write was reported as a success with the change never applied. The
+        // bytes are on disk either way — what a failed reload means is that the server is not using them
+        // *yet*, and the user has to be told which of the two happened.
+        val reloadFailure = if (reload) reloadLocations().exceptionOrNull() else null
+        val report = if (reloadFailure == null) {
+            reloadReport(directory, plan.target, keys, expectInConfig)
+        } else {
+            ReloadReport(
+                asked = false,
+                diagnostics = listOf(
+                    SchemaDiagnostic(
+                        path = "",
+                        keyword = "reload",
+                        expected = "the server to re-read its configuration",
+                        found = reloadFailure.classified().error.message,
+                    ),
+                ),
+            )
+        }
         val bytes = plan.text.toByteArray(Charsets.UTF_8).size
         return Result.success(
             WriteOutcome(
                 target = plan.target,
                 summary = when {
-                    !report.asked -> "${plan.target} was written and read back, but the server could not be asked whether it is using it"
+                    reloadFailure != null ->
+                        "${plan.target} was written, but the server did not reload and is not using it yet"
+
+                    !report.asked ->
+                        "${plan.target} was written and read back, but the server could not be asked whether it is using it"
+
                     report.diagnostics.any { it.keyword == "source" } ->
                         "${plan.target} was written, but the server is not reading it"
+
+                    !expectInConfig ->
+                        "${plan.target} was written and read back; the server serves this kind of file through its own catalog"
+
                     readBack.bytes.size != bytes ->
                         "${plan.target} was written, and the server returned ${readBack.bytes.size} of $bytes bytes"
+
                     else -> "${plan.target} was written and the server is using it"
                 },
                 diagnostics = report.diagnostics,
@@ -391,7 +426,12 @@ class ConfigSurface(
      *     is not a failure — eleven of the thirty-six keys are unprojected by design — so this is only
      *     asked for a key the projection does report.
      */
-    suspend fun reloadReport(directory: String?, writtenTo: String, keys: Set<String>): ReloadReport {
+    suspend fun reloadReport(
+        directory: String?,
+        writtenTo: String,
+        keys: Set<String>,
+        expectInConfig: Boolean = true,
+    ): ReloadReport {
         val asked = guarded { admin.getConfig(directory) }
         val failure = asked.exceptionOrNull()
         if (failure != null) return ReloadReport(
@@ -417,7 +457,7 @@ class ConfigSurface(
                 expected = "at least one configuration document",
                 found = "the server is reading none",
             )
-        } else if (documents.none { sameFile(it.path, writtenTo) }) {
+        } else if (expectInConfig && documents.none { sameFile(it.path, writtenTo) }) {
             problems += SchemaDiagnostic(
                 path = "",
                 keyword = "source",

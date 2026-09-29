@@ -430,7 +430,13 @@ class DefinitionViewModel(
         val plan = _state.value.plan ?: return
         _state.value = _state.value.copy(plan = null, saving = true, error = null)
         viewModelScope.launch {
-            set.configuration.commit(plan, _state.value.directory, reload = false).fold(
+            // A definition file is not one `config.get` reports, so the "is the server reading it?"
+            // question is the server's catalog rather than the configuration chain.
+            set.configuration.commit(
+                plan = plan,
+                directory = _state.value.directory,
+                expectInConfig = false,
+            ).fold(
                 onSuccess = { outcome ->
                     _state.value = _state.value.copy(
                         saving = false,
