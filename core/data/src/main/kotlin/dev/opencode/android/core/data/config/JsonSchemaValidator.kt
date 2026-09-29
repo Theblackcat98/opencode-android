@@ -128,12 +128,23 @@ class JsonSchemaValidator(private val schema: JsonObject) {
 
         (rule["enum"] as? JsonArray)?.let { options ->
             if (options.none { it == node }) {
-                found += report(path, "enum", "one of ${options.joinToString(", ") { describe(it) }}", describe(node))
+                // The allowed values are printed in full, and they are the one thing a diagnostic shows
+                // verbatim. They come from the vendored schema — a committed, public document with no
+                // credentials in it — and "one of allow, ask, deny" is the difference between a
+                // diagnostic a user can act on and one that says only that something is wrong.
+                found += report(
+                    path,
+                    "enum",
+                    "one of ${options.joinToString(", ") { renderSchemaValue(it) }}",
+                    describe(node),
+                )
             }
         }
 
         rule["const"]?.let { wanted ->
-            if (wanted != node) found += report(path, "const", describe(wanted), describe(node))
+            if (wanted != node) {
+                found += report(path, "const", renderSchemaValue(wanted), describe(node))
+            }
         }
 
         (rule["anyOf"] as? JsonArray)?.let { branches ->
@@ -295,6 +306,19 @@ class JsonSchemaValidator(private val schema: JsonObject) {
             if (type is JsonPrimitive) "a ${type.contentOrNull}" else "another allowed shape"
         }
         return "one of: ${described.distinct().joinToString(", ")}"
+    }
+
+    /**
+     * A value that came out of the **schema**, rendered as itself.
+     *
+     * The counterpart to [describe], and the difference between them is where the bytes came from. A
+     * schema is a committed, public document; a document is the user's file and may hold an API key
+     * under `provider.*.options.apiKey`. So a schema value prints literally — which is what makes
+     * "one of allow, ask, deny" possible — and a document value prints its shape.
+     */
+    private fun renderSchemaValue(value: JsonElement): String = when (value) {
+        is JsonPrimitive -> value.content
+        else -> value.toString()
     }
 
     private fun entry(count: Int) = if (count == 1) "entry" else "entries"

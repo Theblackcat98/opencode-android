@@ -82,7 +82,7 @@ internal object ConfigEntrySerializer : DiscriminatedUnionSerializer<ConfigEntry
  * explorer.** A file writes `{"model": "x/y", "permission": {...}, "agent": {...}}`; the projection
  * reports *effective* values under different names — `permissions`, `agents`, `snapshots`,
  * `providers`, `plugins`, `commands` — and adds keys that were never in any file (`$schema`,
- * `update`, `media`, `warming`). So the two vocabularies are separate types with a mapping between
+ * `update`, `media`). So the two vocabularies are separate types with a mapping between
  * them (`ConfigKeyNames` in the data layer), and folding them into one class would make it
  * impossible to say which of a key's two names a value came from.
  *
@@ -161,6 +161,8 @@ data class ConfigInfo(
         "instructions" -> instructions
         "watcher" -> watcher
         "references" -> references
+        // `websearch` and `worktree` are reachable here but have no key in the configuration file; see
+        // `ConfigSchema.PROJECTION_ONLY_KEYS`.
         "websearch" -> websearch
         "plugin" -> plugins
         "worktree" -> worktree

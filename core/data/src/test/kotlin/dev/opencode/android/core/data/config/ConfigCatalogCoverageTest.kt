@@ -97,15 +97,37 @@ class ConfigCatalogCoverageTest {
     }
 
     @Test
-    fun `every property of Config InfoEncoded is claimed by exactly one file key`() {
+    fun `every property of Config InfoEncoded is claimed by exactly one file key or named projection-only`() {
         val info = VendoredSpec.propertiesOf("Config.InfoEncoded")
         val claimed = ConfigSchema.PROJECTION_NAMES.values
         assertEquals(
             "Config.InfoEncoded has properties the explorer's mapping does not name",
             emptySet<String>(),
-            info.keys - claimed,
+            info.keys - claimed - ConfigSchema.PROJECTION_ONLY_KEYS,
         )
         assertEquals("a projection name may not be claimed twice", claimed.size, claimed.toSet().size)
+    }
+
+    @Test
+    fun `the two projections with no file key are exactly the ones the code names`() {
+        // The 28-property projection and the 36-key file schema are not nested: eleven file keys have
+        // no projection, and two projections have no file key. Both directions have to be declared, or
+        // "every key is visible" would be true for the file and silently false for the runtime.
+        val fileKeys = topLevelPropertyNames(root)
+        val claimedByFile = ConfigSchema.PROJECTION_NAMES.values
+        assertEquals(setOf("websearch", "worktree", "warming"), ConfigSchema.PROJECTION_ONLY_KEYS)
+        assertTrue(
+            "a projection-only key must not also be a file key",
+            ConfigSchema.PROJECTION_ONLY_KEYS.none { fileKeys.contains(it) },
+        )
+        assertTrue(
+            "a projection-only key must really be reported by the server",
+            VendoredSpec.propertiesOf("Config.InfoEncoded").keys.containsAll(ConfigSchema.PROJECTION_ONLY_KEYS),
+        )
+        // 25 file keys map onto a projection, 11 do not, 36 in all; and 25 + 3 = 28 projections.
+        assertEquals(36, fileKeys.size)
+        assertEquals(fileKeys.size - ConfigSchema.UNPROJECTED_KEYS.size, ConfigSchema.PROJECTION_NAMES.size)
+        assertEquals(claimedByFile.size, ConfigSchema.PROJECTION_NAMES.values.toSet().size)
     }
 
     // ------------------------------------------------------------------------------ per-key detail

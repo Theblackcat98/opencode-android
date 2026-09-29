@@ -190,9 +190,6 @@ class ConfigSchema(
             "instructions" to "instructions",
             "watcher" to "watcher",
             "references" to "references",
-            "websearch" to "websearch",
-            "worktree" to "worktree",
-            "warming" to "warming",
             "experimental" to "experimental",
             // Renamed.
             "permission" to "permissions",
@@ -204,6 +201,20 @@ class ConfigSchema(
             "autoupdate" to "update",
             "attachment" to "media",
         )
+
+        /**
+         * Projection names with **no** file key, because the runtime reports something the
+         * configuration file cannot express.
+         *
+         * `Config.InfoEncoded` has 28 properties and `Config` has 36 keys, and the two sets are not
+         * nested: eleven file keys have no projection and three projections have no file key.
+         * `websearch`, `worktree` and `warming` are what the server computes and reports but no
+         * `opencode.json(c)` can set, so the file editor has nothing to write for them and the explorer
+         * shows them under a heading that says so. Listing them is what stops them being "fixed" by
+         * adding a file key that does not exist, and `ConfigCatalogCoverageTest` checks that the three
+         * sets are disjoint and that together they account for every projection property.
+         */
+        val PROJECTION_ONLY_KEYS: Set<String> = setOf("websearch", "worktree", "warming")
 
         /**
          * The eleven file keys the projection never reports.

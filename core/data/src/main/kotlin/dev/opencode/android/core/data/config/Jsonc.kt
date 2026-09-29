@@ -52,17 +52,13 @@ object Jsonc {
                     else -> index++
                 }
 
-                // A `}` or `]` can be followed by a comma; the comma can be followed by nothing, a
-                // comment or whitespace and then the close. Only that last case is a trailing comma,
-                // and the check runs to the next meaningful byte rather than to end of line, so
-                // `{"a":1,}` and `{"a":1,\n}` are both caught and `{"a":1} ,` is not.
-                text[index] == '}' || text[index] == ']' -> {
-                    val comma = nextMeaningful(text, index + 1)
-                    if (comma != null && text[comma] == ',') {
-                        val after = nextMeaningful(text, comma + 1)
-                        if (after != null && (text[after] == '}' || text[after] == ']')) {
-                            out[comma] = ' '
-                        }
+                // A comma is trailing when the next byte that means anything is a close. The check runs
+                // forward to that byte rather than to end of line, so `{"a":1,}`, `{"a":1,\n}` and
+                // `{"a":1, /* x */}` are all caught and `{"a":1} ,` and `{"a":1, "b":2}` are not.
+                text[index] == ',' -> {
+                    val after = nextMeaningful(text, index + 1)
+                    if (after != null && (text[after] == '}' || text[after] == ']')) {
+                        out[index] = ' '
                     }
                     index++
                 }
@@ -102,8 +98,15 @@ object Jsonc {
         return if (at < 0) null else positionOf(text, at)
     }
 
-    /** Whether the text has anything other than whitespace in it. */
-    fun isBlank(text: String): Boolean = text.isBlank()
+    /**
+     * Whether the text carries nothing but whitespace and comments.
+     *
+     * **A comment-only file is blank, and that is the editor's "create it" case.** A user who has just
+     * made `opencode.jsonc` and commented out their only key has a file with no keys in it, and
+     * [ConfigDocument.parse] turns that into an empty object rather than an error. Deciding this by
+     * masking first and then asking whether anything is left is what makes that true.
+     */
+    fun isBlank(text: String): Boolean = mask(text).isBlank()
 
     // ------------------------------------------------------------------------------ internals
 
