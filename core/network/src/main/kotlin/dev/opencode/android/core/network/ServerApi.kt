@@ -11,12 +11,22 @@ import dev.opencode.android.core.model.ConnectKeyRequest
 import dev.opencode.android.core.model.ConnectOAuthCompleteRequest
 import dev.opencode.android.core.model.ConnectOAuthRequest
 import dev.opencode.android.core.model.CredentialUpdateRequest
+import dev.opencode.android.core.model.CreateFormRequest
+import dev.opencode.android.core.model.CreatePermissionRequest
+import dev.opencode.android.core.model.CreatePermissionResult
 import dev.opencode.android.core.model.DataResponse
+import dev.opencode.android.core.model.GenerateTextRequest
 import dev.opencode.android.core.model.FileDiff
 import dev.opencode.android.core.model.FileSystemEntry
 import dev.opencode.android.core.model.FileSystemWrite
 import dev.opencode.android.core.model.FormDetail
 import dev.opencode.android.core.model.FormInfo
+import dev.opencode.android.core.model.GenerateTextResult
+import dev.opencode.android.core.model.PairingCode
+import dev.opencode.android.core.model.RpcRequest
+import dev.opencode.android.core.model.SessionStats
+import dev.opencode.android.core.model.SyntheticInputRequest
+import dev.opencode.android.core.model.SyntheticInputResult
 import dev.opencode.android.core.model.FormReplyPayload
 import dev.opencode.android.core.model.InboxUpdateRequest
 import dev.opencode.android.core.model.InstructionEntry
@@ -94,6 +104,7 @@ import dev.opencode.android.core.model.WorktreeRefreshRequest
 import dev.opencode.android.core.model.WorktreeRemoveRequest
 import dev.opencode.android.core.model.event.PersistentPtyInfo
 import dev.opencode.android.core.model.event.PtyInfo
+import kotlinx.serialization.json.JsonObject
 import okhttp3.RequestBody
 import okhttp3.ResponseBody
 import retrofit2.http.Body
@@ -106,6 +117,7 @@ import retrofit2.http.POST
 import retrofit2.http.PUT
 import retrofit2.http.Path
 import retrofit2.http.Query
+import retrofit2.http.Streaming
 import retrofit2.http.Tag
 import retrofit2.http.Url
 
@@ -1433,4 +1445,149 @@ interface ServerApi {
      */
     @GET("api/experimental/migration/v1")
     suspend fun getMigrationStatus(): MigrationStatus
+
+    // ----------------------- Phase 10: insights, extensibility, adaptive UI and release
+
+    // ------------------------------------------------------------------ usage (1 operation)
+
+    /**
+     * `experimental.session.stats`: usage for a range, which is what `opencode stats` prints
+     * (features doc §4.2).
+     *
+     * **Every parameter is optional and the defaults are the server's, not the client's.** With no
+     * arguments the server picks its own range and every project, and sending an invented default
+     * would silently show a different window than the CLI does for the same question. The caller
+     * sends what the user picked and nothing else.
+     *
+     * The daily buckets in [SessionStats.activity] are cut in [timezone], so a dashboard that
+     * re-buckets them locally would disagree with the server about where a day ends.
+     */
+    @GET("api/experimental/session/stats")
+    suspend fun getSessionStats(
+        @Query("from") from: Long? = null,
+        @Query("to") to: Long? = null,
+        @Query("project") project: String? = null,
+        @Query("timezone") timezone: String? = null,
+        @Query("tools") tools: String? = null,
+        @Query(LocationParam.QUERY_KEY) directory: String? = null,
+    ): DataResponse<SessionStats>
+
+    // ------------------------------------------------------------------ extensibility (5)
+
+    /**
+     * `experimental.session.wait`: blocks until the session is idle, then answers `204`.
+     *
+     * **This is a long request with no body and no progress.** A server that is waiting on the
+     * agent holds the socket open for as long as the turn takes, which is why the caller has to
+     * treat it as cancellable and must never issue it on the main dispatcher: a timeout that is
+     * not the caller's decision produces a UI that says "waiting" with no way to stop it.
+     * `503` means the server itself will not wait, not that the session is broken.
+     */
+    @POST("api/experimental/session/{sessionID}/wait")
+    suspend fun waitForSession(
+        @Path("sessionID") sessionID: String,
+    ): Unit
+
+    /**
+     * `session.synthetic`: injects text the user did not type, and the inbox item it becomes
+     * (features doc §4.2).
+     *
+     * The answer is read because a caller that has just enqueued synthetic input needs to know it
+     * was accepted: a `409` on a reused `id` means a previous attempt landed, which is the whole
+     * point of sending a client-generated one.
+     */
+    @POST("api/session/{sessionID}/synthetic")
+    suspend fun addSyntheticInput(
+        @Path("sessionID") sessionID: String,
+        @Body body: SyntheticInputRequest,
+    ): DataResponse<SyntheticInputResult>
+
+    /**
+     * `session.permission.create`: raises a permission request from the client.
+     *
+     * **Gates the agent the same way a tool's request does.** The `effect` in the answer is what
+     * decides whether there is anything to ask the user: a request the standing approvals already
+     * cover comes back `allow`, and offering a choice the user cannot make is worse than saying
+     * the permission is already granted.
+     */
+    @POST("api/session/{sessionID}/permission")
+    suspend fun createPermissionRequest(
+        @Path("sessionID") sessionID: String,
+        @Body body: CreatePermissionRequest,
+    ): DataResponse<CreatePermissionResult>
+
+    /**
+     * `session.form.create`: raises a form from the client, which renders through the same form
+     * engine as a `question` tool call or an MCP elicitation.
+     */
+    @POST("api/session/{sessionID}/form")
+    suspend fun createSessionForm(
+        @Path("sessionID") sessionID: String,
+        @Body body: CreateFormRequest,
+    ): DataResponse<FormInfo>
+
+    /**
+     * `rpc.call`: dispatches a method to the plugin registered at [rpcID] (features doc §19).
+     *
+     * **The security list is empty and the body and answer are arbitrary JSON.** No plugin method
+     * is enumerated here, so the console that calls this is a developer tool: the input is raw JSON
+     * the user typed, and the output is raw JSON the server sent. Nothing in either direction may
+     * be assumed to be a particular shape.
+     */
+    @POST("api/rpc/{rpcID}/{method}")
+    suspend fun callRpc(
+        @Path("rpcID") rpcID: String,
+        @Path("method") method: String,
+        @Query(LocationParam.QUERY_KEY) directory: String? = null,
+        @Body body: RpcRequest,
+    ): JsonObject
+
+    // ------------------------------------------------------------------ quick ask (1)
+
+    /**
+     * `experimental.generate.text`: one stateless completion, with no session and no history
+     * (features doc §8.1).
+     *
+     * `503` is the interesting failure: no provider is configured or reachable. That is a setup
+     * problem on the server, and telling the user "try again" would be wrong.
+     */
+    @POST("api/experimental/generate")
+    suspend fun generateText(
+        @Body body: GenerateTextRequest,
+    ): DataResponse<GenerateTextResult>
+
+    // ------------------------------------------------------------------ session log (1)
+
+    /**
+     * `session.log`: the session's durable event log, as an SSE stream (features doc §4.2).
+     *
+     * **The durable log is what makes a gap-free resync possible.** The global stream is live-only
+     * and drops whatever arrived while the phone was away, so after a reconnect the client knows
+     * which events it missed but not what they were; `after` replays from a sequence number and
+     * `follow=true` keeps the stream open. The stream ends with `log.synced {seq}`.
+     *
+     * The body is a raw stream rather than a decoded type because the log item's own shape is not
+     * in the spec: `data` is declared as a JSON *string*. [SessionLogClient] parses the frames and
+     * hands back the JSON without claiming a schema for it.
+     */
+    @Streaming
+    @GET("api/experimental/session/{sessionID}/log")
+    suspend fun readSessionLog(
+        @Path("sessionID") sessionID: String,
+        @Query("after") after: String? = null,
+        @Query("follow") follow: String? = null,
+    ): ResponseBody
+
+    // ------------------------------------------------------------------ pair another device (1)
+
+    /**
+     * `POST /api/pair`: a one-time code another device redeems at `/auth/connect/{code}`.
+     *
+     * **The route is not in the published spec.** It exists in the server source and is absent from
+     * `openapi.json`, so it may be removed in any 2.0.x release; the caller gates it on capability
+     * detection and a `404` or `405` hides it rather than surfacing an error. It is outside the
+     * pairing flow the app depends on, which redeems a code from the CLI.
+     */
+    @POST("api/pair")
+    suspend fun createPairingCode(): PairingCode
 }

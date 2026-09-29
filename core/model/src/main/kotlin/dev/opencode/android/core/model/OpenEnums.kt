@@ -78,14 +78,32 @@ value class InterruptReason(val value: String) {
     }
 }
 
-/** Effect of a permission rule. */
+/**
+ * Effect of a permission rule.
+ *
+ * A request the standing approvals already cover comes back as `allow` even when the client asked
+ * for a new one, so [needsAnswer] is what decides whether a confirmation is worth showing at all:
+ * offering a decision the user cannot make, and then discarding the answer, is worse than saying
+ * the permission is already granted.
+ */
 @Serializable
 @JvmInline
 value class PermissionEffect(val value: String) {
+    /** The agent is blocked until the user answers. The only effect that needs a question. */
+    val needsAnswer: Boolean get() = this == Ask
+
     companion object {
         val Allow = PermissionEffect("allow")
         val Deny = PermissionEffect("deny")
         val Ask = PermissionEffect("ask")
+
+        /** A server that grows a fourth effect must still decode. */
+        fun of(value: String): PermissionEffect = when (value) {
+            "allow" -> Allow
+            "deny" -> Deny
+            "ask" -> Ask
+            else -> PermissionEffect(value)
+        }
     }
 }
 
