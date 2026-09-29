@@ -80,6 +80,14 @@ fun OnboardingGuideCard(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+
+            // Phase 8's half of the help. The guide is where a user learns what the app can do with
+            // their server, and an account they have to walk to the computer to create is the one
+            // thing about this app that was still true when P7 finished.
+            GuideSection(
+                title = stringResource(R.string.onboarding_manage_title),
+                description = stringResource(R.string.onboarding_manage_desc),
+            )
         }
     }
 }

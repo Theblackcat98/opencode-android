@@ -78,6 +78,8 @@
     <string name="onboarding_step_serve">Alternative: run the server in the foreground</string>
     <string name="onboarding_step_serve_command">opencode serve --hostname 0.0.0.0</string>
     <string name="onboarding_step_serve_desc">Use this instead of the service commands when you want the server to stop with the terminal.</string>
+    <string name="onboarding_manage_title">Managing the server from here</string>
+    <string name="onboarding_manage_desc">Once paired, the home screen has a \"Manage this server\" row: accounts and sign-in, providers, MCP servers, plugins and web search. The credentials live in the server\'s own database — this app sends a key or a token, and never stores one. An environment connection is the exception: it is read from the machine the server runs on, and is changed with:\n\nopencode service set env</string>
     <string name="onboarding_step_ssh">3. Keep it on localhost with an SSH tunnel</string>
     <string name="onboarding_step_ssh_command">ssh -N -L 4096:localhost:4096 user@computer</string>
     <string name="onboarding_step_ssh_desc">Run the tunnel, then enter http://localhost:4096 here. Nothing is exposed to the network.</string>

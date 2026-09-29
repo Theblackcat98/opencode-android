@@ -1480,6 +1480,15 @@ implements the service is the same, and a browser that does not simply opens the
 - The providers screen is read-only. Activation, endpoint and headers are configuration (features
   doc §9) and changing them needs the Phase 9 editor, so the screen says where they live rather
   than offering a control that would not take effect.
+- **A pre-existing timing flake, found while running the gate, not caused by this phase.**
+  `./gradlew unitTest --rerun-tasks` — which recompiles every module while the test JVMs are already
+  warm — intermittently fails `EventStreamClientTest` (a Phase 1 SSE test: `MockWebServer.close()`
+  times out waiting for its queue) and `ExecutionStoreTest.shell exited carries the status and the
+  exit code onto the row` (a Phase 7 test). Both pass three runs out of three in isolation and both
+  passed in the gate this phase reports. The gate as CI runs it — `./gradlew unitTest lintDebug
+  assembleDebug` — is green. It is recorded here because the next person to see it should know it is
+  not a regression, and because fixing it belongs to the phases that own those tests rather than
+  being folded into a feature phase.
 
 **Building blocks P9 needs.**
 
