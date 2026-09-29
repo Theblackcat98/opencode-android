@@ -24,6 +24,8 @@ captures/
 
 # Test harness state (scripts/dev-server.sh)
 .dev-server/
+# E2E TLS scaffolding state (scripts/e2e-https.sh): throwaway CA and certs
+.e2e-https/
 node_modules/
 
 # Roborazzi comparison output (reference images in src/test/screenshots are committed)

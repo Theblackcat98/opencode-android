@@ -1,0 +1,169 @@
+name: Instrumented Tests
+
+# On-device E2E suite: the real UI against a real `opencode serve`, on emulator images with
+# and without the self-signed CA in the user-CA directory.
+#
+# This workflow has NOT run yet: it needs a runner with KVM (GitHub-hosted ubuntu-latest
+# qualifies; the dev VM this was written on does not). It is safe to enable — it starts only
+# throwaway local servers and installs a throwaway CA into the emulator, never the runner.
+#
+# Matrix rows covered when green: B1 (pairing-code half), B2, B3, B4, B5 (ca=true),
+# B6 (ca=false), B11, C1 (core), C2. The F-Droid job additionally covers the no-Play-Services
+# flavor (A9/L5 family). See docs/TEST_AUTOMATION.md for the full matrix mapping.
+
+on:
+  push:
+    paths:
+      - "app/**"
+      - "feature/**"
+      - "core/**"
+      - "gradle/**"
+      - "build-logic/**"
+      - "scripts/**"
+      - ".github/workflows/instrumented-tests.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  instrumented-play:
+    name: E2E on emulator (Play, API ${{ matrix.api-level }}, CA ${{ matrix.ca }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        api-level: [29, 34]
+        ca: [false, true]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install pinned OpenCode CLI
+        run: npm install -g @opencode/cli@2.0.18
+
+      - name: Setup Android SDK
+        run: ./scripts/setup-android-sdk.sh
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Run instrumented tests
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ matrix.api-level }}
+          target: google_apis
+          arch: x86_64
+          ram-size: 4096M
+          heap-size: 512M
+          disable-animations: true
+          disk-size: 6000M
+          emulator-options: -no-snapshot -no-audio -no-boot-anim -camera-back none
+          script: |
+            eval "$(./scripts/dev-server.sh start)"
+            BACKEND_PORT="${OPENCODE_URL##*:}"
+            eval "$(./scripts/e2e-https.sh start 4443 "$BACKEND_PORT")"
+            CA_ARG=false
+            if [ "${{ matrix.ca }}" = "true" ]; then
+              CA_ARG="$(./scripts/e2e-ca-install.sh | sed 's/^CA_INSTALLED=//')"
+              echo "CA installed in emulator user-CA store: $CA_ARG"
+            fi
+            ./gradlew :app:connectedPlayDebugAndroidTest \
+              -Pandroid.testInstrumentationRunnerArguments.serverUrl="http://10.0.2.2:${BACKEND_PORT}" \
+              -Pandroid.testInstrumentationRunnerArguments.serverPassword="$OPENCODE_PASSWORD" \
+              -Pandroid.testInstrumentationRunnerArguments.httpsUrl="$E2E_HTTPS_URL" \
+              -Pandroid.testInstrumentationRunnerArguments.caInstalled="$CA_ARG"
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: instrumented-reports-play-api${{ matrix.api-level }}-ca${{ matrix.ca }}
+          path: |
+            app/build/reports/androidTests/
+            app/build/outputs/androidTest-results/
+          if-no-files-found: warn
+
+      - name: Teardown servers
+        if: always()
+        run: |
+          ./scripts/e2e-https.sh stop || true
+          ./scripts/dev-server.sh stop || true
+
+  instrumented-fdroid:
+    name: E2E on emulator (F-Droid, API 34, no GMS)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install pinned OpenCode CLI
+        run: npm install -g @opencode/cli@2.0.18
+
+      - name: Setup Android SDK
+        run: ./scripts/setup-android-sdk.sh
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Run instrumented tests
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: default
+          arch: x86_64
+          ram-size: 4096M
+          heap-size: 512M
+          disable-animations: true
+          disk-size: 6000M
+          emulator-options: -no-snapshot -no-audio -no-boot-anim -camera-back none
+          script: |
+            eval "$(./scripts/dev-server.sh start)"
+            BACKEND_PORT="${OPENCODE_URL##*:}"
+            eval "$(./scripts/e2e-https.sh start 4443 "$BACKEND_PORT")"
+            ./gradlew :app:connectedFdroidDebugAndroidTest \
+              -Pandroid.testInstrumentationRunnerArguments.serverUrl="http://10.0.2.2:${BACKEND_PORT}" \
+              -Pandroid.testInstrumentationRunnerArguments.serverPassword="$OPENCODE_PASSWORD" \
+              -Pandroid.testInstrumentationRunnerArguments.httpsUrl="$E2E_HTTPS_URL" \
+              -Pandroid.testInstrumentationRunnerArguments.caInstalled=false
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: instrumented-reports-fdroid-api34
+          path: |
+            app/build/reports/androidTests/
+            app/build/outputs/androidTest-results/
+          if-no-files-found: warn
+
+      - name: Teardown servers
+        if: always()
+        run: |
+          ./scripts/e2e-https.sh stop || true
+          ./scripts/dev-server.sh stop || true

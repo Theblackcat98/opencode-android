@@ -194,8 +194,10 @@ object AddServerTags {
     const val PASTE_LINK_INPUT = "paste_link_input"
     const val PAIR_BUTTON = "pair_button"
     const val MANUAL_URL_INPUT = "manual_url_input"
+    const val MANUAL_NAME_INPUT = "manual_name_input"
     const val MANUAL_PASSWORD_INPUT = "manual_password_input"
     const val MANUAL_CONNECT_BUTTON = "manual_connect_button"
+    const val TRUST_USER_CA_TOGGLE = "trust_user_ca_toggle"
 }
 
 private fun AddServerTab.titleRes(): Int = when (this) {
@@ -461,7 +463,9 @@ private fun ManualEntryTab(
             onValueChange = onNameChange,
             label = { Text(stringResource(R.string.server_name_label)) },
             placeholder = { Text(stringResource(R.string.server_name_hint)) },
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag(AddServerTags.MANUAL_NAME_INPUT),
             singleLine = true,
             enabled = !state.isWorking,
         )
@@ -546,6 +550,7 @@ fun TrustUserCertificatesToggle(
     Row(
         modifier = modifier
             .fillMaxWidth()
+            .testTag(AddServerTags.TRUST_USER_CA_TOGGLE)
             .toggleable(value = checked, enabled = enabled, role = Role.Switch, onValueChange = onCheckedChange)
             .semantics { contentDescription = "$label. $help" }
             .padding(vertical = 4.dp),

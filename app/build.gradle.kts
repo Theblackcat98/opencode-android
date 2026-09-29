@@ -125,6 +125,16 @@ dependencies {
     "fdroidImplementation"(libs.zxing.core)
 
     testImplementation(projects.core.testing)
+
+    // On-device E2E suite (src/androidTest): drives the real UI against a real `opencode serve`.
+    // Endpoints arrive as instrumentation arguments — see dev.opencode.android.e2e.E2eConfig
+    // and .github/workflows/instrumented-tests.yml. Never hard-code server URLs or passwords here.
+    androidTestImplementation(libs.androidx.test.ext.junit)
+    androidTestImplementation(libs.androidx.espresso.core)
+    androidTestImplementation(libs.androidx.uiautomator)
+    androidTestImplementation(libs.androidx.compose.ui.test.junit4)
+    androidTestImplementation(libs.okhttp)
+    debugImplementation(libs.androidx.compose.ui.test.manifest)
 }
 
 /**
