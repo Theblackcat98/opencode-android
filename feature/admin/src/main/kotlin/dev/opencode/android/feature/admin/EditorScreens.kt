@@ -296,6 +296,10 @@ fun DefinitionScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp)
+                // `fill = false`, for the same reason the editor's header has it: a scrolling child
+                // without it takes the whole column and the body field and the save row fall off the
+                // bottom of the screen.
+                .weight(1f, fill = false)
                 .verticalScroll(rememberScrollState()),
         ) {
             if (state.kind.frontMatterKeys.isNotEmpty()) {

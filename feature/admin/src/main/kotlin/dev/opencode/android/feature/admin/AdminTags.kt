@@ -22,6 +22,15 @@ object AdminTags {
     /** Cancels a pending write. */
     const val CANCEL_WRITE: String = "config:cancel-write"
 
+    /**
+     * The explorer's list itself, so a test can scroll it by index.
+     *
+     * **Needed because the list is lazy and the claim is about every key.** A card that composes is not
+     * the same as a card a user can reach, and only scrolling proves the second; the list is in the
+     * schema's own order, so index *n* is the *n*-th key and a test can walk all thirty-six.
+     */
+    const val CONFIG_LIST: String = "config:list"
+
     /** The configuration text field. */
     const val CONFIG_EDITOR: String = "config:editor"
 

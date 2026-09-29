@@ -63,6 +63,11 @@ fun ConfigEditorScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 8.dp)
+                // `weight(1f, fill = false)` is load-bearing. A `verticalScroll` sizes itself to the
+                // height it is offered, so an unweighted scrolling header claims the whole column and
+                // the diagnostics and the save button are pushed off the bottom of the screen — which a
+                // content test found by not finding "this document is valid" anywhere in the tree.
+                .weight(1f, fill = false)
                 .verticalScroll(rememberScrollState()),
         ) {
             LabelledField(

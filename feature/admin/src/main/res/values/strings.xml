@@ -119,7 +119,7 @@
     <string name="admin_rules_add">Add a rule</string>
     <string name="admin_rules_whole_set">Saving sends the whole set: the route replaces the list rather than adding to it.</string>
     <string name="admin_rules_warning_title">Session rules are evaluated last</string>
-    <string name="admin_rules_warning_body">A rule set here can allow an action an agent\'s own rules deny, and it can ask less often than you expect. Removing a rule puts the decision back to the agent and to you.</string>
+    <string name="admin_rules_warning_body">These rules are evaluated last, so one here can override an agent\'s own deny rule and allow an action it refused. Removing a rule puts the decision back to the agent, and to you.</string>
     <string name="admin_saved_all">Saved approvals on this server</string>
     <string name="admin_saved_project">Saved approvals for this project</string>
     <string name="admin_saved_loading">Reading saved approvals…</string>

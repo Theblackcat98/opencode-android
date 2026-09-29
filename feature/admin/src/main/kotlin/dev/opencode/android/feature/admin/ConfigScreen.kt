@@ -89,22 +89,33 @@ fun ConfigScreen(
                 Text(stringResource(R.string.admin_config_loading))
             }
 
-            else -> LazyColumn(modifier = Modifier.weight(1f)) {
-                state.error?.let { error ->
-                    item(key = "error") { ErrorLine(error = error, onDismiss = onDismissError) }
+            else -> LazyColumn(
+                modifier = Modifier.weight(1f).testTag(AdminTags.CONFIG_LIST),
+            ) {
+                // The state's own error, or the one the read produced — a caller that filled in the
+                // documents by hand has no reason to set both, and an error row that only appears when
+                // two fields agree is a row that appears when it should not.
+                val failure = state.error ?: state.documents.failure?.error
+                failure?.let { error ->
+                    item(key = FIXED_ERROR) { ErrorLine(error = error, onDismiss = onDismissError) }
                 }
-                item(key = "sources") { SourceSummary(state = state) }
-                item(key = "shell") { ShellCard(state = state, onShellChange = onShellChange, onShellRequest = onShellRequest) }
+                item(key = FIXED_SOURCES) { SourceSummary(state = state) }
+                item(key = FIXED_SHELL) {
+                    ShellCard(state = state, onShellChange = onShellChange, onShellRequest = onShellRequest)
+                }
                 val rows = if (configuredOnly) state.configuredRows else state.rows
                 items(
                     items = rows,
-                    // Keyed on the file's own name, never on the index.
-                    key = { row -> row.key.key },
+                    // Namespaced, and keyed on the file's own name rather than the index. The namespace
+                    // is load-bearing: `shell` is both one of the schema's keys and the row of the
+                    // setting above, and two items in one `LazyColumn` with one key is a crash the
+                    // screenshot test found the first time the two were on the same screen.
+                    key = { row -> "$KEY_PREFIX${row.key.key}" },
                 ) { row ->
                     ConfigKeyCard(row = row)
                 }
                 if (rows.isEmpty()) {
-                    item(key = "empty") {
+                    item(key = FIXED_EMPTY) {
                         Text(
                             text = stringResource(R.string.admin_config_empty),
                             style = MaterialTheme.typography.bodyMedium,
@@ -405,3 +416,16 @@ internal fun KeyChip(key: ConfigKey, selected: Boolean, onClick: () -> Unit) {
 
 /** A source's path, shortened for a row. */
 internal fun ConfigSource.shortLabel(): String = shortPath(path ?: "")
+
+/**
+ * The fixed rows' keys, namespaced away from the configuration keys.
+ *
+ * **`shell` is both a schema key and a setting.** A `LazyColumn` needs its keys to be unique across
+ * every item, and using the bare name for both made the screen throw the moment the shell row and the
+ * `shell` key card were in the same list — which they always are. Prefixing one side is the whole fix.
+ */
+private const val KEY_PREFIX = "config:"
+private const val FIXED_SOURCES = "config:fixed:sources"
+private const val FIXED_SHELL = "config:fixed:shell"
+private const val FIXED_ERROR = "config:fixed:error"
+private const val FIXED_EMPTY = "config:fixed:empty"
