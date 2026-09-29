@@ -225,7 +225,7 @@ phases that reuse it get cheaper as a result.
 | P5 | Rich composer | Attachment pipeline, autocomplete and mention engine | P6, P8 | Complete |
 | P6 | Review and history | Diff engine and viewer, file viewer, revert and fork flows | P7, P9 | Complete |
 | P7 | Execution surfaces | WebSocket and terminal component, process panels, worktree flows | P10 | Complete |
-| P8 | Integrations | OAuth, key and command login flows, MCP and plugin management | P9 | Planned |
+| P8 | Integrations | OAuth, key and command login flows, MCP and plugin management | P9 | Complete |
 | P9 | Configuration | Config explorer and validated file editor | P10 | Planned |
 | P10 | Insights and release | Stats, RPC console, adaptive polish, release pipeline | n/a | Planned |
 
@@ -1328,6 +1328,183 @@ pinch-to-zoom, real touch on the extra-keys row, on-device WebView performance, 
 - An MCP server that needs OAuth can be authenticated.
 - An outdated plugin can be updated.
 
+**Status.** Complete. All 27 operations are implemented and covered by tests over a real HTTP client
+against a `MockWebServer` that answers only the routes the app is supposed to call. The full gate is
+green: 1,267 JVM unit-test executions with no failures, Android Lint clean, and both `play` and
+`fdroid` debug APKs assembled. 121 of those executions are this phase's; 19 Roborazzi baselines
+(light, dark and 1.5× font) are new, and the repository now holds 107.
+
+**Built.**
+
+- **Connect** at `/connect` parity. The method dispatch is
+  `dev.opencode.android.core.data.integrations.IntegrationFlows.of`, a pure total function from a
+  method to one of `KEY`, `OAUTH`, `COMMAND`, `ENVIRONMENT`, `UNSUPPORTED`; the four flows are one
+  sheet whose branch comes from the state and is never re-derived from the method's `type`. A
+  method's own `form` is rendered and validated by the P3 `FormEngine`, so an integration login and a
+  `question` tool share one set of rules. Accounts are renamed, activated and removed, each behind
+  the confirmation plan §5.2 asks for. `experimental.integration.wellknown` is behind its own switch.
+- **Providers and models** (read-only). Activation, package, endpoint (read from `settings.baseURL`
+  or `settings.baseUrl`), and a note saying where the config-only changes live.
+- **MCP.** The server list with its five statuses, the four runtime writes behind capability
+  detection, OAuth for a `needs_auth` server *through the integration it names*, the add form built
+  by `McpConfigForm` into the wire union, removal with a confirmation, and the resource catalog with
+  "attach to prompt".
+- **Web search.** The providers and a test query, with the answer naming the provider that *ran*
+  rather than the one that was asked for.
+- **Plugins.** Source, features and failure state, check for updates, and update the selected
+  outdated packages. `plugin.check` replaces the list rather than merging, because a plugin that
+  stopped being outdated has no event to say so.
+- **The OAuth-completion attention channel** (`attention.auth`), so a user who left for a consent
+  screen is told whether it worked.
+
+**Verified here, and how.**
+
+- **Method dispatch.** Every variant of `IntegrationMethod`, decoded from real wire JSON rather than
+  constructed, maps to the flow the plan's table names; a fifth type this build does not know maps to
+  `UNSUPPORTED` and is not startable.
+- **Form validation and answer assembly.** The engine's required-field rule blocks a key login; a
+  conditional field is answered only while visible; a method with nothing to say sends no `answer`
+  object at all.
+- **The `mode=auto` polling state machine.** Fourteen tests on a virtual clock covering pending,
+  complete, failed (with the server's own reason), expired, a `404` answer, a transport failure that
+  does *not* end the attempt, a cancel that stops the next poll, the command attempt's accumulated
+  output, an unknown status folded to pending, and the poll budget. Every wait is bounded and every
+  exit is asserted with a post-condition.
+- **The device-code copy path.** The pattern, the "last match wins" rule for a retry, and the
+  screenshot that shows the chip.
+- **Capability detection.** A `404` and a `405` each hide the runtime writes and only them; a `500`
+  does not; a success records the route as present; and the user switch is read from
+  `ExperimentalPreferences` rather than trusted from a screen.
+- **Catalog invalidation.** A burst of three events costs one refetch; `mcp.status.changed` refetches
+  the servers and *not* the resource catalog, which is asserted with a wait longer than the debounce.
+- **Secret handling.** Eleven assertions, listed under "the credential guarantees" below.
+- **Not vacuous.** The two security boundaries were each broken deliberately and the suite was
+  re-run: accepting any URL scheme failed `SafeNavigationUrlTest` in three tests, and making
+  `Secret.toString` reveal its value failed `SecretHandlingTest` in five. Both were restored and the
+  suite re-run green.
+
+**The credential guarantees, and how they are checked.**
+
+- A key is typed into `ConnectUiState.keyDraft` and reaches the request as
+  `dev.opencode.android.core.model.Secret`, whose `toString` is `Secret(length=n)`.
+  `SecretHandlingTest` asserts the request's own `toString` does not contain the key, that the
+  rendered `Secret` does not, that the value appears in the wire body and *only* in the `key` field,
+  that no field of `ConnectKeyRequest` whose name matches `key|secret|token|password|credential` is
+  a plain `String`, and that a failure built from a write carries none of it. Each assertion is
+  written so its own message cannot contain the key.
+- The key never touches disk. The server holds the credential; the app holds it in memory between
+  the tap and the request, and clears `keyDraft` when the sheet closes.
+- The key field is masked with a show/hide toggle, and `SecureWindowEffect` sets `FLAG_SECURE` on the
+  window for the sheet's lifetime and *restores the previous value* on dispose, so the task switcher
+  and a screen recording cannot capture it and the rest of the app keeps its thumbnail.
+- Every server-supplied URL that this client would open goes through
+  `dev.opencode.android.core.model.SafeNavigationUrl`, which parses rather than prefix-matches, so
+  `javascript:`, `intent:`, `file:`, `content:`, `https:/\evil.example` and a leading control
+  character are all refused. `WellknownSourceUrl` and the MCP remote-config URL use the same function,
+  and `IntegrationsHost.openProvider` checks once more where the `Intent` is built.
+- `instructions` is server text and is rendered as text, never interpreted.
+
+**What the tests found and this fixes.**
+
+- `ActionError` classified `McpServerNotFound`, `IntegrationNotFound`,
+  `IntegrationAttemptNotFound`, `IntegrationMethodNotFound` and `ProviderNotFound` as
+  `ActionErrorKind.SERVER`. Capability detection reads a `404` as "this route is missing", so a
+  `404` from an experimental MCP route did *not* hide the feature: the user would get a failure on
+  every tap with no way to tell the feature apart. All five now classify as `NOT_FOUND`.
+- A `405` arrives with an empty body and no `_tag`, so `toActionError` had nothing to classify it by
+  and it landed on `SERVER` — the same class a `500` gets, which is a route that clearly exists.
+  `ActionError` now carries `httpStatus` and `CapabilityPolicy.from(error)` reads the status first.
+  This is a prerequisite fix that P3's `ActionError` and P6's `CapabilityPolicy` both needed and
+  neither had.
+- Seven of the nineteen new Roborazzi baselines were vacuous. `connect-key.png` recorded the account
+  list with the key field nowhere in it, because a `ModalBottomSheet` renders into a window a
+  Roborazzi capture does not see. The sheet content is now a plain composable the host wraps —
+  the arrangement P7 used for its terminal — and the baselines are real. This is the same trap P6
+  hit with a sheet and P7 with a `WebView`.
+
+**Exit criteria.**
+
+- *"On a fresh server with no credentials, a provider can be connected by API key and by OAuth, and
+  a turn run on its model."* **Device-only, and more than that.** The three halves a JVM test can
+  decide are decided: the key reaches `integration.connect.key` on the right path with the right
+  body; an OAuth attempt is started, its URL is opened only when it passes the scheme check, and the
+  flow ends only on the server's own status; and a completed login re-reads `integration.list`
+  rather than adding a credential locally. What is not decided is the round trip: it needs a real
+  provider's consent screen in a real browser on a real device, and a real API key. There is no
+  emulator and no hardware here, and a real credential is exactly the thing this phase's own
+  guarantees forbid putting in a test.
+- *"An MCP server that needs OAuth can be authenticated."* **Device-only for the same reason, with
+  the client half decided.** What is decided: a `needs_auth` status decodes, the
+  `integrationID` that identifies the flow survives decoding, the row offers "Sign in" only when one
+  is named, and the host routes that to the accounts screen for that integration. What is not: an MCP
+  server actually demanding a grant, which needs a real remote MCP server configured with OAuth.
+- *"An outdated plugin can be updated."* **Partly verified, and the split is honest.** The client
+  half is decided: an `outdated: true` package decodes, only an outdated *package* is offered for
+  update, `plugin.check` replaces the list with the refreshed flags, and `plugin.update` posts the
+  `targets` array the route takes. What is not decided is the download and install, which needs the
+  npm registry and a real package.
+
+**Not verified here, and why.** A real OAuth round trip through Custom Tabs to a real provider, real
+provider credentials, a real MCP server, and an actual plugin update downloading a package. All four
+need third-party services and a device. The Custom Tabs `Intent` is built with the standard extras
+directly rather than through `androidx.browser`, because that library is not in the version catalog
+and a dependency for one intent would be a worse trade than two extras; the effect on a browser that
+implements the service is the same, and a browser that does not simply opens the URL.
+
+**Deviations.**
+
+- The Custom Tabs `Intent` is hand-built, as above.
+- The MCP add form's command line is split on whitespace and is **not** a shell parser. The route
+  takes an argument vector, so a quoted argument would be passed with its quotes; splitting plainly
+  means what the user sees is what runs, which is the property that matters for a command on their
+  own machine.
+- The device-code detector is a regular expression, not a provider protocol. A client that cannot
+  know which provider's format a code is in looks for the shape they share and copies the *code*
+  rather than the line it was printed on.
+- `experimental.mcp.*` and `experimental.integration.wellknown` have **separate** switches. The first
+  writes to a table that dies at restart; the second makes the *server* fetch a URL that can add an
+  integration the user never configured. One switch would ask the user to consent to something they
+  have not been told about.
+
+**Known limitations.**
+
+- "Attach resource to prompt" publishes the pick and the host routes to the pending-requests inbox,
+  where the composer is reachable. Carrying the resource into the composer's own attach pipeline is
+  Phase 9 work on the composer, not on this screen.
+- A `plugin.update` whose result the app has not seen reported (a dropped connection mid-install)
+  leaves the row showing whatever the next `plugin.list` says. The store re-reads; it does not
+  guess.
+- The activity's `FLAG_SECURE` is a window flag, so it also blocks the *user's* own screenshot on
+  the key sheet. That is the right way round: a photographed key is in a photo library the server
+  has no way to revoke.
+- The providers screen is read-only. Activation, endpoint and headers are configuration (features
+  doc §9) and changing them needs the Phase 9 editor, so the screen says where they live rather
+  than offering a control that would not take effect.
+
+**Building blocks P9 needs.**
+
+- `IntegrationSurface`, one object holding every account, provider, MCP, plugin and web-search
+  catalog per `(server, directory)`, with the experimental writes already capability-gated. The
+  config explorer reads the same surface and adds to it rather than building a second one.
+- `IntegrationFlows.of` and `IntegrationForm`, so a Phase 9 "re-authenticate this provider" action
+  opens the same flows this phase built rather than a parallel one.
+- `McpConfigForm` and `McpServerDraft`, which are the shape a *persistent* MCP server config file
+  will be edited into. The wire union `McpServerConfig` is already the one the schema declares, so
+  the editor's output has a target to validate against.
+- `ConnectOutcome`, a total state-to-consequence mapping, reusable wherever a long operation ends.
+- `AttentionChannel.AUTH_COMPLETED` and `AttentionNotice.AuthCompleted`, so a Phase 9 flow that
+  needs a background confirmation has a channel and a slot already wired.
+- `SafeNavigationUrl` and `WellknownSourceUrl`, for any P9 route that takes or opens a URL — the
+  config editor's "open the file" and any remote source.
+- `ActionError.httpStatus` and `CapabilityPolicy.from(error)`, for P9's own experimental routes
+  (`experimental.config.update`, `experimental.session.instructions.entry.*`).
+
+**Standing defect, not addressed.** ktlint, Spotless and detekt are in the version catalog and
+applied to no module, so the plan's Quality row (§3) is still not enforced. This phase did not wire
+them: doing it as part of a feature phase would either turn a long-standing gap into a large
+mechanical diff attributed to the wrong work, or fail on hundreds of pre-existing violations that
+are not this phase's to fix. It remains the cheapest high-value item on the list.
+
 ---
 
 ### Phase 9: Configuration and administration (M)
@@ -1605,7 +1782,7 @@ and is covered by the reducer or invalidation tests.
 | P5 | `reference.updated`, `command.updated`, `skill.updated` (recorded on `ServerDataSet.composerCatalogs`; the empty payload invalidates the named location, or every location the client has open when the frame carries none) | Complete |
 | P6 | `filesystem.changed` (re-reads the browser's listing and the file the viewer holds), `vcs.branch.updated` (re-reads `vcs.get` and `vcs.status` for every open location, so a branch that moves on the desktop moves the header) | Complete |
 | P7 | `worktree.updated` (re-reads the one named project and nothing else), `worktree.resolved` (recorded as an adoption, then re-read), `pty.created`, `pty.updated` (renames in place, so every open view follows the title), `pty.exited`, `pty.deleted`, `persistent-pty.added`, `persistent-pty.removed`, `shell.created`, `shell.exited` (the status and exit code land on the row, and the poller stops), `shell.deleted` | Complete |
-| P8 | `credential.updated`, `credential.switched`, `integration.updated`, `provider.updated`, `plugin.updated`, `websearch.updated`, `mcp.status.changed`, `mcp.resources.changed` | Planned |
+| P8 | `credential.updated`, `credential.switched` (invalidate the integrations list of every open location), `integration.updated`, `provider.updated`, `plugin.updated`, `websearch.updated` (one catalog each, and nothing else), `mcp.status.changed {server}` (invalidate the server list only), `mcp.resources.changed {server}` (invalidate the resource catalog only) | Complete |
 | P9 | `config.updated` | Planned |
 | P10 | `tui.prompt.append`, `tui.command.execute`, `tui.toast.show`, `tui.session.select`, `rpc.<rpcID>.<event>` | Planned |
 

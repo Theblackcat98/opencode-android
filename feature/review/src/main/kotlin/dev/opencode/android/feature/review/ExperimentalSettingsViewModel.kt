@@ -37,6 +37,18 @@ class ExperimentalSettingsViewModel @Inject constructor(
         viewModelScope.launch { preferences.setSessionTransfer(enabled) }
     }
 
+    fun setPersistentPty(enabled: Boolean) {
+        viewModelScope.launch { preferences.setPersistentPty(enabled) }
+    }
+
+    fun setMcpRuntime(enabled: Boolean) {
+        viewModelScope.launch { preferences.setMcpRuntime(enabled) }
+    }
+
+    fun setWellknownIntegrations(enabled: Boolean) {
+        viewModelScope.launch { preferences.setWellknownIntegrations(enabled) }
+    }
+
     private companion object {
         const val STOP_TIMEOUT = 5_000L
     }

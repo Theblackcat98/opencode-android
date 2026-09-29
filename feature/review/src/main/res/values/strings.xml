@@ -121,6 +121,12 @@
     <string name="experimental_fs_write_body">Writes through experimental.fs.write. Off by default because a remote write can break a project.</string>
     <string name="experimental_export">Export and import sessions</string>
     <string name="experimental_export_body">Uses the experimental export and import routes. Hidden when this server does not have them.</string>
+    <string name="experimental_persistent_pty">Session terminals</string>
+    <string name="experimental_persistent_pty_body">Lets the app open the terminals a session keeps between turns. Two of these routes end every session terminal on the server, and a server that does not have them hides this.</string>
+    <string name="experimental_mcp_runtime">Change MCP servers at runtime</string>
+    <string name="experimental_mcp_runtime_body">Lets the app connect, disconnect, add and remove MCP servers for the current run. The change is gone when the server restarts, and a server without these routes hides this.</string>
+    <string name="experimental_wellknown">Add integration sources</string>
+    <string name="experimental_wellknown_body">Lets the app give the server an address to fetch an integration catalog from. Only http and https are accepted, and a server without the route hides this. This is separate from the switch above on purpose.</string>
     <string name="experimental_unavailable">This server does not have that route.</string>
 
     <string name="action_retry">Try again</string>

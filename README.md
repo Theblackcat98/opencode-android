@@ -5,13 +5,36 @@ network, or any network your phone can reach, and drives the server's full featu
 
 ## Status
 
-Phase 7, *Subagents, shells, terminals and worktrees*, is complete. The app pairs with one or more OpenCode servers,
+Phase 8, *Providers, integrations, MCP and plugins*, is complete. The app pairs with one or more OpenCode servers,
 keeps a live event stream to each of them, **drives** them from the phone, stays reachable while it works, says
-what a prompt is about to carry before it sends it, shows what the agent changed and lets you take it back, and now
-gives you a real terminal, a command panel, the subagent tree and parallel worktrees. The phase table is in
+what a prompt is about to carry before it sends it, shows what the agent changed and lets you take it back, gives
+you a real terminal, a command panel, the subagent tree and parallel worktrees, and now manages the server's own
+accounts, providers, MCP servers and plugins without you touching the machine it runs on. The phase table is in
 [`docs/ANDROID_APP_PLAN.md`](docs/ANDROID_APP_PLAN.md#6-phases).
 
 What works today:
+
+- **Accounts, at `/connect` parity.** Every integration, the ways into it and the logins that already exist. An
+  **API key** is asked for in a masked field with a show/hide toggle, the method's own form (an Azure resource
+  name, a GHE domain) is filled through the *same* forms engine a `question` tool uses, and the sheet is marked
+  `FLAG_SECURE` so the task switcher cannot snapshot a key. **OAuth** opens the provider in a browser tab, shows
+  the server's own instructions, and — because the server is authoritative and a redirect says nothing about
+  whether access was granted — polls until it says complete, failed or expired. A **device code** is typed in and
+  submitted, and a code printed by a **host command** is spotted in the output with a copy button. **Cancel is
+  available throughout**, and an environment connection is shown read-only with the command that sets it. Stored
+  accounts can be renamed, switched to and removed, and the last two ask first.
+- **Providers, read-only.** Activation state, package and endpoint, with the note that activation, endpoint and
+  headers are configuration and belong in the configuration editor.
+- **MCP servers.** The list with each server's status, connect and disconnect at runtime, add a server through a
+  form (a local command or a remote URL, the three timeouts, Code Mode and the protocol revision), remove one,
+  and the resource catalog with "attach to prompt". A server that reports `needs_auth` offers "Sign in", which opens
+  the integration it names.
+- **Plugins.** What is loaded, from where, what it extends and whether it failed; check for updates; update the
+  packages that have one.
+- **Web search.** The configured providers and a test query, labelled with the provider that *answered* rather than
+  the one that was asked for.
+- And from Phase 7:
+
 
 - **A terminal on the phone.** xterm.js bundled offline in a hardened WebView — local assets only, no file access,
   no network, and one JavaScript bridge whose every message is validated before the host acts on it. Frames are
@@ -150,6 +173,7 @@ Screenshot baselines are refreshed with:
 ```bash
 ./gradlew :feature:sessions:testDebugUnitTest -Proborazzi.test.record=true
 ./gradlew :feature:execution:testDebugUnitTest -Proborazzi.test.record=true
+./gradlew :feature:integrations:testDebugUnitTest -Proborazzi.test.record=true
 ```
 
 Integration tests need the real server:

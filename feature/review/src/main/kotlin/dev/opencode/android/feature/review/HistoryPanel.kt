@@ -303,6 +303,22 @@ fun ExperimentalSettingsContent(
     sessionTransfer: Boolean,
     onFileWritesChange: (Boolean) -> Unit,
     onSessionTransferChange: (Boolean) -> Unit,
+    /**
+     * The three switches Phase 7 and Phase 8 added, in the same arrangement.
+     *
+     * **They were missing, and that is a defect rather than an omission.** `persistentPty` had a
+     * preference and a view-model setter and no way to reach either: the terminal host asks the store
+     * whether it may offer the feature, the store asks the preference, and the preference was `false`
+     * forever. That is the same shape as the permanently-null flag Phase 6 found, and the fix is the
+     * row here rather than a default flip — a switch that reads `true` for a feature the user was
+     * never asked about is worse than one they cannot see.
+     */
+    persistentPty: Boolean = false,
+    mcpRuntime: Boolean = false,
+    wellknownIntegrations: Boolean = false,
+    onPersistentPtyChange: (Boolean) -> Unit = {},
+    onMcpRuntimeChange: (Boolean) -> Unit = {},
+    onWellknownIntegrationsChange: (Boolean) -> Unit = {},
     modifier: Modifier = Modifier,
     onDismiss: () -> Unit = {},
 ) {
@@ -330,6 +346,31 @@ fun ExperimentalSettingsContent(
             body = stringResource(R.string.experimental_export_body),
             enabled = sessionTransfer,
             onChange = onSessionTransferChange,
+        )
+        HorizontalDivider()
+        ExperimentalRow(
+            title = stringResource(R.string.experimental_persistent_pty),
+            body = stringResource(R.string.experimental_persistent_pty_body),
+            enabled = persistentPty,
+            onChange = onPersistentPtyChange,
+        )
+        HorizontalDivider()
+        ExperimentalRow(
+            title = stringResource(R.string.experimental_mcp_runtime),
+            body = stringResource(R.string.experimental_mcp_runtime_body),
+            enabled = mcpRuntime,
+            onChange = onMcpRuntimeChange,
+        )
+        HorizontalDivider()
+        // A switch of its own rather than one with the row above, because the two are different kinds
+        // of write: the runtime routes edit a table that dies at restart, and this one makes the
+        // *server* fetch a URL that can add an integration the user never configured. Agreeing to the
+        // first has not told the user about the second.
+        ExperimentalRow(
+            title = stringResource(R.string.experimental_wellknown),
+            body = stringResource(R.string.experimental_wellknown_body),
+            enabled = wellknownIntegrations,
+            onChange = onWellknownIntegrationsChange,
         )
     }
 }
