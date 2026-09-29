@@ -1,5 +1,6 @@
 package dev.opencode.android.core.data.capability
 
+import dev.opencode.android.core.data.action.ActionError
 import dev.opencode.android.core.data.action.ActionErrorKind
 
 /**
@@ -108,11 +109,24 @@ object CapabilityPolicy {
         else -> null
     }
 
-    /** The availability a reported [ActionError] implies, or `null` when it says nothing. */
+    /** The availability a reported failure kind implies, or `null` when it says nothing. */
     fun from(error: ActionErrorKind?): RouteAvailability? = when (error) {
         ActionErrorKind.NOT_FOUND -> RouteAvailability.Absent(HTTP_NOT_FOUND)
         else -> null
     }
+
+    /**
+     * The availability a reported [ActionError] implies, or `null` when it says nothing.
+     *
+     * **The status is read first, because the kind cannot express a `405`.** A `405` comes back with
+     * an empty body and no `_tag`, so [dev.opencode.android.core.data.action.toActionError] has
+     * nothing to classify it by and it lands on [ActionErrorKind.SERVER] — the same class a `500`
+     * gets. Reading the status is what keeps "the server has this route but not this method" from
+     * being read as "the server is busy", and the [Absent.httpStatus] it records is the one thing
+     * that tells the two apart for whoever is debugging.
+     */
+    fun from(error: ActionError): RouteAvailability? =
+        error.httpStatus?.let(::from) ?: from(error.kind)
 
     /**
      * Whether a feature whose last answer was [last] may be offered.

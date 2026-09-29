@@ -107,6 +107,23 @@ sealed interface NotificationSlot {
         override val sessionId: String,
     ) : NotificationSlot
 
+    /**
+     * The outcome of a login the user started (Phase 8).
+     *
+     * **A slot rather than a notice, and per integration rather than per account.** A user who signs
+     * into two providers in a row must be able to tell which finished, and two notifications that
+     * shared a slot would replace one another — which is the exact failure the id-uniqueness argument
+     * above exists to prevent. [attemptID] is in the key because the same integration can be logged
+     * into twice, and a re-login is a new thing that happened.
+     */
+    data class AuthCompleted(
+        override val serverId: String,
+        val integrationID: String,
+        val attemptID: String,
+    ) : NotificationSlot {
+        override val sessionId: String? get() = null
+    }
+
     companion object {
         fun groupOf(serverId: String, sessionId: String?): String = when (sessionId) {
             null -> summaryGroupOf(serverId)

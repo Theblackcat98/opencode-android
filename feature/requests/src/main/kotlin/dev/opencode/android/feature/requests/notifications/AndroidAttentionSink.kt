@@ -10,6 +10,7 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import dev.opencode.android.core.data.attention.AttentionActionCodes
+import dev.opencode.android.core.data.attention.AuthOutcome
 import dev.opencode.android.core.data.attention.AttentionNotice
 import dev.opencode.android.core.data.attention.AttentionReconcile
 import dev.opencode.android.core.data.attention.AttentionSink
@@ -84,6 +85,36 @@ class AndroidAttentionSink @Inject constructor(
                 ),
             )
 
+            /**
+             * The outcome of a login the user started (Phase 8).
+             *
+             * **Posted on its own channel, and the body names the outcome rather than a generic
+             * "done".** A user who left the app for a consent screen comes back asking one question —
+             * did it work — and a failed or expired attempt is the answer they need as much as a
+             * success. A single "login finished" line would be a lie for two of the three outcomes.
+             *
+             * The category is `CATEGORY_STATUS`, not `CATEGORY_ERROR`: a failed login is an
+             * information message, and putting it in the error category makes it heads-up and sticky
+             * in a way a provider refusing a grant does not warrant.
+             */
+            is AttentionNotice.AuthCompleted -> post(
+                slot = NotificationSlot.AuthCompleted(
+                    serverId = notice.integrationID,
+                    integrationID = notice.integrationID,
+                    attemptID = notice.outcome.name,
+                ),
+                channel = AttentionChannelSpec.AUTH_COMPLETED.id,
+                priority = NotificationCompat.PRIORITY_DEFAULT,
+                title = context.getString(R.string.notify_auth_title, notice.integrationName),
+                body = context.getString(
+                    when (notice.outcome) {
+                        AuthOutcome.SUCCEEDED -> R.string.notify_auth_succeeded
+                        AuthOutcome.FAILED -> R.string.notify_auth_failed
+                        AuthOutcome.EXPIRED -> R.string.notify_auth_expired
+                    },
+                ),
+            )
+
             is AttentionNotice.TurnOutcome -> post(
                 slot = NotificationSlot.Failure(notice.sessionId, "outcome"),
                 channel = AttentionChannelSpec.TURN_FINISHED.id,
@@ -103,7 +134,9 @@ class AndroidAttentionSink @Inject constructor(
             .setStyle(NotificationCompat.BigTextStyle().bigText(body))
             .setAutoCancel(true)
             .setPriority(priority)
-            .setCategory(NotificationCompat.CATEGORY_ERROR)
+            // A login outcome is a status, not an error: a provider refusing a grant is information
+            // the user asked for, and CATEGORY_ERROR would heads-up and stick it.
+            .setCategory(NotificationCompat.CATEGORY_STATUS)
             .build()
         NotificationManagerCompat.from(context).notify(ids.idFor(slot), notification)
     }

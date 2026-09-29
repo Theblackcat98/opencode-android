@@ -176,7 +176,9 @@ class IntegrationSurface(
      * working feature because of a transient fault.
      */
     fun recordFailure(route: ExperimentalRoute, error: ActionError) {
-        val availability = CapabilityPolicy.from(error.kind) ?: return
+        // The whole error, not just its kind: a `405` has no `_tag` to classify by and arrives as
+        // `SERVER`, so only the status tells the probe that the route exists but refuses this method.
+        val availability = CapabilityPolicy.from(error) ?: return
         when (route) {
             ExperimentalRoute.MCP_RUNTIME -> mcpRuntimeState.value = availability
             ExperimentalRoute.WELLKNOWN_INTEGRATION -> wellknownState.value = availability

@@ -87,6 +87,8 @@
     <string name="channel_shell_description">A shell command finished, so you can read its output.</string>
     <string name="channel_retry_name">Retries and limits</string>
     <string name="channel_retry_description">A provider is retrying, or a usage limit was reached.</string>
+    <string name="channel_auth_name">Sign-ins</string>
+    <string name="channel_auth_description">A login you started in a browser finished, was refused, or expired.</string>
     <string name="channel_update_name">Server updates</string>
     <string name="channel_update_description">A newer OpenCode is available for one of your servers.</string>
     <string name="channel_connection_name">Connection</string>
@@ -131,6 +133,10 @@
     <string name="notify_failed_body">%1$s: %2$s</string>
     <string name="notify_outcome_title">The turn ended</string>
     <string name="notify_outcome_body">Open the session to see what happened.</string>
+    <string name="notify_auth_title">%1$s</string>
+    <string name="notify_auth_succeeded">Signed in. Open Accounts to see the new login.</string>
+    <string name="notify_auth_failed">The sign-in was refused. Open Accounts to try again.</string>
+    <string name="notify_auth_expired">The sign-in attempt expired before it was approved.</string>
 
     <!-- The "Allow always" confirmation, which plan §5.2 requires -->
     <string name="confirm_always_title">Always allow %1$s?</string>

@@ -1,5 +1,6 @@
 package dev.opencode.android.core.data.review
 
+import dev.opencode.android.core.data.action.ActionError
 import dev.opencode.android.core.data.action.ActionErrorKind
 import dev.opencode.android.core.data.capability.CapabilityPolicy
 import dev.opencode.android.core.data.capability.ExperimentalRoute
@@ -67,6 +68,32 @@ class CapabilityPolicyTest {
     }
 
     @Test
+    fun `a reported error is read off its status, because a 405 carries no tag to classify it`() {
+        // Phase 8's capability probe needs this. A 405 arrives with an empty body and no `_tag`, so
+        // `toActionError` can only classify it as SERVER from the status — and reading the *kind*
+        // would leave a route the server has-but-refuses switched on, which is the exact state the
+        // probe exists to detect.
+        assertEquals(
+            RouteAvailability.Absent(HTTP_METHOD_NOT_ALLOWED),
+            CapabilityPolicy.from(ActionError(kind = ActionErrorKind.SERVER, message = "", httpStatus = HTTP_METHOD_NOT_ALLOWED)),
+        )
+        assertEquals(
+            RouteAvailability.Absent(HTTP_NOT_FOUND),
+            CapabilityPolicy.from(ActionError(kind = ActionErrorKind.SERVER, message = "", httpStatus = HTTP_NOT_FOUND)),
+        )
+        // A 500 is present, not absent: the route clearly is there.
+        assertNull(CapabilityPolicy.from(ActionError(kind = ActionErrorKind.SERVER, message = "", httpStatus = 500)))
+        // A dropped connection has no status and no bearing on the route.
+        assertNull(CapabilityPolicy.from(ActionError(kind = ActionErrorKind.OFFLINE, message = "")))
+        // And with no status at all, the kind is still consulted, so a not-found tag from a proxy
+        // that rewrote the status still hides the feature.
+        assertEquals(
+            RouteAvailability.Absent(HTTP_NOT_FOUND),
+            CapabilityPolicy.from(ActionError(kind = ActionErrorKind.NOT_FOUND, message = "")),
+        )
+    }
+
+    @Test
     fun `an unprobed feature is offered, because a switch that hides everything is useless`() {
         assertTrue(CapabilityPolicy.isUsable(RouteAvailability.Unknown))
     }
@@ -99,8 +126,20 @@ class CapabilityPolicyTest {
         // Phase 7 added the session-terminal routes as one value, because the eleven persistent-PTY
         // routes are one feature that lives or dies together and a client that probed them separately
         // would show a terminal picker for a feature whose host it had not established.
+        //
+        // Phase 8 added the four runtime-MCP routes as one value for the same reason, and the
+        // well-known-source route as a fifth of its own: it is a different kind of write, because it
+        // makes the *server* fetch a URL rather than editing a table that dies at restart. A user who
+        // agreed to the first has not agreed to the second.
         assertEquals(
-            listOf("fs_write", "session_export", "session_import", "persistent_pty"),
+            listOf(
+                "fs_write",
+                "session_export",
+                "session_import",
+                "persistent_pty",
+                "mcp_runtime",
+                "wellknown_integration",
+            ),
             ids,
         )
     }

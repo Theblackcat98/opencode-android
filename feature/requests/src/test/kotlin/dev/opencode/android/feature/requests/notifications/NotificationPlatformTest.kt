@@ -96,6 +96,11 @@ class NotificationPlatformTest {
                 // silencing "the agent needs an answer" — which is the whole reason channels are per
                 // kind rather than one list.
                 "attention.shell",
+                // Phase 8: a login the user started in a browser finished, was refused or expired.
+                // Its own channel, so a user who silenced their sessions' turns has not also silenced
+                // the one message they are actually waiting for when they come back from a consent
+                // screen.
+                "attention.auth",
             ),
             created.keys,
         )
@@ -106,6 +111,10 @@ class NotificationPlatformTest {
         // Only a blocking request may buzz: it is the one thing that has stopped the agent.
         assertTrue(AttentionChannelSpec.PERMISSION.vibrates)
         assertFalse(AttentionChannelSpec.TURN_FINISHED.vibrates)
+        // A login outcome is news, not an interruption: nothing is blocked while the browser is in
+        // front, so it must not heads-up over a permission the user is in the middle of answering.
+        assertEquals(NotificationManager.IMPORTANCE_DEFAULT, created.getValue("attention.auth").importance)
+        assertFalse(AttentionChannelSpec.AUTH_COMPLETED.vibrates)
     }
 
     @Test

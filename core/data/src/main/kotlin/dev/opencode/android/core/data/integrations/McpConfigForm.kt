@@ -155,22 +155,21 @@ object McpConfigForm {
      *
      * **A pattern, not a protocol.** A device-code login prints something the user must carry to
      * another device, and this client cannot know which provider's format that is, so it looks for
-     * the shape every one of them shares — a short group of uppercase alphanumerics separated by
-     * dashes, on its own line — and offers to copy the whole line it found it on. When it finds
-     * nothing the copy button is simply absent, which is honest: the instructions still say what the
-     * user should do.
+     * the shape every one of them shares — a group of uppercase alphanumerics separated by dashes —
+     * and offers to copy *the code itself*, not the line it was printed on. Copying the line would
+     * put the label into the other device's field, which is the one thing that never works.
      */
-    private val CODE_LINE = Regex("^\\s*([A-Z0-9]{4}(?:-[A-Z0-9]{4,6}){2,})\\s*$")
+    private val CODE = Regex("[A-Z0-9]{4}(?:-[A-Z0-9]{4,6}){2,}")
 
     /**
      * The device code in [output], or `null`.
      *
      * **The *last* match wins**, because a login that has already printed one code and then printed
      * another (a retry, or a provider that shows an example alongside the real one) has the real one
-     * last. The whole line is returned so the copy carries any label the command put on it.
+     * last. A line with nothing that looks like a code produces `null`, and the copy button is simply
+     * absent — which is honest, because the server's own instructions still say what to do.
      */
     fun deviceCodeIn(output: String): String? = output.lineSequence()
-        .filter { CODE_LINE.matches(it) }
+        .mapNotNull { line -> CODE.find(line)?.value }
         .lastOrNull()
-        ?.trim()
 }

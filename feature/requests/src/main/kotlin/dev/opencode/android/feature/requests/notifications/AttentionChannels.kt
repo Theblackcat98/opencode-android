@@ -61,6 +61,19 @@ enum class AttentionChannelSpec(
         R.string.channel_retry_description,
         NotificationManager.IMPORTANCE_DEFAULT,
     ),
+    /**
+     * A login the user started finished, one way or another (Phase 8).
+     *
+     * **Its own channel, so it can be silenced on its own.** A user who silences their sessions'
+     * turns and their subagents would otherwise also silence "the thing I started in a browser
+     * finished", which is the one message they are actually waiting for.
+     */
+    AUTH_COMPLETED(
+        AttentionChannel.AUTH_COMPLETED,
+        R.string.channel_auth_name,
+        R.string.channel_auth_description,
+        NotificationManager.IMPORTANCE_DEFAULT,
+    ),
     SERVER_UPDATE(
         AttentionChannel.SERVER_UPDATE,
         R.string.channel_update_name,

@@ -54,6 +54,17 @@ data class ActionError(
     val apiError: ApiError? = null,
     /** The field an `InvalidRequestError` names, when it names one. */
     val field: String? = null,
+    /**
+     * The HTTP status the server answered with, when there was one.
+     *
+     * **Kept because [kind] cannot express every status that matters.** Capability detection reads a
+     * `404` *and* a `405` as "this route is not available" (plan §4.2), and a `405` arrives with an
+     * empty body and no `_tag`, so there is nothing in [kind] to tell it apart from a `500`. Before
+     * this field the answer came out as `SERVER` and the feature stayed switched on against a server
+     * that has the route but refuses the method — which is exactly the state the probe is supposed
+     * to detect. `null` for a failure with no HTTP answer at all, such as a dropped connection.
+     */
+    val httpStatus: Int? = null,
 ) {
     /** True when re-pairing is the fix, which is the one case a retry cannot solve. */
     val needsRepair: Boolean get() = kind == ActionErrorKind.UNAUTHORIZED
@@ -89,6 +100,7 @@ fun Throwable.toActionError(): ActionError {
             message = decoded?.message ?: "HTTP ${code()}",
             apiError = decoded,
             field = (decoded as? ApiError.InvalidRequest)?.field,
+            httpStatus = code(),
         )
     }
     if (this is IOException) {
@@ -109,8 +121,21 @@ private fun kindOf(error: ApiError): ActionErrorKind = when (error) {
     is ApiError.FormInvalidAnswer -> ActionErrorKind.INVALID_REQUEST
     is ApiError.InstructionEntryValueTooLarge -> ActionErrorKind.INVALID_REQUEST
     is ApiError.ServiceUnavailable -> ActionErrorKind.SERVER
+    // Every "the thing you named is not here" tag is [ActionErrorKind.NOT_FOUND], not a server fault.
+    //
+    // **These were the ones capability detection depends on.** Phase 8 probes
+    // `experimental.mcp.*` and `experimental.integration.wellknown`, and the only evidence it has
+    // that a route is missing is a `404` — so a `McpServerNotFound` folded into [ActionErrorKind.SERVER]
+    // would leave the feature switched *on* against a server that has never heard of the route, and
+    // the user would get a failure on every tap with no way to tell the feature apart. The Phase 8
+    // tags are listed explicitly rather than being caught by a rule, because a rule that classified
+    // every tag ending in `NotFound` would also catch a *resource* that is gone (a deleted session,
+    // a removed credential) and report it as a missing route.
     is ApiError.SessionNotFound, is ApiError.MessageNotFound, is ApiError.PermissionNotFound,
     is ApiError.FormNotFound, is ApiError.AgentNotFound, is ApiError.FileNotFound,
+    is ApiError.ProviderNotFound, is ApiError.IntegrationNotFound,
+    is ApiError.IntegrationAttemptNotFound, is ApiError.IntegrationMethodNotFound,
+    is ApiError.McpServerNotFound,
     -> ActionErrorKind.NOT_FOUND
 
     else -> ActionErrorKind.SERVER
