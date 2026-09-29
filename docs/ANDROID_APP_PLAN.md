@@ -224,7 +224,7 @@ phases that reuse it get cheaper as a result.
 | P4 | Background and notifications | `ConnectionService`, notification and action infrastructure, unread model | P7, P8, P9, P10 | Complete |
 | P5 | Rich composer | Attachment pipeline, autocomplete and mention engine | P6, P8 | Complete |
 | P6 | Review and history | Diff engine and viewer, file viewer, revert and fork flows | P7, P9 | Complete |
-| P7 | Execution surfaces | WebSocket and terminal component, process panels, worktree flows | P10 | Planned |
+| P7 | Execution surfaces | WebSocket and terminal component, process panels, worktree flows | P10 | Complete |
 | P8 | Integrations | OAuth, key and command login flows, MCP and plugin management | P9 | Planned |
 | P9 | Configuration | Config explorer and validated file editor | P10 | Planned |
 | P10 | Insights and release | Stats, RPC console, adaptive polish, release pipeline | n/a | Planned |
@@ -1139,6 +1139,144 @@ components.
   correctly.
 - A background subagent can be watched, and its completion is notified.
 - A worktree can be created and a session moved into it.
+
+**Status.** All 30 operations are implemented and covered by tests over a real HTTP client
+(`ExecutionOperationsTest` for the wire, `ExecutionWireTest` for the routes the mocking API would hide,
+`PtySocketTest` for the framing against a real handshake). All 11 events are handled. All three exit criteria
+are **device-only**; none is claimed as verified below.
+
+**What was built.** `PtySocket` (the WebSocket, the `0x00`-framed cursor, replay and reconnect-from-cursor),
+`TerminalChannel` and `TerminalBridge` (the hardened bridge and its codec), `ShellOutputPoller` (cursor paging),
+`SessionTree` (the family tree, including orphans and cycles), `ExecutionSurface` and `SessionTerminalStore`
+(per-location and per-session state driven by events), and five screens: `TerminalScreen`, `ShellsScreen`,
+`SubagentsScreen`, `WorktreesScreen`, `SessionTerminalsPane`, plus `ProjectSettingsScreen`. Project settings and
+the two host-lifecycle routes had view models and no way to reach them, and now have destinations.
+
+**What was verified.** Every claim below is a test that was run, and the two that check the same code from
+different directions were each broken deliberately to confirm they fail:
+
+| Claim | How | Test |
+| --- | --- | --- |
+| PTY framing, cursor, replay, reconnect from cursor, `4404` | Real OkHttp WebSocket against `MockWebServer`, with the server driving the protocol | `PtySocketTest` (16) |
+| All 30 operation wire shapes | A real `ServerApi` over `MockWebServer`: paths, query names, bodies, statuses | `ExecutionOperationsTest` (32) |
+| `DELETE` with a body; `name` as a discriminator; nullable `data`; capability states | The same, on the routes a mocked interface would agree with | `ExecutionWireTest` (24) |
+| Shell output cursor paging, truncation, the exited case, the loop stopping | `advanceTimeBy` on a `TestScope`, never an unbounded wait | `ShellOutputPollerTest` (10) |
+| Session tree from `parentID`: nesting, orphans, cycles, siblings, the subagent card | A pure function of `SessionRow`s | `SessionTreeTest` (13) |
+| Events land in the right store and the wrong one is untouched | `ExecutionSurface.apply` with recorded events | `ExecutionStoreTest` (19) |
+| The bridge refuses malformed, unknown and out-of-range messages | The codec as a pure function | `TerminalBridgeTest` (20) |
+| Every message the codec produces reaches the host | The screen's relay, with a `WebView` replaced by a list | `TerminalSurfaceTest` (23) |
+| Key encoding, modifiers, the plan's row | `TerminalInput.encode` and `ExtraKeys.row` | `TerminalInputTest` (15) |
+| The WebView is hardened | `harden()` against a `WebSettings` made permissive first | `TerminalChannelTest` (9, plus 14 baselines) |
+| Subagent and shell completion reach `AttentionCoordinator` | The coordinator and its drafts | `ShellCompletionAttentionTest` (8) |
+
+**What was found.** The inherited code had never been built or run. Its own tests did not compile or failed, and
+each failure was a real defect rather than a broken test:
+
+- `worktree.remove` was `@DELETE` with a `@Body`, which Retrofit refuses to construct. Every removal failed.
+- `WorktreeFailure` defaulted its `name`, so `ignoreUnknownKeys` decoded *any* error body — an
+  `UnauthorizedError` included — as a worktree refusal, and the panel offered "force" for a request rejected on
+  its credential.
+- `terminal/read`'s nullable `data` went through `DataResponse<PersistentPtyScreen?>` and failed to decode on the
+  one response meaning "no terminal".
+- `TerminalChannelTest` asserted `blockNetworkLoads == false` against a `harden()` that sets it true — the test was
+  asserting the page could reach the network.
+- **The terminal was dead.** The screen's surface matched `Ready` and `Resize` and dropped everything else, so
+  `Input` — the only route from a hardware keyboard or a paste to the socket — never reached `PtySocket`, and
+  `onBridgeMessage`, `outputConsumed` and `rename` had no caller. `TerminalSurfaceTest` exists because of this:
+  it asserts the forwarding, and was confirmed to fail when the forwarding is removed.
+- `SubagentsViewModel.selectParent` returned nothing and the host read the destination back out of a `combine`,
+  which may not have republished — so a parent jump could move the selection but navigate to the row it was
+  already on. Both now return the id they moved to.
+- The shell picker's dismiss button created a terminal; the output pane's "stop following" re-opened the command
+  it was following; the project's start command, which the terminal's quick action runs, was always `null`
+  because it was read from the route rather than from the project.
+- `toActionError` (P4's code) sent an unrecognised error body to `SERVER` and discarded the status, so a `404`
+  whose error tag this build does not know read as a server fault. That is the one classification capability
+  detection must not get wrong, and `ExecutionWireTest` was confirmed to fail when the fix is reverted.
+
+**Deviations.**
+
+- **Project settings is a destination, not a sheet.** The plan says "Project settings" without saying where. It
+  is reached from a session's menu and needs a project id, which `session.list` carries and a route does not, so
+  it is a screen with the id in its route arguments.
+- **The WebView never opens the socket.** The plan allows Basic auth "or with a ticket when the WebView connects
+  directly". OkHttp owns the socket in every case, so the credential never enters the page; `pty.connect.token` is
+  the fallback for a *refused* upgrade rather than the normal path, which is strictly safer than the plan requires.
+- **The persistent-PTY pane is a fallback surface, not a second terminal.** `terminal/read` returns a rendering,
+  not a stream, so the pane shows the screen and a size stepper and says so. The live stream for these terminals
+  is the same WebSocket and the same `TerminalScreen`.
+- **`pinch-to-zoom` is a font-size change in the page, not a WebView zoom.** `setSupportZoom(false)` and a
+  page-level two-finger gesture that steps `fontSize`. A browser zoom cuts lines off the right-hand side, which
+  is the opposite of what a terminal needs; whether it feels right is a device question.
+- **The 11 `persistentPty.*` operations are gated twice** — the installation's switch and a capability probe —
+  and `HostDown` (`503`) is kept distinct from `Absent` (`404`), because one is a service the user can start and
+  the other is a version this app does not support.
+
+**Known limitations.**
+
+- **A WebView cannot render in this environment at all**, so nothing here proves xterm.js draws. What is proven is
+  everything around it: the framing, the codec, the forwarding, the grid arithmetic, the resize. The terminal's
+  *chrome* is a separate composable (`TerminalChrome`) precisely so a baseline can photograph it — a screenshot
+  of a `WebView` is an empty rectangle, which P6 learned about a sheet.
+- **The extra-keys row is data, not layout**, so the Roborazzi baselines name the keys. Its TalkBack labels are the
+  same protocol names (`ESC`, `CTRL`) the plan uses.
+- **Selection travels over the bridge and lands on the host's clipboard.** A hardened WebView has no clipboard
+  permission to ask for, so a copy cannot be initiated from inside the page; paste needs nothing, because
+  `Ctrl`+`Shift`+`V` and the soft keyboard both arrive as `onData`.
+- **The session-terminal pane has no live stream.** It shows the last rendering and a checkpoint; attaching to a
+  persistent terminal is the location terminal screen's job.
+- **The host-lifecycle card is a card, not a page.** Two actions do not justify a destination, and the plan puts
+  them on the server status page, which is where they are.
+- **No `subagent: true` background command is started from this phase's UI.** The plan lists it under subagents;
+  the server decides which tool calls are backgrounded, and this client shows and interrupts whatever the server
+  reports. The *strip* of running children is the feature, and it is what the composer's slot draws.
+
+**Building blocks P8 and later get.**
+
+- `PtySocket` — any WebSocket with a resume cursor, a refused-upgrade reason and a bounded backoff.
+- `TerminalChannel` + `TerminalBridgeCodec` — a JavaScript bridge that validates every message, with the codec a
+  pure function and the four rules tested.
+- `TerminalGrid` — measured pixels to a bounded cell count, with a floor of 8 so an unmeasured layout cannot send
+  `size {rows: 0}`.
+- `ShellOutputPoller` — cursor-paged REST output as a stream, for any endpoint that pages and has no event.
+- `SessionTree` — a family projection that tolerates orphans, cycles and partial pages.
+- The **two-gate capability pattern** (`ExperimentalPreferences` + a probe that records what it proved), which P8's
+  experimental routes reuse.
+- `HostLifecycleViewModel` — the shape of an admin action: gated, confirmed, and reachable from exactly one page.
+
+**Driven against a live 2.0.18 server.** Beyond the mocked tests, every operation was exercised over HTTP against
+`opencode serve` with the fake provider (`scripts/dev-server.sh`, `2.0.18`). What the server answered:
+
+| Call | Live answer |
+| --- | --- |
+| `GET /api/shell` | `{location:{directory},data:[]}` — location-scoped, as declared |
+| `POST /api/shell` | `{location,data:{id,status:"running",command,cwd,shell,pid,…}}` |
+| `GET /api/shell/{id}/output?cursor=0` | `{output:"hello-from-p7\n",cursor:14,size:14,truncated:false}`, and the same page at `cursor=2` — the string cursor is honoured |
+| `GET /api/shell/{id}` | `exited`, `exit: 0` — `shell.get` is the only place the exit code exists |
+| `DELETE /api/shell/{id}` | `204` |
+| `GET /api/pty` + `POST /api/pty` | a real PTY with a pid |
+| `POST /api/pty/{id}/connect-token` | `403` without `x-opencode-ticket`, `{ticket,expires_in:60}` with it — the exact asymmetry capability detection has to survive |
+| `GET /api/pty/{id}/connect` | `101 Switching Protocols`; a hand-written WebSocket client read the replay as UTF-8 output, a `0x00`-prefixed `{"cursor":613}` control frame, and the shell's own echo of typed input |
+| `GET /api/config/shell` | `sh`, `bash`, `zsh` with `acceptable` — the picker's data |
+| `GET /api/worktree?projectID=` | a **bare array** with `strategy:"git"`, no location |
+| `POST /api/worktree` | `{"directory":"…/worktree/c42aa3/p7-probe"}` — the server chooses the path |
+| `DELETE /api/worktree` | `204` for a clean removal, `400` for a force attempt on a worktree that is already gone |
+| `GET/POST …/experimental/session/{id}/terminal{,/read}` | `{"data":[]}` and `{"data":null}` — the nullable `data` is real |
+| `POST …/experimental/persistent-pty/handoff` | `{"handoff":null}` |
+| `PATCH /api/project/{id}`, `POST /api/session/{id}/move` | declared and covered by the wire tests; the live server was not asked to move a real session's directory mid-flight |
+
+So the *protocols* are verified against the real server. The *UI* is not: there is no device.
+
+**The xterm.js bundle ships, and it is tracked.** `feature/execution/src/main/assets/terminal/` holds
+`xterm.js` (284 KiB), `addon-fit.js`, `xterm.css`, `index.html` and both upstream licences, and all six are
+committed and present in the built APK (`assets/terminal/…`, verified in `app-fdroid-debug.apk`). The npm
+checkout they were built from is scratch and is not tracked; `.vendor-tmp/` is git-ignored, and the previous
+phase's committed copy of that scratch was removed.
+
+**What only a device can settle.** All three exit criteria. A dev server started and driven in a PTY from a phone,
+with `vim` and `htop` rendering; a background subagent watched to completion and its notification arriving; a
+worktree created and a session moved into it. Also device-only: real xterm.js rendering, hardware keyboard input,
+pinch-to-zoom, real touch on the extra-keys row, on-device WebView performance, and TalkBack over the terminal.
 
 ---
 

@@ -5,12 +5,31 @@ network, or any network your phone can reach, and drives the server's full featu
 
 ## Status
 
-Phase 6, *Review, diffs, files and history control*, is complete. The app pairs with one or more OpenCode servers,
+Phase 7, *Subagents, shells, terminals and worktrees*, is complete. The app pairs with one or more OpenCode servers,
 keeps a live event stream to each of them, **drives** them from the phone, stays reachable while it works, says
-what a prompt is about to carry before it sends it, and now shows what the agent changed and lets you take it
-back. The phase table is in [`docs/ANDROID_APP_PLAN.md`](docs/ANDROID_APP_PLAN.md#6-phases).
+what a prompt is about to carry before it sends it, shows what the agent changed and lets you take it back, and now
+gives you a real terminal, a command panel, the subagent tree and parallel worktrees. The phase table is in
+[`docs/ANDROID_APP_PLAN.md`](docs/ANDROID_APP_PLAN.md#6-phases).
 
 What works today:
+
+- **A terminal on the phone.** xterm.js bundled offline in a hardened WebView — local assets only, no file access,
+  no network, and one JavaScript bridge whose every message is validated before the host acts on it. Frames are
+  decoded per the protocol: raw UTF-8 for output, one `0x00`-prefixed JSON frame for the cursor, and a reconnect
+  that resumes from the cursor the server reported rather than replaying scrollback you have already read. The
+  extra-keys row carries Esc, Tab, Ctrl, Alt, the arrows and `| ~ /`; a hardware keyboard and the clipboard both
+  reach the shell; the grid follows the layout and resizes the PTY over REST; titles follow `pty.updated`; shell
+  choices come from `config.shell`; and a quick action runs the project's own start command.
+- **Commands in a checkout.** `shell.create` runs one, its output is polled by cursor until the server says it
+  has exited, the agent's own background commands are in the same list, and killing one asks first.
+- **The subagent tree.** Sessions from `session.list` drawn as a family by `parentID`, with a subagent card that
+  opens the child it names, jumps to the parent and between siblings, and a strip above the composer showing the
+  children that are still working with a stop button on each.
+- **Worktrees.** List, create from a ref, branch and name, refresh, and remove — where a refusal brings the
+  server's own reason and the second button says what forcing costs. A worktree row moves the session into it with
+  `session.move`, delivery passed through unchanged.
+- **Project settings.** Name, icon colour, emoji or URL, start command and canonical directory.
+- And from Phase 6:
 
 - **A review of what the agent changed**: the TUI's four `/diff` scopes — last turn, uncommitted, committed and
   against the base branch — with the branch, the base and the changed-file count in a header that follows
@@ -130,6 +149,7 @@ Screenshot baselines are refreshed with:
 
 ```bash
 ./gradlew :feature:sessions:testDebugUnitTest -Proborazzi.test.record=true
+./gradlew :feature:execution:testDebugUnitTest -Proborazzi.test.record=true
 ```
 
 Integration tests need the real server:
