@@ -18,37 +18,37 @@ operations declared, wired and tested, and 94 of 94 event types handled and test
 matrices claimed and the code did not back is in [`docs/COVERAGE.md`](docs/COVERAGE.md), and CI fails on a
 regression rather than trusting a document.
 
-**This is not a shipped release.** There is no device, emulator or second device in the build environment,
-so the manual test matrix has not been run, and no signing material exists, so no signed artifact was
-produced. Both are stated plainly in [`docs/RELEASE.md`](docs/RELEASE.md) rather than implied otherwise.
+**This is not a shipped release.** There is no device, emulator or second device in the build
+environment, so the manual test matrix has not been run; and no signing material exists, so no signed
+artifact was produced. Both are stated plainly in [`docs/RELEASE.md`](docs/RELEASE.md) rather than
+implied otherwise.
 
-What P10 added:
+**What P10 did and did not finish.** P10's exit criterion is coverage, and that is met. The *wire and
+state* half of the phase is built and tested; the *screen* half is not. Everything below is a real
+data-layer capability reachable and covered, but only the TUI control events are wired to a surface a
+user can see. There is no insights screen, no RPC console screen, no widget, no Quick Settings tile,
+no command palette, no LAN prober and no theme import yet. The plan's scope list for the phase is in
+[`docs/ANDROID_APP_PLAN.md`](docs/ANDROID_APP_PLAN.md#phase-10-insights-extensibility-adaptive-ui-and-release-m);
+the gap between it and this list is the honest measure of what is left.
 
-- **A usage dashboard** over `experimental.session.stats`: an activity heatmap, a streak, cost and token
-  totals, per-model usage and tool reliability, filtered by range, project and time zone. The daily
-  buckets are cut by the server, so the dashboard and `opencode stats` agree about where a day ends.
-- **A plugin RPC console** and a viewer for `rpc.<id>.<event>`.
-- **The TUI is now able to talk to the phone.** A toast becomes a snackbar, and an opt-in "follow desktop"
-  mode mirrors the TUI's session and composer. It is off by default, and a command that would change
-  server state is offered to you rather than performed — interrupting a running turn from a phone
-  nobody is holding is not the app's call to make.
-- **Advanced session tools** for plugins and workflow testing: synthetic notes, wait-until-idle, and
-  programmatic permission and form creation, the last two behind a confirmation because both gate the
-  agent exactly as a tool's own request does.
-- **The durable session log**, as an event-history viewer and as the gap-free resync the live-only
-  stream cannot give you.
-- **Quick ask**, a stateless completion from a home-screen widget, and **pair another device**, a QR
-  code from `POST /api/pair` — capability-gated, because that route is not in the published spec.
-- **An opt-in LAN prober** that looks for the OpenCode signature on your local `/24`. Off by default,
-  cancellable, and it treats a `401` as a fingerprint rather than something to authenticate against.
-- **Adaptive UI**: list-detail panes for tablets, foldables and ChromeOS, keyboard shortcuts mirroring
-  the TUI keybinds with a Ctrl+P command palette, session tabs, a widget, a Quick Settings tile and app
-  shortcuts.
-- **Material You, plus OpenCode themes**, read from `themes/*.json` through the file API and mapped onto
-  a Material colour scheme.
-- **Quality work that was owed.** ktlint and detekt are now applied to every module and fail `check`;
-  they had been in the version catalog and applied to nothing for three phases. Every UI string is in
+Built and tested in P10:
+
+- **The nine remaining operations**, on `ServerApi` and over real HTTP: `experimental.session.stats`
+  (range, project, time zone and tool detail, decoded into a heatmap, a streak, cost and token totals,
+  per-model usage and tool reliability), `session.log`, `session.synthetic`,
+  `session.permission.create`, `session.form.create`, `rpc.call`, `experimental.generate.text`,
+  `experimental.session.wait` and `POST /api/pair`. Every one of the plan's 138 operations is now
+  declared, wired and tested.
+- **The four TUI control events and the plugin `rpc.*` family**, which had payload classes since P0 and
+  no handler. A toast becomes a snackbar; an opt-in "follow desktop" mode mirrors the TUI's session and
+  composer and is off by default; a command that would change server state is offered rather than
+  performed.
+- **Every remaining coverage gap** the audit found: twelve operations with no production caller, and
+  twenty-four more that production called but nothing asserted.
+- **Quality work that was owed.** ktlint and detekt are applied to every module and fail `check`; they
+  had been in the version catalog and applied to nothing for three phases. Every UI string is in
   `strings.xml` and CI says so. The vendor identifiers left in the fixtures are gone.
+- **Release configuration**, gated on material that does not exist, and the audits.
 
 What worked before:
 

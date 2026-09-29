@@ -1933,6 +1933,15 @@ decoded as `Unknown` and the dashboard would have shown no tool data on a server
 a union member arriving as something other than a JSON object threw out of the decoder instead of
 falling back to `Unknown`, which would have taken the event connection down over one malformed frame.
 
+**Scope, stated plainly.** The *wire and state* half of this phase is built and tested: the nine
+operations are declared, called, capability-gated and covered by tests over real HTTP, and the TUI
+control events are handled and wired to the surfaces that read them. The *screen* half is not. There is
+no insights screen, no RPC console screen, no session-log viewer, no home-screen widget, no Quick
+Settings tile, no app shortcuts, no command palette or leader keys, no session tabs, no adaptive
+list-detail layouts, no LAN prober and no OpenCode theme import. Everything in the feature list above
+is therefore a capability rather than a screen, and this phase's Status should be read with that
+distinction in mind: the exit criterion it set is met, and the feature list it also set is not.
+
 What a release still has to do is in [`RELEASE.md`](./RELEASE.md): run the manual matrix on real
 hardware, produce a signed artifact from real signing material, and walk the Play track. Two open
 questions are named rather than answered, because they are the owner's to decide — whether the

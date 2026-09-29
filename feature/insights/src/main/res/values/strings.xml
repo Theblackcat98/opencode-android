@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      The usage dashboard.
+
+      Every one of these is a string because plan §5.4 says so, and because a number formatted in the
+      code is a number that cannot be re-ordered for a locale that writes it differently.
+    -->
+    <string name="insights_title">Usage</string>
+
+    <string name="insights_range_7_days">7 days</string>
+    <string name="insights_range_30_days">30 days</string>
+    <string name="insights_range_90_days">90 days</string>
+    <string name="insights_range_365_days">Year</string>
+
+    <string name="insights_totals">Totals</string>
+    <string name="insights_sessions">Sessions</string>
+    <string name="insights_subagents">Subagents</string>
+    <string name="insights_prompts">Prompts</string>
+    <string name="insights_steps">Steps</string>
+    <!-- `%1$s` is the cost already formatted as currency; the code formats it so the symbol matches the locale. -->
+    <string name="insights_cost">Cost</string>
+
+    <string name="insights_activity">Activity</string>
+    <string name="insights_no_activity">No activity in this range.</string>
+    <!-- Spoken instead of the grid: 365 numbers a day would be unusable. -->
+    <string name="insights_activity_description">%1$d active days, a streak of %2$d, busiest day %3$d steps</string>
+    <string name="insights_streak">Streak: %1$d days</string>
+
+    <string name="insights_tokens">Tokens</string>
+    <string name="insights_tokens_input">Input</string>
+    <string name="insights_tokens_output">Output</string>
+    <string name="insights_tokens_reasoning">Reasoning</string>
+    <string name="insights_tokens_cache">Cache</string>
+    <string name="insights_tokens_cache_value">read %1$d, written %2$d</string>
+
+    <string name="insights_models">Models</string>
+    <string name="insights_model_steps">%1$d steps</string>
+
+    <string name="insights_tools">Tool reliability</string>
+    <string name="insights_tools_off">Tool reliability is switched off for this query.</string>
+    <string name="insights_tools_detail">Per-tool detail</string>
+    <string name="insights_tools_unknown">This server reported a tool mode this version does not know.</string>
+    <string name="insights_no_calls">No calls in this range</string>
+    <string name="insights_success_rate">%1$d%% of calls succeeded</string>
+    <string name="insights_tool_detail">%1$d%% succeeded, p50 %2$d ms</string>
+
+    <string name="insights_error">The usage figures could not be read.</string>
+    <string name="insights_dismiss">Dismiss</string>
+</resources>

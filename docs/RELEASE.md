@@ -13,6 +13,7 @@ Everything a release needs, and an honest statement of what has not been done.
 | The Play Console track progression | **Not run.** No account, no upload. |
 | GitHub Releases | **Not published.** No release was cut. |
 | The manual test matrix | **Not run.** No device, no emulator, no second device. |
+| The Phase 10 screens | **Not built.** The operations are real and tested; nothing puts them on a display. See `docs/CHANGELOG.md`. |
 | Version | `0.1.0`, `versionCode` 1 |
 
 **No signed artifact exists.** That is the accurate statement, and nothing in this repository claims
@@ -122,9 +123,14 @@ a debug one.** A release-only crash from a stripped serializer is a common and e
 2. Produce a signed artifact from real signing material.
 3. Run the Play Console track progression: internal, then closed, then production.
 4. Publish the GitHub release.
-5. Fix accessibility finding **A-1** from the audit — a live region on the turn boundary — before
+5. Build the Phase 10 screens the phase plan lists and this runbook does not have: the insights
+   dashboard, the RPC console, the session-log viewer, the widget, the Quick Settings tile, app
+   shortcuts, the command palette and leader keys, session tabs, the adaptive list-detail layouts, the
+   LAN prober and the OpenCode theme import. Their data layers are built and tested, so each is a
+   screen over something that already works.
+6. Fix accessibility finding **A-1** from the audit — a live region on the turn boundary — before
    the closed track, since it is the difference between the app being usable and not with a screen
    reader.
-6. Re-read the security review's *What a release still has to do* and the privacy review's, and
+7. Re-read the security review's *What a release still has to do* and the privacy review's, and
    record the decisions. Both name an owner decision that has not been taken: whether the keystore
    key should require user authentication, and whether the unencrypted message cache stays as it is.
