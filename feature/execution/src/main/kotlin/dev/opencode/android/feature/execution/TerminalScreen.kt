@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Terminal
+import androidx.compose.material.icons.filled.VpnKey
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.CircularProgressIndicator
@@ -80,6 +81,7 @@ fun TerminalScreen(
     onCreate: (String?, List<String>?) -> Unit,
     onClosePicker: () -> Unit,
     onRunProjectStart: () -> Unit,
+    onRequestTicket: () -> Unit,
     onKeys: (List<TerminalKey>) -> Unit,
     onBridgeMessage: (TerminalBridgeMessage) -> Unit,
     onOutputConsumed: (Int) -> Unit,
@@ -95,6 +97,7 @@ fun TerminalScreen(
             state = state,
             onNewTerminal = onNewTerminal,
             onRunProjectStart = onRunProjectStart,
+            onRequestTicket = onRequestTicket,
             onReconnect = onReconnect,
         )
         HorizontalDivider()
@@ -179,6 +182,7 @@ fun TerminalChrome(
     state: TerminalUiState,
     onNewTerminal: () -> Unit,
     onRunProjectStart: () -> Unit,
+    onRequestTicket: () -> Unit,
     onReconnect: () -> Unit,
     onExtraKeys: (List<TerminalKey>) -> Unit,
     modifier: Modifier = Modifier,
@@ -188,6 +192,7 @@ fun TerminalChrome(
             state = state,
             onNewTerminal = onNewTerminal,
             onRunProjectStart = onRunProjectStart,
+            onRequestTicket = onRequestTicket,
             onReconnect = onReconnect,
         )
         HorizontalDivider()
@@ -210,6 +215,7 @@ private fun TerminalHeader(
     state: TerminalUiState,
     onNewTerminal: () -> Unit,
     onRunProjectStart: () -> Unit,
+    onRequestTicket: () -> Unit,
     onReconnect: () -> Unit,
 ) {
     Row(
@@ -238,6 +244,14 @@ private fun TerminalHeader(
         if (state.startCommand != null) {
             IconButton(onClick = onRunProjectStart, enabled = state.canStartProject) {
                 Icon(Icons.Filled.Terminal, stringResource(R.string.terminal_run_start))
+            }
+        }
+        if (state.ticketRefused) {
+            // The server refused the header-authenticated upgrade. A `pty.connect.token` is the one
+            // thing that can still work, so the row appears *because* it failed rather than before:
+            // offering it on a healthy terminal would spend a single-use ticket for nothing.
+            IconButton(onClick = onRequestTicket, enabled = state.ticket == null) {
+                Icon(Icons.Filled.VpnKey, stringResource(R.string.terminal_use_ticket))
             }
         }
         IconButton(onClick = onReconnect, enabled = state.open != null) {

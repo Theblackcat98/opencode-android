@@ -50,7 +50,6 @@ data class SubagentsUiState(
     val canGoToParent: Boolean get() = parentID != null
     val canGoToPrevious: Boolean get() = previousSibling != null
     val canGoToNext: Boolean get() = nextSibling != null
-    val hasRunning: Boolean get() = running.isNotEmpty()
 }
 
 /** The composer's strip of running subagents, and the interrupt it offers (plan §6). */

@@ -59,7 +59,7 @@ fun ShellsHost(
     val state by viewModel.state.collectAsStateWithLifecycle()
 
     LaunchedEffect(directory) { viewModel.openPanel(directory) }
-    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.openPanel(directory) }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.resumePanel() }
     LifecycleEventEffect(Lifecycle.Event.ON_STOP) { viewModel.close() }
 
     Scaffold(
@@ -117,6 +117,7 @@ fun TerminalHost(
             onCreate = { command, args -> viewModel.createTerminal(command, args) },
             onClosePicker = viewModel::closePicker,
             onRunProjectStart = viewModel::createFromProjectStart,
+            onRequestTicket = viewModel::requestTicket,
             // The extra-keys row produces a key *sequence*; the bytes are a pure fold, and they are
             // sent as one frame so a Ctrl held over three keys is three control codes rather than
             // three round trips the terminal would have to interleave with its own echo.
@@ -233,6 +234,8 @@ fun SessionTerminalsHost(
             state = state,
             onCreate = { viewModel.create(title = "shell") },
             onRead = viewModel::read,
+            onInspect = viewModel::inspect,
+            onResize = viewModel::resize,
             onRemove = viewModel::remove,
             modifier = Modifier.padding(padding),
         )

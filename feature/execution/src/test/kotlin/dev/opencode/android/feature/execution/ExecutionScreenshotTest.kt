@@ -158,6 +158,7 @@ class ExecutionScreenshotTest {
             ),
             onNewTerminal = {},
             onRunProjectStart = {},
+            onRequestTicket = {},
             onReconnect = {},
             onExtraKeys = {},
         )
@@ -178,6 +179,7 @@ class ExecutionScreenshotTest {
             ),
             onNewTerminal = {},
             onRunProjectStart = {},
+            onRequestTicket = {},
             onReconnect = {},
             onExtraKeys = {},
         )
@@ -194,6 +196,7 @@ class ExecutionScreenshotTest {
             ),
             onNewTerminal = {},
             onRunProjectStart = {},
+            onRequestTicket = {},
             onReconnect = {},
             onExtraKeys = {},
         )
@@ -212,6 +215,8 @@ class ExecutionScreenshotTest {
             ),
             onCreate = {},
             onRead = {},
+            onInspect = {},
+            onResize = { _, _, _ -> },
             onRemove = {},
         )
     }
@@ -222,6 +227,8 @@ class ExecutionScreenshotTest {
             state = SessionTerminalsUiState(sessionID = "ses_1"),
             onCreate = {},
             onRead = {},
+            onInspect = {},
+            onResize = { _, _, _ -> },
             onRemove = {},
         )
     }

@@ -9,7 +9,6 @@ import dev.opencode.android.core.data.terminal.TerminalBridgeMessage
 import dev.opencode.android.core.data.terminal.TerminalGrid
 import dev.opencode.android.core.data.terminal.TerminalGridSize
 import dev.opencode.android.core.model.PtySize
-import dev.opencode.android.core.model.PtyTicketToken
 import dev.opencode.android.core.model.ShellOption
 import dev.opencode.android.core.model.event.PtyInfo
 import dev.opencode.android.core.network.AuthInterceptor
@@ -43,6 +42,16 @@ data class TerminalUiState(
     /** A ticket for a page that has to connect itself, when one was minted. */
     val ticket: String? = null,
     /**
+     * Whether the server refused the header-authenticated upgrade and a ticket is worth trying.
+     *
+     * **This is what puts the ticket row on screen, and it is the only thing that does.** The normal path
+     * is [AuthInterceptor] on the WebSocket handshake, the same credential every REST call uses; a `401`
+     * or `403` from the upgrade is the one case a header cannot fix. Offering `pty.connect.token` on a
+     * healthy terminal would spend a single-use ticket on nothing, so it appears because the upgrade
+     * failed rather than in anticipation of it.
+     */
+    val ticketRefused: Boolean = false,
+    /**
      * The text the page has selected, which the host puts on the clipboard.
      *
      * **The page cannot copy for itself.** A hardened WebView with no file and no content access has
@@ -54,8 +63,6 @@ data class TerminalUiState(
     val pendingOutput: String = "",
     val error: String? = null,
 ) {
-    val canKill: Boolean get() = killTarget != null
-    val isLive: Boolean get() = stream is PtyStreamState.Live
     val canStartProject: Boolean get() = !creating && !startCommand.isNullOrBlank()
 
     /**
@@ -118,7 +125,15 @@ class TerminalViewModel @Inject constructor(
     private var pageReady = false
     private var socket: PtySocket? = null
 
-    /** Whether this terminal has already spent its one `pty.connect.token` attempt. */
+    /**
+     * Whether this terminal has already spent its one `pty.connect.token` attempt.
+     *
+     * **A second attempt is a second single-use ticket, and the second one buys nothing.** The fallback
+     * in [foldStream] fires on a `401` or `403` from the upgrade, which a header cannot fix; a network
+     * failure or a `500` is a different problem that a ticket does not address. The button that reports
+     * it is therefore *disabled* once the automatic attempt has been made rather than hidden, so the
+     * state is visible and the operation is not offered as though it were still likely to help.
+     */
     private var ticketTried = false
 
     /** Binds the panel to a location and reads the terminals. */
@@ -382,22 +397,17 @@ class TerminalViewModel @Inject constructor(
     }
 
     /**
-     * `pty.connect.token` on demand, for the case a user hits by hand: a server that refuses the
-     * header-authenticated upgrade is retried with a ticket before anything is reported as failed
-     * (see [foldStream]), and this is the same call for anyone who wants to watch it happen.
+     * `pty.connect.token`, on demand, for the user who tapped the row.
+     *
+     * The automatic attempt in [foldStream] is a fallback for the case a header provably cannot fix; this
+     * is the same call for the case where the automatic attempt was spent and the user wants to see it
+     * happen. It publishes the ticket and reconnects with it, because a ticket the client holds and does
+     * not use is not a fix for anything.
      */
     fun requestTicket() {
         val directory = _state.value.directory ?: return
         val id = _state.value.open?.id ?: return
-        val commands = dataSets.active.value?.execution?.commands ?: return
-        ticketTried = true
-        viewModelScope.launch {
-            val result: Result<PtyTicketToken> = commands.ptyTicket(directory, id)
-            _state.value = _state.value.copy(
-                ticket = result.getOrNull()?.ticket,
-                error = result.exceptionOrNull()?.toActionError()?.message,
-            )
-        }
+        connectWithTicket(directory, id)
     }
 
     fun dismissError() {
@@ -425,6 +435,7 @@ class TerminalViewModel @Inject constructor(
         if (stream is PtyStreamState.Closed && open != null && directory != null &&
             stream.reason in TICKET_WORTH_REFUSALS
         ) {
+            _state.value = _state.value.copy(ticketRefused = true)
             connectWithTicket(directory, open.id)
         }
         _state.value = _state.value.copy(

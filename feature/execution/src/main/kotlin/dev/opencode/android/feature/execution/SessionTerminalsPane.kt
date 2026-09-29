@@ -1,5 +1,7 @@
 package dev.opencode.android.feature.execution
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -14,11 +16,14 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -52,6 +57,8 @@ fun SessionTerminalsPane(
     state: SessionTerminalsUiState,
     onCreate: () -> Unit,
     onRead: () -> Unit,
+    onInspect: (String) -> Unit,
+    onResize: (String, Int, Int) -> Unit,
     onRemove: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -124,16 +131,14 @@ fun SessionTerminalsPane(
                                     Icon(Icons.Filled.Delete, stringResource(R.string.session_terminals_remove))
                                 }
                             },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .testTag(SessionTerminalTags.TERMINAL + terminal.id),
                         )
                         HorizontalDivider()
                     }
                 }
                 TerminalScreenText(
-                    screen = state.screen,
+                    state = state,
                     onRead = onRead,
+                    onResize = onResize,
                     modifier = Modifier.weight(1f),
                 )
             }
@@ -142,18 +147,26 @@ fun SessionTerminalsPane(
 }
 
 /**
- * The rendered screen, as monospaced text.
+ * The rendered screen, as monospaced text, with the one control a picture of a terminal can offer.
  *
  * **Selectable, because a screen of terminal text is only useful if it can be copied out.** It is not
  * interactive: there is no cursor to move and nothing can be typed into a picture, and the pane says so
  * rather than looking like a terminal that has stopped accepting input.
+ *
+ * **The size control sends `persistent-pty.update`.** A resize on a live terminal is a REST call on the
+ * server's own route, and it is the only way a full-screen program's layout can be changed from here —
+ * a picture of a screen cannot be reflowed by the client, so the server has to be told a new grid. The
+ * row it shows is the grid the server last reported, so the two cannot drift.
  */
 @Composable
 private fun TerminalScreenText(
-    screen: SessionTerminalRead?,
+    state: SessionTerminalsUiState,
     onRead: () -> Unit,
+    onResize: (String, Int, Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val screen = state.screen
+    val inspected = state.terminals.firstOrNull { it.id == state.inspected } ?: state.latest
     Column(modifier = modifier.fillMaxWidth().padding(12.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
@@ -162,6 +175,56 @@ private fun TerminalScreenText(
                 modifier = Modifier.weight(1f),
             )
             TextButton(onClick = onRead) { Text(stringResource(R.string.session_terminals_read)) }
+        }
+        if (inspected != null) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Text(
+                    text = "${inspected.cols}×${inspected.rows}",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontFamily = FontFamily.Monospace,
+                    modifier = Modifier.testTag(SessionTerminalTags.SIZE),
+                )
+                IconButton(
+                    onClick = { onResize(inspected.id, inspected.cols - STEP, inspected.rows) },
+                    enabled = inspected.cols - STEP >= MIN_COLS,
+                    modifier = Modifier.testTag(SessionTerminalTags.NARROWER),
+                ) {
+                    Icon(Icons.Filled.Remove, stringResource(R.string.session_terminals_narrower))
+                }
+                IconButton(
+                    onClick = { onResize(inspected.id, inspected.cols + STEP, inspected.rows) },
+                    enabled = inspected.cols + STEP <= MAX_COLS,
+                    modifier = Modifier.testTag(SessionTerminalTags.WIDER),
+                ) {
+                    Icon(Icons.Filled.Add, stringResource(R.string.session_terminals_wider))
+                }
+                IconButton(
+                    onClick = { onResize(inspected.id, inspected.cols, inspected.rows - STEP) },
+                    enabled = inspected.rows - STEP >= MIN_ROWS,
+                    modifier = Modifier.testTag(SessionTerminalTags.SHORTER),
+                ) {
+                    Icon(Icons.Filled.Remove, stringResource(R.string.session_terminals_shorter))
+                }
+                IconButton(
+                    onClick = { onResize(inspected.id, inspected.cols, inspected.rows + STEP) },
+                    enabled = inspected.rows + STEP <= MAX_ROWS,
+                    modifier = Modifier.testTag(SessionTerminalTags.TALLER),
+                ) {
+                    Icon(Icons.Filled.Add, stringResource(R.string.session_terminals_taller))
+                }
+            }
+        }
+        state.snapshot?.checkpoint?.let { checkpoint ->
+            Text(
+                text = stringResource(R.string.session_terminals_checkpoint, checkpoint.take(12)),
+                style = MaterialTheme.typography.labelSmall,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
         Surface(
             modifier = Modifier.fillMaxWidth().weight(1f),
@@ -200,6 +263,11 @@ private fun Notice(text: String, tag: String, modifier: Modifier = Modifier) {
 
 /** The tags the tests and the baselines address. */
 object SessionTerminalTags {
+    const val SIZE: String = "session-terminals-size"
+    const val WIDER: String = "session-terminals-wider"
+    const val NARROWER: String = "session-terminals-narrower"
+    const val TALLER: String = "session-terminals-taller"
+    const val SHORTER: String = "session-terminals-shorter"
     const val LIST: String = "session-terminals-list"
     const val TERMINAL: String = "session-terminals-row-"
     const val SCREEN: String = "session-terminals-screen"
@@ -209,6 +277,15 @@ object SessionTerminalTags {
     const val ABSENT: String = "absent"
     const val EMPTY: String = "empty"
 }
+
+/** A resize step. Four columns at a time is a cell a finger can aim at. */
+private const val STEP = 4
+
+/** The bounds the bridge codec already enforces on a grid from the page; the pane obeys them too. */
+private const val MIN_COLS = 20
+private const val MAX_COLS = 500
+private const val MIN_ROWS = 5
+private const val MAX_ROWS = 200
 
 private fun String.toAvailabilityRes(): Int = when (this) {
     "present" -> R.string.session_terminals_state_present

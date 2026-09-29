@@ -35,7 +35,6 @@ data class WorktreesUiState(
     val notice: String? = null,
 ) {
     val canCreate: Boolean get() = !creating
-    val canRemove: Boolean get() = removeTarget != null
 }
 
 /** One adoption, as the panel shows it. */

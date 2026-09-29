@@ -58,6 +58,12 @@
     <string name="terminal_picker_title">Choose a shell</string>
     <string name="terminal_picker_empty">The server reported no usable shell. A terminal will use its configured default.</string>
     <string name="terminal_picker_default">Use the default shell</string>
+    <string name="session_terminals_narrower">Two columns narrower</string>
+    <string name="session_terminals_wider">Two columns wider</string>
+    <string name="session_terminals_shorter">Two rows shorter</string>
+    <string name="session_terminals_taller">Two rows taller</string>
+    <string name="session_terminals_checkpoint">Checkpoint %1$s</string>
+    <string name="terminal_use_ticket">Reconnect with a ticket</string>
     <string name="terminal_status_idle">Not connected</string>
     <string name="terminal_status_connecting">Connecting</string>
     <string name="terminal_status_live">Live</string>

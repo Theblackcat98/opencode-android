@@ -40,7 +40,6 @@ data class ShellsUiState(
     val error: String? = null,
 ) {
     val open: ShellRow? get() = rows.firstOrNull { it.id == openID }
-    val canKill: Boolean get() = killTarget != null
     val canRun: Boolean get() = draft.isNotBlank() && !running
 }
 
@@ -95,6 +94,23 @@ class ShellsViewModel @Inject constructor(
             }
         }
         openID?.let { follow(it) }
+    }
+
+    /**
+     * Re-reads the panel after the screen comes back.
+     *
+     * **The list is re-read, and the open command's status with it.** A `shell.list` answers the commands
+     * that are *running*, so anything that finished while the phone was in a pocket is in neither the list
+     * nor the events that were missed, and its exit code is only reachable through `shell.get`. This is
+     * the resume path rather than [openPanel], because resume must not restart the poller's cursor: the
+     * output the user has not read is still the output the next page continues from.
+     */
+    fun resumePanel() {
+        val set = dataSets.active.value ?: return
+        val directory = _state.value.directory ?: return
+        openLocations.set(directory)
+        set.execution.open(directory)
+        _state.value.openID?.let(::refreshStatus)
     }
 
     /** Called when the panel leaves the screen, so a completion is announced again. */
@@ -173,6 +189,10 @@ class ShellsViewModel @Inject constructor(
      * A resync is not enough here: `shell.list` answers with the *running* commands, so a command that
      * finished while the event stream was down is in neither the list nor the events, and its exit code
      * is only reachable through `shell.get`.
+     *
+     * **Public because the host calls it, not only [follow].** The panel is re-read on `ON_RESUME`, and a
+     * command that ran to completion while the phone was in a pocket is exactly the one a user comes back
+     * to read — so the open row's status is refreshed on resume as well as on open.
      */
     fun refreshStatus(shellID: String) {
         val set = dataSets.active.value ?: return
