@@ -144,10 +144,12 @@ class ConfigSurface(
         .getOrElse { ConfigDocuments(emptyList(), emptyList(), failure = it.classified()) }
 
     /**
-     * The [ActionError] for a throwable that came out of a call.
+     * The classification of a throwable that came out of a call.
      *
-     * [ActionFailure] carries the classification every screen reports, and anything else is
-     * classified from what it is — which is the same rule `IntegrationSurface.write` follows.
+     * **[ActionFailure] is one class for the whole data layer**, so this is a plain unwrap. It was not,
+     * and that was a real bug: Phase 6, 7 and 8 each declared their own, so a failure raised by one
+     * subsystem and reported by another lost its class and the screen said "unknown" for a `400` that
+     * named the offending path.
      */
     private fun Throwable.classified(): ActionFailure =
         (this as? ActionFailure) ?: ActionFailure(toActionError())

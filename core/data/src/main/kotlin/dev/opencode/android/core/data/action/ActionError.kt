@@ -150,3 +150,21 @@ private fun kindOfStatus(code: Int): ActionErrorKind = when (code) {
     in 500..599 -> ActionErrorKind.SERVER
     else -> ActionErrorKind.UNKNOWN
 }
+
+/**
+ * A write that failed, carrying the classification every screen reports.
+ *
+ * **One class for the whole data layer, and that is the point.** Phase 6, Phase 7 and Phase 8 each
+ * declared their own `ActionFailure` in their own package, which meant a failure raised by one
+ * subsystem and reported by another lost its classification: an `fs.write` rejection came back as
+ * [ActionErrorKind.UNKNOWN] because the caller's `as? ActionFailure` did not match, and the screen said
+ * "the server refused that (unknown)" for what was in fact a `400` naming a path outside the location.
+ * The three old names are now typealiases onto this one, so every existing `is`, `as` and import keeps
+ * working and no two callers can disagree about which class a failure is.
+ *
+ * **The message is the server's, and `null` is suppressed for credentials.** [ActionError.message] is
+ * the server's own text, which is more specific than anything the app could invent; the exception
+ * carries no stack trace, because these are expected outcomes of a write and a stack of `okhttp`
+ * frames in a log line says nothing a user can act on.
+ */
+class ActionFailure(val error: ActionError) : Exception(error.message, null, false, false)

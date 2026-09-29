@@ -341,7 +341,8 @@ class SessionCommands(
 }
 
 /** A failed driving action, carried as a [Throwable] so it rides in a [Result]. */
-class ActionFailure(val error: ActionError) : Exception(error.message, null, false, false)
+/** The one [ActionFailure], in the action package; see its note for why. */
+typealias ActionFailure = dev.opencode.android.core.data.action.ActionFailure
 
 /** The [ActionError] of a failed result, or `null` when it succeeded. */
 val Result<*>.actionErrorOrNull: ActionError? get() = (exceptionOrNull() as? ActionFailure)?.error

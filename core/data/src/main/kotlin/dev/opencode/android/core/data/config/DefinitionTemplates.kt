@@ -139,7 +139,11 @@ object DefinitionTemplates {
         if (front.isEmpty()) return body
         return buildString {
             appendLine("---")
-            front.forEach { (key, value) -> appendLine("$key: $value") }
+            // Quoted here rather than by the caller, so a form cannot produce an unquoted value by
+            // forgetting. A description containing a colon would otherwise parse as a mapping and
+            // silently lose everything after the colon — which on a phone keyboard is a likely thing to
+            // type and an invisible thing to notice. A value that is already a flow map is left alone.
+            front.forEach { (key, value) -> appendLine("$key: ${quote(value)}") }
             appendLine("---")
             if (body.isNotEmpty()) {
                 appendLine()
@@ -188,8 +192,20 @@ object DefinitionTemplates {
             "${quote(key)}: ${quote(value)}"
         }
 
+    /**
+     * A front-matter value, quoted unless it is already YAML.
+     *
+     * **Two shapes need no quoting and everything else does.** A flow map (`{edit: "ask"}`) and a flow
+     * sequence are already valid YAML, and quoting them would make them strings — so a permission block
+     * written through the form stays a map. Everything else is a string, and an unquoted string with a
+     * colon in it is a mapping.
+     */
     private fun quote(value: String): String =
-        if (value.startsWith("{") || value.startsWith("[")) value else "\"${value.replace("\"", "\\\"")}\""
+        if (value.startsWith("{") || value.startsWith("[")) {
+            value
+        } else {
+            "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
+        }
 
     /** The reverse of [quote], for pre-filling a form from a file's own front matter. */
     private fun unquote(value: String): String {

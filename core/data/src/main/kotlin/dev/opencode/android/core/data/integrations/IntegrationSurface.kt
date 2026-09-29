@@ -555,4 +555,5 @@ class IntegrationSurface(
 }
 
 /** A write that failed, carrying the classification every screen reports. */
-class ActionFailure(val error: ActionError) : Exception(error.message)
+/** The one [ActionFailure], in the action package; see its note for why. */
+typealias ActionFailure = dev.opencode.android.core.data.action.ActionFailure

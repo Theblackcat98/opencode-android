@@ -48,6 +48,16 @@ class AdminServer(
     val bodies = mutableMapOf<String, String>()
     val statuses = mutableMapOf<String, Int>()
 
+    /**
+     * Answers for any path *starting with* a prefix.
+     *
+     * `fs.read` is asked with a wildcard route and a percent-encoded path, and the encoded form on the
+     * wire is not the one [dev.opencode.android.core.data.server.FileReader.readUrl] builds — it is
+     * re-encoded by the HTTP layer. Matching a prefix is how a test registers that route without
+     * depending on the encoding, which is not what any of these tests are about.
+     */
+    val prefixes = mutableMapOf<String, String>()
+
     /** Requests the app made, in order, as `METHOD path?query`. */
     val requests: List<String>
         get() = synchronized(recorded) {
@@ -62,8 +72,11 @@ class AdminServer(
                     recorded += request
                     bodiesSent += request.body?.let { String(it.toByteArray(), Charsets.UTF_8) }.orEmpty()
                 }
-                val body = bodies[key] ?: bodies[request.url.encodedPath] ?: DEFAULT
-                val status = statuses[key] ?: statuses[request.url.encodedPath] ?: 200
+                val prefix = prefixes.keys.firstOrNull { request.url.encodedPath.startsWith(it) }
+                val body = bodies[key] ?: bodies[request.url.encodedPath]
+                    ?: prefix?.let(prefixes::get) ?: DEFAULT
+                val status = statuses[key] ?: statuses[request.url.encodedPath]
+                    ?: prefix?.let { statuses["${request.method} $it"] } ?: 200
                 val builder = MockResponse.Builder().code(status)
                 if (status == NO_BODY) return builder.build()
                 return builder.addHeader("Content-Type", "application/json").body(body).build()
@@ -74,6 +87,11 @@ class AdminServer(
     fun answer(key: String, body: String, status: Int = 200) {
         bodies[key] = body
         statuses[key] = status
+    }
+
+    fun answerPrefix(method: String, pathPrefix: String, body: String, status: Int = 200) {
+        prefixes[pathPrefix] = body
+        statuses["$method $pathPrefix"] = status
     }
 
     fun lastBody(fragment: String): String? = synchronized(bodiesSent) {

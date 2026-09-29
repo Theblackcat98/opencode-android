@@ -323,7 +323,8 @@ class ExecutionCommands(
 }
 
 /** A failed call, carrying the classified [ActionError] so a caller need not classify it again. */
-class ActionFailure(val error: ActionError) : Throwable(error.message)
+/** The one [ActionFailure], in the action package; see its note for why. */
+typealias ActionFailure = dev.opencode.android.core.data.action.ActionFailure
 
 /**
  * One project's worktree inventory and its live state (features doc §29).
