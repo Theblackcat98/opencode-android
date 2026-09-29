@@ -108,6 +108,11 @@ data class ToolUsage(
 
 internal object SessionStatsToolsSerializer : DiscriminatedUnionSerializer<SessionStatsTools>(
     serialName = "dev.opencode.android.SessionStatsTools",
+    // The discriminator is `mode`, not `type`. Every other union in this package keys on `type`,
+    // which is the point worth writing down: this schema names its tag `mode`, and a serializer that
+    // defaulted to `type` would read every answer as `Unknown` and a dashboard would show no tool
+    // data at all on a server that sent plenty.
+    discriminator = "mode",
     unknown = SessionStatsTools::Unknown,
     variants = listOf(
         variant("none", SessionStatsTools.None.serializer()),
@@ -119,27 +124,42 @@ internal object SessionStatsToolsSerializer : DiscriminatedUnionSerializer<Sessi
 /**
  * The `tools` query parameter of the stats route.
  *
- * It is a string in the spec, not an enum, so a server that grows a fourth mode must not make the
- * dashboard fail to build a request: [Unknown] sends nothing and the server picks its default.
+ * The wire form is a string, and the server picks a default when it is absent, so [None] here means
+ * "do not send the parameter" rather than "ask for no tool data" — the two are different requests
+ * with different answers.
  */
 @Serializable(with = ToolDetailModeSerializer::class)
 sealed interface ToolDetailMode {
-    @Serializable
-    data object None : ToolDetailMode
+    /** The exact query value. */
+    val wire: String
 
     @Serializable
-    data object Summary : ToolDetailMode
+    data object None : ToolDetailMode {
+        override val wire: String get() = "none"
+    }
 
     @Serializable
-    data object Detail : ToolDetailMode
+    data object Summary : ToolDetailMode {
+        override val wire: String get() = "summary"
+    }
+
+    @Serializable
+    data object Detail : ToolDetailMode {
+        override val wire: String get() = "detail"
+    }
 
     data class Unknown(override val discriminator: String?, override val raw: JsonObject) :
         ToolDetailMode,
-        UnknownVariant
+        UnknownVariant {
+        /** A mode this build has never heard of is sent as the server spelled it, or not at all. */
+        override val wire: String get() = discriminator.orEmpty()
+    }
 }
 
 internal object ToolDetailModeSerializer : DiscriminatedUnionSerializer<ToolDetailMode>(
     serialName = "dev.opencode.android.ToolDetailMode",
+    // `mode`, like the answer it selects. See [SessionStatsToolsSerializer].
+    discriminator = "mode",
     unknown = ToolDetailMode::Unknown,
     variants = listOf(
         variant("none", ToolDetailMode.None.serializer()),

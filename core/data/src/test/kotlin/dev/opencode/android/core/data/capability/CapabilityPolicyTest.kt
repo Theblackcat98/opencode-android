@@ -137,6 +137,13 @@ class CapabilityPolicyTest {
         // their configuration files has not said no to picking a shell from the list the server itself
         // reported. `session_instructions` changes what a *running* session is told at the next step
         // boundary, which is a different risk from a file the user reviews and saves.
+        //
+        // Phase 10 added four, and the separations are the point. `session_stats` and `session_log`
+        // are pure reads and neither is grouped with a write. `generate_and_wait` covers the two
+        // routes that make a model call the user did not start in a session, and the widget behind
+        // quick ask is the reason to be able to switch it off. `pair_device` stands entirely alone
+        // because it is the only route in the app that is not in the published spec at all, so it can
+        // be absent for a reason no version range explains.
         assertEquals(
             listOf(
                 "fs_write",
@@ -147,6 +154,10 @@ class CapabilityPolicyTest {
                 "wellknown_integration",
                 "config_update",
                 "session_instructions",
+                "session_stats",
+                "generate_and_wait",
+                "session_log",
+                "pair_device",
             ),
             ids,
         )

@@ -5,6 +5,8 @@ import dev.opencode.android.core.data.config.ConfigSurface
 import dev.opencode.android.core.data.config.RetrofitAdminApi
 import dev.opencode.android.core.data.integrations.IntegrationSurface
 import dev.opencode.android.core.data.timeline.TimelineDivergence
+import dev.opencode.android.core.data.insights.InsightsSurface
+import dev.opencode.android.core.data.insights.SessionLogClient
 import dev.opencode.android.core.data.tui.TuiControl
 import dev.opencode.android.core.data.execution.ExecutionSurface
 import dev.opencode.android.core.database.cache.ReadCacheStore
@@ -143,6 +145,20 @@ class ServerDataSet(
      * a `location.shutdown` must not clear a pending instruction that was not about that location.
      */
     val tui: TuiControl = TuiControl()
+
+    /**
+     * The Phase 10 surface: usage statistics, the plugin RPC console, quick ask, pairing another
+     * device and the advanced session tools.
+     *
+     * **Every route on it is experimental or unpublished**, so it carries its own availability
+     * records and the screens hide themselves on a `404` rather than showing an error the user can do
+     * nothing about. It is not a `SyncedResource`: the statistics depend on a range the user picks
+     * rather than on a key, and the RPC console has no cache at all.
+     */
+    val insights: InsightsSurface = InsightsSurface(api)
+
+    /** Reads the durable session log, recording what the route said about itself. */
+    val sessionLog: SessionLogClient = SessionLogClient(api, insights)
 
     init {
         review.reverts = revertCommands

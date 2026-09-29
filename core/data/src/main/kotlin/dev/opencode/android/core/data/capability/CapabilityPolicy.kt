@@ -74,6 +74,43 @@ enum class ExperimentalRoute {
      * not take it away would be worse than no panel.
      */
     SESSION_INSTRUCTIONS,
+
+    /**
+     * `GET /api/experimental/session/stats` — the usage dashboard.
+     *
+     * Its own switch because it is the only experimental route that is purely a read of aggregate
+     * numbers, and hiding the dashboard because the file editor is switched off would be wrong.
+     */
+    SESSION_STATS,
+
+    /**
+     * `POST /api/experimental/generate` and `POST /api/experimental/session/{id}/wait`.
+     *
+     * **One switch for two routes, because both are "ask the model something outside a session".**
+     * The quick-ask widget and the wait-until-idle button are the same capability — a stateless
+     * call to the server's configured provider — and a user who has switched one off has said they
+     * do not want the app making model calls on its own.
+     */
+    GENERATE_AND_WAIT,
+
+    /**
+     * `GET /api/experimental/session/{id}/log` — the durable session log.
+     *
+     * A read of a stream whose shape is not in the spec, so it is gated separately from the
+     * dashboard: a server can have the route and still answer with something this build cannot
+     * show, and an event-history viewer that shows nothing is worse than one that is not offered.
+     */
+    SESSION_LOG,
+
+    /**
+     * `POST /api/pair` — pairing another device.
+     *
+     * **The only route here that is not in the published spec at all.** It is in the server source
+     * and may be removed in any 2.0.x release, so it is probed and hidden rather than offered and
+     * left to fail. The app's own pairing path, redeeming a code from `opencode pair`, is
+     * unaffected: that is a different route and it is documented.
+     */
+    PAIR_DEVICE,
     ;
 
     /** The label the settings switch shows, which `strings.xml` supplies. */
