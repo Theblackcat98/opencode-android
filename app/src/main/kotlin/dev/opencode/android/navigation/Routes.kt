@@ -32,6 +32,7 @@ import dev.opencode.android.feature.servers.ui.EventInspectorScreen
 import dev.opencode.android.feature.servers.ui.ServerStatusScreen
 import dev.opencode.android.feature.servers.ui.ServersScreen
 import dev.opencode.android.feature.sessions.ui.HomeRoute
+import dev.opencode.android.feature.sessions.ui.ManageDestination
 import dev.opencode.android.feature.sessions.ui.PendingRequestsViewModel
 import dev.opencode.android.feature.execution.ProjectSettingsHost
 import dev.opencode.android.feature.sessions.ui.SessionListRoute
@@ -283,6 +284,22 @@ fun OpenCodeApp(
                 onPendingRequestsClick = { serverId ->
                     navController.navigate(PendingRequestsRoute(serverId))
                 },
+                // The plan's "Manage" section (§4.3). The app module owns the graph, so the feature
+                // hands the destination over and this is where it becomes a route.
+                onManageClick = { directory, destination ->
+                    when (destination) {
+                        ManageDestination.ACCOUNTS ->
+                            navController.navigate(ConnectRoute(route.serverId, directory))
+                        ManageDestination.PROVIDERS ->
+                            navController.navigate(ProvidersRoute(route.serverId, directory))
+                        ManageDestination.MCP ->
+                            navController.navigate(McpRoute(route.serverId, directory))
+                        ManageDestination.PLUGINS ->
+                            navController.navigate(PluginsRoute(route.serverId, directory))
+                        ManageDestination.WEB_SEARCH ->
+                            navController.navigate(WebSearchRoute(route.serverId, directory))
+                    }
+                },
             )
             if (newSessionOpen) {
                 NewSessionHost(
@@ -447,6 +464,64 @@ fun OpenCodeApp(
             val route = entry.toRoute<ProjectSettingsRoute>()
             ProjectSettingsHost(
                 projectId = route.projectId,
+                onNavigateBack = { navController.popBackStack() },
+            )
+        }
+
+        // ------------------------------------------------------------------ Phase 8 destinations
+        //
+        // The "Manage" section of the plan (§4.3). All five are per-directory, because every catalog
+        // behind them is location-scoped, and the two that cross a feature boundary — an MCP server's
+        // OAuth and a resource attached to a prompt — are joined *here* rather than in the feature,
+        // which is the deviation a feature may not import another feature (see `ExecutionHost`).
+
+        composable<ConnectRoute> { entry ->
+            val route = entry.toRoute<ConnectRoute>()
+            ConnectHost(
+                directory = route.directory,
+                onNavigateBack = { navController.popBackStack() },
+            )
+        }
+
+        composable<McpRoute> { entry ->
+            val route = entry.toRoute<McpRoute>()
+            McpHost(
+                directory = route.directory,
+                onNavigateBack = { navController.popBackStack() },
+                // A `needs_auth` server names the integration that owns the flow, so this opens the
+                // accounts screen pointed at it rather than a second, near-identical login sheet.
+                onAuthenticate = { integrationId ->
+                    navController.navigate(ConnectRoute(route.serverId, route.directory))
+                },
+                onAttachResource = { server, name, uri ->
+                    // The composer owns prompt contents, so an attached resource is a hand-off and
+                    // not a write. The pending-requests inbox is where the composer is reachable from
+                    // a manage screen, and it is also the screen a form can be answered from.
+                    navController.navigate(PendingRequestsRoute(route.serverId))
+                },
+            )
+        }
+
+        composable<PluginsRoute> { entry ->
+            val route = entry.toRoute<PluginsRoute>()
+            PluginsHost(
+                directory = route.directory,
+                onNavigateBack = { navController.popBackStack() },
+            )
+        }
+
+        composable<ProvidersRoute> { entry ->
+            val route = entry.toRoute<ProvidersRoute>()
+            ProvidersHost(
+                directory = route.directory,
+                onNavigateBack = { navController.popBackStack() },
+            )
+        }
+
+        composable<WebSearchRoute> { entry ->
+            val route = entry.toRoute<WebSearchRoute>()
+            WebSearchHost(
+                directory = route.directory,
                 onNavigateBack = { navController.popBackStack() },
             )
         }

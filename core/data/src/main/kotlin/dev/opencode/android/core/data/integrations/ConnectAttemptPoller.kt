@@ -294,7 +294,6 @@ class ConnectAttemptPoller(
          * nothing, and every poll is a request on a phone that may be on a metered connection.
          */
         const val DEFAULT_INTERVAL_MILLIS: Long = 2_000L
-
         /**
          * How many polls before the attempt is called expired.
          *
@@ -304,4 +303,49 @@ class ConnectAttemptPoller(
          */
         const val DEFAULT_MAX_POLLS: Int = 1_000
     }
+}
+
+/**
+ * What a poll means for the sheet, decided in one place.
+ *
+ * **This exists because a `when` inside a view model is where a login silently dies.** Phase 7
+ * shipped a terminal whose `when` had an `else` that did nothing, so input never reached the socket
+ * and the test that covered it still passed. The lesson is not "write a better `when`", it is that
+ * the decision has to be *somewhere a test can reach*. So it is here, total, and every
+ * [ConnectAttemptState] — including the two that are not terminal — has a stated consequence.
+ *
+ * **A success re-reads the catalog rather than adding a credential.** Plan §4.2: the client never
+ * guesses. The new credential exists only once `integration.list` says so, so [REFRESH_AND_CLOSE]
+ * is the whole of what a success does.
+ */
+enum class ConnectOutcome {
+    /** Keep polling, keep the sheet open, and say nothing yet. */
+    KEEP_WAITING,
+
+    /** The login worked: re-read the credential list and close the sheet. */
+    REFRESH_AND_CLOSE,
+
+    /** The sheet stays open with the reason, because "try again" is the useful next action. */
+    SHOW_FAILURE,
+
+    /** The attempt timed out server-side. Same handling, different wording, hence a separate value. */
+    SHOW_EXPIRY,
+
+    /** The user cancelled. Nothing to report and nothing to refresh. */
+    STAY_CLOSED,
+    ;
+
+    /** Whether the attempt is over, whichever value this is. */
+    val isTerminal: Boolean get() = this != KEEP_WAITING
+}
+
+/** The consequence of the state the poller last reported. */
+fun ConnectAttemptState.outcome(): ConnectOutcome = when (this) {
+    ConnectAttemptState.Idle, ConnectAttemptState.Pending, is ConnectAttemptState.Unreachable ->
+        ConnectOutcome.KEEP_WAITING
+
+    ConnectAttemptState.Complete -> ConnectOutcome.REFRESH_AND_CLOSE
+    is ConnectAttemptState.Failed -> ConnectOutcome.SHOW_FAILURE
+    ConnectAttemptState.Expired -> ConnectOutcome.SHOW_EXPIRY
+    ConnectAttemptState.Cancelled -> ConnectOutcome.STAY_CLOSED
 }

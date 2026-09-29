@@ -25,12 +25,21 @@ fun HomeRoute(
     onAllSessionsClick: (String) -> Unit,
     onNewSessionClick: (String) -> Unit,
     onPendingRequestsClick: (String) -> Unit,
+    /**
+     * The plan's "Manage" destinations (plan §4.3, Phase 8).
+     *
+     * **Passed in rather than navigated to here**, because a feature may not import another one and
+     * the app module is what owns the graph. The directory is the home's own project directory,
+     * which is what every one of those screens is scoped by.
+     */
+    onManageClick: ((String, ManageDestination) -> Unit)? = null,
     modifier: Modifier = Modifier,
     viewModel: HomeViewModel = hiltViewModel(),
     listViewModel: SessionListViewModel = hiltViewModel(),
     requests: PendingRequestsViewModel = hiltViewModel(),
 ) {
     val state by listViewModel.state.collectAsStateWithLifecycle()
+    val manageDirectory = state.projects.firstOrNull()?.canonical
     val serverName by viewModel.serverName.collectAsStateWithLifecycle()
     val pending by requests.pending.collectAsStateWithLifecycle()
 
@@ -48,6 +57,13 @@ fun HomeRoute(
         pendingRequests = pending.size,
         onNewSessionClick = { serverId?.let(onNewSessionClick) },
         onPendingRequestsClick = { serverId?.let(onPendingRequestsClick) },
+        onManageClick = onManageClick?.let { handler ->
+            // A checkout is the scope of every Manage screen, so the first project's canonical
+            // directory is the one the server is working in. With no project there is no checkout to
+            // manage, and the row is simply not composed.
+            { destination: ManageDestination -> handler(manageDirectory.orEmpty(), destination) }
+        },
+        manageDirectory = manageDirectory,
     )
 }
 

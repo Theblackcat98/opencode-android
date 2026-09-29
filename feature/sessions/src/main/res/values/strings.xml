@@ -172,4 +172,13 @@
     <string name="timeline_revert_here">Undo to here</string>
     <string name="session_forked_from">Forked from %1$s</string>
     <string name="timeline_message_menu">Message actions</string>
+
+    <!-- The plan's "Manage" section (plan §4.3). -->
+
+    <string name="home_manage">Manage this server</string>
+    <string name="home_manage_accounts">Accounts</string>
+    <string name="home_manage_providers">Providers</string>
+    <string name="home_manage_mcp">MCP</string>
+    <string name="home_manage_plugins">Plugins</string>
+    <string name="home_manage_web_search">Web search</string>
 </resources>

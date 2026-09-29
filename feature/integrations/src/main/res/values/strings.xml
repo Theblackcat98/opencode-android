@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Connect: the integration list, the four login flows, and the stored credentials. -->
+
+    <string name="connect_title">Accounts</string>
+    <string name="connect_loading">Loading accounts…</string>
+    <string name="connect_empty">This server offers no integrations yet.</string>
+    <string name="connect_no_methods">This integration has no way to sign in from here.</string>
+    <string name="connect_accounts">Accounts</string>
+    <string name="connect_connect">Connect</string>
+    <string name="connect_read_only">Read only</string>
+    <string name="connect_cancel">Cancel</string>
+    <string name="connect_confirm">Confirm</string>
+    <string name="connect_dismiss">Dismiss</string>
+    <string name="connect_error">The server refused that</string>
+
+    <string name="connect_method_key">An API key, stored by the server.</string>
+    <string name="connect_method_oauth">Sign in through the provider in a browser.</string>
+    <string name="connect_method_command">Runs on this computer: %1$s</string>
+    <string name="connect_method_env">Read from the environment of the server host.</string>
+    <string name="connect_method_unknown">This server version has a sign-in method this app does not know.</string>
+
+    <string name="connect_api_key">API key</string>
+    <string name="connect_key_show">Show the key</string>
+    <string name="connect_key_hide">Hide the key</string>
+    <string name="connect_label">Label this account</string>
+    <string name="connect_label_help">Optional. Distinguishes this login from the others.</string>
+
+    <string name="connect_open_provider">Open the provider</string>
+    <string name="connect_device_code">Device code</string>
+    <string name="connect_submit_code">Submit the code</string>
+    <string name="connect_waiting">Waiting for the provider…</string>
+    <string name="connect_attempt_complete">Signed in.</string>
+    <string name="connect_attempt_expired">The attempt expired before it was approved.</string>
+    <string name="connect_attempt_cancelled">Cancelled.</string>
+    <string name="connect_cancel_attempt">Cancel this sign-in</string>
+    <string name="connect_command_runs_here">This command runs on the computer the server is on, not on the server.</string>
+    <string name="connect_command_waiting">Waiting for the command to print something…</string>
+
+    <string name="connect_via_key">API key</string>
+    <string name="connect_via_oauth">OAuth</string>
+    <string name="connect_activate">Use this</string>
+    <string name="connect_remove">Remove</string>
+    <string name="connect_rename_title">Rename this account</string>
+    <string name="connect_rename_body">Rename \"%1$s\". The name is only for this phone; the credential itself stays on the server.</string>
+    <string name="connect_activate_title">Use this account?</string>
+    <string name="connect_activate_body">\"%1$s\" becomes the account every later request uses. Turns already sent used the previous one.</string>
+    <string name="connect_remove_title">Remove this account?</string>
+    <string name="connect_remove_body">\"%1$s\" is deleted from the server. There is no way to undo this, and the key cannot be recovered from here.</string>
+
+    <string name="connect_env_readonly">Set on the server host, for example with: opencode service set env</string>
+    <string name="connect_env_badge">Host</string>
+
+    <string name="connect_wellknown_title">Add an integration source</string>
+    <string name="connect_wellknown_help">The server fetches this address and adds whatever it offers. Only http and https are accepted.</string>
+    <string name="connect_wellknown_url">Catalog address</string>
+    <string name="connect_wellknown_add">Add it</string>
+
+    <!-- Shared form-problem wording, so an integration login reads the way a question does. -->
+
+    <string name="form_problem_required">This is required.</string>
+    <string name="form_problem_pattern">That does not have the expected form.</string>
+    <string name="form_problem_too_short">This is too short.</string>
+    <string name="form_problem_too_long">This is too long.</string>
+    <string name="form_problem_below_minimum">This is below the minimum.</string>
+    <string name="form_problem_above_maximum">This is above the maximum.</string>
+    <string name="form_problem_not_integer">This has to be a whole number.</string>
+    <string name="form_problem_not_option">That is not one of the choices.</string>
+    <string name="form_problem_too_few">Choose more.</string>
+    <string name="form_problem_too_many">Choose fewer.</string>
+
+    <!-- MCP: the server list, the runtime writes, and the resource catalog. -->
+
+    <string name="mcp_title">MCP servers</string>
+    <string name="mcp_loading">Loading MCP servers…</string>
+    <string name="mcp_empty">This server has no MCP servers configured.</string>
+    <string name="mcp_error">The MCP list could not be read</string>
+    <string name="mcp_connect">Connect</string>
+    <string name="mcp_disconnect">Disconnect</string>
+    <string name="mcp_remove">Remove</string>
+    <string name="mcp_sign_in">Sign in</string>
+    <string name="mcp_resources">Resources</string>
+    <string name="mcp_attach">Attach</string>
+    <string name="mcp_resources_empty">No connected server publishes a resource yet.</string>
+    <string name="mcp_runtime_off">Changing MCP servers at runtime is an experimental feature this app has not been allowed to use.</string>
+
+    <string name="mcp_status_connected">Connected.</string>
+    <string name="mcp_status_pending">Connecting…</string>
+    <string name="mcp_status_disabled">Disabled in the configuration.</string>
+    <string name="mcp_status_failed">Failed: %1$s</string>
+    <string name="mcp_status_needs_auth">Needs sign-in: %1$s</string>
+    <string name="mcp_status_unknown">Status \"%1$s\", which this app does not know.</string>
+
+    <string name="mcp_remove_title">Remove this server?</string>
+    <string name="mcp_remove_body">\"%1$s\" is removed for this run only. A server added here disappears when the server restarts, and one removed here comes back if the configuration still lists it.</string>
+
+    <string name="mcp_add">Add a server</string>
+    <string name="mcp_add_name">Name</string>
+    <string name="mcp_kind_local">Runs a command</string>
+    <string name="mcp_kind_remote">Connects to a URL</string>
+    <string name="mcp_add_command">Command</string>
+    <string name="mcp_add_command_help">Split on spaces. The server runs it as an argument vector, so quotes are not interpreted.</string>
+    <string name="mcp_add_cwd">Working directory</string>
+    <string name="mcp_add_env">Environment</string>
+    <string name="mcp_add_pairs_help">One NAME=value per line.</string>
+    <string name="mcp_add_headers">Headers</string>
+    <string name="mcp_add_url">Address</string>
+    <string name="mcp_add_url_help">The server connects to this. Only http and https are accepted.</string>
+    <string name="mcp_add_url_bad">Only an http or https address with a host can be used.</string>
+    <string name="mcp_add_codemode">Expose its tools through Code Mode</string>
+    <string name="mcp_timeout_startup">Startup s</string>
+    <string name="mcp_timeout_catalog">Catalog s</string>
+    <string name="mcp_timeout_execution">Execution s</string>
+    <string name="mcp_add_runtime_only">Added for this run only. It is gone when the server restarts unless it is also written into the configuration.</string>
+    <string name="mcp_add_confirm">Add it</string>
+
+    <!-- Plugins -->
+
+    <string name="plugins_title">Plugins</string>
+    <string name="plugins_loading">Loading plugins…</string>
+    <string name="plugins_empty">No plugin is enabled.</string>
+    <string name="plugins_check">Check for updates</string>
+    <string name="plugins_checking">Checking…</string>
+    <string name="plugins_update">Update selected</string>
+    <string name="plugins_update_all">Update all</string>
+    <string name="plugins_updating">Updating…</string>
+    <string name="plugins_select_all">Select all</string>
+    <string name="plugins_clear">Clear</string>
+    <string name="plugins_outdated_badge">%1$d out of date</string>
+    <string name="plugins_source_package">Package %1$s</string>
+    <string name="plugins_source_builtin">Built in</string>
+    <string name="plugins_source_local">Loaded from %1$s</string>
+    <string name="plugins_source_sdk">Loaded through the SDK</string>
+    <string name="plugins_features">Server, TUI, RPC</string>
+    <string name="plugins_failed">Failed: %1$s</string>
+    <string name="plugins_read_only">Nothing to update</string>
+    <string name="plugins_up_to_date">Every plugin is up to date</string>
+
+    <!-- Providers -->
+
+    <string name="providers_title">Providers</string>
+    <string name="providers_loading">Loading providers…</string>
+    <string name="providers_empty">This server has no providers.</string>
+    <string name="providers_search">Filter providers</string>
+    <string name="providers_activation">Activation: %1$s</string>
+    <string name="providers_package">Package %1$s</string>
+    <string name="providers_endpoint">Endpoint %1$s</string>
+    <string name="providers_needs_integration">Needs an account from the Accounts screen.</string>
+    <string name="providers_config_only">Activation, endpoint and headers are configuration. Change them in the configuration editor.</string>
+
+    <!-- Web search -->
+
+    <string name="websearch_title">Web search</string>
+    <string name="websearch_loading">Loading providers…</string>
+    <string name="websearch_empty">No web-search provider is configured on this server.</string>
+    <string name="websearch_default">The server default</string>
+    <string name="websearch_query">Try a query</string>
+    <string name="websearch_run">Search</string>
+    <string name="websearch_searching">Searching…</string>
+    <string name="websearch_served_by">Answered by %1$s</string>
+    <string name="websearch_no_results">No results.</string>
+</resources>

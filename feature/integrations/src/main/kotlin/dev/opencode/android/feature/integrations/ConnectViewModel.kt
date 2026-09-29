@@ -8,6 +8,8 @@ import dev.opencode.android.core.data.action.toActionError
 import dev.opencode.android.core.data.integrations.ConnectAttemptPoller
 import dev.opencode.android.core.data.integrations.ConnectAttemptProgress
 import dev.opencode.android.core.data.integrations.ConnectAttemptState
+import dev.opencode.android.core.data.integrations.ConnectOutcome
+import dev.opencode.android.core.data.integrations.outcome
 import dev.opencode.android.core.data.integrations.CredentialAction
 import dev.opencode.android.core.data.integrations.IntegrationFlow
 import dev.opencode.android.core.data.integrations.IntegrationForm
@@ -261,6 +263,11 @@ class ConnectViewModel @Inject constructor(
         _state.value = _state.value.copy(formAnswers = answers.filterKeys { it in visible })
     }
 
+    /** Clears the error line. The sheet stays open, because the user has not finished with it. */
+    fun dismissError() {
+        _state.value = _state.value.copy(error = null)
+    }
+
     fun dismissConnect() {
         val active = _state.value.active
         val attemptID = _state.value.progress.attemptID
@@ -409,8 +416,12 @@ class ConnectViewModel @Inject constructor(
         _state.value = _state.value.copy(progress = progress)
         if (!progress.isTerminal) return
         poller.stop()
-        when (val current = progress.state) {
-            is ConnectAttemptState.Complete -> {
+        // The decision is `ConnectAttemptState.outcome()`, in the data layer, and it is total. A
+        // `when` here is how Phase 7 shipped a terminal whose branches did nothing.
+        when (progress.state.outcome()) {
+            ConnectOutcome.KEEP_WAITING -> Unit
+
+            ConnectOutcome.REFRESH_AND_CLOSE -> {
                 val set = dataSets.active.value
                 val directory = _state.value.directory
                 if (set != null && directory != null) {
@@ -419,15 +430,18 @@ class ConnectViewModel @Inject constructor(
                 dismissConnect()
             }
 
-            is ConnectAttemptState.Failed -> _state.value = _state.value.copy(
-                error = ActionError(ActionErrorKind.SERVER, current.message),
-            )
+            ConnectOutcome.SHOW_FAILURE -> {
+                val failure = progress.state
+                _state.value = _state.value.copy(
+                    error = ActionError(ActionErrorKind.SERVER, (failure as? ConnectAttemptState.Failed)?.message.orEmpty()),
+                )
+            }
 
-            is ConnectAttemptState.Expired -> _state.value = _state.value.copy(
+            ConnectOutcome.SHOW_EXPIRY -> _state.value = _state.value.copy(
                 error = ActionError(ActionErrorKind.CONFLICT, "The login attempt expired"),
             )
 
-            else -> Unit
+            ConnectOutcome.STAY_CLOSED -> dismissConnect()
         }
     }
 

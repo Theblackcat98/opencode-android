@@ -2,6 +2,7 @@ package dev.opencode.android.feature.sessions.ui
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -17,6 +18,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -32,6 +34,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -64,6 +67,21 @@ fun HomeScreen(
     pendingRequests: Int = 0,
     onNewSessionClick: () -> Unit = {},
     onPendingRequestsClick: () -> Unit = {},
+    /**
+     * The plan's "Manage" destinations for this server (plan §4.3).
+     *
+     * **An action row rather than a drawer, because every one of them is per-checkout.** The
+     * accounts, providers, MCP, plugin and web-search screens are all location-scoped, and the home
+     * screen is the one place that knows which checkout the session list is showing. A row of
+     * labelled buttons carries that and is reachable in one tap; a nested navigation menu would need
+     * a directory the home screen does not have.
+     *
+     * The defaults are empty so this stays a pure addition: a caller that has nothing to route to
+     * gets a row of five buttons that do nothing, which is why [onManageClick] has no default and
+     * the row is only composed when it is non-null.
+     */
+    onManageClick: ((ManageDestination) -> Unit)? = null,
+    manageDirectory: String? = null,
 ) {
     val running = rows.filter { it.activity is SessionActivity.Running || it.isRetrying }
     val recent = rows.take(RECENT_LIMIT)
@@ -114,7 +132,12 @@ fun HomeScreen(
             return@Scaffold
         }
         if (rows.isEmpty() && projects.isEmpty() && pendingRequests == 0) {
-            EmptyHome(Modifier.padding(padding), onNewSessionClick)
+            EmptyHome(
+                Modifier.padding(padding),
+                onNewSessionClick,
+                onManageClick = onManageClick,
+                manageDirectory = manageDirectory,
+            )
             return@Scaffold
         }
         LazyColumn(
@@ -157,8 +180,74 @@ fun HomeScreen(
             items(items = recent, key = { "recent-${it.id}" }) { row ->
                 SessionPreview(row, onClick = { onSessionClick(row.id) })
             }
+            if (onManageClick != null && manageDirectory != null) {
+                item(key = "manage") {
+                    ManageRow(onManageClick = onManageClick, directory = manageDirectory)
+                }
+            }
         }
     }
+}
+
+/** The five "Manage" destinations of plan §4.3, as one row. */
+enum class ManageDestination {
+    ACCOUNTS,
+    PROVIDERS,
+    MCP,
+    PLUGINS,
+    WEB_SEARCH,
+}
+
+/**
+ * The Manage row, and the reason it is a row of buttons rather than a nested screen.
+ *
+ * **Each button names a checkout's own state**, and the strings are the plan's own section names
+ * ("accounts and providers, models, MCP, plugins, agents, commands and skills, permissions,
+ * configuration, stats and maintenance"). Agents, commands, permissions, configuration, stats and
+ * maintenance are Phase 9 and P10 and are not here, so a user who taps around Manage sees only the
+ * parts this phase delivers rather than placeholders.
+ */
+@Composable
+private fun ManageRow(onManageClick: (ManageDestination) -> Unit, directory: String) {
+    Column(modifier = Modifier.padding(top = 8.dp)) {
+        SectionHeader(stringResource(R.string.home_manage))
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            AssistChip(
+                onClick = { onManageClick(ManageDestination.ACCOUNTS) },
+                label = { Text(stringResource(R.string.home_manage_accounts)) },
+                modifier = Modifier.testTag(HomeTags.MANAGE_ACCOUNTS),
+            )
+            AssistChip(
+                onClick = { onManageClick(ManageDestination.PROVIDERS) },
+                label = { Text(stringResource(R.string.home_manage_providers)) },
+                modifier = Modifier.testTag(HomeTags.MANAGE_PROVIDERS),
+            )
+            AssistChip(
+                onClick = { onManageClick(ManageDestination.MCP) },
+                label = { Text(stringResource(R.string.home_manage_mcp)) },
+                modifier = Modifier.testTag(HomeTags.MANAGE_MCP),
+            )
+            AssistChip(
+                onClick = { onManageClick(ManageDestination.PLUGINS) },
+                label = { Text(stringResource(R.string.home_manage_plugins)) },
+                modifier = Modifier.testTag(HomeTags.MANAGE_PLUGINS),
+            )
+            AssistChip(
+                onClick = { onManageClick(ManageDestination.WEB_SEARCH) },
+                label = { Text(stringResource(R.string.home_manage_web_search)) },
+                modifier = Modifier.testTag(HomeTags.MANAGE_WEB_SEARCH),
+            )
+        }
+    }
+}
+
+/** The tags the home screen's own tests address. */
+object HomeTags {
+    const val MANAGE_ACCOUNTS: String = "home:manage-accounts"
+    const val MANAGE_PROVIDERS: String = "home:manage-providers"
+    const val MANAGE_MCP: String = "home:manage-mcp"
+    const val MANAGE_PLUGINS: String = "home:manage-plugins"
+    const val MANAGE_WEB_SEARCH: String = "home:manage-web-search"
 }
 
 @Composable
@@ -291,7 +380,12 @@ private fun SessionPreview(row: SessionRow, onClick: () -> Unit) {
  * the one action that starts it rather than only explaining that there is nothing here.
  */
 @Composable
-private fun EmptyHome(modifier: Modifier = Modifier, onNewSessionClick: () -> Unit = {}) {
+private fun EmptyHome(
+    modifier: Modifier = Modifier,
+    onNewSessionClick: () -> Unit = {},
+    onManageClick: ((ManageDestination) -> Unit)? = null,
+    manageDirectory: String? = null,
+) {
     Column(
         modifier = modifier.fillMaxSize().padding(32.dp),
         verticalArrangement = Arrangement.Center,
@@ -309,6 +403,11 @@ private fun EmptyHome(modifier: Modifier = Modifier, onNewSessionClick: () -> Un
         )
         Spacer(Modifier.height(16.dp))
         Button(onClick = onNewSessionClick) { Text(stringResource(R.string.home_new_session)) }
+    // The Manage row is here too, because a server with no sessions still has accounts to connect
+    // and MCP servers to authenticate — which is the first thing a user does with a fresh server.
+    if (onManageClick != null && manageDirectory != null) {
+        ManageRow(onManageClick = onManageClick, directory = manageDirectory)
+    }
     }
 }
 
