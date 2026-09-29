@@ -1,5 +1,6 @@
 package dev.opencode.android.core.data.server
 
+import dev.opencode.android.core.data.integrations.IntegrationSurface
 import dev.opencode.android.core.data.timeline.TimelineDivergence
 import dev.opencode.android.core.data.execution.ExecutionSurface
 import dev.opencode.android.core.database.cache.ReadCacheStore
@@ -19,6 +20,9 @@ import dev.opencode.android.core.model.event.PtyCreated
 import dev.opencode.android.core.model.event.PtyDeleted
 import dev.opencode.android.core.model.event.PtyExited
 import dev.opencode.android.core.model.event.PtyUpdated
+import dev.opencode.android.core.model.event.CredentialSwitched
+import dev.opencode.android.core.model.event.McpResourcesChanged
+import dev.opencode.android.core.model.event.McpStatusChanged
 import dev.opencode.android.core.model.event.ShellCreated
 import dev.opencode.android.core.model.event.ShellDeleted
 import dev.opencode.android.core.model.event.ShellExited
@@ -109,6 +113,18 @@ class ServerDataSet(
 
     /** `session.revert.*`, `session.fork` and `session.diff`: the undo/redo/history operations. */
     val revertCommands: RevertCommands = RevertCommands(api, timeline = { timelines[it] })
+
+    /**
+     * The Phase 8 surface: integrations and their credentials, providers, MCP servers, plugins and
+     * web-search providers, plus every write the plan's tables name.
+     *
+     * **One object for all five areas, because they are one lifecycle.** An OAuth login is started
+     * from an integration, an MCP server in `needs_auth` points back at an integration, and both
+     * invalidate the same catalog on `integration.updated`. Splitting them would mean the MCP panel
+     * and the connect screen each held half the answer to "is this provider logged in", and the
+     * honest question — which credentials exist for this checkout — has exactly one source.
+     */
+    val integrations: IntegrationSurface = IntegrationSurface(serverId, api, scope)
 
     init {
         review.reverts = revertCommands
@@ -232,6 +248,7 @@ class ServerDataSet(
         timelines.values.forEach { it.resync() }
         composerCatalogs.resync()
         execution.resync()
+        integrations.resync()
         val directories = (locations.keys + requests.knownDirectories).toSet()
         if (directories.isEmpty()) {
             scope.launch { requests.resync(null) }
@@ -267,6 +284,7 @@ class ServerDataSet(
                 requests.dropLocation(directory)
                 composerCatalogs.dropLocation(directory)
                 execution.dropLocation(directory)
+                integrations.dropLocation(directory)
                 scope.launch { runCatching { cache.dropLocation(serverId, directory) } }
             }
 
@@ -281,6 +299,15 @@ class ServerDataSet(
             -> execution.apply(event)
 
             is InstallationUpdated, is InstallationUpdateAvailable -> installation.apply(event)
+
+            // The Phase 8 catalogs. All of these events are empty-payload except the two MCP ones, so
+            // the location in the envelope is the only thing to act on and an event without one
+            // invalidates every open directory — the same rule the agent and model catalogs use.
+            is EventPayload.IntegrationUpdated, is EventPayload.CredentialUpdated,
+            is EventPayload.ProviderUpdated, is EventPayload.WebsearchUpdated,
+            is EventPayload.PluginUpdated, is McpStatusChanged, is McpResourcesChanged,
+            is CredentialSwitched,
+            -> integrations.apply(event)
 
             // ------------------------------------------------------------------ Phase 6: review
             //
@@ -351,6 +378,7 @@ class ServerDataSet(
         defaultModels.clear()
         projects.clear()
         composerCatalogs.clear()
+        integrations.clear()
         vcsStores.clear()
         files.clear()
         browser.clear()

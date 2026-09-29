@@ -32,6 +32,27 @@ enum class ExperimentalRoute {
      * there, and the answer is kept as one value so the eleven cannot disagree.
      */
     PERSISTENT_PTY,
+
+    /**
+     * The four `api/experimental/mcp/…` routes — connect, disconnect, add and remove.
+     *
+     * **One switch for four routes, for the same reason as [PERSISTENT_PTY].** They are one feature:
+     * the routes write to the running server's MCP table, a server that has three of the four is not
+     * a server this client can manage MCP on, and a panel that could add a server but not remove one
+     * would be worse than no panel. Probing [MCP_RUNTIME] means one of them, and the answer is kept
+     * as one value so the four cannot disagree.
+     */
+    MCP_RUNTIME,
+
+    /**
+     * `POST /api/experimental/integration/wellknown` — adding an integration source by URL.
+     *
+     * Behind its own switch rather than [MCP_RUNTIME]'s because it is a different kind of write: it
+     * makes the *server* fetch a URL, which can add an integration the user did not configure and
+     * which then offers its own methods. A user willing to let the app manage MCP servers has not
+     * said they want it fetching URLs.
+     */
+    WELLKNOWN_INTEGRATION,
     ;
 
     /** The label the settings switch shows, which `strings.xml` supplies. */

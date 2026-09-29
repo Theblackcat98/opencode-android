@@ -1,7 +1,14 @@
 package dev.opencode.android.core.network
 
 import dev.opencode.android.core.model.AgentInfo
+import dev.opencode.android.core.model.CommandAttempt
+import dev.opencode.android.core.model.CommandAttemptStatus
 import dev.opencode.android.core.model.CommandInfo
+import dev.opencode.android.core.model.ConnectCommandRequest
+import dev.opencode.android.core.model.ConnectKeyRequest
+import dev.opencode.android.core.model.ConnectOAuthCompleteRequest
+import dev.opencode.android.core.model.ConnectOAuthRequest
+import dev.opencode.android.core.model.CredentialUpdateRequest
 import dev.opencode.android.core.model.DataResponse
 import dev.opencode.android.core.model.FileDiff
 import dev.opencode.android.core.model.FileSystemEntry
@@ -10,17 +17,27 @@ import dev.opencode.android.core.model.FormDetail
 import dev.opencode.android.core.model.FormInfo
 import dev.opencode.android.core.model.FormReplyPayload
 import dev.opencode.android.core.model.InboxUpdateRequest
+import dev.opencode.android.core.model.IntegrationInfo
 import dev.opencode.android.core.model.InterruptResult
 import dev.opencode.android.core.model.LocationInfo
 import dev.opencode.android.core.model.LocationScoped
+import dev.opencode.android.core.model.McpAddRequest
+import dev.opencode.android.core.model.McpResourceCatalog
+import dev.opencode.android.core.model.McpServer
 import dev.opencode.android.core.model.ModelInfo
+import dev.opencode.android.core.model.OAuthAttempt
+import dev.opencode.android.core.model.OAuthAttemptStatus
 import dev.opencode.android.core.model.Paged
 import dev.opencode.android.core.model.PairingSession
 import dev.opencode.android.core.model.PermissionReplyPayload
 import dev.opencode.android.core.model.PermissionRequest
+import dev.opencode.android.core.model.PluginCheckRequest
+import dev.opencode.android.core.model.PluginInfo
+import dev.opencode.android.core.model.PluginUpdateRequest
 import dev.opencode.android.core.model.Project
 import dev.opencode.android.core.model.ProjectUpdateRequest
 import dev.opencode.android.core.model.PromptRequest
+import dev.opencode.android.core.model.ProviderInfo
 import dev.opencode.android.core.model.PtyCreateRequest
 import dev.opencode.android.core.model.PtyTicketToken
 import dev.opencode.android.core.model.PtyUpdateRequest
@@ -60,6 +77,10 @@ import dev.opencode.android.core.model.SwitchModelRequest
 import dev.opencode.android.core.model.VcsBase
 import dev.opencode.android.core.model.VcsFileStatus
 import dev.opencode.android.core.model.VcsInfo
+import dev.opencode.android.core.model.WebSearchProviderInfo
+import dev.opencode.android.core.model.WebSearchQueryRequest
+import dev.opencode.android.core.model.WebSearchResponse
+import dev.opencode.android.core.model.WellknownSourceRequest
 import dev.opencode.android.core.model.WorktreeCreateRequest
 import dev.opencode.android.core.model.WorktreeDirectory
 import dev.opencode.android.core.model.WorktreeRefreshRequest
@@ -960,4 +981,313 @@ interface ServerApi {
      */
     @GET("api/config/shell")
     suspend fun listShellOptions(): List<ShellOption>
+
+    // --------------------------------- Phase 8: providers, integrations, MCP, plugins, web search
+    //
+    // Twenty-seven operations in five areas. Three things about them are the same across all of them
+    // and are worth stating once:
+    //
+    //  - **Every one that touches a location takes `location[directory]`**, because a login made in
+    //    one checkout has to be visible from the other. The only exceptions are the credential
+    //    writes, which are keyed by credential id alone.
+    //  - **The writes are not idempotent and a retry is visible.** `integration.oauth.connect` starts
+    //    a *new* attempt, and `plugin.update` re-downloads, so a caller that retries on a timeout can
+    //    end up with two attempts or two installs. The stores therefore treat a transport failure as
+    //    "unknown", not as "not done", and the UI re-reads rather than assuming.
+    //  - **`experimental.mcp.*` are behind capability detection** (plan §4.2), and
+    //    `experimental.integration.wellknown` behind the same. A `404` there is the probe's answer, not
+    //    a failure, which is why [ActionErrorKind.NOT_FOUND] is what the capability policy reads.
+
+    // ------------------------------------------------------------------ integrations (12)
+
+    /** `integration.list`: every integration, its methods and its existing connections. */
+    @GET("api/integration")
+    suspend fun listIntegrations(
+        @Query(LocationParam.QUERY_KEY) directory: String? = null,
+    ): LocationScoped<List<IntegrationInfo>>
+
+    /** `integration.get`: one integration, with the same shape as its entry in the list. */
+    @GET("api/integration/{integrationID}")
+    suspend fun getIntegration(
+        @Path("integrationID") integrationID: String,
+        @Query(LocationParam.QUERY_KEY) directory: String? = null,
+    ): LocationScoped<IntegrationInfo>
+
+    /**
+     * `integration.connect.key`: stores an API key, plus the method's form answers and a label.
+     *
+     * [ConnectKeyRequest.key] is a [Secret], which serializes to the plain string the wire needs
+     * while making the value impossible to print by accident on the way there.
+     *
+     * `204`. The new credential appears through `integration.updated` and `credential.updated`.
+     */
+    @POST("api/integration/{integrationID}/connect/key")
+    suspend fun connectWithKey(
+        @Path("integrationID") integrationID: String,
+        @Body body: ConnectKeyRequest,
+        @Query(LocationParam.QUERY_KEY) directory: String? = null,
+    ): Unit
+
+    /**
+     * `integration.oauth.connect`: starts an OAuth attempt and answers with the URL to open.
+     *
+     * **The URL is server input and the app navigates to it**, so
+     * [dev.opencode.android.core.model.OAuthAttempt.safeUrl] — not the raw `url` — is what a
+     * Custom Tab is given. [IntegrationMethod.OAuth.id] is the `methodID`.
+     */
+    @POST("api/integration/{integrationID}/connect/oauth")
+    suspend fun connectWithOauth(
+        @Path("integrationID") integrationID: String,
+        @Body body: ConnectOAuthRequest,
+        @Query(LocationParam.QUERY_KEY) directory: String? = null,
+    ): LocationScoped<OAuthAttempt>
+
+    /**
+     * `integration.oauth.status`: the attempt's state.
+     *
+     * **Polled, and never inferred from the redirect** (plan §4.2: the server is authoritative).
+     * A Custom Tab returning to the app says nothing about whether the provider granted access; only
+     * this route does, and it is the only thing that ends the `mode=auto` flow.
+     */
+    @GET("api/integration/{integrationID}/connect/oauth/{attemptID}")
+    suspend fun getOauthAttemptStatus(
+        @Path("integrationID") integrationID: String,
+        @Path("attemptID") attemptID: String,
+        @Query(LocationParam.QUERY_KEY) directory: String? = null,
+    ): LocationScoped<OAuthAttemptStatus>
+
+    /**
+     * `integration.oauth.complete`: submits a device code for a `mode=code` attempt.
+     *
+     * [code] is `null` for a `mode=auto` attempt that the server itself finishes, which the schema
+     * allows and which the device-code screen does not use.
+     */
+    @POST("api/integration/{integrationID}/connect/oauth/{attemptID}/complete")
+    suspend fun completeOauthAttempt(
+        @Path("integrationID") integrationID: String,
+        @Path("attemptID") attemptID: String,
+        @Body body: ConnectOAuthCompleteRequest,
+        @Query(LocationParam.QUERY_KEY) directory: String? = null,
+    ): Unit
+
+    /** `integration.oauth.cancel`: abandons an attempt. `204`. Available throughout the flow. */
+    @DELETE("api/integration/{integrationID}/connect/oauth/{attemptID}")
+    suspend fun cancelOauthAttempt(
+        @Path("integrationID") integrationID: String,
+        @Path("attemptID") attemptID: String,
+        @Query(LocationParam.QUERY_KEY) directory: String? = null,
+    ): Unit
+
+    /**
+     * `integration.command.connect`: starts a login command on the *host*.
+     *
+     * The command runs on the user's machine, so the client shows it before sending this and the
+     * output is polled from [getCommandAttemptStatus].
+     */
+    @POST("api/integration/{integrationID}/connect/command")
+    suspend fun connectWithCommand(
+        @Path("integrationID") integrationID: String,
+        @Body body: ConnectCommandRequest,
+        @Query(LocationParam.QUERY_KEY) directory: String? = null,
+    ): LocationScoped<CommandAttempt>
+
+    /**
+     * `integration.command.status`: the attempt's state and, while pending, the output so far.
+     *
+     * There is no separate output route, so the message on a `pending` status *is* the stream; the
+     * poller accumulates it because a device-code login prints a URL and then waits.
+     */
+    @GET("api/integration/{integrationID}/connect/command/{attemptID}")
+    suspend fun getCommandAttemptStatus(
+        @Path("integrationID") integrationID: String,
+        @Path("attemptID") attemptID: String,
+        @Query(LocationParam.QUERY_KEY) directory: String? = null,
+    ): LocationScoped<CommandAttemptStatus>
+
+    /** `integration.command.cancel`: stops a running login command. `204`. */
+    @DELETE("api/integration/{integrationID}/connect/command/{attemptID}")
+    suspend fun cancelCommandAttempt(
+        @Path("integrationID") integrationID: String,
+        @Path("attemptID") attemptID: String,
+        @Query(LocationParam.QUERY_KEY) directory: String? = null,
+    ): Unit
+
+    /**
+     * `experimental.integration.wellknown`: adds an integration source by URL.
+     *
+     * Experimental and behind a switch: it makes the *server* fetch a URL the user typed, so the app
+     * validates the scheme with
+     * [dev.opencode.android.core.model.WellknownSourceUrl] before sending and a `404` is the
+     * capability probe's answer rather than a failure.
+     */
+    @POST("api/experimental/integration/wellknown")
+    suspend fun addWellknownIntegration(
+        @Body body: WellknownSourceRequest,
+        @Query(LocationParam.QUERY_KEY) directory: String? = null,
+    ): Unit
+
+    // ------------------------------------------------------------------ credentials (3)
+
+    /**
+     * `credential.update`: renames a stored credential.
+     *
+     * Not location-scoped, because the credential id is global. A rename is a `PATCH` with a body
+     * and no `204` in the spec, so [Unit] is what the client waits on.
+     */
+    @PATCH("api/credential/{credentialID}")
+    suspend fun updateCredential(
+        @Path("credentialID") credentialID: String,
+        @Body body: CredentialUpdateRequest,
+    ): Unit
+
+    /**
+     * `credential.remove`: logs out, which makes the integration unusable on this server.
+     *
+     * **A destructive action that needs confirmation** (plan §5.2 names "removing a credential"
+     * explicitly). The server gives no way to undo it and no way to recover the key, so the UI holds
+     * the target until the user answers.
+     */
+    @DELETE("api/credential/{credentialID}")
+    suspend fun removeCredential(
+        @Path("credentialID") credentialID: String,
+    ): Unit
+
+    /**
+     * `credential.activate`: switches the active account for an integration.
+     *
+     * The newest login becomes active by default, so this is how an *older* credential is made the
+     * one in use. Also a two-step action in the UI: it changes which account every request uses, and
+     * a mistap silently sends the next turn to the wrong account.
+     */
+    @POST("api/credential/{credentialID}/activate")
+    suspend fun activateCredential(
+        @Path("credentialID") credentialID: String,
+    ): Unit
+
+    // ------------------------------------------------------------------ providers (2)
+
+    /** `provider.list`. `503` while the catalog is still settling, which is not a failure. */
+    @GET("api/provider")
+    suspend fun listProviders(
+        @Query(LocationParam.QUERY_KEY) directory: String? = null,
+    ): LocationScoped<List<ProviderInfo>>
+
+    /** `provider.get`. */
+    @GET("api/provider/{providerID}")
+    suspend fun getProvider(
+        @Path("providerID") providerID: String,
+        @Query(LocationParam.QUERY_KEY) directory: String? = null,
+    ): LocationScoped<ProviderInfo>
+
+    // ------------------------------------------------------------------ MCP (6)
+
+    /** `mcp.list`: the configured servers and their status. */
+    @GET("api/mcp")
+    suspend fun listMcpServers(
+        @Query(LocationParam.QUERY_KEY) directory: String? = null,
+    ): LocationScoped<List<McpServer>>
+
+    /**
+     * `mcp.resource.catalog`: the resources and templates every connected server publishes.
+     *
+     * Invalidated by `mcp.resources.changed {server}`, and a server that is not connected has no
+     * entry rather than an empty one — which is what tells the browser to say why.
+     */
+    @GET("api/mcp/resource")
+    suspend fun getMcpResourceCatalog(
+        @Query(LocationParam.QUERY_KEY) directory: String? = null,
+    ): LocationScoped<McpResourceCatalog>
+
+    /**
+     * `experimental.mcp.add`: adds or replaces a server for this run only.
+     *
+     * A `PUT`, so it is idempotent by server name, and it does not survive a restart — the UI says
+     * so rather than implying the server is now configured.
+     */
+    @PUT("api/experimental/mcp/{server}")
+    suspend fun putMcpServer(
+        @Path("server") server: String,
+        @Body body: McpAddRequest,
+        @Query(LocationParam.QUERY_KEY) directory: String? = null,
+    ): Unit
+
+    /** `experimental.mcp.remove`: drops a runtime server until restart. `204`. */
+    @DELETE("api/experimental/mcp/{server}")
+    suspend fun removeMcpServer(
+        @Path("server") server: String,
+        @Query(LocationParam.QUERY_KEY) directory: String? = null,
+    ): Unit
+
+    /** `experimental.mcp.connect`: connects a server now, overriding `disabled` until restart. */
+    @POST("api/experimental/mcp/{server}/connect")
+    suspend fun connectMcpServer(
+        @Path("server") server: String,
+        @Query(LocationParam.QUERY_KEY) directory: String? = null,
+    ): Unit
+
+    /** `experimental.mcp.disconnect`: the other half, and the reason `mcp.status.changed` exists. */
+    @POST("api/experimental/mcp/{server}/disconnect")
+    suspend fun disconnectMcpServer(
+        @Path("server") server: String,
+        @Query(LocationParam.QUERY_KEY) directory: String? = null,
+    ): Unit
+
+    // ------------------------------------------------------------------ plugins (3)
+
+    /** `plugin.list`: the enabled plugins, with their source, features and state. */
+    @GET("api/plugin")
+    suspend fun listPlugins(
+        @Query(LocationParam.QUERY_KEY) directory: String? = null,
+    ): LocationScoped<List<PluginInfo>>
+
+    /**
+     * `plugin.check`: asks the registry whether a newer version exists.
+     *
+     * [PluginCheckRequest.target] is `null` for every plugin, and the answer is the *whole* list
+     * with the `outdated` flags refreshed — so the client replaces its list rather than merging one
+     * row, because a plugin that stopped being outdated has no event to say so.
+     */
+    @POST("api/plugin/check")
+    suspend fun checkPlugins(
+        @Body body: PluginCheckRequest,
+        @Query(LocationParam.QUERY_KEY) directory: String? = null,
+    ): LocationScoped<List<PluginInfo>>
+
+    /**
+     * `plugin.update`: installs newer versions of the named packages.
+     *
+     * `503` when the registry is unreachable, which the UI distinguishes from "up to date" — a
+     * check that failed is not a check that found nothing. Non-idempotent: a retry re-downloads.
+     */
+    @POST("api/plugin/update")
+    suspend fun updatePlugins(
+        @Body body: PluginUpdateRequest,
+        @Query(LocationParam.QUERY_KEY) directory: String? = null,
+    ): Unit
+
+    // ------------------------------------------------------------------ web search (2)
+
+    /**
+     * `websearch.providers`: the providers a search could go through.
+     *
+     * `503` while none is configured, which is the state the plan's "web search is off" is really in.
+     */
+    @GET("api/websearch/provider")
+    suspend fun listWebSearchProviders(
+        @Query(LocationParam.QUERY_KEY) directory: String? = null,
+    ): LocationScoped<List<WebSearchProviderInfo>>
+
+    /**
+     * `websearch.query`: runs a search, for the "test this provider" screen.
+     *
+     * [WebSearchQueryRequest.providerID] is `null` for the server's configured default, and the
+     * answer names the provider that actually served it in
+     * [dev.opencode.android.core.model.WebSearchResponse.providerID] — so the screen shows what ran
+     * rather than what was asked for.
+     */
+    @POST("api/websearch")
+    suspend fun queryWebSearch(
+        @Body body: WebSearchQueryRequest,
+        @Query(LocationParam.QUERY_KEY) directory: String? = null,
+    ): LocationScoped<WebSearchResponse>
 }

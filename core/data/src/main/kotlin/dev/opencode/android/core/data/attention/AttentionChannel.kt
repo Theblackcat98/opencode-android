@@ -44,6 +44,18 @@ enum class AttentionChannel(
     /** A provider retry is scheduled, or a usage limit was hit. */
     RETRY("attention.retry", AttentionPriority.DEFAULT),
 
+    /**
+     * An OAuth login the user started has finished (Phase 8).
+     *
+     * **Its own channel, and not [QUESTION].** The user left the app to approve a consent screen in
+     * a browser and comes back expecting to be told whether it worked; that is the same "come back
+     * and find out" shape as a finished turn, but it is about an account rather than a conversation,
+     * so a user who silenced their sessions' turns should still hear about a login that completed.
+     * It is not [PERMISSION] either: nothing is blocked while the browser is in front, so a high
+     * priority channel would heads-up over a permission the user is trying to answer.
+     */
+    AUTH_COMPLETED("attention.auth", AttentionPriority.DEFAULT),
+
     /** The server says a newer version is available (`installation.update-available`). */
     SERVER_UPDATE("attention.update", AttentionPriority.LOW),
 

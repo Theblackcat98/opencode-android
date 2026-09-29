@@ -28,6 +28,42 @@ sealed interface AttentionNotice {
         override val sessionId: String,
         val outcome: Outcome,
     ) : AttentionNotice
+
+    /**
+     * An OAuth login the user started has finished (Phase 8).
+     *
+     * **Published the moment the server says `complete`, and only then.** The user left the app for a
+     * browser consent screen, so the question they come back with is "did that work", and the only
+     * honest answer is the server's status poll (plan §4.2: the redirect says nothing). A failed or
+     * expired attempt gets the same notice with a different outcome, because "it did not work" is
+     * equally worth telling them about — otherwise a login that quietly timed out looks like a login
+     * still in progress.
+     *
+     * [integrationID] is what the notification's action opens, and [directory] is the checkout the
+     * login was made in, because a credential made in one directory is visible from every other and
+     * the user should land on the one they were looking at.
+     */
+    data class AuthCompleted(
+        val integrationID: String,
+        val integrationName: String,
+        val directory: String,
+        val outcome: AuthOutcome,
+    ) : AttentionNotice {
+        /** No session: a login is about an account, not a conversation. */
+        override val sessionId: String = ""
+    }
+}
+
+/** How a login attempt ended, for the notice and the notification body. */
+enum class AuthOutcome {
+    /** The provider granted access. The user has to re-read the list to see the new credential. */
+    SUCCEEDED,
+
+    /** The provider or the server refused, with a reason. */
+    FAILED,
+
+    /** The attempt timed out on the server before the user finished. */
+    EXPIRED,
 }
 
 /**

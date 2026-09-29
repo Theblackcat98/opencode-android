@@ -27,6 +27,25 @@ data class ExperimentalSettings(
      * says the app may call them; the first `404` says whether it can.
      */
     val persistentPty: Boolean = false,
+    /**
+     * Whether this app may change the server's running MCP servers (connect, disconnect, add,
+     * remove). Off by default.
+     *
+     * **A separate switch from the well-known sources below, and the reason is what the routes do.**
+     * These four write to a table that exists only until the server restarts, so the blast radius is
+     * a restart. The well-known route instead makes the *server* fetch a URL, which can add an
+     * integration that was never configured and which then offers its own login methods. One switch
+     * for both would ask the user to consent to something they have not been told about.
+     */
+    val mcpRuntime: Boolean = false,
+    /**
+     * Whether this app may add an integration source by URL. Off by default, for the reason above.
+     *
+     * The URL is checked before it is sent — only http and https with a host, the same rule the
+     * OAuth Custom Tab uses — but a valid URL is still a URL the server will fetch, so the switch is
+     * the user's part of that decision.
+     */
+    val wellknownIntegrations: Boolean = false,
 )
 
 /**
@@ -51,6 +70,10 @@ interface ExperimentalPreferences {
     suspend fun setSessionTransfer(enabled: Boolean)
 
     suspend fun setPersistentPty(enabled: Boolean)
+
+    suspend fun setMcpRuntime(enabled: Boolean)
+
+    suspend fun setWellknownIntegrations(enabled: Boolean)
 }
 
 /** The DataStore-backed store the app uses. */
@@ -64,6 +87,8 @@ class DataStoreExperimentalPreferences @Inject constructor(
             fileWrites = preferences[FILE_WRITES] ?: false,
             sessionTransfer = preferences[SESSION_TRANSFER] ?: false,
             persistentPty = preferences[PERSISTENT_PTY] ?: false,
+            mcpRuntime = preferences[MCP_RUNTIME] ?: false,
+            wellknownIntegrations = preferences[WELLKNOWN_INTEGRATIONS] ?: false,
         )
     }
 
@@ -79,9 +104,19 @@ class DataStoreExperimentalPreferences @Inject constructor(
         context.experimentalPreferences.edit { it[PERSISTENT_PTY] = enabled }
     }
 
+    override suspend fun setMcpRuntime(enabled: Boolean) {
+        context.experimentalPreferences.edit { it[MCP_RUNTIME] = enabled }
+    }
+
+    override suspend fun setWellknownIntegrations(enabled: Boolean) {
+        context.experimentalPreferences.edit { it[WELLKNOWN_INTEGRATIONS] = enabled }
+    }
+
     private companion object {
         val FILE_WRITES = booleanPreferencesKey("fs_write")
         val SESSION_TRANSFER = booleanPreferencesKey("session_transfer")
         val PERSISTENT_PTY = booleanPreferencesKey("persistent_pty")
+        val MCP_RUNTIME = booleanPreferencesKey("mcp_runtime")
+        val WELLKNOWN_INTEGRATIONS = booleanPreferencesKey("wellknown_integrations")
     }
 }
