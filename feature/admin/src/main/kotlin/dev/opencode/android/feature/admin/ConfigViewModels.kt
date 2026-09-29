@@ -176,7 +176,6 @@ class ConfigViewModel(
                 target = GLOBAL_CONFIG,
                 consequence = "The bash tool and every terminal on this server will run $shell",
                 isPrivilegeChange = true,
-                previous = _state.value.currentShell,
             ),
             error = null,
         )

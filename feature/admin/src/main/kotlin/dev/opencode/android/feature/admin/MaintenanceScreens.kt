@@ -194,9 +194,9 @@ private fun MigrationCard(state: MaintenanceUiState) {
         }
         when (status) {
             is MigrationStatus.Running -> {
-                Text(text = status.label, style = MaterialTheme.typography.bodyMedium)
-                val numerator = status.numerator
-                val denominator = status.denominator
+                Text(text = status.progress.label, style = MaterialTheme.typography.bodyMedium)
+                val numerator = status.progress.numerator
+                val denominator = status.progress.denominator
                 if (numerator != null && denominator != null && denominator > 0) {
                     Text(
                         text = stringResource(R.string.admin_migration_count, numerator, denominator),

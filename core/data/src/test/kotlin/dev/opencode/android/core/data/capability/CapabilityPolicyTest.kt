@@ -131,6 +131,12 @@ class CapabilityPolicyTest {
         // well-known-source route as a fifth of its own: it is a different kind of write, because it
         // makes the *server* fetch a URL rather than editing a table that dies at restart. A user who
         // agreed to the first has not agreed to the second.
+        //
+        // Phase 9 added two more, and both are kept apart from `fs_write` on purpose. `config_update` is
+        // the one key the server will change for us (`shell`) and a user who will not let the app edit
+        // their configuration files has not said no to picking a shell from the list the server itself
+        // reported. `session_instructions` changes what a *running* session is told at the next step
+        // boundary, which is a different risk from a file the user reviews and saves.
         assertEquals(
             listOf(
                 "fs_write",
@@ -139,6 +145,8 @@ class CapabilityPolicyTest {
                 "persistent_pty",
                 "mcp_runtime",
                 "wellknown_integration",
+                "config_update",
+                "session_instructions",
             ),
             ids,
         )

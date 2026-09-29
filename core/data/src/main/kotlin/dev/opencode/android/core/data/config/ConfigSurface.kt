@@ -266,10 +266,12 @@ class ConfigSurface(
         target: String,
         consequence: String,
         isPrivilegeChange: Boolean,
-        previous: String?,
     ): WritePlan = WritePlan(
         target = target,
-        text = previous.orEmpty(),
+        // No document, deliberately. A setting the *server* applies has no bytes for this app to write,
+        // and the confirmation's sentence already names the new value — so a plan that carried one would
+        // be a value with no use and one more place a credential could be printed from.
+        text = "",
         consequence = consequence,
         isPrivilegeChange = isPrivilegeChange,
         bytes = 0,

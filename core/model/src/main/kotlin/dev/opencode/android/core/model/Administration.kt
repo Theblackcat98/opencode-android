@@ -1,5 +1,6 @@
 package dev.opencode.android.core.model
 
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -56,17 +57,35 @@ sealed interface MigrationStatus {
     @Serializable
     data object Completed : MigrationStatus
 
-    /** In progress, with a label and an optional count. */
+    /** In progress. The count is a nested object and each of its fields is individually optional. */
     @Serializable
-    data class Running(
-        val label: String,
-        val numerator: Long? = null,
-        val denominator: Long? = null,
-    ) : MigrationStatus
+    data class Running(val progress: Progress) : MigrationStatus {
 
-    /** The migration failed. [message] is the server's own text. */
+        /**
+         * How far along, as the server reports it.
+         *
+         * **`label` is required and the counts are not.** The spec's `progress` is
+         * `{label: string, numerator?: number, denominator?: number}` with only `label` required, and the
+         * server sends the label alone before it has counted anything. So a screen can always say what
+         * is happening and can only draw a bar when it has both ends — see `MaintenanceScreen`.
+         */
+        @Serializable
+        data class Progress(
+            val label: String,
+            val numerator: Long? = null,
+            val denominator: Long? = null,
+        )
+    }
+
+    /**
+     * The migration failed.
+     *
+     * **The field is `error`, not `message`** — the discriminator is `status`, so the payload's key is
+     * free, and the spec spells it `error`. Renaming it to `message` to match the rest of the model
+     * would have needed a `@SerialName` anyway, and the name on the wire is the honest one.
+     */
     @Serializable
-    data class Error(val message: String) : MigrationStatus
+    data class Error(@SerialName("error") val message: String) : MigrationStatus
 
     data class Unknown(override val discriminator: String?, override val raw: JsonObject) :
         MigrationStatus,
@@ -76,8 +95,18 @@ sealed interface MigrationStatus {
     val isRunning: Boolean get() = this is Running
 }
 
+/**
+ * The union's discriminator is **`status`**, not `type`.
+ *
+ * The spec's three branches are `{status: "required" | "completed"}`, `{status: "running", progress: …}`
+ * and `{status: "error", error: …}` — and `MigrationStatus` shares no `type` field with the rest of the
+ * model, so a client using the default discriminator would decode every answer as
+ * [MigrationStatus.Unknown] and the maintenance screen would show "this server version did not describe
+ * the migration" against a server that described it perfectly well.
+ */
 internal object MigrationStatusSerializer : DiscriminatedUnionSerializer<MigrationStatus>(
     serialName = "dev.opencode.android.MigrationStatus",
+    discriminator = "status",
     unknown = { discriminator, raw -> MigrationStatus.Unknown(discriminator, raw) },
     variants = listOf(
         variant("required", MigrationStatus.Required.serializer()),

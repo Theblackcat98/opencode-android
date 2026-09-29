@@ -60,6 +60,18 @@ class FixedConfigSchemaLoader(private val schema: ConfigSchema) : ConfigSchemaLo
 object ConfigModule {
 
     /**
+     * The asset loader behind [ConfigSchemaLoader].
+     *
+     * A `@Provides` rather than a `@Binds`, because the interface is a seam the tests substitute: a
+     * JVM test cannot construct an `AssetManager`, and a seam that needs an `AssetManager` is not a
+     * seam. Everything downstream depends on the interface, so replacing this one binding replaces the
+     * schema for the whole graph.
+     */
+    @Provides
+    @Singleton
+    fun provideConfigSchemaLoader(loader: AssetConfigSchemaLoader): ConfigSchemaLoader = loader
+
+    /**
      * The vendored schema, parsed once.
      *
      **Provided as a singleton so every screen in `feature/admin` reads the same key list.** The

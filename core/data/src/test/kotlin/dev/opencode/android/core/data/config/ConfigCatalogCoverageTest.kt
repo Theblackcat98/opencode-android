@@ -87,7 +87,7 @@ class ConfigCatalogCoverageTest {
 
     @Test
     fun `every projection name is a real property of Config InfoEncoded`() {
-        val info = VendoredSpec.propertiesOf("Config.InfoEncoded")
+        val info = dev.opencode.android.core.testing.VendoredSpec.propertiesOf("Config.InfoEncoded")
         ConfigSchema.PROJECTION_NAMES.forEach { (fileKey, projectionName) ->
             assertTrue(
                 "$projectionName is claimed for $fileKey but is not a property of Config.InfoEncoded",
@@ -98,7 +98,7 @@ class ConfigCatalogCoverageTest {
 
     @Test
     fun `every property of Config InfoEncoded is claimed by exactly one file key or named projection-only`() {
-        val info = VendoredSpec.propertiesOf("Config.InfoEncoded")
+        val info = dev.opencode.android.core.testing.VendoredSpec.propertiesOf("Config.InfoEncoded")
         val claimed = ConfigSchema.PROJECTION_NAMES.values
         assertEquals(
             "Config.InfoEncoded has properties the explorer's mapping does not name",
@@ -122,7 +122,8 @@ class ConfigCatalogCoverageTest {
         )
         assertTrue(
             "a projection-only key must really be reported by the server",
-            VendoredSpec.propertiesOf("Config.InfoEncoded").keys.containsAll(ConfigSchema.PROJECTION_ONLY_KEYS),
+            dev.opencode.android.core.testing.VendoredSpec.propertiesOf("Config.InfoEncoded")
+                .keys.containsAll(ConfigSchema.PROJECTION_ONLY_KEYS),
         )
         // 25 file keys map onto a projection, 11 do not, 36 in all; and 25 + 3 = 28 projections.
         assertEquals(36, fileKeys.size)
