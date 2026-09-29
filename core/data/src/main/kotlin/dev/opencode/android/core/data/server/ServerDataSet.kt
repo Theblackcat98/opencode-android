@@ -5,6 +5,7 @@ import dev.opencode.android.core.data.config.ConfigSurface
 import dev.opencode.android.core.data.config.RetrofitAdminApi
 import dev.opencode.android.core.data.integrations.IntegrationSurface
 import dev.opencode.android.core.data.timeline.TimelineDivergence
+import dev.opencode.android.core.data.tui.TuiControl
 import dev.opencode.android.core.data.execution.ExecutionSurface
 import dev.opencode.android.core.database.cache.ReadCacheStore
 import dev.opencode.android.core.model.AgentInfo
@@ -27,6 +28,10 @@ import dev.opencode.android.core.model.event.CredentialSwitched
 import dev.opencode.android.core.model.event.McpResourcesChanged
 import dev.opencode.android.core.model.event.McpStatusChanged
 import dev.opencode.android.core.model.event.ShellCreated
+import dev.opencode.android.core.model.event.TuiCommandExecute
+import dev.opencode.android.core.model.event.TuiPromptAppend
+import dev.opencode.android.core.model.event.TuiSessionSelect
+import dev.opencode.android.core.model.event.TuiToastShow
 import dev.opencode.android.core.model.event.ShellDeleted
 import dev.opencode.android.core.model.event.ShellExited
 import dev.opencode.android.core.model.event.WorktreeResolved
@@ -129,6 +134,15 @@ class ServerDataSet(
      * honest question — which credentials exist for this checkout — has exactly one source.
      */
     val integrations: IntegrationSurface = IntegrationSurface(serverId, api, scope)
+
+    /**
+     * The Phase 10 TUI control surface: the four `tui.*` events and the plugin `rpc.*` family.
+     *
+     * **Not location-keyed, because these are instructions rather than state.** A toast, a session
+     * selection or a command is addressed to whichever client is connected, not to a checkout, and
+     * a `location.shutdown` must not clear a pending instruction that was not about that location.
+     */
+    val tui: TuiControl = TuiControl()
 
     init {
         review.reverts = revertCommands
@@ -378,6 +392,16 @@ class ServerDataSet(
 
             is SessionRevertStaged -> revertCommands.applyStaged(payload.revert)
             is SessionRevertCleared, is SessionRevertCommitted -> revertCommands.applyStaged(null)
+
+            // ------------------------------------------------------------------ Phase 10: TUI
+            //
+            // The four `tui.*` events and the `rpc.*` family are the only frames that are not about
+            // server state: the TUI is asking this client to do something, and a plugin is emitting
+            // its own event for whoever is watching. `TuiControl` decides what each one means, and
+            // says "not mine" for everything else so this stays a complete dispatch.
+            is TuiToastShow, is TuiCommandExecute, is TuiPromptAppend, is TuiSessionSelect,
+            is EventPayload.Rpc,
+            -> tui.apply(event)
 
             else -> Unit
         }
