@@ -258,8 +258,12 @@ sealed interface ConfigModel {
             val provider = head.substringBefore('/', missingDelimiterValue = "")
             val model = head.substringAfter('/', missingDelimiterValue = "")
             if (provider.isEmpty() || model.isEmpty()) return null
+            // The spec's own pattern, `^[^/#]+\/[^#]+(?:#[^#]+)?$`: neither the provider nor the
+            // model may carry the separator, and the variant may not carry a second `#`. A template
+            // that could not tell a model reference from a sentence would write a configuration the
+            // server rejects.
             if ('/' in provider || '#' in provider || '#' in model) return null
-            if (hasVariant && variant.isNullOrEmpty()) return null
+            if (hasVariant && (variant.isNullOrEmpty() || '#' in variant)) return null
             return Ref(provider, model, variant)
         }
 

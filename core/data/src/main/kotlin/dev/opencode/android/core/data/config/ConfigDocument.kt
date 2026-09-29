@@ -113,19 +113,28 @@ object ConfigDocument {
     /** [text] with `"<key>"` removed, as text. A key that was not there is returned unchanged. */
     fun removeFromText(text: String, key: String): String {
         val existing = spanOfValue(text, key) ?: return text
-        val end = existing.valueEnd
-        // Swallowing the trailing comma is what keeps the remaining document valid rather than leaving
-        // a dangling one, and swallowing the preceding whitespace is what stops a hole opening up.
-        var to = end
-        while (to < text.length && text[to].isWhitespace() && text[to] != '\n') to++
-        if (to < text.length && text[to] == ',') to++
+        // The trailing comma has to go with the key, or the document is left with a comma before a
+        // close; and the whitespace around the removal goes too, because a hole where a key used to be
+        // is a reformat the user did not ask for. Neither swallow crosses a newline, so a multi-line
+        // file keeps its shape.
+        var to = existing.valueEnd
+        while (to < text.length && (text[to] == ' ' || text[to] == '\t')) to++
+        if (to < text.length && text[to] == ',') {
+            to++
+            while (to < text.length && (text[to] == ' ' || text[to] == '\t')) to++
+        }
         var from = existing.keyStart
-        while (from > 0 && text[from - 1].isWhitespace() && text[from - 1] != '\n') from--
+        while (from > 0 && (text[from - 1] == ' ' || text[from - 1] == '\t')) from--
+
         val head = text.substring(0, from).trimEnd()
         val tail = text.substring(to)
-        // An object left empty is worse than no object.
-        if (head.endsWith("{") && tail.trimStart().startsWith("}")) return head.dropLast(1) + tail
-        return text.substring(0, from) + text.substring(to)
+        if (head.endsWith("{")) {
+            // The braces are the user's and stay where they are: removing the only key from
+            // `{"model": "x"}` leaves `{}`, not `}`. The gap's spaces go, so `{"a": 1, "b": 2}` becomes
+            // `{"b": 2}` rather than `{ "b": 2}`.
+            return head + tail.trimStart(' ', '\t')
+        }
+        return head + tail
     }
 
     /**
@@ -251,16 +260,27 @@ object ConfigDocument {
             raw
         }
 
-    /** Adds `"key": value` before the object's closing brace, in the file's own indentation. */
+    /**
+     * Adds `"key": value` before the object's closing brace, in the file's own indentation.
+     *
+     * **A one-line object gets no indentation and no newline.** `{"model": "x"}` becoming
+     * `{  "model": "x"\n}` on the first edit would be a gratuitous reformat of a file the user did not
+     * ask to be reformatted, and the "only this key's bytes change" promise is easier to keep honest
+     * when the no-op case really is a no-op.
+     */
     private fun appendKey(text: String, key: String, rendered: String, indent: String): String {
         val close = lastTopLevelBrace(text) ?: return text
         val before = text.substring(0, close)
         val after = text.substring(close)
         val trimmed = before.trimEnd()
         val isEmpty = trimmed.endsWith("{")
-        val newline = if (before.contains('\n')) "\n" else ""
-        val separator = if (isEmpty) "" else ",$newline"
-        return "$trimmed$separator$indent${quote(key)}: $rendered$newline$after"
+        val multiline = before.contains('\n')
+        if (!multiline) {
+            val separator = if (isEmpty) "" else ", "
+            return "$trimmed$separator${quote(key)}: $rendered$after"
+        }
+        val comma = if (isEmpty) "" else ","
+        return "$trimmed$comma\n$indent${quote(key)}: $rendered\n$after"
     }
 
     private fun lastTopLevelBrace(text: String): Int? {

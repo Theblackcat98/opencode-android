@@ -192,10 +192,20 @@ data class ModelTemplate(val providerID: String, val model: String, val variant:
         get() = "Every session that has not chosen a model will use $text"
     override val isPrivilegeChange: Boolean get() = false
 
-    /** The `provider/model[#variant]` this template would write, or `null` when it is not one. */
-    val text: String? = dev.opencode.android.core.model.ConfigModel
-        .parse(listOfNotNull(providerID.takeIf { it.isNotBlank() }, model.takeIf { it.isNotBlank() }).joinToString("/"))
-        ?.display()
+    /**
+     * The `provider/model[#variant]` this template would write, or `null` when it is not one.
+     *
+     * **Assembled and then parsed, rather than concatenated.** The three fields the form collects are
+     * validated together by [dev.opencode.android.core.model.ConfigModel.parse]'s own pattern, so a
+     * provider id with a slash in it or a variant that is empty produces nothing rather than a string
+     * the server would reject.
+     */
+    val text: String? = buildString {
+        append(providerID.trim())
+        append('/')
+        append(model.trim())
+        variant?.trim()?.takeIf { it.isNotEmpty() }?.let { append("#").append(it) }
+    }.let { dev.opencode.android.core.model.ConfigModel.parse(it)?.display() }
 
     override fun value(): JsonElement? = text?.let(::JsonPrimitive)
 }
