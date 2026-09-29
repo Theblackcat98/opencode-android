@@ -139,7 +139,9 @@ for (const row of rows) {
 
 const etSrc = readFileSync(EVENT_TYPES, 'utf8')
 const bound = new Map() // type -> payload class
-for (const m of etSrc.matchAll(/Binding\("([^"]+)",\s*([\w.]+)::class/g)) {
+// The whitespace is allowed on both sides because Spotless wraps a long `Binding(...)` call across
+// lines, and an audit that has to be re-fixed by a reformat is an audit that will be.
+for (const m of etSrc.matchAll(/Binding\(\s*"([^"]+)",\s*([\w.]+)::class/g)) {
   bound.set(m[1], m[2].split('.').pop())
 }
 const dsSrc = readFileSync(DATASET, 'utf8')
