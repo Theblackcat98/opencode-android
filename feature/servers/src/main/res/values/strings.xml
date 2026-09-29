@@ -107,6 +107,20 @@
     <string name="status_reauth_body">The password or pairing token was rotated on the computer. Pair again, or edit the server to enter the new password.</string>
     <string name="status_navigate_back">Back</string>
     <string name="status_info_row">%1$s: %2$s</string>
+    <string name="status_host_title">Persistent terminal host</string>
+    <string name="status_host_body">Experimental. These two actions affect every session on this server, not just this app.</string>
+    <string name="status_host_off">Turned off for this installation. Persistent terminals are an experimental feature and two of its actions stop every session\'s terminal at once.</string>
+    <string name="status_host_absent">This server does not offer the persistent-terminal routes.</string>
+    <string name="status_host_shutdown">Stop the host and all its terminals</string>
+    <string name="status_host_shutdown_title">Stop the persistent terminal host?</string>
+    <string name="status_host_shutdown_body">Every persistent terminal on this server ends, including ones started on another device. There is no way to recover them from here.</string>
+    <string name="status_host_shutdown_confirm">Stop the host</string>
+    <string name="status_host_handoff">Hand off to another instance</string>
+    <string name="status_host_handoff_instance">Instance %1$s</string>
+    <string name="status_host_stopped">The persistent terminal host was stopped.</string>
+    <string name="status_host_handed_off">The host was handed off to another instance.</string>
+    <string name="status_host_dismiss">Dismiss</string>
+    <string name="status_host_cancel">Cancel</string>
 
     <!-- Connection state labels -->
     <string name="state_idle">Not started</string>

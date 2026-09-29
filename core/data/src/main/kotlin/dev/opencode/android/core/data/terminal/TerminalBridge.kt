@@ -72,7 +72,11 @@ object TerminalBridgeCodec {
             Selection.TYPE -> bounded(obj, Selection.TYPE, MAX_SELECTION_CHARS)
                 ?.let { TerminalBridgeMessage.Selection(it) }
 
-            Error.TYPE -> bounded(obj, Error.TYPE, MAX_INPUT_CHARS)
+            // The page's own failure message is in `message`, not `data`: the page is what reports it,
+            // and it has always used the field name it uses for a state message. Reading `data` here
+            // would decode every failure to `null` and the page would be told nothing, which is the one
+            // outcome this branch exists to avoid.
+            Error.TYPE -> bounded(obj, Error.TYPE, MAX_INPUT_CHARS, key = "message")
                 ?.let { TerminalBridgeMessage.Failed(it) }
 
             else -> null
@@ -95,10 +99,24 @@ object TerminalBridgeCodec {
         )
     }.getOrDefault(HOST_ENCODE_FAILED)
 
-    /** A page that says something the host cannot parse gets a protocol error, not silence. */
-    const val HOST_ENCODE_FAILED: String = """{"type":"error","message":"host-encode-failed"}"""
+    /**
+     * A page that says something the host cannot parse gets a protocol error, not silence.
+     *
+     * **The payload field is `data`, not `message`, so that the decoder can read it.** The failure path
+     * in [encode] has to produce something the same [decode] would accept; a fallback carrying a
+     * `message` field that [bounded] does not look at decodes to `null`, which is the one thing a page
+     * cannot be given — an error it cannot see.
+     */
+    const val HOST_ENCODE_FAILED: String = """{"type":"error","data":"host-encode-failed"}"""
 
     private fun payload(obj: JsonObject, type: String): String? = bounded(obj, type, MAX_INPUT_CHARS)
+
+    /** [bounded] for a field that is not called `data`. */
+    private fun bounded(obj: JsonObject, type: String, limit: Int, key: String): String? {
+        val value = obj.stringOrNull(key) ?: return null
+        if (value.isEmpty() || value.length > limit) return null
+        return value
+    }
 
     /**
      * A string field, or `null` for anything that is not one.

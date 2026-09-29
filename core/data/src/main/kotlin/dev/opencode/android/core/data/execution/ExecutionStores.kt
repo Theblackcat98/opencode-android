@@ -463,7 +463,7 @@ class WorktreeCommands(
         val http = error as? HttpException
         val parsed = http?.response()?.errorBody()?.string()?.let { body ->
             runCatching { OpenCodeJson.decodeFromString(WorktreeFailure.serializer(), body) }.getOrNull()
-        }
+        }?.takeIf { it.isWorktreeError() }
         if (parsed != null) {
             Result.success(
                 WorktreeRemoval.Refused(

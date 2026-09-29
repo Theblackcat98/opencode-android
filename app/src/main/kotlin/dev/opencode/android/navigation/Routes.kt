@@ -33,6 +33,7 @@ import dev.opencode.android.feature.servers.ui.ServerStatusScreen
 import dev.opencode.android.feature.servers.ui.ServersScreen
 import dev.opencode.android.feature.sessions.ui.HomeRoute
 import dev.opencode.android.feature.sessions.ui.PendingRequestsViewModel
+import dev.opencode.android.feature.execution.ProjectSettingsHost
 import dev.opencode.android.feature.sessions.ui.SessionListRoute
 import kotlinx.serialization.Serializable
 import javax.inject.Inject
@@ -163,6 +164,19 @@ data class WorktreesRoute(
 /** A session's persistent terminals, which are experimental and capability-gated (features doc §32). */
 @Serializable
 data class SessionTerminalsRoute(val serverId: String? = null, val sessionId: String)
+
+/**
+ * One project's settings: name, icon, start command and canonical checkout (`project.update`).
+ *
+ * [fromSessionId] is the session the panel was opened from, so the settings can be a sheet's worth of
+ * context and the timeline can be brought back; it is not part of what is written.
+ */
+@Serializable
+data class ProjectSettingsRoute(
+    val serverId: String? = null,
+    val projectId: String,
+    val fromSessionId: String? = null,
+)
 
 /**
  * The navigation graph.
@@ -341,6 +355,15 @@ fun OpenCodeApp(
                 onOpenSessionTerminals = {
                     navController.navigate(SessionTerminalsRoute(route.serverId, route.sessionId))
                 },
+                onOpenProjectSettings = { projectId ->
+                    navController.navigate(
+                        ProjectSettingsRoute(
+                            serverId = route.serverId,
+                            projectId = projectId,
+                            fromSessionId = route.sessionId,
+                        ),
+                    )
+                },
                 onUndoConfirmed = { messageId -> composer.stageUndo(messageId) },
                 // A fork is a new session id, so the graph navigates to it rather than the screen
                 // re-rendering the one it is on. The view model publishes the id once.
@@ -416,6 +439,14 @@ fun OpenCodeApp(
             val route = entry.toRoute<SessionTerminalsRoute>()
             SessionTerminalsHost(
                 sessionId = route.sessionId,
+                onNavigateBack = { navController.popBackStack() },
+            )
+        }
+
+        composable<ProjectSettingsRoute> { entry ->
+            val route = entry.toRoute<ProjectSettingsRoute>()
+            ProjectSettingsHost(
+                projectId = route.projectId,
                 onNavigateBack = { navController.popBackStack() },
             )
         }

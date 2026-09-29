@@ -43,7 +43,7 @@ import dev.opencode.android.core.model.SessionRevertStageRequest
 import dev.opencode.android.core.model.SessionShellRequest
 import dev.opencode.android.core.model.SessionTerminalCreateRequest
 import dev.opencode.android.core.model.SessionTerminalHandoff
-import dev.opencode.android.core.model.PersistentPtyScreen
+import dev.opencode.android.core.model.SessionTerminalReadResponse
 import dev.opencode.android.core.model.SessionTerminalSnapshot
 import dev.opencode.android.core.model.SessionTerminalUpdateRequest
 import dev.opencode.android.core.model.SessionTransfer
@@ -837,7 +837,7 @@ interface ServerApi {
     suspend fun readSessionTerminal(
         @Path("sessionID") sessionID: String,
         @Query("lines") lines: String? = null,
-    ): DataResponse<PersistentPtyScreen?>
+    ): SessionTerminalReadResponse
 
     @GET("api/experimental/persistent-pty/{ptyID}")
     suspend fun getSessionTerminal(
@@ -922,7 +922,7 @@ interface ServerApi {
      * uncommitted work; the client asks again with `force` and a confirmation rather than sending it
      * the first time.
      */
-    @DELETE("api/worktree")
+    @HTTP(method = "DELETE", path = "api/worktree", hasBody = true)
     suspend fun removeWorktree(
         @Body body: WorktreeRemoveRequest,
     ): Unit

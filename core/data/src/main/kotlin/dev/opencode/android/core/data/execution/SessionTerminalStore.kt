@@ -143,10 +143,36 @@ class SessionTerminalStore(
         return result
     }
 
+    /**
+     * `experimental.persistent-pty.get`: one terminal's own record.
+     *
+     * Separate from [list] because the list is a session's inventory and this is a single terminal by
+     * id, which is what a `persistent-pty.added` event names: the pane re-reads the one that changed
+     * rather than the whole list.
+     */
+    suspend fun get(id: String): Result<PersistentPtyInfo> {
+        if (!allowedBySetting) return refused()
+        val result = call { api.getSessionTerminal(id).data }
+        record(_state.value.sessionID, result)
+        result.getOrNull()?.let { terminal ->
+            _state.value = _state.value.copy(
+                terminals = _state.value.terminals.filterNot { it.id == terminal.id } + terminal,
+            )
+        }
+        return result
+    }
+
     /** `experimental.persistent-pty.update`: the resize, and the claim with an attachment id. */
     suspend fun resize(id: String, size: PtySize, attachmentID: String? = null): Result<PersistentPtyInfo> {
         if (!allowedBySetting) return refused()
-        return call { api.updateSessionTerminal(id, SessionTerminalUpdateRequest(attachmentID, size)).data }
+        val result = call { api.updateSessionTerminal(id, SessionTerminalUpdateRequest(attachmentID, size)).data }
+        record(_state.value.sessionID, result)
+        result.getOrNull()?.let { terminal ->
+            _state.value = _state.value.copy(
+                terminals = _state.value.terminals.map { if (it.id == terminal.id) terminal else it },
+            )
+        }
+        return result
     }
 
     /** `experimental.persistent-pty.remove`. */

@@ -84,6 +84,8 @@ fun SessionHost(
     onOpenSubagents: () -> Unit = {},
     onOpenWorktrees: (String) -> Unit = {},
     onOpenSessionTerminals: () -> Unit = {},
+    /** Takes the project id, because the menu row is disabled without one. */
+    onOpenProjectSettings: (String) -> Unit = {},
     onUndoConfirmed: (String) -> Unit = {},
     onForked: (String) -> Unit = {},
     modifier: Modifier = Modifier,
@@ -205,6 +207,7 @@ fun SessionHost(
                 state = strip,
                 onOpen = { childId -> onOpenChild(childId) },
                 onInterrupt = subagents::interrupt,
+                onDismissError = subagents::dismissError,
             )
         },
         messageActions = { messageId ->
@@ -291,6 +294,7 @@ fun SessionHost(
                     onOpenSubagents = onOpenSubagents,
                     onOpenWorktrees = onOpenWorktrees,
                     onOpenSessionTerminals = onOpenSessionTerminals,
+                    onOpenProjectSettings = onOpenProjectSettings,
                 )
             },
         )
@@ -455,6 +459,7 @@ private fun ExecutionMenuRows(
     onOpenSubagents: () -> Unit,
     onOpenWorktrees: (String) -> Unit,
     onOpenSessionTerminals: () -> Unit,
+    onOpenProjectSettings: (String) -> Unit,
 ) {
     SessionMenuRow(
         label = stringResource(SessionsR.string.session_execution_subagents),
@@ -480,5 +485,13 @@ private fun ExecutionMenuRows(
     SessionMenuRow(
         label = stringResource(SessionsR.string.session_execution_session_terminals),
         onClick = onOpenSessionTerminals,
+    )
+    // Project settings are `project.update`, and the start command in them is what a terminal's quick
+    // action runs — so the settings sit next to the terminal row rather than in a settings app the user
+    // would have to go and find.
+    SessionMenuRow(
+        label = stringResource(SessionsR.string.session_execution_project_settings),
+        enabled = projectId != null,
+        onClick = { projectId?.let(onOpenProjectSettings) },
     )
 }

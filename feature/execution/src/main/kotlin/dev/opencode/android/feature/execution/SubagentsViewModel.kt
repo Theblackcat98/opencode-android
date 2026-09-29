@@ -116,16 +116,29 @@ class SubagentsViewModel @Inject constructor(
         }
     }
 
-    /** Jumps to the parent, one row up the tree. */
-    fun selectParent() {
-        val id = selected.value ?: return
-        selected.value = SessionTree.ancestorsOf(rows.value, id).firstOrNull()?.id
+    /**
+     * Jumps to the parent, one row up the tree, and answers where it went.
+     *
+     * **The target is returned rather than read back from the state.** `state` is a `combine` folded
+     * into a `stateIn`, so after [select] the published value is only the new one if the recomposition
+     * happened to run synchronously — and the two cases disagree by a whole level of the tree. A
+     * navigation that reads its own destination back out of a flow is a navigation that goes one row
+     * too far whenever the emission is immediate, so the id is computed here, from the same rows, and
+     * handed to the caller.
+     */
+    fun selectParent(): String? {
+        val id = selected.value ?: return null
+        val parent = SessionTree.ancestorsOf(rows.value, id).firstOrNull()?.id ?: return null
+        selected.value = parent
+        return parent
     }
 
-    /** Jumps to the previous or next sibling of the selection. */
-    fun selectSibling(delta: Int) {
-        val id = selected.value ?: return
-        selected.value = SessionTree.sibling(rows.value, id, delta)?.id
+    /** Jumps to the previous or next sibling of the selection, and answers where it went. */
+    fun selectSibling(delta: Int): String? {
+        val id = selected.value ?: return null
+        val sibling = SessionTree.sibling(rows.value, id, delta)?.id ?: return null
+        selected.value = sibling
+        return sibling
     }
 
     /** Selects a node the tree screen was tapped on. */

@@ -221,8 +221,9 @@ class ExecutionOperationsTest : ExecutionServerTest() {
                 """"screen":{"text":"hi","cols":80,"rows":24,"cursor":{"x":2,"y":0}}}}""",
         )
         val read = server.api.readSessionTerminal("ses_1").data
-        assertTrue(read is dev.opencode.android.core.model.SessionTerminalRead.Screen)
-        assertEquals("vim", (read as dev.opencode.android.core.model.SessionTerminalRead.Screen).foregroundProcess)
+        assertEquals("pty_1", read?.ptyID)
+        assertEquals("vim", read?.foregroundProcess)
+        assertEquals("hi", read?.screen?.text)
     }
 
     @Test

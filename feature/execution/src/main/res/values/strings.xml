@@ -57,6 +57,7 @@
     <string name="terminal_extra_keys">Terminal keys</string>
     <string name="terminal_picker_title">Choose a shell</string>
     <string name="terminal_picker_empty">The server reported no usable shell. A terminal will use its configured default.</string>
+    <string name="terminal_picker_default">Use the default shell</string>
     <string name="terminal_status_idle">Not connected</string>
     <string name="terminal_status_connecting">Connecting</string>
     <string name="terminal_status_live">Live</string>
@@ -109,4 +110,8 @@
     <string name="project_settings_saving">Saving…</string>
     <string name="project_settings_saved">Saved.</string>
     <string name="project_settings_url_set">icon URL set</string>
+    <string name="project_settings_icon_url">Icon URL</string>
+    <string name="project_settings_icon_hint">The icon is one setting: an emoji or an image, on a colour. Saving replaces all three at once.</string>
+    <string name="project_settings_open">Project settings</string>
+    <string name="action_back">Back</string>
 </resources>

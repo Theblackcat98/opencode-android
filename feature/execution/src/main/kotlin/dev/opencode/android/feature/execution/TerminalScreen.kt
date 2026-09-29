@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
@@ -55,6 +54,7 @@ import dev.opencode.android.core.data.terminal.TerminalBridgeMessage
 import dev.opencode.android.core.data.terminal.TerminalGrid
 import dev.opencode.android.core.data.terminal.TerminalInput
 import dev.opencode.android.core.data.terminal.TerminalKey
+import dev.opencode.android.core.network.PtyStreamState
 
 /**
  * The terminal screen (plan §6, "PTY terminals").
@@ -78,9 +78,11 @@ fun TerminalScreen(
     onOpenTerminal: (String) -> Unit,
     onNewTerminal: () -> Unit,
     onCreate: (String?, List<String>?) -> Unit,
+    onClosePicker: () -> Unit,
     onRunProjectStart: () -> Unit,
-    onResize: (Int, Int) -> Unit,
     onKeys: (List<TerminalKey>) -> Unit,
+    onBridgeMessage: (TerminalBridgeMessage) -> Unit,
+    onOutputConsumed: (Int) -> Unit,
     onReconnect: () -> Unit,
     onRequestKill: (String) -> Unit,
     onConfirmKill: () -> Unit,
@@ -113,7 +115,8 @@ fun TerminalScreen(
             TerminalSurface(
                 state = state,
                 channel = channel,
-                onResize = onResize,
+                onBridgeMessage = onBridgeMessage,
+                onOutputConsumed = onOutputConsumed,
                 modifier = Modifier.weight(1f),
             )
             ExtraKeysRow(onKeys = onKeys)
@@ -124,7 +127,8 @@ fun TerminalScreen(
         TerminalPickerSheet(
             shells = state.shells,
             onSelect = { shell -> onCreate(shell.path, listOf("-l")) },
-            onDismiss = { onCreate(null, null) },
+            onUseDefault = { onCreate(null, null) },
+            onDismiss = onClosePicker,
         )
     }
 
@@ -155,12 +159,52 @@ fun TerminalScreen(
 }
 
 /**
+ * Everything around the live terminal: the header, the list, and the extra-keys row.
+ *
+ * **Separated from the WebView so a screenshot can draw it.** A Roborazzi capture of a `WebView` is an
+ * empty rectangle — xterm.js paints on a canvas the compositor owns, and P6 learned the same about a
+ * sheet — so the baselines record this chrome and the page itself is asserted rather than photographed.
+ * It is also the honest shape: everything this client decides about a terminal is here, and the page
+ * only draws what it is handed.
+ */
+/**
  * The header: the stream's own state, the two quick actions, and the reconnect.
  *
  * **The state is the socket's, not a guess.** `Live` only after the server's cursor frame, so a header
  * that says "live" means the replay finished — which is the one thing a user of a slow `vim` needs to
  * know.
  */
+@Composable
+fun TerminalChrome(
+    state: TerminalUiState,
+    onNewTerminal: () -> Unit,
+    onRunProjectStart: () -> Unit,
+    onReconnect: () -> Unit,
+    onExtraKeys: (List<TerminalKey>) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier = modifier.fillMaxSize()) {
+        TerminalHeader(
+            state = state,
+            onNewTerminal = onNewTerminal,
+            onRunProjectStart = onRunProjectStart,
+            onReconnect = onReconnect,
+        )
+        HorizontalDivider()
+        if (state.terminals.isEmpty()) {
+            TerminalEmpty(Modifier.weight(1f))
+        } else {
+            TerminalList(
+                state = state,
+                onOpen = {},
+                onRequestKill = {},
+                modifier = Modifier.weight(if (state.open == null) 1f else 0.4f),
+            )
+        }
+        ExtraKeysRow(onKeys = onExtraKeys)
+    }
+}
+
 @Composable
 private fun TerminalHeader(
     state: TerminalUiState,
@@ -255,37 +299,63 @@ private fun TerminalList(
 /**
  * The live surface: the WebView, and the output the view model has buffered for it.
  *
- * **The output is written in a `LaunchedEffect` on the buffer, not from the socket's own callback.**
- * A `WebView.evaluateJavascript` is a call onto the browser's thread, and a terminal producing a
- * thousand chunks a second would make that call a thousand times a second; folding them into the state
- * and writing on each publication means one evaluation per recomposition, in order.
+ * **The output is written in a `LaunchedEffect` on the buffer, then handed back.** A
+ * `WebView.evaluateJavascript` is a call onto the browser's thread, and a terminal producing a thousand
+ * chunks a second would make that call a thousand times a second; folding them into the state and
+ * writing on each publication means one evaluation per recomposition, in order. The length is then
+ * reported back through [onOutputConsumed], because the buffer is a queue and a queue nobody drains is
+ * a terminal that re-sends its whole history on every frame.
+ *
+ * **The bridge goes to the view model whole.** Everything the page sends — `ready`, input, a grid, a
+ * selection, a failure — is handed over as it arrived. Filtering here is how a terminal that draws and
+ * types nothing gets shipped: the page's `onData` is the only route from a hardware keyboard to the
+ * socket, and a screen that forwards only `resize` drops it.
  */
 @Composable
 private fun TerminalSurface(
     state: TerminalUiState,
     channel: TerminalChannel,
-    onResize: (Int, Int) -> Unit,
+    onBridgeMessage: (TerminalBridgeMessage) -> Unit,
+    onOutputConsumed: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     LaunchedEffect(state.pendingOutput) {
-        if (state.pendingOutput.isNotEmpty()) channel.write(state.pendingOutput)
+        if (state.pendingOutput.isEmpty()) return@LaunchedEffect
+        channel.write(state.pendingOutput)
+        onOutputConsumed(state.pendingOutput.length)
     }
     LaunchedEffect(state.statusKey, state.stream) {
-        channel.publishState(state.statusKey, (state.stream as? dev.opencode.android.core.network.PtyStreamState.Live)?.cursor)
+        channel.publishState(state.statusKey, (state.stream as? PtyStreamState.Live)?.cursor)
     }
     TerminalWebView(
         channel = channel,
-        onMessage = { message ->
-            when (message) {
-                is TerminalBridgeMessage.Ready -> channel.onPageReady()
-                is TerminalBridgeMessage.Resize -> onResize(message.cols, message.rows)
-                else -> Unit
-            }
-        },
+        onMessage = { message -> relayBridgeMessage(channel, message, onBridgeMessage) },
         modifier = modifier
             .fillMaxWidth()
             .background(MaterialTheme.colorScheme.surfaceVariant),
     )
+}
+
+/**
+ * What the screen does with a message from the page, before the view model sees it.
+ *
+ * **One function, and the screen's only decision, so it can be tested.** The screen's job here is
+ * narrow: `ready` releases the channel's buffer, because the channel is the composition's and the view
+ * model does not hold it. Everything else — input, the grid, a selection, a failure — is forwarded
+ * whole. Filtering it here is how a terminal that renders and then accepts nothing gets shipped: the
+ * page's `onData` is the only route from a hardware keyboard or a paste to the socket, so a `when`
+ * with no `Input` branch is invisible until someone types.
+ *
+ * Extracted as a function rather than left as a lambda so that "every kind the codec produces reaches
+ * the host" is a test rather than a claim. `TerminalSurfaceTest` asserts it.
+ */
+internal fun relayBridgeMessage(
+    channel: TerminalChannel,
+    message: TerminalBridgeMessage,
+    onBridgeMessage: (TerminalBridgeMessage) -> Unit,
+) {
+    if (message is TerminalBridgeMessage.Ready) channel.onPageReady()
+    onBridgeMessage(message)
 }
 
 /**
@@ -350,11 +420,18 @@ fun ExtraKeysRow(
     }
 }
 
-/** The shell picker, from `config.shell`. */
+/**
+ * The shell picker, from `config.shell`.
+ *
+ * **"Cancel" creates nothing.** A `null` command is the server's own default shell, and it is offered
+ * as its own row rather than as what happens when the dialog is dismissed: a picker whose dismiss
+ * button starts a shell is a picker that starts a shell by accident.
+ */
 @Composable
 private fun TerminalPickerSheet(
     shells: List<dev.opencode.android.core.model.ShellOption>,
     onSelect: (dev.opencode.android.core.model.ShellOption) -> Unit,
+    onUseDefault: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     AlertDialog(
@@ -378,6 +455,9 @@ private fun TerminalPickerSheet(
             }
         },
         confirmButton = {
+            TextButton(onClick = onUseDefault) { Text(stringResource(R.string.terminal_picker_default)) }
+        },
+        dismissButton = {
             TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_close)) }
         },
     )

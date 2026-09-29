@@ -73,7 +73,17 @@ fun Throwable.toActionError(): ActionError {
                 OpenCodeJson.decodeFromString<ApiError>(it)
             }
         }.getOrNull()
-        val kind = decoded?.let(::kindOf) ?: kindOfStatus(code())
+        // A body this build does not recognise still has a status, and the status is the more reliable of
+        // the two. `ApiError.Unrecognized` is the catch-all for a body with no `_tag` this client knows,
+        // and routing it to [kindOf]'s `else` branch made every such answer look like a `500`: a `404`
+        // from a server that omits or renames the error tag became `SERVER`, which is not a failure —
+        // it is what capability detection reads as "the route is missing". So an unrecognised body falls
+        // through to the status, and only a *recognised* body is allowed to override it.
+        val kind = when {
+            decoded == null -> kindOfStatus(code())
+            decoded is ApiError.Unrecognized -> kindOfStatus(code())
+            else -> kindOf(decoded)
+        }
         return ActionError(
             kind = kind,
             message = decoded?.message ?: "HTTP ${code()}",

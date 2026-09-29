@@ -165,6 +165,7 @@
     <string name="session_execution_terminal">Terminal</string>
     <string name="session_execution_worktrees">Worktrees</string>
     <string name="session_execution_session_terminals">Session terminals</string>
+    <string name="session_execution_project_settings">Project settings</string>
 
     <string name="timeline_changed_files">Changed %1$d files</string>
     <string name="timeline_fork_here">Fork from here</string>

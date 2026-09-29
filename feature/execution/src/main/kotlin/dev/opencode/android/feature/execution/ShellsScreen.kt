@@ -65,6 +65,7 @@ fun ShellsScreen(
     onDraftChange: (String) -> Unit,
     onRun: () -> Unit,
     onOpen: (String) -> Unit,
+    onClose: () -> Unit,
     onRequestKill: (String) -> Unit,
     onConfirmKill: () -> Unit,
     onCancelKill: () -> Unit,
@@ -109,7 +110,7 @@ fun ShellsScreen(
             state.open?.let { row ->
                 ShellOutputPane(
                     row = row,
-                    onClose = { onOpen(row.id) },
+                    onClose = onClose,
                     modifier = Modifier.weight(1f),
                 )
             }

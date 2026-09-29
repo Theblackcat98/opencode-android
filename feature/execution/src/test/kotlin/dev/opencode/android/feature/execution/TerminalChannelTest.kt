@@ -113,8 +113,11 @@ class TerminalChannelTest {
         assertEquals(true, settings.javaScriptEnabled)
         assertEquals(false, settings.allowFileAccess)
         assertEquals(false, settings.allowContentAccess)
-        assertEquals(false, settings.blockNetworkLoads)
-        assertEquals(false, settings.blockNetworkImage)
+        // Network loads are blocked outright. `file:///android_asset` is not a network load, so the
+        // page still gets its four files, and the WebView cannot open a socket even if the navigation
+        // client were wrong.
+        assertEquals(true, settings.blockNetworkLoads)
+        assertEquals(true, settings.blockNetworkImage)
         assertEquals(false, settings.domStorageEnabled)
         assertEquals(false, settings.databaseEnabled)
         assertEquals(false, settings.javaScriptCanOpenWindowsAutomatically)
@@ -124,6 +127,47 @@ class TerminalChannelTest {
         // the call is asserted by compiling and by the fact that `harden` is the only place it happens.
         assertEquals(android.webkit.WebSettings.MIXED_CONTENT_NEVER_ALLOW, settings.mixedContentMode)
         assertEquals(android.webkit.WebSettings.LOAD_NO_CACHE, settings.cacheMode)
+        // The two that decide whether a page can read another local file, asserted here because they
+        // are the settings a real WebView inherits as *enabled* and they are deprecated away.
+        @Suppress("DEPRECATION")
+        assertEquals(false, settings.allowFileAccessFromFileURLs)
+        @Suppress("DEPRECATION")
+        assertEquals(false, settings.allowUniversalAccessFromFileURLs)
+        // Zoom is off at the WebView level and the page does its own pinch as a font-size change, so a
+        // pinch cannot cut a line off the right-hand side.
+        assertEquals(false, settings.supportZoom())
+        assertEquals(false, settings.displayZoomControls)
+        assertEquals(false, settings.builtInZoomControls)
+    }
+
+    @Test
+    fun `hardening is not a no-op on a WebView that starts permissive`() {
+        val settings = android.webkit.WebView(androidx.test.core.app.ApplicationProvider
+            .getApplicationContext<android.content.Context>()).settings
+        // Everything this test asserts is false by default in a Robolectric WebView, so hardening a
+        // default one would pass without `harden` running at all. Turning the permissive settings on
+        // first is what makes the call observable.
+        @Suppress("DEPRECATION")
+        run {
+            settings.allowFileAccess = true
+            settings.allowContentAccess = true
+            settings.allowFileAccessFromFileURLs = true
+            settings.allowUniversalAccessFromFileURLs = true
+            settings.domStorageEnabled = true
+            settings.databaseEnabled = true
+            settings.javaScriptCanOpenWindowsAutomatically = true
+            settings.blockNetworkLoads = false
+            harden(settings)
+            assertEquals(false, settings.allowFileAccess)
+            assertEquals(false, settings.allowContentAccess)
+            assertEquals(false, settings.allowFileAccessFromFileURLs)
+            assertEquals(false, settings.allowUniversalAccessFromFileURLs)
+            assertEquals(false, settings.domStorageEnabled)
+            assertEquals(false, settings.databaseEnabled)
+            assertEquals(false, settings.javaScriptCanOpenWindowsAutomatically)
+            assertEquals(true, settings.blockNetworkLoads)
+            assertEquals(true, settings.javaScriptEnabled)
+        }
     }
 
     @Test

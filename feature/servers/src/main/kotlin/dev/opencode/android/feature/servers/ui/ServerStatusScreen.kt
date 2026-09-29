@@ -19,7 +19,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -34,6 +36,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -43,6 +46,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import dev.opencode.android.core.data.capability.RouteAvailability
 import dev.opencode.android.core.network.ConnectionEventType
 import dev.opencode.android.core.network.ConnectionLogEntry
 import dev.opencode.android.core.network.ConnectionState
@@ -68,9 +72,13 @@ fun ServerStatusScreen(
     onPairAgain: (String) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: ServerStatusViewModel = hiltViewModel(),
+    host: HostLifecycleViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val hostState by host.state.collectAsStateWithLifecycle()
     val profile = uiState.profile
+
+    LaunchedEffect(Unit) { host.open() }
 
     Scaffold(
         modifier = modifier.testTag(ServerStatusTags.SCREEN),
@@ -141,6 +149,17 @@ fun ServerStatusScreen(
                     item(key = "info") { ServerInfoCard(uiState = uiState) }
                 }
 
+                item(key = "host-lifecycle") {
+                    HostLifecycleCard(
+                        state = hostState,
+                        onRequestShutdown = host::requestShutdown,
+                        onCancelShutdown = host::cancelShutdown,
+                        onConfirmShutdown = host::confirmShutdown,
+                        onHandoff = host::handoff,
+                        onDismissNotice = host::dismissNotice,
+                    )
+                }
+
                 item(key = "resync") { ResyncCard(resyncCount = uiState.resyncCount) }
 
                 item(key = "logs-header") {
@@ -203,6 +222,12 @@ object ServerStatusTags {
     const val INSPECTOR_BUTTON = "status_inspector_button"
     const val TEST_CONNECTION_BUTTON = "status_test_connection_button"
     const val RECONNECT_BUTTON = "status_reconnect_button"
+    const val HOST_CARD = "status_host_card"
+    const val HOST_SHUTDOWN = "status_host_shutdown"
+    const val HOST_SHUTDOWN_CONFIRM = "status_host_shutdown_confirm"
+    const val HOST_HANDOFF = "status_host_handoff"
+    const val HOST_NOTICE = "status_host_notice"
+    const val HOST_ERROR = "status_host_error"
 }
 
 private fun ConnectionState.causeRequiresRePair(): Boolean =
@@ -395,6 +420,148 @@ private fun ServerInfoCard(uiState: ServerStatusUiState) {
                 )
             }
         }
+    }
+}
+
+/**
+ * The two persistent-terminal host actions, and nothing else about them (plan §6, "Persistent PTYs").
+ *
+ * **They are here because they are about the server, not about a session.** `shutdown` ends the
+ * terminals of every session on the server, so it belongs on the one page that describes the server as
+ * a whole; a session's own UI must never offer it. That is a placement rule, not a preference, and it
+ * is the only reason this card is not on the session terminals pane.
+ *
+ * **`handoff` is offered before `shutdown`, and without a prompt.** A handoff moves the terminals to
+ * another instance and destroys nothing; a prompt in front of it would teach the user to dismiss
+ * prompts, which is exactly the habit that makes the second button on the shutdown dialog a reflex.
+ *
+ * **The card says why it may be absent.** Three different reasons produce an unavailable host —
+ * this installation's switch is off, the server has no such routes, or the host is stopped — and each
+ * has a different fix, so one "unavailable" would send the user to the wrong place.
+ */
+@Composable
+private fun HostLifecycleCard(
+    state: HostLifecycleState,
+    onRequestShutdown: () -> Unit,
+    onCancelShutdown: () -> Unit,
+    onConfirmShutdown: () -> Unit,
+    onHandoff: () -> Unit,
+    onDismissNotice: () -> Unit,
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag(ServerStatusTags.HOST_CARD),
+        shape = RoundedCornerShape(16.dp),
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.status_host_title),
+                style = MaterialTheme.typography.titleSmall,
+            )
+            Text(
+                text = stringResource(R.string.status_host_body),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            when {
+                !state.allowedBySetting -> Text(
+                    text = stringResource(R.string.status_host_off),
+                    style = MaterialTheme.typography.bodySmall,
+                )
+
+                state.availability is RouteAvailability.Absent -> Text(
+                    text = stringResource(R.string.status_host_absent),
+                    style = MaterialTheme.typography.bodySmall,
+                )
+
+                else -> {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedButton(
+                            onClick = onHandoff,
+                            enabled = state.usable && !state.busy,
+                            modifier = Modifier.testTag(ServerStatusTags.HOST_HANDOFF),
+                        ) {
+                            Text(stringResource(R.string.status_host_handoff))
+                        }
+                        // The colour is the theme's error colour rather than a second button style:
+                        // this is the one destructive action on the page and it should not read as
+                        // equivalent to handing the host over.
+                        Button(
+                            onClick = onRequestShutdown,
+                            enabled = state.usable && !state.busy,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.error,
+                                contentColor = MaterialTheme.colorScheme.onError,
+                            ),
+                            modifier = Modifier.testTag(ServerStatusTags.HOST_SHUTDOWN),
+                        ) {
+                            Text(stringResource(R.string.status_host_shutdown))
+                        }
+                    }
+                    state.handoff?.let { handoff ->
+                        Text(
+                            text = stringResource(
+                                R.string.status_host_handoff_instance,
+                                handoff.instanceID,
+                            ),
+                            style = MaterialTheme.typography.bodySmall,
+                            fontFamily = FontFamily.Monospace,
+                        )
+                    }
+                    state.notice?.let { notice ->
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = stringResource(
+                                    when (notice) {
+                                        "host-stopped" -> R.string.status_host_stopped
+                                        else -> R.string.status_host_handed_off
+                                    },
+                                ),
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.weight(1f)
+                                    .testTag(ServerStatusTags.HOST_NOTICE),
+                            )
+                            TextButton(onClick = onDismissNotice) {
+                                Text(stringResource(R.string.status_host_dismiss))
+                            }
+                        }
+                    }
+                }
+            }
+            state.error?.let { error ->
+                Text(
+                    text = error,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.testTag(ServerStatusTags.HOST_ERROR),
+                )
+            }
+        }
+    }
+
+    if (state.shutdownArmed) {
+        AlertDialog(
+            onDismissRequest = onCancelShutdown,
+            title = { Text(stringResource(R.string.status_host_shutdown_title)) },
+            text = { Text(stringResource(R.string.status_host_shutdown_body)) },
+            confirmButton = {
+                TextButton(
+                    onClick = onConfirmShutdown,
+                    modifier = Modifier.testTag(ServerStatusTags.HOST_SHUTDOWN_CONFIRM),
+                ) {
+                    Text(stringResource(R.string.status_host_shutdown_confirm))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = onCancelShutdown) {
+                    Text(stringResource(R.string.status_host_cancel))
+                }
+            },
+        )
     }
 }
 

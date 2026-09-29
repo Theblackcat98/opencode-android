@@ -76,7 +76,12 @@ class ShellsViewModel @Inject constructor(
     /** Binds the panel to a location and publishes it as the one being watched. */
     fun openPanel(directory: String) {
         val set = dataSets.active.value ?: return
-        _state.value = ShellsUiState(directory = directory)
+        // The open command survives a resume: `openPanel` also runs on `ON_RESUME`, and resetting the
+        // pane there would close the output a user backgrounded a build to read. The draft is not kept,
+        // because a half-typed command that outlives the screen is worse than one that has to be typed
+        // again.
+        val openID = _state.value.openID
+        _state.value = _state.value.copy(directory = directory, openID = openID)
         openLocations.set(directory)
         set.execution.open(directory)
         // Opening the panel is what "the user has seen these commands' output" means, so the
@@ -89,6 +94,7 @@ class ShellsViewModel @Inject constructor(
                 _state.value = _state.value.copy(rows = shells.map(::rowOf))
             }
         }
+        openID?.let { follow(it) }
     }
 
     /** Called when the panel leaves the screen, so a completion is announced again. */
@@ -129,9 +135,22 @@ class ShellsViewModel @Inject constructor(
     fun openCommand(shellID: String) {
         val set = dataSets.active.value ?: return
         val directory = _state.value.directory ?: return
+        _state.value = _state.value.copy(openID = shellID)
+        follow(shellID)
+        set.execution.open(directory)
+    }
+
+    /**
+     * (Re)starts the polling loop for the open command and reads its status once.
+     *
+     * **The status read is on every open, not only the first.** `shell.list` answers with the commands
+     * that are *running*, so a command that finished while the panel was away is in neither the list nor
+     * the events, and `shell.get` is the only place its exit code exists.
+     */
+    private fun follow(shellID: String) {
+        val directory = _state.value.directory ?: return
         stopFollowing()
         poller.reset()
-        _state.value = _state.value.copy(openID = shellID)
         followJob = viewModelScope.launch {
             poller.start(
                 scope = this,
@@ -139,7 +158,13 @@ class ShellsViewModel @Inject constructor(
                 onState = { output -> foldOutput(shellID, output) },
             )
         }
-        set.execution.open(directory)
+        refreshStatus(shellID)
+    }
+
+    /** Stops following and closes the pane, which is what the pane's own button means. */
+    fun closeCommand() {
+        stopFollowing()
+        _state.value = _state.value.copy(openID = null)
     }
 
     /**

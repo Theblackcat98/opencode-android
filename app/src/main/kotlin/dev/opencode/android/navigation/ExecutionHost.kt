@@ -14,7 +14,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
@@ -69,6 +71,7 @@ fun ShellsHost(
             onDraftChange = viewModel::setDraft,
             onRun = viewModel::run,
             onOpen = viewModel::openCommand,
+            onClose = viewModel::closeCommand,
             onRequestKill = viewModel::requestKill,
             onConfirmKill = viewModel::confirmKill,
             onCancelKill = viewModel::cancelKill,
@@ -89,8 +92,18 @@ fun TerminalHost(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val channel = remember { TerminalChannel() }
+    val clipboard = LocalClipboardManager.current
 
     LaunchedEffect(directory, startCommand) { viewModel.open(directory, startCommand) }
+
+    // Copy is the host's clipboard rather than the page's: a hardened WebView with no file and no
+    // content access cannot ask for clipboard permission, so xterm's selection travels over the
+    // bridge and lands here. Paste needs nothing — the soft keyboard and `Ctrl`+`Shift`+`V` both reach
+    // the page's `onData`, which is the same path a hardware keyboard takes.
+    LaunchedEffect(state.selection) {
+        val text = state.selection?.takeIf { it.isNotBlank() } ?: return@LaunchedEffect
+        clipboard.setText(AnnotatedString(text))
+    }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -102,12 +115,14 @@ fun TerminalHost(
             onOpenTerminal = viewModel::openTerminal,
             onNewTerminal = viewModel::openPicker,
             onCreate = { command, args -> viewModel.createTerminal(command, args) },
+            onClosePicker = viewModel::closePicker,
             onRunProjectStart = viewModel::createFromProjectStart,
-            onResize = viewModel::resize,
             // The extra-keys row produces a key *sequence*; the bytes are a pure fold, and they are
             // sent as one frame so a Ctrl held over three keys is three control codes rather than
             // three round trips the terminal would have to interleave with its own echo.
             onKeys = { keys -> viewModel.sendInput(TerminalInput.encode(keys)) },
+            onBridgeMessage = viewModel::onBridgeMessage,
+            onOutputConsumed = viewModel::outputConsumed,
             onReconnect = viewModel::reconnect,
             onRequestKill = viewModel::requestKill,
             onConfirmKill = viewModel::confirmKill,
@@ -143,18 +158,12 @@ fun SubagentsHost(
         SubagentsScreen(
             state = state,
             onSelect = { id -> viewModel.select(id); onOpenSession(id) },
-            onParent = {
-                viewModel.selectParent()
-                viewModel.state.value.parentID?.let(onOpenSession)
-            },
-            onPrevious = {
-                viewModel.selectSibling(-1)
-                viewModel.state.value.previousSibling?.let(onOpenSession)
-            },
-            onNext = {
-                viewModel.selectSibling(1)
-                viewModel.state.value.nextSibling?.let(onOpenSession)
-            },
+            // Each jump answers the id it moved to. Reading `state.parentID` back after the selection
+            // changed would ask the combined flow for a value it may not have published yet, and the
+            // two orderings differ by a whole level of the tree.
+            onParent = { viewModel.selectParent()?.let(onOpenSession) },
+            onPrevious = { viewModel.selectSibling(-1)?.let(onOpenSession) },
+            onNext = { viewModel.selectSibling(1)?.let(onOpenSession) },
             modifier = Modifier.padding(padding),
         )
     }

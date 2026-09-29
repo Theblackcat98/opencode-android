@@ -210,6 +210,18 @@ sealed interface SessionTerminalRead {
     data object None : SessionTerminalRead
 }
 
+/**
+ * The `{data}` wrapper of `experimental.session.terminal.read`, whose `data` is nullable.
+ *
+ * **A concrete type rather than `DataResponse<PersistentPtyScreen?>`.** The generic wrapper is
+ * `data class DataResponse<T>(val data: T)`, and a nullable `T` passed through a Retrofit return type
+ * reaches kotlinx.serialization as the *non-nullable* element serializer: the route's own `{"data":null}`
+ * then fails to decode with "Expected start of the object" — the one response that is a normal state.
+ * A concrete wrapper keeps the null, which is the same reason `SessionGenerateResponse` exists.
+ */
+@Serializable
+data class SessionTerminalReadResponse(val data: PersistentPtyScreen? = null)
+
 /** `POST /api/experimental/persistent-pty/handoff` (schema `PersistentPty.Handoff`). */
 @Serializable
 data class SessionTerminalHandoff(
@@ -282,11 +294,27 @@ data class WorktreeRefreshRequest(val projectID: String)
  */
 @Serializable
 data class WorktreeFailure(
-    val name: String = "WorktreeError",
-    val data: Data = Data(),
+    val name: String,
+    val data: Data,
 ) {
     @Serializable
     data class Data(val message: String = "", val forceRequired: Boolean? = null)
+
+    /**
+     * Whether this body really is the `WorktreeError` it claims to be.
+     *
+     * **[name] has no default, and that is what makes the check work.** With one, `ignoreUnknownKeys`
+     * lets an `UnauthorizedError` — `{"_tag": …, "message": …}` — decode into this class with every
+     * field filled in, and a caller that only asked "did it parse?" would answer "this was a worktree
+     * refusal, ask again with force" about a request rejected on its credential. The spec makes `name`
+     * required with a one-value enum, so a body without it fails to decode and the discriminator is
+     * enforced by the type rather than by a comparison a caller might forget.
+     */
+    fun isWorktreeError(): Boolean = name == WORKTREE_ERROR_NAME
+
+    companion object {
+        const val WORKTREE_ERROR_NAME: String = "WorktreeError"
+    }
 }
 
 // --------------------------------------------------------------------- session and project

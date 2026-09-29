@@ -1441,7 +1441,7 @@ that delivers it.
 | P4 | 1 | Complete |
 | P5 | 10 | Complete |
 | P6 | 15 | Complete |
-| P7 | 30 | Planned |
+| P7 | 30 | Complete |
 | P8 | 27 | Planned |
 | P9 | 11 | Planned |
 | P10 | 9 | Planned |
@@ -1466,7 +1466,7 @@ and is covered by the reducer or invalidation tests.
 | P4 | `installation.updated`, `installation.update-available` (recorded on `ServerDataSet`; an announced version becomes the "server update available" notification) | Complete |
 | P5 | `reference.updated`, `command.updated`, `skill.updated` (recorded on `ServerDataSet.composerCatalogs`; the empty payload invalidates the named location, or every location the client has open when the frame carries none) | Complete |
 | P6 | `filesystem.changed` (re-reads the browser's listing and the file the viewer holds), `vcs.branch.updated` (re-reads `vcs.get` and `vcs.status` for every open location, so a branch that moves on the desktop moves the header) | Complete |
-| P7 | `worktree.updated`, `worktree.resolved`, `pty.created`, `pty.updated`, `pty.exited`, `pty.deleted`, `persistent-pty.added`, `persistent-pty.removed`, `shell.created`, `shell.exited`, `shell.deleted` | Planned |
+| P7 | `worktree.updated` (re-reads the one named project and nothing else), `worktree.resolved` (recorded as an adoption, then re-read), `pty.created`, `pty.updated` (renames in place, so every open view follows the title), `pty.exited`, `pty.deleted`, `persistent-pty.added`, `persistent-pty.removed`, `shell.created`, `shell.exited` (the status and exit code land on the row, and the poller stops), `shell.deleted` | Complete |
 | P8 | `credential.updated`, `credential.switched`, `integration.updated`, `provider.updated`, `plugin.updated`, `websearch.updated`, `mcp.status.changed`, `mcp.resources.changed` | Planned |
 | P9 | `config.updated` | Planned |
 | P10 | `tui.prompt.append`, `tui.command.execute`, `tui.toast.show`, `tui.session.select`, `rpc.<rpcID>.<event>` | Planned |

@@ -86,7 +86,7 @@ class TerminalBridge(private val onMessage: (TerminalBridgeMessage) -> Unit = {}
  * [written] publishes everything that went out, which is what a test asserts: a JVM test cannot run a
  * WebView, but it can assert exactly what would have been evaluated.
  */
-class TerminalChannel {
+open class TerminalChannel {
 
     private val _written = MutableSharedFlow<String>(replay = 0, extraBufferCapacity = WRITE_BUFFER)
 
@@ -109,7 +109,7 @@ class TerminalChannel {
     }
 
     /** Called when the page has mounted its terminal; flushes whatever arrived first. */
-    fun onPageReady() {
+    open fun onPageReady() {
         ready = true
         flush()
     }
@@ -142,16 +142,47 @@ class TerminalChannel {
         evaluate("write", TerminalHostMessage.Output(chunk))
     }
 
+    /**
+     * Evaluates one host message in the page.
+     *
+     * **The method name travels as a string, and the JSON travels with it.** The call is assembled as
+     * `window.__terminal.<method>(<json>)` with the method named by the channel itself, never by the
+     * page, and the JSON produced by [TerminalBridgeCodec.encode] — so the text being written is a
+     * string literal the page's own parser cannot be talked out of. A `$method` interpolated into the
+     * payload would be the injection route, and there is none: the only variable in this string is the
+     * method this file wrote.
+     */
     private fun evaluate(method: String, message: TerminalHostMessage) {
         val json = TerminalBridgeCodec.encode(message)
         _written.tryEmit(json)
+        evaluateInPage(method, json)
+    }
+
+    /**
+     * The one call that needs a `WebView`, open so a test can observe what would be evaluated.
+     *
+     * **Open for one reason, and it is a narrow one.** A `WebView` cannot be constructed or evaluated in
+     * a JVM test at all — there is no renderer, so a screenshot of one is an empty rectangle and a
+     * `WebView` in a test is a mock. Overriding this single method lets a test substitute a list for the
+     * page while everything that decides *what* is evaluated and in what order stays the production
+     * code's. `TerminalSurfaceTest` is that test.
+     *
+     * [method] and [json] are separate parameters rather than one assembled string so the assembly
+     * happens here, once, where it can be read — and so a test observes the JSON rather than having to
+     * parse the call out of a statement. Neither value is ever concatenated into anything the page
+     * evaluates other than as a call and a literal.
+     */
+    protected open fun evaluateInPage(method: String, json: String) {
         webView?.evaluateJavascript("window.__terminal && window.__terminal.$method($json);", null)
     }
 
     private fun trim() {
         if (buffer.length <= BUFFER_LIMIT) return
+        // Exactly [BUFFER_LIMIT] and no more: the last write may have pushed it past by up to its own
+        // length, and a bound that leaves the overshoot in place is a bound that drifts by a chunk.
         buffer.delete(0, buffer.length - BUFFER_LIMIT)
     }
+
 
     private companion object {
         /**
@@ -168,6 +199,13 @@ class TerminalChannel {
 
 /**
  * The hardened WebView the terminal lives in (plan §5.2, "Harden the WebView").
+ *
+ * **`@SuppressLint("JavascriptInterface")` is a false positive being silenced on purpose.** The check
+ * wants a method on the added object to carry `@JavascriptInterface`, and [TerminalBridge.post] does —
+ * it is annotated, and `TerminalSurfaceTest` asserts that every kind of message the page posts decodes.
+ * Lint misses it because the annotation is on a Kotlin method whose parameter is nullable and whose
+ * class also holds a `SharedFlow`; the suppression is on this composable rather than on the bridge so
+ * that removing the annotation from `post` still shows up as a lint error in the file that owns it.
  *
  * **Local assets only, no file access, and one bridge.** The page is loaded from
  * `file:///android_asset/terminal/index.html` and [LockedNavigationClient] refuses every request that is
@@ -192,7 +230,7 @@ class TerminalChannel {
  * separate composable the baselines draw — P6 learned that a screenshot of a sheet is an empty rectangle
  * for the same reason.
  */
-@SuppressLint("SetJavaScriptEnabled")
+@SuppressLint("SetJavaScriptEnabled", "JavascriptInterface")
 @Composable
 fun TerminalWebView(
     channel: TerminalChannel,

@@ -61,9 +61,17 @@ class NotificationPlatformTest {
         context = RuntimeEnvironment.getApplication()
         codes = AttentionActionCodes()
         ids = NotificationIds()
-        builder = AttentionNotificationBuilder(context, codes, ids) { server, session ->
-            NotificationIntents.openSession(context, server, session, codes)
-        }
+        builder = AttentionNotificationBuilder(
+            context = context,
+            codes = codes,
+            ids = ids,
+            openSession = { server, session ->
+                NotificationIntents.openSession(context, server, session, codes)
+            },
+            openLocation = { server, directory ->
+                NotificationIntents.openLocation(context, server, directory, codes)
+            },
+        )
         installAttentionChannels(context)
     }
 
@@ -83,6 +91,11 @@ class NotificationPlatformTest {
                 "attention.retry",
                 "attention.update",
                 "attention.connection",
+                // Phase 7: a finished command is its own kind of news. It gets its own channel rather
+                // than a kind within another one so a user can silence "a build finished" without
+                // silencing "the agent needs an answer" — which is the whole reason channels are per
+                // kind rather than one list.
+                "attention.shell",
             ),
             created.keys,
         )

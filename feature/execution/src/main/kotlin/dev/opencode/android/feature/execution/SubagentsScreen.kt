@@ -17,7 +17,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
@@ -194,6 +194,7 @@ fun SubagentStrip(
     state: SubagentStripState,
     onOpen: (String) -> Unit,
     onInterrupt: (String) -> Unit,
+    onDismissError: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     if (state.isEmpty) return
@@ -219,8 +220,13 @@ fun SubagentStrip(
                         )
                     },
                     leadingIcon = {
+                        // One glyph, and the name carries the state. A stop glyph on a *retrying* child
+                        // and a play glyph on a *running* one read as the opposite of what they mean;
+                        // both chips are interrupt targets, and "running" versus "retrying" is a
+                        // distinction TalkBack makes from the content description and a sighted user
+                        // makes from the spinner the row shows.
                         Icon(
-                            imageVector = if (child.isRetrying) Icons.Filled.Stop else Icons.Filled.PlayArrow,
+                            imageVector = Icons.Filled.Stop,
                             contentDescription = if (child.isRetrying) {
                                 stringResource(R.string.subagents_retrying)
                             } else {
@@ -249,6 +255,27 @@ fun SubagentStrip(
                 )
             }
         }
+        // The interrupt's own failure. A strip that swallowed it would show a chip that stopped
+        // spinning and a subagent that is still running, and the user would have no way to tell those
+        // two apart.
+        state.error?.let { error ->
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(start = 12.dp, end = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = error,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.error,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f).testTag(SubagentTags.ERROR),
+                )
+                IconButton(onClick = onDismissError) {
+                    Icon(Icons.Filled.Close, stringResource(R.string.action_close))
+                }
+            }
+        }
     }
 }
 
@@ -260,6 +287,7 @@ object SubagentTags {
     const val INTERRUPT: String = "subagents-interrupt-"
     const val RUNNING: String = "subagents-running"
     const val IDLE: String = "subagents-idle"
+    const val ERROR: String = "subagents-error"
 }
 
 private const val INDENT_DP = 16

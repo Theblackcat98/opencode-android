@@ -74,9 +74,14 @@ class AttentionScreenshotTest {
     private val codes = AttentionActionCodes()
     private val ids = NotificationIds()
 
-    private val builder = AttentionNotificationBuilder(context, codes, ids) { serverId, sessionId ->
-        NotificationIntents.openSession(context, serverId, sessionId, codes)
-    }
+    private val builder = AttentionNotificationBuilder(
+        context = context,
+        codes = codes,
+        ids = ids,
+        openSession = { serverId, sessionId ->
+            NotificationIntents.openSession(context, serverId, sessionId, codes)
+        },
+    )
 
     @Test
     fun permissionNotification() = capture("notify-permission") {
