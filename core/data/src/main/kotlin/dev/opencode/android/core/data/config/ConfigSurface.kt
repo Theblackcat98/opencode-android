@@ -69,12 +69,23 @@ class ConfigSurface(
 
     private val configUpdateState = MutableStateFlow<RouteAvailability>(RouteAvailability.Unknown)
     private val instructionsState = MutableStateFlow<RouteAvailability>(RouteAvailability.Unknown)
+    private val fsWriteState = MutableStateFlow<RouteAvailability>(RouteAvailability.Unknown)
 
     /** Whether this server has `experimental.config.update`. */
     val configUpdate: StateFlow<RouteAvailability> = configUpdateState.asStateFlow()
 
     /** Whether this server has `experimental.session.instructions.entry.*`. */
     val instructions: StateFlow<RouteAvailability> = instructionsState.asStateFlow()
+
+    /**
+     * Whether this server has `experimental.fs.write`.
+     *
+     * **Its own record, for the same reason P6 gated the review editor on the route and this phase
+     * gates the definition editor on it.** The write is the one call in this phase that can put any
+     * bytes anywhere, and a `404` from a server that has never heard of the route should grey the save
+     * button rather than produce a failure after the user has typed a document.
+     */
+    val fsWrite: StateFlow<RouteAvailability> = fsWriteState.asStateFlow()
 
     /** Whether the shell setting may be offered: the user's switch and the route's answer. */
     fun configUpdateUsable(allowedBySetting: Boolean): Boolean =
@@ -83,6 +94,10 @@ class ConfigSurface(
     /** Whether the instruction-entry list may be offered. */
     fun instructionsUsable(allowedBySetting: Boolean): Boolean =
         allowedBySetting && CapabilityPolicy.isUsable(instructionsState.value)
+
+    /** Whether a file write may be offered: the user's switch and the route's answer. */
+    fun fsUsable(allowedBySetting: Boolean): Boolean =
+        allowedBySetting && CapabilityPolicy.isUsable(fsWriteState.value)
 
     /**
      * Records what a failed experimental call said about its route.
@@ -96,7 +111,7 @@ class ConfigSurface(
         when (route) {
             ExperimentalRoute.CONFIG_UPDATE -> configUpdateState.value = availability
             ExperimentalRoute.SESSION_INSTRUCTIONS -> instructionsState.value = availability
-            ExperimentalRoute.FS_WRITE -> Unit
+            ExperimentalRoute.FS_WRITE -> fsWriteState.value = availability
             else -> Unit
         }
     }
@@ -106,7 +121,7 @@ class ConfigSurface(
         when (route) {
             ExperimentalRoute.CONFIG_UPDATE -> configUpdateState.value = present
             ExperimentalRoute.SESSION_INSTRUCTIONS -> instructionsState.value = present
-            ExperimentalRoute.FS_WRITE -> Unit
+            ExperimentalRoute.FS_WRITE -> fsWriteState.value = present
             else -> Unit
         }
     }
@@ -239,6 +254,29 @@ class ConfigSurface(
     // ------------------------------------------------------------------------------ file writes
 
     /**
+     * The plan for a change the **server** makes rather than one the app writes.
+     *
+     * **`shell` is the only such setting** (`Config.Patch` is `additionalProperties: false`), and its
+     * target is the global configuration file rather than the location's — which is why the plan is
+     * built with an explicit [target] and cannot default to the editor's path. The shape is a
+     * [WritePlan] so the confirmation dialog is one composable: a target, a consequence and the flag
+     * that leads the dialog when the change is a privilege one.
+     */
+    fun planSetting(
+        target: String,
+        consequence: String,
+        isPrivilegeChange: Boolean,
+        previous: String?,
+    ): WritePlan = WritePlan(
+        target = target,
+        text = previous.orEmpty(),
+        consequence = consequence,
+        isPrivilegeChange = isPrivilegeChange,
+        bytes = 0,
+        previousBytes = null,
+    )
+
+    /**
      * Builds the plan for writing [text] to [path], without writing it.
      *
      * **The plan is where the confirmation's words come from.** It carries the path, the new text's
@@ -305,7 +343,12 @@ class ConfigSurface(
     ): Result<WriteOutcome> {
         val written = files.write(directory, plan.target, plan.text)
         val readFailure = written.exceptionOrNull()
-        if (readFailure != null) return failure(readFailure.classified().error)
+        if (readFailure != null) {
+            val error = readFailure.classified().error
+            CapabilityPolicy.from(error)?.let { fsWriteState.value = it }
+            return failure(error)
+        }
+        fsWriteState.value = RouteAvailability.Present
         val readBack = written.getOrThrow()
         if (reload) reloadLocations()
         val report = reloadReport(directory, plan.target, keys)

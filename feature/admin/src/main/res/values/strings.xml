@@ -1,0 +1,182 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Configuration, permissions and maintenance. Phase 9. -->
+
+    <!-- Shared: confirmations, diagnostics and failures. -->
+    <string name="admin_confirm">Confirm</string>
+    <string name="admin_cancel">Cancel</string>
+    <string name="admin_dismiss">Dismiss</string>
+    <string name="admin_save">Save</string>
+    <string name="admin_reload">Reload</string>
+    <string name="admin_done">Done</string>
+    <string name="admin_error_class">The server refused that (%1$s)</string>
+
+    <string name="admin_write_title">Write this file?</string>
+    <string name="admin_write_privilege_title">This changes what the agent may do</string>
+    <string name="admin_write_privilege_warning">This edits the agent\'s own configuration. The agent will be able to do more, or less, than it could before.</string>
+    <string name="admin_write_size">%1$d bytes becomes %2$d bytes.</string>
+    <string name="admin_write_size_new">A new file of %1$d bytes.</string>
+
+    <string name="admin_diagnostic_at">Line %1$d, column %2$d</string>
+    <string name="admin_diagnostic_where">At %1$s</string>
+    <string name="admin_diagnostic_expected">%1$s: %2$s</string>
+    <string name="admin_diagnostic_found">Found %1$s</string>
+    <string name="admin_diagnostic_count">%1$d problems in this document.</string>
+    <string name="admin_diagnostics_count">%1$d problems in this document.</string>
+    <string name="admin_syntax_at">Line %1$d, column %2$d: this file cannot be read</string>
+
+    <!-- Config explorer. -->
+    <string name="admin_config_title">Configuration</string>
+    <string name="admin_config_loading">Reading the server\'s configuration…</string>
+    <string name="admin_config_empty">This server reported no configuration keys.</string>
+    <string name="admin_configured_only">Configured only</string>
+    <string name="admin_key_count">%1$d keys, %2$d in use</string>
+    <string name="admin_sources">Where the configuration comes from</string>
+    <string name="admin_sources_none">The server reported no configuration documents.</string>
+    <string name="admin_source_document">Document</string>
+    <string name="admin_source_searched">Searched, nothing found</string>
+    <string name="admin_source_unnamed">(no path reported)</string>
+    <string name="admin_key_effective">In effect</string>
+    <string name="admin_key_unset">not set</string>
+    <string name="admin_key_overridden">A lower-priority file also sets this, and this one wins.</string>
+    <string name="admin_key_not_reported">The server does not report this key</string>
+    <string name="admin_key_not_reported_help">Its value comes from the files above. The server has no separate answer for it.</string>
+    <string name="admin_key_reported_by">Reported by</string>
+    <string name="admin_key_set_by">Set in</string>
+    <string name="admin_key_source_unknown">Which file set this is not known until the file itself is read.</string>
+    <string name="admin_key_hidden">hidden</string>
+    <string name="admin_key_read_only">Read only. This key is edited in the file.</string>
+    <string name="admin_key_one_of">One of</string>
+    <string name="admin_config_editor">Edit the file</string>
+    <string name="admin_definitions">Agents and files</string>
+
+    <!-- The shell setting. -->
+    <string name="admin_shell_title">Shell</string>
+    <string name="admin_shell_help">The program the bash tool and every terminal run. This changes the server\'s global configuration, not this project\'s file.</string>
+    <string name="admin_shell_field">Shell program</string>
+    <string name="admin_shell_apply">Use this shell</string>
+    <string name="admin_shell_off">Turn on the configuration experiment in settings to change the shell.</string>
+
+    <!-- Config editor. -->
+    <string name="admin_config_editor_title">opencode.jsonc</string>
+    <string name="admin_config_path">File</string>
+    <string name="admin_config_path_help">Relative to this project. A path the server does not read will be written and ignored.</string>
+    <string name="admin_config_new">This file does not exist yet. Saving creates it.</string>
+    <string name="admin_config_existing">Editing the file the server has.</string>
+    <string name="admin_config_text">Contents</string>
+    <string name="admin_config_valid">This document is valid.</string>
+    <string name="admin_writes_off">Turn on the file-write experiment in settings to save.</string>
+    <string name="admin_templates_title">Guided templates</string>
+
+    <!-- Guided templates. -->
+    <string name="admin_template_model">Default model</string>
+    <string name="admin_template_permission">Permission rule</string>
+    <string name="admin_template_agent">New agent</string>
+    <string name="admin_template_mcp">MCP server</string>
+    <string name="admin_template_provider">Provider</string>
+    <string name="admin_template_model_name">Model</string>
+    <string name="admin_template_model_help">Written as provider/model, with an optional #variant.</string>
+    <string name="admin_template_variant">Variant (optional)</string>
+    <string name="admin_template_action">Action</string>
+    <string name="admin_template_action_help">A tool name, or an object name, or a glob.</string>
+    <string name="admin_template_resource">Resource</string>
+    <string name="admin_template_resource_help">Use * for every resource.</string>
+    <string name="admin_template_effect">Effect</string>
+    <string name="admin_template_permission_warning">This is a permission rule. The agent will be able to do what it allows, and the server evaluates file rules before session rules.</string>
+    <string name="admin_template_agent_name">Agent name</string>
+    <string name="admin_template_model_ref">Model (optional)</string>
+    <string name="admin_template_mode">Mode</string>
+    <string name="admin_template_mcp_name">Server name</string>
+    <string name="admin_template_mcp_kind">How is it reached?</string>
+    <string name="admin_template_mcp_remote">Over HTTP</string>
+    <string name="admin_template_mcp_local">Run a command</string>
+    <string name="admin_template_mcp_url">Address</string>
+    <string name="admin_template_mcp_url_help">The server fetches this. Only http and https with a host.</string>
+    <string name="admin_template_mcp_url_bad">Only an http or https address with a host can be used.</string>
+    <string name="admin_template_mcp_command">Command</string>
+    <string name="admin_template_mcp_command_help">Split on spaces. The server runs this on its own machine.</string>
+    <string name="admin_template_valid">This is what the template will write, and it is valid.</string>
+    <string name="admin_template_invalid">This cannot be written as it stands.</string>
+    <string name="admin_template_not_ready">Fill in the required fields first.</string>
+    <string name="admin_template_check">Check</string>
+    <string name="admin_template_insert">Add to the file</string>
+
+    <!-- Definition editor. -->
+    <string name="admin_definition_title">Agents and files</string>
+    <string name="admin_definition_agent">Agent</string>
+    <string name="admin_definition_command">Command</string>
+    <string name="admin_definition_skill">Skill</string>
+    <string name="admin_definition_instructions">Project instructions</string>
+    <string name="admin_definition_name">Name</string>
+    <string name="admin_definition_front_matter">Front matter</string>
+    <string name="admin_definition_body">Body</string>
+
+    <!-- Permissions. -->
+    <string name="admin_permissions_title">Permissions</string>
+    <string name="admin_rules_title">This session\'s rules</string>
+    <string name="admin_rules_edit">Edit</string>
+    <string name="admin_rules_none">This session has no rules of its own. It uses the project\'s.</string>
+    <string name="admin_rules_add">Add a rule</string>
+    <string name="admin_rules_whole_set">Saving sends the whole set: the route replaces the list rather than adding to it.</string>
+    <string name="admin_rules_warning_title">Session rules are evaluated last</string>
+    <string name="admin_rules_warning_body">A rule set here can allow an action an agent\'s own rules deny, and it can ask less often than you expect. Removing a rule puts the decision back to the agent and to you.</string>
+    <string name="admin_saved_all">Saved approvals on this server</string>
+    <string name="admin_saved_project">Saved approvals for this project</string>
+    <string name="admin_saved_loading">Reading saved approvals…</string>
+    <string name="admin_saved_empty">Nothing has been allowed permanently yet.</string>
+    <string name="admin_saved_remove">Forget</string>
+    <string name="admin_saved_remove_title">Forget this approval?</string>
+    <string name="admin_saved_remove_body">%1$s on %2$s will be asked for again.</string>
+    <string name="admin_saved_remove_consequence">The tool will stop being allowed to do this without asking. That is usually what you want, and it is not always.</string>
+    <string name="admin_saved_remove_confirm">Forget it</string>
+
+    <!-- Maintenance. -->
+    <string name="admin_maintenance_title">Maintenance</string>
+    <string name="admin_reload_locations">Reload every location</string>
+    <string name="admin_reload_help">Rebuilds the server\'s services. Permissions and questions waiting for an answer are cancelled; running sessions continue at the next step.</string>
+    <string name="admin_reload_done">The server reloaded. Its catalogs will be re-read.</string>
+    <string name="admin_loaded_locations">Loaded locations</string>
+    <string name="admin_locations_loading">Reading loaded locations…</string>
+    <string name="admin_locations_empty">The server is not holding any location open.</string>
+    <string name="admin_location_evict">Close</string>
+    <string name="admin_evict_title">Close this location?</string>
+    <string name="admin_evict_body">The server drops what it has cached for it and rebuilds it the next time it is used.</string>
+    <string name="admin_evict_consequence">Nothing is lost, but anything running in this location is interrupted and there is no undo.</string>
+    <string name="admin_evict_confirm">Close it</string>
+    <string name="admin_evict_done">The location was closed. It will be rebuilt on next use.</string>
+    <string name="admin_migration_title">Session history from V1</string>
+    <string name="admin_migration_loading">Asking the server…</string>
+    <string name="admin_migration_count">%1$d of %2$d sessions</string>
+    <string name="admin_migration_no_count">The server has not said how far along it is.</string>
+    <string name="admin_migration_completed">Everything from V1 has been imported.</string>
+    <string name="admin_migration_required">No migration is running. It will run if this server has V1 sessions.</string>
+    <string name="admin_migration_error">The migration failed.</string>
+    <string name="admin_migration_unknown">This server version did not describe the migration.</string>
+    <string name="admin_update_title">OpenCode %1$s is available</string>
+    <string name="admin_update_help">The app can see that the server is out of date; upgrading it happens on the computer it runs on.</string>
+
+    <!-- Session instructions. -->
+    <string name="admin_instructions_title">Session instructions</string>
+    <string name="admin_instructions_help">Entries are attached to this session and take effect at the next step. A plain word is stored as text; anything that is JSON is stored as JSON.</string>
+    <string name="admin_instructions_off">Turn on the session-instructions experiment in settings to read and write these.</string>
+    <string name="admin_instructions_key">Key</string>
+    <string name="admin_instructions_value">Value</string>
+    <string name="admin_instructions_value_hint">Not JSON, so it will be stored as text.</string>
+    <string name="admin_instructions_put">Attach it</string>
+    <string name="admin_instructions_loading">Reading entries…</string>
+    <string name="admin_instructions_empty">This session has no instruction entries.</string>
+    <string name="admin_instructions_remove">Remove</string>
+    <string name="admin_instructions_remove_title">Remove this entry?</string>
+    <string name="admin_instructions_remove_body">%1$s will be detached from this session at the next step.</string>
+    <string name="admin_instructions_remove_confirm">Remove it</string>
+
+    <!-- Catalog browsers. -->
+    <string name="admin_catalog_title">Definitions</string>
+    <string name="admin_catalog_agents">Agents</string>
+    <string name="admin_catalog_commands">Commands</string>
+    <string name="admin_catalog_skills">Skills</string>
+    <string name="admin_catalog_references">References</string>
+    <string name="admin_catalog_search">Search</string>
+    <string name="admin_catalog_loading">Reading…</string>
+    <string name="admin_catalog_empty">Nothing here.</string>
+</resources>
