@@ -235,6 +235,28 @@ class IntegrationSurface(
     }
 
     /**
+     * `integration.get`: one integration's own record.
+     *
+     * **The list is a row in a table and this is the account behind it.** The catalog carries the id
+     * and the display name; the detail carries the scopes, the docs URL and the plan a plan-level
+     * gate would need, and it is what the connect screen shows above a login it is about to start.
+     * A stale row cannot stand in for it: a revoked credential and a live one have the same row.
+     */
+    suspend fun integration(directory: String, integrationID: String): Result<IntegrationInfo> =
+        write { api.getIntegration(integrationID, directory).data }
+
+    /**
+     * `provider.get`: one provider's own record.
+     *
+     * **Used to open a provider's detail rather than to discover providers.** The list is enough to
+     * draw the catalogue, and this is what says whether the provider is reachable at all — a local
+     * endpoint that is not running and a cloud provider that is authenticated are the same row in
+     * the list and completely different things to tell the user.
+     */
+    suspend fun provider(directory: String, providerID: String): Result<ProviderInfo> =
+        write { api.getProvider(providerID, directory).data }
+
+    /**
      * `integration.oauth.status`.
      *
      * Answers `null` for a `404`, because an attempt the server no longer has is the end of the

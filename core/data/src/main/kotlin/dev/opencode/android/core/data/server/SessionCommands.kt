@@ -4,10 +4,13 @@ import dev.opencode.android.core.data.action.ActionError
 import dev.opencode.android.core.data.action.toActionError
 import dev.opencode.android.core.data.timeline.PendingInboxItem
 import dev.opencode.android.core.model.Delivery
+import dev.opencode.android.core.model.FormDetail
+import dev.opencode.android.core.model.FormInfo
 import dev.opencode.android.core.model.InboxItem
 import dev.opencode.android.core.model.InboxUpdateRequest
 import dev.opencode.android.core.model.LocationPublicRef
 import dev.opencode.android.core.model.ModelRef
+import dev.opencode.android.core.model.PermissionRequest
 import dev.opencode.android.core.model.PermissionRule
 import dev.opencode.android.core.model.PromptAgentAttachment
 import dev.opencode.android.core.model.PromptFileInput
@@ -21,6 +24,7 @@ import dev.opencode.android.core.model.SessionEnvironmentRequest
 import dev.opencode.android.core.model.SessionGenerateRequest
 import dev.opencode.android.core.model.SessionInboxInfo
 import dev.opencode.android.core.model.SessionInfo
+import dev.opencode.android.core.model.SessionMessage
 import dev.opencode.android.core.model.SessionMetadata
 import dev.opencode.android.core.model.SessionShellRequest
 import dev.opencode.android.core.model.SessionUpdateRequest
@@ -323,6 +327,70 @@ class SessionCommands(
     /** `session.view`: records that the user has seen this session's idle transition. */
     suspend fun markViewed(sessionID: String, idleAtMillis: Long): Result<Unit> = call {
         api.viewSession(sessionID, SessionViewRequest(idle = idleAtMillis))
+    }
+
+    /**
+     * `session.inbox.list`: what is still waiting for the agent.
+     *
+     * **Read, not inferred.** The composer shows a queue, and the events that maintain it are
+     * `session.inbox.*`, which the live stream can miss. This is the answer for a user who opens a
+     * session after a gap: the queue on screen is the server's, not a reconstruction of the last
+     * frames that arrived.
+     */
+    suspend fun listInbox(sessionID: String): Result<List<SessionInboxInfo>> = call {
+        api.listInbox(sessionID).data
+    }
+
+    /**
+     * `session.message.get`: one message.
+     *
+     * **Used to resolve a deep link, not to read a transcript.** A link to
+     * `opencode://session/{id}/message/{messageID}` can name a message the timeline has not paged
+     * in yet, and the timeline's own paging is the only thing that should decide what the transcript
+     * holds. So this fetches the one message and hands it to the timeline, which either finds it
+     * already there or discards it.
+     */
+    suspend fun getMessage(sessionID: String, messageID: String): Result<SessionMessage> = call {
+        api.getMessage(sessionID, messageID).data
+    }
+
+    /**
+     * `session.form.list`: the forms this one session owns.
+     *
+     * The pending-requests inbox reads the server-wide list, which is what a home screen wants. A
+     * session screen wants *this session's* forms, and a request answered from the shade is still in
+     * the server-wide list for a moment after the reply lands, so the two are not the same question.
+     */
+    suspend fun listSessionForms(sessionID: String): Result<List<FormInfo>> = call {
+        api.listSessionForms(sessionID).data
+    }
+
+    /**
+     * `session.form.get`: one form, re-read after a reply.
+     *
+     * **The answer to "did my answer land?" comes from the server.** The client submits a reply and
+     * the form's state moves to `answered` through the `form.replied` event, which a gap can lose;
+     * re-reading the form after a reply is what makes the dock show who answered rather than
+     * leaving a spinner on a question that is already closed.
+     */
+    suspend fun getSessionForm(sessionID: String, formID: String): Result<FormDetail> = call {
+        api.getSessionForm(sessionID, formID).data
+    }
+
+    /** `session.permission.list`: the permission requests this one session owns. */
+    suspend fun listSessionPermissions(sessionID: String): Result<List<PermissionRequest>> = call {
+        api.listSessionPermissions(sessionID).data
+    }
+
+    /**
+     * `session.permission.get`: one request, re-read before showing it.
+     *
+     * **Read immediately before the dock renders the question.** Another client may have answered
+     * while this one was backgrounded, and offering a choice that has already been made is the one
+     * failure a permission UI cannot have.
+     */
+    suspend fun getSessionPermission(sessionID: String, requestID: String): Result<PermissionRequest> = call {
+        api.getSessionPermission(sessionID, requestID).data
     }
 
     /** A fresh `msg_…` id, exposed so a caller can show it or key a draft by it. */

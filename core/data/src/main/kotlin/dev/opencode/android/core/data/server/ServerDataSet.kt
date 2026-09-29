@@ -1,11 +1,13 @@
 package dev.opencode.android.core.data.server
 
+import dev.opencode.android.core.data.action.toActionError
 import dev.opencode.android.core.data.config.ConfigSchema
 import dev.opencode.android.core.data.config.ConfigSurface
 import dev.opencode.android.core.data.config.RetrofitAdminApi
 import dev.opencode.android.core.data.execution.ExecutionSurface
 import dev.opencode.android.core.data.insights.InsightsSurface
 import dev.opencode.android.core.data.insights.SessionLogClient
+import dev.opencode.android.core.data.integrations.ActionFailure
 import dev.opencode.android.core.data.integrations.IntegrationSurface
 import dev.opencode.android.core.data.sync.ResourceKey
 import dev.opencode.android.core.data.sync.SyncedResource
@@ -246,6 +248,22 @@ class ServerDataSet(
                 loader = { api.listAgents(directory).data },
             )
         }
+
+    /**
+     * `agent.get`: one agent's own record.
+     *
+     * **The list is a summary and this is the definition.** `agent.list` carries the name and colour
+     * the picker needs; the composed agent's prompt, its mode and its tools are not in it, and the
+     * place a user reads "what will this agent actually do" is that record. A cached list row is not
+     * a substitute: it does not have the fields to answer the question.
+     */
+    suspend fun agent(directory: String, agentID: String): Result<AgentInfo> = try {
+        Result.success(api.getAgent(agentID, directory).data)
+    } catch (cancellation: kotlinx.coroutines.CancellationException) {
+        throw cancellation
+    } catch (error: Throwable) {
+        Result.failure(ActionFailure(error.toActionError()))
+    }
 
     /** `model.list` for a directory: names and context limits for the header's gauge. */
     fun models(directory: String): SyncedResource<List<ModelInfo>> = models

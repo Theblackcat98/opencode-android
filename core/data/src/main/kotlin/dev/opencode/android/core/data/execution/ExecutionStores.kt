@@ -291,6 +291,17 @@ class ExecutionCommands(
     suspend fun ptyTicket(directory: String, id: String): Result<PtyTicketToken> =
         call { api.createPtyTicket(id, directory).data }
 
+    /**
+     * `pty.get`: one terminal's own state.
+     *
+     * **Re-read when a terminal is opened, not while it is open.** The list gives a row enough to
+     * show a title, and the socket reports the output; the fields neither carries are the ones that
+     * decide what the screen does on resume — whether the process is still running, its exit code,
+     * and its size. A terminal the user comes back to after the app was killed has to be asked
+     * about, because the events that said it exited went while the client was gone.
+     */
+    suspend fun pty(directory: String, id: String): Result<PtyInfo> = call { api.getPty(id, directory).data }
+
     /** `config.shell`: the shells the server found, for the terminal's shell picker. */
     suspend fun shellOptions(): Result<List<ShellOption>> = call { api.listShellOptions() }
 

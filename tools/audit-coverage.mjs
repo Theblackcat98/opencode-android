@@ -91,11 +91,73 @@ const DEVIATIONS = {
     'worktree.remove is a DELETE with a body, so it is declared with @HTTP(method = "DELETE", hasBody = true)',
   'GET /api/event':
     'the SSE reader needs the raw response stream, so EventStreamClient builds it over OkHttp directly',
+  'GET /api/pty/{ptyID}/connect':
+    'a WebSocket upgrade, which Retrofit cannot make: PtySocket builds the same URL as a socket request and sends Basic auth on the upgrade (features doc §2.11). The declaration is left on ServerApi so the route and its query names are discoverable',
+  'GET /api/experimental/persistent-pty/{ptyID}/connect':
+    'the same upgrade for a session terminal, and covered by the same PtySocket',
 }
 const DEVIATION_HOSTS = {
   'GET /api/fs/read/*': ['FileReader', 'readFile'],
   'DELETE /api/worktree': ['removeWorktree', 'ExecutionCommands'],
   'GET /api/event': ['EventStreamClient'],
+  'GET /api/pty/{ptyID}/connect': ['PtySocket', 'PtySocketTest'],
+  'GET /api/experimental/persistent-pty/{ptyID}/connect': ['PtySocket', 'PtySocketTest'],
+}
+
+/**
+ * Every production declaration reachable from a call to the API function, not just the innermost.
+ *
+ * A wrapper matters: `ExecutionCommands.cachedShellOptions` is what a screen calls, and it calls
+ * `shellOptions`, which is what calls `api.listShellOptions`. A test that drives the wrapper covers
+ * the route, so the audit has to see through it. The walk goes upwards through declarations that
+ * mention an already-covered one, up to a depth that keeps it linear.
+ */
+function reachableHosts(fn) {
+  const found = new Set()
+  let frontier = new Set()
+  for (const [file, text] of prodText) {
+    const rx = new RegExp(`\\.${fn}\\s*\\(`, 'g')
+    // A separate probe: `test` on a global regex advances `lastIndex`, which would skip the first
+    // match below and make the host depend on how many times the file mentions the function.
+    if (!new RegExp(`\\.${fn}\\s*\\(`).test(text)) continue
+    const decls = [
+      ...text.matchAll(
+        /\n\s*(?:@\w+(?:\([^)]*\))?\s*)*(?:public |internal |private |override |suspend |inline |operator )*(?:fun|val|var|class|object)\s+(?:<[^>]*>\s*)?(\w+)/g,
+      ),
+    ]
+    for (const hit of text.matchAll(rx)) {
+      const prior = decls.filter((d) => d.index < hit.index)
+      const host = prior.length ? prior[prior.length - 1][1] : '?'
+      found.add(host)
+      frontier.add(host)
+    }
+  }
+  for (let depth = 0; depth < 3 && frontier.size; depth++) {
+    const next = new Set()
+    for (const host of frontier) {
+      // Every production file, not just the one the host was declared in: the wrapper is usually in
+      // a different module from the store it delegates to, which is the whole point of a surface.
+      const declRe = new RegExp(`\\b${host}\\b\\s*[({]`, 'g')
+      for (const [file, text] of prodText) {
+        if (!declRe.test(text)) continue
+        const decls = [
+          ...text.matchAll(
+            /\n\s*(?:@\w+(?:\([^)]*\))?\s*)*(?:public |internal |private |override |suspend |inline |operator )*(?:fun|val|var|class|object)\s+(?:<[^>]*>\s*)?(\w+)/g,
+          ),
+        ]
+        for (const hit of text.matchAll(new RegExp(declRe.source, 'g'))) {
+          const prior = decls.filter((d) => d.index < hit.index)
+          const outer = prior.length ? prior[prior.length - 1][1] : null
+          if (outer && !found.has(outer)) {
+            found.add(outer)
+            next.add(outer)
+          }
+        }
+      }
+    }
+    frontier = next
+  }
+  return [...found]
 }
 
 const apiGaps = []
@@ -111,25 +173,12 @@ for (const row of rows) {
     row.implemented = Boolean(fn)
   }
 
-  const callers = []
-  if (row.fn) {
-    const rx = new RegExp(`\\.${row.fn}\\s*\\(`)
-    for (const [file, text] of prodText) {
-      if (!rx.test(text)) continue
-      // the innermost enclosing declaration, which is what a test would drive
-      const decls = [...text.matchAll(/\n\s*(?:@\w+(?:\([^)]*\))?\s*)*(?:public |internal |private |override |suspend |inline |operator )*(?:fun|val|var|class|object)\s+(?:<[^>]*>\s*)?(\w+)/g)]
-      const idx = text.search(rx)
-      const prior = decls.filter((d) => d.index < idx)
-      callers.push({ file, host: prior.length ? prior[prior.length - 1][1] : '?' })
-    }
-  }
-  row.callers = callers
-  row.wired = callers.length > 0 || Boolean(row.deviation)
+  const hosts = row.fn ? reachableHosts(row.fn) : []
+  row.hosts = hosts
+  row.wired = hosts.length > 0 || Boolean(row.deviation)
 
-  const hosts = [...new Set(callers.map((c) => c.host))]
   const probes = row.deviation ? DEVIATION_HOSTS[row.endpoint] : hosts
   const hit = probes.filter((h) => new RegExp(`\\b${h}\\b`).test(testText))
-  row.hosts = hosts
   row.tested = hit.length > 0
 
   if (!row.implemented || !row.wired || !row.tested) apiGaps.push(row)
