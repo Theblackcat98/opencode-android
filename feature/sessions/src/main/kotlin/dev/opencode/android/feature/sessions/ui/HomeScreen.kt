@@ -189,13 +189,26 @@ fun HomeScreen(
     }
 }
 
-/** The five "Manage" destinations of plan §4.3, as one row. */
+/**
+ * The "Manage" destinations of plan §4.3, as one row.
+ *
+ * **Phase 8 delivered five and Phase 9 five more**, which is the whole of the plan's list except stats
+ * and adaptive layout: "accounts and providers, models, MCP, plugins, agents, commands and skills,
+ * permissions, configuration, stats and maintenance". Stats are P10, so this row now has ten chips and
+ * a `FlowRow` that wraps — which is why the chips are named for their destination rather than grouped
+ * into sub-screens, and why a user on a small phone sees all ten without a second level.
+ */
 enum class ManageDestination {
     ACCOUNTS,
     PROVIDERS,
     MCP,
     PLUGINS,
     WEB_SEARCH,
+    CONFIGURATION,
+    AGENTS,
+    DEFINITIONS,
+    PERMISSIONS,
+    MAINTENANCE,
 }
 
 /**
@@ -203,9 +216,8 @@ enum class ManageDestination {
  *
  * **Each button names a checkout's own state**, and the strings are the plan's own section names
  * ("accounts and providers, models, MCP, plugins, agents, commands and skills, permissions,
- * configuration, stats and maintenance"). Agents, commands, permissions, configuration, stats and
- * maintenance are Phase 9 and P10 and are not here, so a user who taps around Manage sees only the
- * parts this phase delivers rather than placeholders.
+ * configuration, stats and maintenance"). Only stats is absent, because it is P10 — so there is no chip
+ * a user can press and get nothing, which was the reason the P8 row stopped at five.
  */
 @Composable
 private fun ManageRow(onManageClick: (ManageDestination) -> Unit, directory: String) {
@@ -237,6 +249,31 @@ private fun ManageRow(onManageClick: (ManageDestination) -> Unit, directory: Str
                 label = { Text(stringResource(R.string.home_manage_web_search)) },
                 modifier = Modifier.testTag(HomeTags.MANAGE_WEB_SEARCH),
             )
+            AssistChip(
+                onClick = { onManageClick(ManageDestination.CONFIGURATION) },
+                label = { Text(stringResource(R.string.home_manage_configuration)) },
+                modifier = Modifier.testTag(HomeTags.MANAGE_CONFIGURATION),
+            )
+            AssistChip(
+                onClick = { onManageClick(ManageDestination.AGENTS) },
+                label = { Text(stringResource(R.string.home_manage_agents)) },
+                modifier = Modifier.testTag(HomeTags.MANAGE_AGENTS),
+            )
+            AssistChip(
+                onClick = { onManageClick(ManageDestination.DEFINITIONS) },
+                label = { Text(stringResource(R.string.home_manage_definitions)) },
+                modifier = Modifier.testTag(HomeTags.MANAGE_DEFINITIONS),
+            )
+            AssistChip(
+                onClick = { onManageClick(ManageDestination.PERMISSIONS) },
+                label = { Text(stringResource(R.string.home_manage_permissions)) },
+                modifier = Modifier.testTag(HomeTags.MANAGE_PERMISSIONS),
+            )
+            AssistChip(
+                onClick = { onManageClick(ManageDestination.MAINTENANCE) },
+                label = { Text(stringResource(R.string.home_manage_maintenance)) },
+                modifier = Modifier.testTag(HomeTags.MANAGE_MAINTENANCE),
+            )
         }
     }
 }
@@ -248,6 +285,11 @@ object HomeTags {
     const val MANAGE_MCP: String = "home:manage-mcp"
     const val MANAGE_PLUGINS: String = "home:manage-plugins"
     const val MANAGE_WEB_SEARCH: String = "home:manage-web-search"
+    const val MANAGE_CONFIGURATION: String = "home:manage-configuration"
+    const val MANAGE_AGENTS: String = "home:manage-agents"
+    const val MANAGE_DEFINITIONS: String = "home:manage-definitions"
+    const val MANAGE_PERMISSIONS: String = "home:manage-permissions"
+    const val MANAGE_MAINTENANCE: String = "home:manage-maintenance"
 }
 
 @Composable

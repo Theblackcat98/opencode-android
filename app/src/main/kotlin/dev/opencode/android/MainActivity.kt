@@ -12,6 +12,7 @@ import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import dagger.hilt.android.AndroidEntryPoint
 import dev.opencode.android.core.designsystem.theme.OpenCodeTheme
 import dev.opencode.android.feature.requests.notifications.NotificationIntents
+import dev.opencode.android.core.data.server.ServerDataRegistry
 import dev.opencode.android.navigation.OpenCodeApp
 import javax.inject.Inject
 
@@ -35,6 +36,16 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var serviceLauncher: dev.opencode.android.feature.requests.notifications.ConnectionServiceLauncher
+
+    /**
+     * The read model, handed to the graph so the catalog browsers can resolve the sessions module's
+     * agents and the composer's three lists.
+     *
+     * **Injected here rather than at the composable** because it is not a `ViewModel`, and
+     * `hiltViewModel()` is the only injection the navigation graph does.
+     */
+    @Inject
+    lateinit var dataSets: ServerDataRegistry
 
     private var sharedPayload by mutableStateOf<String?>(null)
 
@@ -65,6 +76,9 @@ class MainActivity : ComponentActivity() {
                     sharedPayload = sharedPayload,
                     openSession = openSession,
                     openLocation = openLocation,
+                    // The catalog browsers read the sessions module's agents and the composer's three
+                    // lists, and the app module is the only place that can hold both.
+                    serverDataSets = dataSets,
                 )
             }
         }

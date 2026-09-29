@@ -181,4 +181,11 @@
     <string name="home_manage_mcp">MCP</string>
     <string name="home_manage_plugins">Plugins</string>
     <string name="home_manage_web_search">Web search</string>
+    <string name="session_admin_permissions">Session permissions</string>
+    <string name="session_admin_instructions">Session instructions</string>
+    <string name="home_manage_configuration">Configuration</string>
+    <string name="home_manage_agents">Agents</string>
+    <string name="home_manage_definitions">Commands and skills</string>
+    <string name="home_manage_permissions">Permissions</string>
+    <string name="home_manage_maintenance">Maintenance</string>
 </resources>

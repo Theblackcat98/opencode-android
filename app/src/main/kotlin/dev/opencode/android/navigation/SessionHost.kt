@@ -86,6 +86,16 @@ fun SessionHost(
     onOpenSessionTerminals: () -> Unit = {},
     /** Takes the project id, because the menu row is disabled without one. */
     onOpenProjectSettings: (String) -> Unit = {},
+    /**
+     * The Phase 9 rows: this session's permission rules and its instruction entries.
+     *
+     * **They take the project id and the directory from the session's own state** rather than from the
+     * graph, for the reason the location rows above are disabled without a location: a session that has
+     * not loaded its projection has neither, and a panel opened with an empty one would be about the
+     * server's working directory.
+     */
+    onOpenSessionPermissions: (String?, String) -> Unit = { _, _ -> },
+    onOpenSessionInstructions: () -> Unit = {},
     onUndoConfirmed: (String) -> Unit = {},
     onForked: (String) -> Unit = {},
     modifier: Modifier = Modifier,
@@ -295,6 +305,8 @@ fun SessionHost(
                     onOpenWorktrees = onOpenWorktrees,
                     onOpenSessionTerminals = onOpenSessionTerminals,
                     onOpenProjectSettings = onOpenProjectSettings,
+                    onOpenSessionPermissions = onOpenSessionPermissions,
+                    onOpenSessionInstructions = onOpenSessionInstructions,
                 )
             },
         )
@@ -460,6 +472,8 @@ private fun ExecutionMenuRows(
     onOpenWorktrees: (String) -> Unit,
     onOpenSessionTerminals: () -> Unit,
     onOpenProjectSettings: (String) -> Unit,
+    onOpenSessionPermissions: (String?, String) -> Unit,
+    onOpenSessionInstructions: () -> Unit,
 ) {
     SessionMenuRow(
         label = stringResource(SessionsR.string.session_execution_subagents),
@@ -493,5 +507,17 @@ private fun ExecutionMenuRows(
         label = stringResource(SessionsR.string.session_execution_project_settings),
         enabled = projectId != null,
         onClick = { projectId?.let(onOpenProjectSettings) },
+    )
+    // The permissions panel is location-scoped for the saved approvals and session-scoped for the rules,
+    // so it needs a location to list the project's standing approvals at all.
+    SessionMenuRow(
+        label = stringResource(SessionsR.string.session_admin_permissions),
+        enabled = directory.isNotBlank(),
+        onClick = { onOpenSessionPermissions(projectId, directory) },
+    )
+    // Instruction entries belong to the session alone, so this row needs nothing from the projection.
+    SessionMenuRow(
+        label = stringResource(SessionsR.string.session_admin_instructions),
+        onClick = onOpenSessionInstructions,
     )
 }

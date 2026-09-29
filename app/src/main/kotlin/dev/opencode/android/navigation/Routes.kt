@@ -34,6 +34,18 @@ import dev.opencode.android.feature.servers.ui.ServersScreen
 import dev.opencode.android.feature.sessions.ui.HomeRoute
 import dev.opencode.android.feature.sessions.ui.ManageDestination
 import dev.opencode.android.feature.sessions.ui.PendingRequestsViewModel
+import dev.opencode.android.feature.admin.AdminCatalog
+import dev.opencode.android.feature.admin.CatalogUiState
+import dev.opencode.android.core.data.sync.SyncStatus
+import dev.opencode.android.core.data.sync.SyncedState
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import dev.opencode.android.core.data.server.ServerDataRegistry
+import dev.opencode.android.core.data.server.ServerDataSet
+import dev.opencode.android.core.model.AgentInfo
+import dev.opencode.android.core.model.CommandInfo
+import dev.opencode.android.core.model.ReferenceInfo
+import dev.opencode.android.core.model.SkillInfo
 import dev.opencode.android.feature.execution.ProjectSettingsHost
 import dev.opencode.android.feature.sessions.ui.SessionListRoute
 import kotlinx.serialization.Serializable
@@ -199,6 +211,14 @@ fun OpenCodeApp(
     modifier: Modifier = Modifier,
     navController: NavHostController = rememberNavController(),
     composer: ComposerViewModel = hiltViewModel(),
+    /**
+     * The registry, for the catalog browsers.
+     *
+     * **Passed in rather than injected at the composable**, because it is not a `ViewModel` and
+     * `hiltViewModel()` is the only injection `Routes.kt` does. [MainActivity] already holds it, and a
+     * composable that reached for it itself would need an `EntryPoint` for no gain.
+     */
+    serverDataSets: ServerDataRegistry,
 ) {
     LaunchedEffect(sharedPayload) {
         if (!sharedPayload.isNullOrBlank()) {
@@ -298,6 +318,19 @@ fun OpenCodeApp(
                             navController.navigate(PluginsRoute(route.serverId, directory))
                         ManageDestination.WEB_SEARCH ->
                             navController.navigate(WebSearchRoute(route.serverId, directory))
+                        // ---------------------------------------------------------------- Phase 9
+                        ManageDestination.CONFIGURATION ->
+                            navController.navigate(ConfigRoute(route.serverId, directory))
+                        ManageDestination.AGENTS ->
+                            navController.navigate(CatalogRoute(route.serverId, directory, "agents"))
+                        ManageDestination.DEFINITIONS ->
+                            navController.navigate(CatalogRoute(route.serverId, directory, "commands"))
+                        ManageDestination.PERMISSIONS ->
+                            navController.navigate(PermissionsRoute(route.serverId, directory))
+                        // Maintenance is server-wide, so it takes no directory: it lists what the server
+                        // has loaded and what would be dropped, which is a property of the server.
+                        ManageDestination.MAINTENANCE ->
+                            navController.navigate(MaintenanceRoute(route.serverId))
                     }
                 },
             )
@@ -371,6 +404,21 @@ fun OpenCodeApp(
                 },
                 onOpenSessionTerminals = {
                     navController.navigate(SessionTerminalsRoute(route.serverId, route.sessionId))
+                },
+                // Phase 9, from the session: its own permission rules and its instruction entries are
+                // scoped to a session rather than to a checkout, so Manage cannot reach them.
+                onOpenSessionPermissions = { projectId: String?, directory: String ->
+                    navController.navigate(
+                        PermissionsRoute(
+                            serverId = route.serverId,
+                            directory = directory,
+                            projectID = projectId,
+                            sessionID = route.sessionId,
+                        ),
+                    )
+                },
+                onOpenSessionInstructions = {
+                    navController.navigate(InstructionsRoute(route.serverId, route.sessionId))
                 },
                 onOpenProjectSettings = { projectId ->
                     navController.navigate(
@@ -525,6 +573,111 @@ fun OpenCodeApp(
                 onNavigateBack = { navController.popBackStack() },
             )
         }
+
+        // -------------------------------------------------------------------- Phase 9 destinations
+        //
+        // "Configuration, permissions admin, maintenance" (plan §4.1, §6). Six destinations: the
+        // explorer, the `opencode.jsonc` editor, the definition editor, the catalog browsers, the
+        // permissions admin and maintenance. The seventh feature — session instruction entries — is
+        // reached from the session rather than from Manage, because it is scoped to a session.
+
+        composable<ConfigRoute> { entry ->
+            val route = entry.toRoute<ConfigRoute>()
+            ConfigHost(
+                directory = route.directory,
+                onNavigateBack = { navController.popBackStack() },
+                onOpenEditor = { path -> navController.navigate(ConfigEditorRoute(route.serverId, route.directory, path)) },
+                onOpenDefinitions = {
+                    navController.navigate(DefinitionRoute(route.serverId, route.directory, "agent", ""))
+                },
+                onOpenCatalogs = { navController.navigate(CatalogRoute(route.serverId, route.directory, "agents")) },
+                onOpenPermissions = {
+                    navController.navigate(PermissionsRoute(route.serverId, route.directory))
+                },
+            )
+        }
+
+        composable<ConfigEditorRoute> { entry ->
+            val route = entry.toRoute<ConfigEditorRoute>()
+            ConfigEditorHost(
+                directory = route.directory,
+                path = route.path,
+                onNavigateBack = { navController.popBackStack() },
+            )
+        }
+
+        composable<DefinitionRoute> { entry ->
+            val route = entry.toRoute<DefinitionRoute>()
+            DefinitionHost(
+                directory = route.directory,
+                kind = definitionKindOf(route.kind),
+                name = route.name,
+                onNavigateBack = { navController.popBackStack() },
+            )
+        }
+
+        composable<CatalogRoute> { entry ->
+            val route = entry.toRoute<CatalogRoute>()
+            val dataSet: ServerDataSet? = serverDataSets.active.collectAsStateWithLifecycle().value
+            val directory = route.directory
+            var tab by remember(route.tab) { mutableStateOf(catalogOf(route.tab)) }
+            var search by remember { mutableStateOf("") }
+            val agents by (dataSet?.agents(directory)?.state ?: loadingFlow())
+                .collectAsStateWithLifecycle()
+            val commands by (dataSet?.composerCatalogs?.commands(directory)?.state ?: loadingFlow())
+                .collectAsStateWithLifecycle()
+            val skills by (dataSet?.composerCatalogs?.skills(directory)?.state ?: loadingFlow())
+                .collectAsStateWithLifecycle()
+            val references by (dataSet?.composerCatalogs?.references(directory)?.state ?: loadingFlow())
+                .collectAsStateWithLifecycle()
+            // The four lists are read here because `feature/admin` may not import the modules that own
+            // them: the agents come from the sessions module and the other three from the composer's
+            // `ComposerCatalogs`. A null data set is the pre-connection state, and it renders as
+            // loading rather than as an empty catalog — an empty list would say "this project has no
+            // agents", which is a different and wrong claim.
+            LaunchedEffect(directory) {
+                dataSet?.agents(directory)?.sync()
+                dataSet?.composerCatalogs?.commands(directory)?.sync()
+                dataSet?.composerCatalogs?.skills(directory)?.sync()
+                dataSet?.composerCatalogs?.references(directory)?.sync()
+            }
+            CatalogHost(
+                state = CatalogUiState(
+                    tab = tab,
+                    search = search,
+                    agents = agents,
+                    commands = commands,
+                    skills = skills,
+                    references = references,
+                ),
+                onTabChange = { tab = it },
+                onSearchChange = { search = it },
+                onNavigateBack = { navController.popBackStack() },
+            )
+        }
+
+        composable<PermissionsRoute> { entry ->
+            val route = entry.toRoute<PermissionsRoute>()
+            PermissionsHost(
+                directory = route.directory,
+                projectID = route.projectID,
+                sessionID = route.sessionID,
+                onNavigateBack = { navController.popBackStack() },
+            )
+        }
+
+        composable<InstructionsRoute> { entry ->
+            val route = entry.toRoute<InstructionsRoute>()
+            InstructionsHost(
+                sessionID = route.sessionID,
+                onNavigateBack = { navController.popBackStack() },
+            )
+        }
+
+        composable<MaintenanceRoute> { entry ->
+            val route = entry.toRoute<MaintenanceRoute>()
+            MaintenanceHost(onNavigateBack = { navController.popBackStack() })
+        }
     }
 }
 
@@ -599,3 +752,12 @@ private fun NewSessionHost(
         },
     )
 }
+
+/**
+ * The flow a catalog screen reads before the app is following a server.
+ *
+ * **Loading rather than empty**, because an empty list renders as "this project has no agents" and the
+ * true state is "there is no server yet" — two claims a user would act on differently.
+ */
+private fun <T> loadingFlow(): StateFlow<SyncedState<T>> =
+    MutableStateFlow(SyncedState(status = SyncStatus.Loading))
