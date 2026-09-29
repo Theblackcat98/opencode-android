@@ -158,11 +158,22 @@ const dsSrc = readFileSync(DATASET, 'utf8')
  */
 const fanout = new Set()
 for (const m of dsSrc.matchAll(/is\s+(?:EventPayload\.)?([A-Z]\w*)/g)) fanout.add(m[1])
-for (const f of kotlinFiles(join(ROOT, 'core/model/src/main/kotlin'))) {
-  const t = readFileSync(f, 'utf8')
-  if (!/interface\s+SessionScoped/.test(t)) continue
-  for (const m of t.matchAll(/\)\s*:\s*EventPayload,\s*EventPayload\.SessionScoped/g)) fanout.add('__session_scoped__')
-  for (const m of t.matchAll(/^data class (\w+)\([^)]*\)\s*:\s*EventPayload,\s*EventPayload\.SessionScoped/gm)) fanout.add(m[1])
+// Everything the reducer owns: a payload that implements `EventPayload.SessionScoped` is routed
+// into the timeline store by `apply`, whatever file declares it.
+{
+  const modelSources = kotlinFiles(join(ROOT, 'core/model/src/main/kotlin')).map((f) => readFileSync(f, 'utf8'))
+  if (!modelSources.some((t) => /interface\s+SessionScoped/.test(t))) {
+    throw new Error('EventPayload.SessionScoped is gone; update this rule')
+  }
+  for (const t of modelSources) {
+    // The parameter list must not run past another `class` declaration, or a helper type declared
+    // between two payloads swallows the payload that follows it.
+    for (const m of t.matchAll(
+      /(?:data\s+class|class)\s+(\w+)\s*\(((?:(?!\bclass\b)[\s\S])*?)\)\s*:\s*EventPayload,\s*EventPayload\.SessionScoped/g,
+    )) {
+      fanout.add(m[1])
+    }
+  }
 }
 // `requests.apply(event)` runs for every frame, so a permission or form payload is handled there.
 const requestCenter = kotlinFiles(join(ROOT, 'core/data/src/main/kotlin')).find((f) => f.endsWith('RequestCenter.kt'))
@@ -174,12 +185,30 @@ const inRequestCenter = new Set(
 const sec8Types = new Set()
 for (const m of sec8.matchAll(/`([a-z][a-z0-9]*(?:\.[a-z0-9*]+)+)`/g)) sec8Types.add(m[1])
 
+/**
+ * `server.connected` never reaches `ServerDataSet.apply`. The SSE reader consumes it, because the
+ * stream is required to open with it and it is the signal the connection manager resyncs on
+ * (plan §4.2), so it is handled one layer up. Listed here rather than special-cased in the rule.
+ */
+const HANDLED_BY_THE_READER = new Set(['ServerConnected'])
+
+const CORPUS = join(ROOT, 'core/testing/src/main/resources/fixtures/event-payloads.jsonl')
+/**
+ * An event is TESTED when the generated corpus carries a payload of its type, or a test names its
+ * payload class. The corpus is one minimal instance of every declared type, generated from the
+ * vendored declarations and decoded by `EventPayloadCoverageTest`, so "in the corpus" means "some
+ * test decoded it and checked the model did not drop a field".
+ */
+const corpusText = readFileSync(CORPUS, 'utf8')
+
 const eventGaps = []
 const eventRows = []
 for (const [type, cls] of bound) {
-  const isHandled = fanout.has('__session_scoped__') || fanout.has(cls) || inRequestCenter.has(cls)
-  const tested = new RegExp(`\\b${cls}\\b`).test(testText)
-  const r = { type, cls, handled: isHandled, tested }
+  const isHandled = fanout.has(cls) || inRequestCenter.has(cls) || HANDLED_BY_THE_READER.has(cls)
+  const inCorpus = new RegExp(`"type":\\s*"${type.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}"`).test(corpusText)
+  const namedInTest = new RegExp(`\\b${cls}\\b`).test(testText)
+  const tested = inCorpus || namedInTest
+  const r = { type, cls, handled: isHandled, tested, inCorpus }
   eventRows.push(r)
   if (!isHandled || !tested) eventGaps.push(r)
 }

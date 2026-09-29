@@ -65,7 +65,11 @@ abstract class DiscriminatedUnionSerializer<T : Any>(
     override fun deserialize(decoder: Decoder): T {
         val input = decoder as? JsonDecoder
             ?: throw SerializationException("${descriptor.serialName} can only be decoded from JSON")
-        val obj = input.decodeJsonElement().jsonObject
+        val element = input.decodeJsonElement()
+        // A value that is not an object cannot carry the discriminator, and the stream must survive
+        // it: the fallback keeps the value under `value` so nothing is lost, which is what
+        // [UnknownVariant.raw] promises. A `409` on one event must not take the connection down.
+        val obj = element as? JsonObject ?: return unknown(null, JsonObject(mapOf("value" to element)))
         val tag = (obj[discriminator] as? JsonPrimitive)?.takeIf { it.isString }?.contentOrNull
         val variant = tag?.let(byTag::get) ?: return unknown(tag, obj)
         return input.json.decodeFromJsonElement(variant.serializer, JsonObject(obj - discriminator))
