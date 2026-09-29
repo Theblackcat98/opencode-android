@@ -129,7 +129,7 @@ class AdminScreenshotTest {
     fun configEditorInvalid() = capture("config-editor-invalid") {
         ConfigEditorScreenFixture(
             editorState().copy(
-                draft = "{\n  // the default model\n  \"modle\": \"openai/gpt\",\n  \"snapshot\": \"yes\"\n}",
+                draft = "{\n  // the default model\n  \"modle\": \"placeholder-provider/other-model\",\n  \"snapshot\": \"yes\"\n}",
                 diagnostics = listOf(
                     SchemaDiagnostic("/modle", "additionalProperties", "a key this schema allows", "a string of 9 characters", line = 3, column = 3),
                     SchemaDiagnostic("/snapshot", "type", "a boolean", "a string of 3 characters", line = 4, column = 3),
@@ -389,7 +389,7 @@ class AdminScreenshotTest {
         val globalConfig = document(
             "/root/.config/opencode/opencode.json",
             dev.opencode.android.core.model.ConfigInfo(
-                model = dev.opencode.android.core.model.ConfigModel.Ref("anthropic", "claude-sonnet-4"),
+                model = dev.opencode.android.core.model.ConfigModel.Ref("placeholder-provider", "placeholder-model"),
                 shell = "/bin/sh",
             ),
         )
@@ -405,7 +405,7 @@ class AdminScreenshotTest {
         val projectConfig = document(
             "/work/app/.opencode/opencode.jsonc",
             dev.opencode.android.core.model.ConfigInfo(
-                model = dev.opencode.android.core.model.ConfigModel.Ref("openai", "gpt-5"),
+                model = dev.opencode.android.core.model.ConfigModel.Ref("other-provider", "other-model"),
                 shell = "/bin/zsh",
                 share = "disabled",
                 default_agent = "build",
@@ -442,7 +442,7 @@ class AdminScreenshotTest {
         val editorText = """
             {
               // the default model for new sessions
-              "model": "openai/gpt-5",
+              "model": "placeholder-provider/other-model",
               "share": "disabled",
               "mcp": {
                 "files": {
@@ -482,7 +482,7 @@ class AdminScreenshotTest {
             ---
             description: "Reviews a diff"
             mode: "subagent"
-            model: "anthropic/claude"
+            model: "placeholder-provider/placeholder-model"
             steps: "20"
             ---
 
@@ -552,7 +552,7 @@ class AdminScreenshotTest {
                         id = "build",
                         name = "build",
                         mode = "primary",
-                        model = ModelRef("anthropic", "claude-sonnet-4"),
+                        model = ModelRef("placeholder-provider", "placeholder-model"),
                         description = "Writes code and runs commands",
                         steps = 100,
                         color = "primary",

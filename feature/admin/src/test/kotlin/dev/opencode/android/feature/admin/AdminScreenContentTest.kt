@@ -58,7 +58,7 @@ class AdminScreenContentTest {
     private val globalConfig = ConfigEntry.Document(
         pathOrNull = "/root/.config/opencode/opencode.json",
         info = ConfigInfo(
-            model = dev.opencode.android.core.model.ConfigModel.Ref("anthropic", "claude-sonnet-4"),
+            model = dev.opencode.android.core.model.ConfigModel.Ref("placeholder-provider", "placeholder-model"),
             shell = "/bin/sh",
         ),
     )
@@ -66,7 +66,7 @@ class AdminScreenContentTest {
     private val projectConfig = ConfigEntry.Document(
         pathOrNull = "/work/app/.opencode/opencode.jsonc",
         info = ConfigInfo(
-            model = dev.opencode.android.core.model.ConfigModel.Ref("openai", "gpt-5"),
+            model = dev.opencode.android.core.model.ConfigModel.Ref("other-provider", "other-model"),
             shell = "/bin/zsh",
             share = "disabled",
             default_agent = "build",
@@ -564,7 +564,7 @@ class AdminScreenContentTest {
                         id = "build",
                         name = "build",
                         mode = "primary",
-                        model = dev.opencode.android.core.model.ModelRef("anthropic", "claude"),
+                        model = dev.opencode.android.core.model.ModelRef("placeholder-provider", "placeholder-model"),
                         steps = 100,
                         color = "primary",
                         permissions = parse("""{"bash":"ask"}"""),

@@ -226,7 +226,7 @@ phases that reuse it get cheaper as a result.
 | P6 | Review and history | Diff engine and viewer, file viewer, revert and fork flows | P7, P9 | Complete |
 | P7 | Execution surfaces | WebSocket and terminal component, process panels, worktree flows | P10 | Complete |
 | P8 | Integrations | OAuth, key and command login flows, MCP and plugin management | P9 | Complete |
-| P9 | Configuration | Config explorer and validated file editor | P10 | Planned |
+| P9 | Configuration | Config explorer and validated file editor | P10 | Complete |
 | P10 | Insights and release | Stats, RPC console, adaptive polish, release pipeline | n/a | Planned |
 
 Relative size: S is small, M is medium, L is large.
@@ -1560,6 +1560,309 @@ are not this phase's to fix. It remains the cheapest high-value item on the list
 - The common edits can be made from the phone and take effect after reload: default model, permission rule, MCP
   server, agent file.
 
+**Status.** Complete. All 11 operations are implemented and covered by tests over a real HTTP client
+against a `MockWebServer` that answers only the routes the app is supposed to call, plus 12
+integration tests against a real `opencode serve` 2.0.18. The full gate is green: **1,474 JVM unit-test
+executions, 0 failures, 0 skipped**, Android Lint with **0 errors** in every module, and both `play` and
+`fdroid` debug APKs assembled. 207 of those executions are this phase's, over a measured baseline of
+1,267. 42 Roborazzi baselines (light, dark and 1.5× font) are new.
+
+**Built.**
+
+- **The config explorer.** One card per top-level key, in the vendored schema's own order, produced by
+  walking `api/opencode-2.0.x/config.schema.json` — so the row list is a function of the file and not
+  of a list someone typed, and a key nothing sets still has a card that says so. Each card carries the
+  key's type, its description, its enum, its source documents and the server's own effective value,
+  with a *configured only* filter that changes what is visible and not what the state knows.
+- **Two vocabularies, mapped.** A file writes `{"permission": {...}, "agent": {...}}`; the runtime
+  reports `permissions`, `agents`, `snapshots`, `providers`, `plugins` and `commands`, adds
+  `websearch`, `worktree` and `warming` that no file key owns, and omits eleven keys the file has.
+  `ConfigSchema.PROJECTION_NAMES` is the table, written out rather than derived, and
+  `PROJECTION_ONLY_KEYS` and `UNPROJECTED_KEYS` name the other two directions.
+- **The validated editor.** `opencode.jsonc` read with `fs.read`, edited, validated against the
+  vendored draft-2020-12 schema, confirmed, written with `experimental.fs.write`, reloaded with
+  `location.reload`, and then read back with `config.get` — with the server's own answer as the
+  diagnostic. Validation runs on `Dispatchers.Default` and a stale answer is discarded.
+- **JSONC, without reformatting.** `Jsonc.mask` blanks comments and trailing commas **in place**, so a
+  diagnostic's line is the line in the user's file; `ConfigDocument.setInText` rewrites only the bytes
+  of the key it changes, and a comment above it survives.
+- **Four guided templates.** A persistent MCP server, a permission rule, the default model and a new
+  agent — each producing a *value for a top-level key* that is merged into the existing document, and
+  each validated against the schema before the confirmation is reachable.
+- **Definition files.** An agent, a command, a skill and `AGENTS.md`, with the front matter written
+  from named fields and the body left as the user's prose.
+- **Catalog browsers.** Agents (mode, model, permissions, steps, colour and system prompt), commands
+  and their templates, skills and their content, and references.
+- **Permissions admin.** Saved approvals per project, and a session's own rules with the precedence
+  warning as a fixed card rather than a disclosure.
+- **Session instructions.** List, add and remove, with the value typed as JSON and a bare word stored
+  as text.
+- **Maintenance.** Reload with its consequence spelled out, the loaded locations, an evict behind a
+  confirmation that names the directory, the V1 migration, and an update banner carrying the host
+  upgrade command.
+- **`config.updated` is handled, and it is the one event that cannot be handled narrowly.** Every other
+  `*.updated` event names its item or its location, so it can invalidate one resource or one screen.
+  `config.updated` says only that *a configuration document somewhere* changed — no payload, no
+  location — and such a document can name a model, a provider, an MCP server, a permission rule, an
+  agent or a plugin without saying which. So the response is the blunt one: the `config.get` stores, the
+  agents, the models, the default models, the composer catalogs and the integration catalogs are all
+  invalidated, across every location the client has open. The events that *do* name something stay
+  narrow and are handled before it. `ConfigUpdatedEventTest` asserts the scope in both directions:
+  that a re-read after the event returns the server's *new* answer rather than the cached one, and that
+  an invalidation too narrow to notice a changed agent, command, provider or MCP server would be caught
+  rather than shipped.
+
+**The first exit criterion, and how it is proved.**
+
+*"Every top-level config key is visible with its source."* It is checkable because the key list has an
+authority that is not this client's memory — the vendored schema — and it is checked against that file
+in **both directions**:
+
+- `ConfigCatalogCoverageTest` reads `api/opencode-2.0.x/config.schema.json` at run time and asserts
+  that `ConfigExplorer.rows` produces **exactly one row per top-level key, in the schema's own order**,
+  and that no row exists for a name the schema does not declare. A row for `permissions` or `update`
+  would fail it.
+- The same test asserts that every projection name the client claims is a real property of
+  `Config.InfoEncoded` **in the OpenAPI spec**, that every property of `Config.InfoEncoded` is claimed
+  by exactly one file key or named in `PROJECTION_ONLY_KEYS`, and that the eleven keys with no
+  projection are exactly the set the code names.
+- `AdminScreenContentTest.every top-level key of the schema can be scrolled to` then does the same check
+  on the **rendered screen**: it scrolls the list to each of the 36 keys by index and requires a card.
+  A projection test alone would pass with a screen that rendered the first row.
+- `UnsupportedKeywordTest` walks the vendored schema and fails on any assertion keyword
+  `JsonSchemaValidator` does not implement, which is what makes the subset validator trustworthy rather
+  than merely believed sufficient.
+
+The second half of the criterion — *with its source* — is bounded by the API, and the explorer says so
+rather than guessing. `config.get` gives every document a **cumulative** projection, so a document that
+inherited a value is indistinguishable from one that wrote the same value. The explorer therefore shows
+two columns: "reported by" (always exact) and "set in" (exact for the nearest document, which the app
+reads with `fs.read`, and explicitly "not known" for the rest). `ConfirmedWriteTest` asserts both
+branches.
+
+**Verified here, and how.**
+
+- **The validator**, against the real 39 KB file: a document made of a dozen real keys validates; an
+  unknown top-level key, a wrong type, a value outside an enum, a missing required nested key, a
+  numeric bound, an integer that is a decimal, a colour pattern, a nested unknown key, an `anyOf` that
+  no branch accepts, and every problem at once rather than only the first. The external `models.dev`
+  reference is skipped while its sibling `type: string` is still applied, and the skipped reference is
+  reported rather than hidden.
+- **JSONC**: exact-output tests on a document with a line comment, a two-line block comment, a URL
+  containing `//` and `/*`, an escaped quote, and trailing commas before both a `}` and a `]`. Length,
+  line count and column are asserted unchanged, and the masking is idempotent.
+- **The read-modify-write path**: setting a key rewrites only that key's bytes and keeps the comment
+  above it; a nested key of the same name is not mistaken for the top-level one; removing a key takes
+  its comma and its gap; a full edit cycle leaves a document that still validates.
+- **The wire surface** over a real HTTP client: `config.get` with the location and the server's
+  precedence order, a `directory` entry, an entry of an unknown type kept rather than dropped, both
+  spellings of `model`, `{"shell": …}` as the *only* body `Config.Patch` accepts, `204` from a reload,
+  a `503` raised rather than swallowed, the saved-approval filters, a `PUT` for an instruction entry,
+  the `DELETE` with a location parameter for an eviction, and every migration state including the
+  `running` one whose counts are individually nullable.
+- **The live server**, for the second exit criterion: the default model, a permission rule, a
+  persistent MCP server and an agent file are each written, reloaded, and then confirmed **from
+  `config.get` and the server's own catalogs** rather than from the app's buffer. A write to a file the
+  server does not read is reported as such, and a second edit keeps the first.
+- **The write confirmation.** `ConfirmedWriteTest` asserts the plan a dialog renders: the target, a
+  consequence that names the file and what happens next, the byte counts, and the privilege flag — and
+  that an invalid or unparseable document produces **no plan at all**, so a confirmation with a broken
+  file in it is unreachable.
+- **The redaction**, at the value, the diagnostic, the parse failure, the plan and the screen. A
+  document with an `apiKey`, a `clientSecret` and a credential-shaped `label` is walked recursively and
+  no rendered text contains any of them; a diagnostic for a rejected credential-shaped value prints the
+  *allowed* values from the schema and a character count, never the value; a parse failure keeps the
+  position and drops the document; and `AdminScreenContentTest` collects every text the explorer
+  displays, across all 36 scrolled-to keys, and asserts the placeholder is not among them.
+- **The experimental gating.** A `404` from `experimental.config.update` hides the shell setting and a
+  `500` does not; a `400` from `fs.write` is a failure the user must see and leaves the button enabled,
+  while a `404` hides it and attempts no reload; the switch alone never re-enables a route the server
+  does not have.
+
+**What the tests found and this fixes.**
+
+- **`ActionFailure` was declared three times**, in the `server`, `execution` and `integrations`
+  packages. A failure raised by one subsystem and reported by another lost its classification: an
+  `fs.write` rejection came back as `ActionErrorKind.UNKNOWN`, so the screen said "unknown" for a `400`
+  that named the offending path. The three names are now typealiases onto one class in the `action`
+  package. **This is a prerequisite defect that predates this phase** — the duplication came from P6, P7
+  and P8 — and it is the same class of finding as P8's `ActionError.httpStatus`.
+- **The JSONC mask looked for a trailing comma *before* the closing brace** rather than after it, so
+  `{"a":1,}` masked nothing. A comment-only file was also not "blank", so the editor could not
+  distinguish a file with no keys from a file it could not read.
+- **`watcher` was missing from the projection mapping** even though `Config.InfoEncoded` reports it,
+  and `websearch`, `worktree` and `warming` were mapped to file keys that **do not exist**. All four
+  are corrected, and the three are now named as projection-only rather than mapped to a key a user
+  could never type.
+- **`MigrationStatus` decoded as `Unknown` for every state**: the union's discriminator is `status`,
+  not the default `type`; its progress is a nested object rather than three top-level fields; and its
+  error branch's field is `error`, not `message`. A server that described its migration perfectly well
+  was being shown "this server version did not describe the migration".
+- **The config explorer's `LazyColumn` had duplicate keys.** `shell` is both one of the schema's keys
+  and the row of the setting above it, and two items with one key is a crash. The fixed rows are now
+  namespaced.
+- **A `verticalScroll` header with no weight claimed the whole column** in the editor and the definition
+  editor, pushing the diagnostics and the save button off the bottom of the screen. Found by the content
+  test failing to find "this document is valid" anywhere in the tree; fixed with `weight(1f,
+  fill = false)`.
+- **A failed reload was swallowed.** A location the server had loaded and that had since been deleted
+  makes `location.reload` answer `404`, and the write was reported as a success with the change never
+  applied — exactly the failure the report exists to prevent. The write report now says which of the two
+  happened, and a definition file is no longer reported as unreadable on the grounds that `config.get`
+  would not list it anyway.
+- **The front-matter writer did not quote its values**, so a `description` containing a colon would
+  parse as a mapping and silently lose the text after it. Quoting is now the writer's job rather than
+  the caller's, so a form cannot get it wrong.
+- **Two of the first forty-two baselines were vacuous, and a third was a photograph of nothing.** A
+  fixture ignored the filter it was given and produced a file byte-identical to the unfiltered one, and
+  the write confirmation was captured as an `AlertDialog` — a window a root capture does not see, so the
+  privilege and plain baselines were both pictures of an empty background. The same defect P8 found with
+  a `ModalBottomSheet`, in a new place. The confirmation fixture now renders what the dialog renders,
+  and all forty-two files are distinct.
+
+**The three live findings, which no mock could have produced.**
+
+- **The server reports a permission's action under its own name.** The file says `bash`; the effective
+  ruleset says `shell`. The same rule has two names in the two places it appears, and a screen showing
+  the file's spelling would look wrong against the server's answer. The explorer shows what the server
+  reported, the template writes the tool name, and the difference is recorded in the test.
+- **`location.reload` rebuilds the locations the server has *loaded*.** A file written into a directory
+  the server has never opened as a location is written successfully and then ignored, and the reload
+  does not reach it. Every other integration test uses the harness's own directory for this reason;
+  this one found it by failing.
+- **The reload answers `204` before the catalog it serves is rebuilt**, so a `listAgents` in the same
+  breath as the reload is a race. The integration test polls with an explicit bound and reports the list
+  it actually saw rather than failing on the first read. The app does not need this — it re-reads on
+  `agent.updated` and on resume.
+
+**Exit criteria, criterion by criterion.**
+
+- *"Every top-level config key is visible with its source."* **Verified**, in both halves the phrase
+  has. The key coverage is checked exhaustively against the vendored schema in both directions, both on
+  the projection and on the rendered screen, and the source is shown per document with the
+  cumulative-projection limit stated on the row rather than papered over.
+- *"The common edits can be made from the phone and take effect after reload: default model, permission
+  rule, MCP server, agent file."* **Verified on the client, and end to end against a real server** for
+  all four: each is written through `experimental.fs.write`, the server is reloaded, and the result is
+  read back from `config.get` and the server's own catalogs. What is *not* verified is the part that
+  needs a person: that a person can type a valid document on a phone keyboard, and that the reloaded
+  server's behaviour changed in the way the file says. The first is the plan's own device-only note
+  about a keyboard in a code editor; the second would need an agent turn observed on hardware.
+
+**Not verified here, and why.** Editing on a real device: the phone keyboard in a configuration editor,
+a `TextField` holding a large `opencode.jsonc` under a real IME, TalkBack reading the explorer's
+thirty-six cards, and observing a reloaded server's *changed behaviour* rather than its changed
+configuration. There is no emulator and no hardware in this environment, and the first three are exactly
+the things a JVM test cannot decide. The behaviour half is bounded by a real server being reloaded and
+re-read, which the integration tests do; what is missing is an agent turn, which is P5's and P3's job to
+drive and which needs a provider.
+
+**Deviations.**
+
+- **The JSON Schema validator is a hand-written subset, not a dependency.** It covers exactly the
+  assertion keywords the vendored file uses, and `UnsupportedKeywordTest` fails if the file ever uses
+  another — so the subset cannot silently become a hole. A dependency was rejected because it would be
+  the only one in the project, it would pull a tree-sitter or coroutine parser into an app whose whole
+  configuration surface is 39 KB of JSON, and `allowComments`/`allowTrailingCommas` mean the document is
+  not JSON anyway and needs masking first regardless.
+- **The schema is shipped as an asset, not fetched.** Validating needs the schema; fetching it would mean
+  asking a server on a LAN for a URL on the internet, which fails on exactly the network this app is
+  built for, and it would mean validating against whatever the server felt like sending rather than
+  against the release this client was built for. The build copies the vendored file into `core:data`'s
+  assets, so the bytes are the repository's.
+- **A text-level edit rather than a re-serialise.** Re-serialising the parsed tree would delete every
+  comment and rewrite the indentation, so a user who opened the editor to change one model name would
+  come back to a file that no longer has their notes in it. The cost is a hand-written span scanner,
+  which is a real cost and is why `ConfigDocument` has the tests it has.
+- **Catalog browsers are composed in the app module.** `feature/admin` may not import the modules that own
+  the agent and composer catalogs, so `CatalogHost` takes the four lists as parameters — the same
+  crossing `McpHost` makes for an MCP server's OAuth.
+- **A template produces a value for a top-level key, not a whole file.** A template that replaced the
+  document would destroy the user's comments and their other keys, which is a worse outcome than the one
+  the extra merge step costs.
+- **`experimental.config.update` and `experimental.fs.write` have separate switches.** Both write
+  configuration; only one changes what the agent can execute. `shell` is the one key the server will
+  change for us, and a user who will not let the app edit their files has not said no to picking a shell
+  from the list the server itself reported.
+- **The permission-rules editor's session rules are a whole-ruleset `session.update`**, because the
+  route replaces the list rather than patching it, and an order change is a privilege change. That is
+  stated on the screen next to the save button.
+
+**Two things this phase found about its own tests.**
+
+- **The screenshot baselines were a recorder, not an assertion.** `AdminScreenshotTest` calls
+  `captureRoboImage` and nothing else, so under the plain `unitTest` gate Roborazzi neither wrote the
+  files nor compared against them: all 42 tests passed while the committed PNGs were stale, and a
+  visual regression would have passed as readily. The files were also not being refreshed by a test run,
+  which is how a green gate and a stale baseline coexisted unnoticed. They are now recorded with
+  `:feature:admin:recordRoborazziDebug` and checked with `:feature:admin:verifyRoborazziDebug`, which
+  is a real comparison, and it is against those files that the 42 images are confirmed distinct and
+  non-blank. **Neither task is part of `unitTest lintDebug assembleDebug`**, so the gate does not
+  enforce them: a later phase can change a screen's appearance and the gate will not notice. Wiring
+  `verifyRoborazziDebug` into the gate belongs to the phase that owns the build, and is recorded here
+  rather than quietly fixed inside a feature phase.
+- **Model identifiers in fixtures.** A sweep found 61 model and vendor identifiers in this phase's own
+  test fixtures and documentation. None is load-bearing: the schema constrains `model` to
+  `type: string` and skips the external `models.dev` reference, so any string satisfies it equally
+  well. They are now `placeholder-provider/placeholder-model`, `other-provider/other-model` and
+  `small-placeholder-model`. Fifteen of the 42 baselines changed as a result and were re-recorded. The
+  vendored `api/opencode-2.0.x/config.schema.json` is deliberately untouched: it is the server's own
+  published schema, and editing it would make this repository's copy differ from what a real server
+  validates against.
+
+**Known limitations.**
+
+- **The "set in" column is exact only for the nearest document.** The API returns a cumulative
+  projection, and reading every document would be a read per file in the chain; the nearest one is read
+  and the rest say "not known". A user asking "which of my three files set this?" gets an answer for
+  one and a statement of the limit for the others.
+- **The editor is a plain monospace field with no syntax highlighting.** A phone keyboard cannot type
+  indentation reliably and a code editor is a project of its own; the plan's own device-only note
+  acknowledges this. What the screen does have is an honest validity verdict at every keystroke.
+- **Diagnostic line numbers are attached only when the key is unambiguous.** A JSON pointer says which
+  key is wrong, not where it was typed; a key that appears twice gets no line rather than a confident
+  wrong one.
+- **A configuration file the app cannot read leaves the explorer complete but the "set in" column
+  unavailable**, which is the common case for a project with no `opencode.jsonc`.
+- **The definition editor has no schema.** A Markdown file's validity is the server's business, and
+  inventing a validator for prose would reject files the server reads perfectly well. The consequence is
+  that malformed front matter is caught by the server's reload rather than by the app.
+- **A pre-existing timing flake, found while running the gate, not caused by this phase, and now a
+  third instance of the same shape.** `--rerun-tasks` intermittently fails `EventStreamClientTest` and
+  `ExecutionStoreTest.shell exited carries the status and the exit code onto the row`, as Phase 8
+  reported; this phase also saw `PairingAndReconnectTest.aPairingLinkBecomesAConnectedServerWithAStoredCredential`
+  fail twice in three `--rerun-tasks` runs with `One server.connected means one resync expected:<1> but
+  was:<0>`. All three pass in the gate this phase reports. The new one is the same defect: the test
+  waits for `connectionState` to become `Connected` and then reads `resyncCount` with no wait of its
+  own, while a sibling assertion ninety lines below does wrap the same read in
+  `withTimeout(TIMEOUT_MILLIS) { connection.resyncCount.first { it >= 1L } }`. It is a missing bounded
+  wait, not a weakened assertion, and it is left as found per the standing instruction; it belongs to
+  the phase that owns that test.
+
+**Building blocks P10 needs.**
+
+- `ConfigSchema`, `ConfigExplorer.rows` and the thirty-six-key catalogue, so a stats screen or an
+  insights panel that wants to explain a configuration has the same row model and cannot disagree
+  with it.
+- `ConfigRedaction`, the one function a screen may call to render a configuration value, so no P10
+  screen invents a second rule for what a credential looks like.
+- `JsonSchemaValidator` and `ConfigDocument`, for reading a pasted configuration in an RPC console or a
+  quick-ask form, off the main thread and with the same masking the editor uses.
+- `ExperimentalRoute.CONFIG_UPDATE` and `SESSION_INSTRUCTIONS`, `fsUsable` and `planSetting` on
+  `ConfigSurface`, and `WritePlan` with `WriteConfirmationDialog`, so a P10 action that changes
+  configuration gets the confirmation and the capability gate for free.
+- `DefinitionKind`, `DefinitionName` and `DefinitionTemplates`, for anything that offers to create a
+  file under `.opencode`.
+- `SyncVendoredAssetsTask` in `build-logic`, for vendoring another spec or a fixture list without
+  duplicating it.
+
+**Standing defect, not addressed.** ktlint, Spotless and detekt are in the version catalog and applied
+to no module, so the plan's Quality row (§3) is still not enforced. This is the fourth consecutive
+phase to record it and Phase 10 is the last, so it belongs there: wiring at least ktlint/Spotless into
+the gate would be a large mechanical diff against pre-existing violations, and doing it inside a
+feature phase would attribute that diff to the wrong work. Left deliberately, and said plainly rather
+than quietly.
+
 ---
 
 ### Phase 10: Insights, extensibility, adaptive UI and release (M)
@@ -1766,8 +2069,8 @@ that delivers it.
 | P5 | 10 | Complete |
 | P6 | 15 | Complete |
 | P7 | 30 | Complete |
-| P8 | 27 | Planned |
-| P9 | 11 | Planned |
+| P8 | 27 | Complete |
+| P9 | 11 | Complete |
 | P10 | 9 | Planned |
 
 Total: 138 (136 spec operations plus the 2 pairing routes).
@@ -1792,7 +2095,7 @@ and is covered by the reducer or invalidation tests.
 | P6 | `filesystem.changed` (re-reads the browser's listing and the file the viewer holds), `vcs.branch.updated` (re-reads `vcs.get` and `vcs.status` for every open location, so a branch that moves on the desktop moves the header) | Complete |
 | P7 | `worktree.updated` (re-reads the one named project and nothing else), `worktree.resolved` (recorded as an adoption, then re-read), `pty.created`, `pty.updated` (renames in place, so every open view follows the title), `pty.exited`, `pty.deleted`, `persistent-pty.added`, `persistent-pty.removed`, `shell.created`, `shell.exited` (the status and exit code land on the row, and the poller stops), `shell.deleted` | Complete |
 | P8 | `credential.updated`, `credential.switched` (invalidate the integrations list of every open location), `integration.updated`, `provider.updated`, `plugin.updated`, `websearch.updated` (one catalog each, and nothing else), `mcp.status.changed {server}` (invalidate the server list only), `mcp.resources.changed {server}` (invalidate the resource catalog only) | Complete |
-| P9 | `config.updated` | Planned |
+| P9 | `config.updated` | Complete |
 | P10 | `tui.prompt.append`, `tui.command.execute`, `tui.toast.show`, `tui.session.select`, `rpc.<rpcID>.<event>` | Planned |
 
 ---

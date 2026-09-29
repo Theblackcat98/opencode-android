@@ -23,7 +23,7 @@ class JsoncTest {
         val source = """
             {
               // the default model
-              "model": "anthropic/claude",
+              "model": "placeholder-provider/placeholder-model",
 
               /* a block
                  comment over two lines */
@@ -42,7 +42,7 @@ class JsoncTest {
         val expected = listOf(
             "{",
             "  ${spaces.take("// the default model".length)}",
-            """  "model": "anthropic/claude",""",
+            """  "model": "placeholder-provider/placeholder-model",""",
             "",
             "  ${spaces.take("/* a block".length)}",
             "     ${spaces.take("comment over two lines */".length)}",
@@ -53,7 +53,7 @@ class JsoncTest {
         ).joinToString("\n")
         assertEquals(expected, masked)
         // And every value survived, which is the part that matters.
-        assertTrue(masked.contains("""anthropic/claude"""))
+        assertTrue(masked.contains("""placeholder-provider/placeholder-model"""))
         assertTrue(masked.contains(""""manual""""))
     }
 

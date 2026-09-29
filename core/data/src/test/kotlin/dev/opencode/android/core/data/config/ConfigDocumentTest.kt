@@ -37,7 +37,7 @@ class ConfigDocumentTest {
         val source = """
             {
               // which model new sessions start on
-              "model": "anthropic/claude",
+              "model": "placeholder-provider/placeholder-model",
               /* the project keeps its own share setting */
               "share": "disabled",
             }
@@ -48,7 +48,7 @@ class ConfigDocumentTest {
         val document = parsed.documentOrNull
         assertNotNull(document)
         assertEquals(setOf("model", "share"), ConfigDocument.topLevelKeys(source))
-        assertEquals("anthropic/claude", (document!!["model"] as JsonPrimitive).content)
+        assertEquals("placeholder-provider/placeholder-model", (document!!["model"] as JsonPrimitive).content)
         assertEquals(emptyList<SchemaDiagnostic>(), validator.validate(document))
     }
 
@@ -101,15 +101,15 @@ class ConfigDocumentTest {
     fun `setting a key rewrites only that key's bytes`() {
         val source = """{
   // the default model for new sessions
-  "model": "anthropic/claude",
+  "model": "placeholder-provider/placeholder-model",
   "share": "manual"
 }"""
-        val edited = ConfigDocument.setInText(source, "model", JsonPrimitive("openai/gpt"))
+        val edited = ConfigDocument.setInText(source, "model", JsonPrimitive("placeholder-provider/other-model"))
 
         assertEquals(
             """{
   // the default model for new sessions
-  "model": "openai/gpt",
+  "model": "placeholder-provider/other-model",
   "share": "manual"
 }""",
             edited,
@@ -123,14 +123,14 @@ class ConfigDocumentTest {
     fun `adding a key keeps every comment and the file's own indentation`() {
         val source = """{
   // notes about this project
-  "model": "anthropic/claude"
+  "model": "placeholder-provider/placeholder-model"
 }"""
         val edited = ConfigDocument.setInText(source, "share", JsonPrimitive("disabled"))
 
         assertEquals(
             """{
   // notes about this project
-  "model": "anthropic/claude",
+  "model": "placeholder-provider/placeholder-model",
   "share": "disabled"
 }""",
             edited,
@@ -226,11 +226,11 @@ class ConfigDocumentTest {
     fun `a full edit cycle keeps the document valid and the comments intact`() {
         val source = """{
   // keep this
-  "model": "anthropic/claude",
+  "model": "placeholder-provider/placeholder-model",
   "mcp": { "files": { "type": "remote", "url": "https://mcp.example.com/" } }
 }"""
         var text = source
-        text = ConfigDocument.setInText(text, "model", JsonPrimitive("openai/gpt"))
+        text = ConfigDocument.setInText(text, "model", JsonPrimitive("placeholder-provider/other-model"))
         text = ConfigDocument.setInText(text, "share", JsonPrimitive("disabled"))
 
         assertTrue(text.contains("keep this"))
@@ -266,11 +266,11 @@ class ConfigTemplatesTest {
     fun `the default model template writes the string the file schema accepts`() {
         // The projection also accepts the three-field object, and writing it here would be rejected by
         // the file's own schema — which is the class of mistake this validator exists to catch.
-        val outcome = ConfigTemplates.build(schema, ModelTemplate("anthropic", "claude-sonnet-4", "high"), json("{}"))
+        val outcome = ConfigTemplates.build(schema, ModelTemplate("placeholder-provider", "placeholder-model", "high"), json("{}"))
 
         assertTrue(outcome is TemplateOutcome.Ready)
         val document = (outcome as TemplateOutcome.Ready).document as JsonObject
-        assertEquals("anthropic/claude-sonnet-4#high", (document["model"] as JsonPrimitive).content)
+        assertEquals("placeholder-provider/placeholder-model#high", (document["model"] as JsonPrimitive).content)
     }
 
     @Test
@@ -278,18 +278,18 @@ class ConfigTemplatesTest {
         // Neither half present, an empty provider, an empty model, and a provider that contains the
         // separator — all four are things a form can produce and the schema will not accept.
         listOf(
-            ModelTemplate("", "claude"),
-            ModelTemplate("anthropic", ""),
+            ModelTemplate("", "placeholder-model"),
+            ModelTemplate("placeholder-provider", ""),
             // A variant carrying a second `#`, which the spec's pattern does not allow.
-            ModelTemplate("anthropic", "claude", "a#b"),
+            ModelTemplate("placeholder-provider", "placeholder-model", "a#b"),
         ).forEach { template ->
             assertTrue("$template is not a model reference", ConfigTemplates.build(schema, template, json("{}")) is TemplateOutcome.NotReady)
         }
         // And the shapes the form does produce are accepted, a blank variant field meaning "no variant".
         listOf(
-            ModelTemplate("anthropic", "claude"),
-            ModelTemplate("anthropic", "claude", ""),
-            ModelTemplate("anthropic", "claude", "  "),
+            ModelTemplate("placeholder-provider", "placeholder-model"),
+            ModelTemplate("placeholder-provider", "placeholder-model", ""),
+            ModelTemplate("placeholder-provider", "placeholder-model", "  "),
         ).forEach {
             assertTrue("$it is a model reference", ConfigTemplates.build(schema, it, json("{}")) is TemplateOutcome.Ready)
         }
@@ -336,7 +336,7 @@ class ConfigTemplatesTest {
         val template = AgentTemplate(
             name = "review",
             mode = "subagent",
-            model = "anthropic/claude",
+            model = "placeholder-provider/placeholder-model",
             steps = 20,
             color = "#FF5733",
             description = "Reviews a diff",
@@ -348,7 +348,7 @@ class ConfigTemplatesTest {
         val agent = (outcome as TemplateOutcome.Ready).document.let { it as JsonObject }["agent"]
         val review = (agent as JsonObject).getValue("review") as JsonObject
         assertEquals("subagent", (review["mode"] as JsonPrimitive).content)
-        assertEquals("anthropic/claude", (review["model"] as JsonPrimitive).content)
+        assertEquals("placeholder-provider/placeholder-model", (review["model"] as JsonPrimitive).content)
         assertEquals(20, (review["steps"] as JsonPrimitive).content.toInt())
         assertEquals("#FF5733", (review["color"] as JsonPrimitive).content)
         assertEquals("""{"edit":"ask","bash":"deny"}""", review["permission"].toString())
@@ -467,12 +467,12 @@ class ConfigTemplatesTest {
 
     @Test
     fun `a template merges into an existing document without losing what is there`() {
-        val existing = """{"model": "anthropic/claude", "watcher": {"ignore": [".git/**"]}}"""
-        val outcome = ConfigTemplates.build(schema, ModelTemplate("openai", "gpt"), ConfigDocument.parse(existing).documentOrNull!!)
+        val existing = """{"model": "placeholder-provider/placeholder-model", "watcher": {"ignore": [".git/**"]}}"""
+        val outcome = ConfigTemplates.build(schema, ModelTemplate("other-provider", "other-model"), ConfigDocument.parse(existing).documentOrNull!!)
 
         val document = (outcome as TemplateOutcome.Ready).document as JsonObject
         // The model was replaced, which is the point; the watcher was left alone, which is the promise.
-        assertEquals("openai/gpt", (document["model"] as JsonPrimitive).content)
+        assertEquals("other-provider/other-model", (document["model"] as JsonPrimitive).content)
         assertTrue("an unrelated key must survive", document.containsKey("watcher"))
     }
 

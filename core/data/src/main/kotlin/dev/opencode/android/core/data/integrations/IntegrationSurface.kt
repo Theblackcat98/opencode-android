@@ -483,6 +483,23 @@ class IntegrationSurface(
         }
     }
 
+    /**
+     * Invalidates every catalog, for an event that names no particular one.
+     *
+     * **`config.updated` is the case that needs it.** A configuration document can name a provider, an
+     * MCP server or a plugin, and the event carries no payload, so the only correct response is the
+     * blunt one: stop answering from catalogs the app now knows are stale. The events that *do* name
+     * something are the narrow ones and are handled in [apply].
+     */
+    fun invalidate() {
+        integrations.values.forEach { it.invalidate() }
+        providers.values.forEach { it.invalidate() }
+        mcpServers.values.forEach { it.invalidate() }
+        mcpResources.values.forEach { it.invalidate() }
+        plugins.values.forEach { it.invalidate() }
+        webSearchProviders.values.forEach { it.invalidate() }
+    }
+
     /** A `server.connected` resync: the client has no idea what it missed, so everything is re-read. */
     fun resync() {
         integrations.values.forEach { it.invalidate() }

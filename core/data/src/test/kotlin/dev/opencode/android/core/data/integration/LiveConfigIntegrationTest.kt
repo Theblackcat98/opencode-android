@@ -16,6 +16,10 @@ import dev.opencode.android.core.testing.VendoredSpec
 import dev.opencode.android.core.network.ServerApi
 import dev.opencode.android.core.network.ServerApiFactory
 import dev.opencode.android.core.testing.integration.DevServerHarness
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -57,6 +61,9 @@ class LiveConfigIntegrationTest {
     private lateinit var workDirectory: String
     private val configPath = mutableMapOf<String, String>()
 
+    /** The scope the surface's `config.get` resources load on, cancelled in [tearDown]. */
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
+
     @Before
     fun setUp() = runBlocking {
         assumeTrue("the dev server is not running; scripts/dev-server.sh start", DevServerHarness.isAvailable)
@@ -75,6 +82,8 @@ class LiveConfigIntegrationTest {
             admin = RetrofitAdminApi(api),
             files = FileReader(api),
             schema = schema,
+            scope = scope,
+            serverId = "live",
         )
         // **The harness's own directory, not a subdirectory of it, and that is a finding rather than a
         // preference.** `location.reload` rebuilds the locations the server has *loaded*; a directory
@@ -90,6 +99,7 @@ class LiveConfigIntegrationTest {
 
     @After
     fun tearDown() {
+        scope.cancel()
         // **Restore every file this test touched, and put an empty configuration back where there was
         // none.** `fs.write` cannot remove a file, and the harness's `.opencode` had no
         // `opencode.jsonc` before this test ran, so `{}` is the closest state the route can reach — and

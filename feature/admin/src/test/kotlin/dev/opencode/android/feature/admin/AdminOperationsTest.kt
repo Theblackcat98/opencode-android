@@ -6,6 +6,10 @@ import mockwebserver3.Dispatcher
 import mockwebserver3.MockResponse
 import mockwebserver3.MockWebServer
 import mockwebserver3.RecordedRequest
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.test.runTest
 import okhttp3.OkHttpClient
 import dev.opencode.android.core.data.action.ActionErrorKind
@@ -120,6 +124,15 @@ abstract class AdminServerTest {
 
     protected val server: AdminServer get() = harness
 
+    /**
+     * The scope a [ConfigSurface]'s `config.get` resources load on.
+     *
+     * Unconfined rather than a test dispatcher, because the surface's own `sync` is awaited by these
+     * tests and a resource that published on a queued dispatcher would make the assertion about its
+     * contents a race.
+     */
+    protected val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
+
     @Before
     fun startServer() {
         harness = AdminServer()
@@ -127,6 +140,7 @@ abstract class AdminServerTest {
 
     @After
     fun stopServer() {
+        scope.cancel()
         harness.close()
     }
 }
@@ -150,9 +164,9 @@ class AdminOperationsTest : AdminServerTest() {
             [
               {"type":"directory","path":"/work"},
               {"type":"document","path":"/root/.config/opencode/opencode.json",
-               "info":{"model":"anthropic/claude","shell":"/bin/sh"}},
+               "info":{"model":"placeholder-provider/placeholder-model","shell":"/bin/sh"}},
               {"type":"document","path":"/work/app/.opencode/opencode.jsonc",
-               "info":{"model":"openai/gpt","shell":"/bin/zsh","share":"disabled",
+               "info":{"model":"placeholder-provider/other-model","shell":"/bin/zsh","share":"disabled",
                        "permissions":[{"action":"bash","resource":"*","effect":"ask"}],
                        "watcher":{"ignore":[".git/**"]},
                        "${'$'}schema":"https://opencode.ai/config.json"}}
@@ -167,8 +181,8 @@ class AdminOperationsTest : AdminServerTest() {
         assertEquals(2, documents.size)
         // The order in the answer *is* the precedence, and the test says so by index.
         assertEquals("/root/.config/opencode/opencode.json", documents[0].path)
-        assertEquals("anthropic/claude", documents[0].info.model?.display())
-        assertEquals("openai/gpt", documents[1].info.model?.display())
+        assertEquals("placeholder-provider/placeholder-model", documents[0].info.model?.display())
+        assertEquals("placeholder-provider/other-model", documents[1].info.model?.display())
         assertEquals("/bin/zsh", documents[1].info.shell)
         assertEquals("disabled", documents[1].info.share)
         assertEquals(listOf("bash"), documents[1].info.permissions?.map { it.action })
@@ -195,14 +209,14 @@ class AdminOperationsTest : AdminServerTest() {
     fun `both spellings of the model key decode`() = runTest {
         server.answer(
             "GET /api/config",
-            """[{"type":"document","info":{"model":{"providerID":"anthropic","model":"claude","variant":"high"}}}]""",
+            """[{"type":"document","info":{"model":{"providerID":"placeholder-provider","model":"placeholder-model","variant":"high"}}}]""",
         )
 
         val document = server.api.getConfig(server.directory).single() as
             dev.opencode.android.core.model.ConfigEntry.Document
 
-        assertEquals("anthropic/claude#high", document.info.model?.display())
-        assertEquals("anthropic/claude#high", document.info.model?.toFileString())
+        assertEquals("placeholder-provider/placeholder-model#high", document.info.model?.display())
+        assertEquals("placeholder-provider/placeholder-model#high", document.info.model?.toFileString())
     }
 
     // ------------------------------------------------------------------------------ the shell setter
@@ -405,6 +419,8 @@ class AdminOperationsTest : AdminServerTest() {
             admin = RetrofitAdminApi(server.api),
             files = FileReader(server.api),
             schema = ConfigSchema.parse(VendoredSpec.configSchemaText()),
+            scope = scope,
+            serverId = "s1",
         ).planSetting(
             target = ".opencode/opencode.jsonc",
             consequence = "test",

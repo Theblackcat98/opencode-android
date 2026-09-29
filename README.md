@@ -5,14 +5,40 @@ network, or any network your phone can reach, and drives the server's full featu
 
 ## Status
 
-Phase 8, *Providers, integrations, MCP and plugins*, is complete. The app pairs with one or more OpenCode servers,
+Phase 9, *Configuration and administration*, is complete. The app pairs with one or more OpenCode servers,
 keeps a live event stream to each of them, **drives** them from the phone, stays reachable while it works, says
 what a prompt is about to carry before it sends it, shows what the agent changed and lets you take it back, gives
-you a real terminal, a command panel, the subagent tree and parallel worktrees, and now manages the server's own
-accounts, providers, MCP servers and plugins without you touching the machine it runs on. The phase table is in
-[`docs/ANDROID_APP_PLAN.md`](docs/ANDROID_APP_PLAN.md#6-phases).
+you a real terminal, a command panel, the subagent tree and parallel worktrees, manages the server's own
+accounts, providers, MCP servers and plugins, and now reads and edits the server's configuration from the
+phone. The phase table is in [`docs/ANDROID_APP_PLAN.md`](docs/ANDROID_APP_PLAN.md#6-phases).
 
 What works today:
+
+- **The configuration explorer.** Every top-level key of the server's published configuration schema, in the
+  schema's own order, with its type, description, source documents and the server's own effective value. The row
+  list is generated from the vendored schema rather than typed out, and a test asserts it against that file in
+  both directions — so a key nothing sets still has a card, and a card for a key the schema does not declare
+  would fail the build.
+- **A validated editor for `opencode.jsonc`.** Read with `fs.read`, edited, validated against the vendored
+  schema, confirmed with a plan that names the file, the consequence, the byte counts and whether privileges
+  change, written with `experimental.fs.write`, reloaded with `location.reload`, and then read back from
+  `config.get` — the server's own answer is the diagnostic. Comments and indentation survive; only the bytes of
+  the key you changed are rewritten.
+- **Guided edits for the four common ones** — a persistent MCP server, a permission rule, the default model and
+  a new agent — each merged into your existing document rather than replacing it, and each validated before the
+  confirmation is reachable.
+- **Definition files.** An agent, a command, a skill and `AGENTS.md`, with front matter written from named
+  fields and the body left as your prose.
+- **Permissions and instructions.** Saved approvals per project, a session's own rules with the precedence
+  warning shown rather than hidden, and session instructions you can list, add and remove.
+- **Maintenance from the phone.** Reload with its consequence spelled out, the loaded locations, an evict behind
+  a confirmation that names the directory, the V1 migration, and an update banner carrying the host's upgrade
+  command.
+- **Secrets stay secret.** A configuration file holds API keys, and this is the phase that reads the whole file,
+  so values are redacted by the schema's own shape at every point they could travel — the explorer, a
+  diagnostic, a parse failure, a write plan and a screenshot. A rejected credential-shaped value reports the
+  allowed values and a character count, never the value.
+- And from Phase 8:
 
 - **Accounts, at `/connect` parity.** Every integration, the ways into it and the logins that already exist. An
   **API key** is asked for in a masked field with a show/hide toggle, the method's own form (an Azure resource
@@ -168,13 +194,20 @@ Services. Build both with `./gradlew assembleDebug`.
 ./gradlew assembleDebug     # play and fdroid debug APKs
 ```
 
-Screenshot baselines are refreshed with:
+Screenshot baselines are refreshed with, and checked with:
 
 ```bash
 ./gradlew :feature:sessions:testDebugUnitTest -Proborazzi.test.record=true
 ./gradlew :feature:execution:testDebugUnitTest -Proborazzi.test.record=true
 ./gradlew :feature:integrations:testDebugUnitTest -Proborazzi.test.record=true
+./gradlew :feature:admin:testDebugUnitTest -Proborazzi.test.record=true
+
+./gradlew verifyRoborazziDebug   # compares every baseline; fails on a difference
 ```
+
+`unitTest` runs the screenshot tests, but **without a Roborazzi record or verify flag they neither write
+the baselines nor compare against them**, so a visual change passes the gate silently. Run
+`verifyRoborazziDebug` when you touch a screen; only `verifyRoborazziDebug` is a real assertion.
 
 Integration tests need the real server:
 

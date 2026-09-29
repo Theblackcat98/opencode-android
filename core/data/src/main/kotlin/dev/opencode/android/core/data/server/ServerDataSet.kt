@@ -162,6 +162,8 @@ class ServerDataSet(
         admin = RetrofitAdminApi(api),
         files = files,
         schema = schema,
+        scope = scope,
+        serverId = serverId,
     )
 
     /**
@@ -322,6 +324,25 @@ class ServerDataSet(
             -> execution.apply(event)
 
             is InstallationUpdated, is InstallationUpdateAvailable -> installation.apply(event)
+
+            // Phase 9: `config.updated` means a configuration document changed, which can be anything
+            // from a file the app wrote to one the user edited on the desktop. Every catalog that is
+            // *derived* from configuration is invalidated — the agents, the models, the composer
+            // catalogs, the MCP servers, the providers and the configuration documents themselves —
+            // because there is no payload to say which key moved and a `config.get` comparison would be
+            // the only way to know. The events that name one thing (`mcp.status.changed`,
+            // `agent.updated`) are the narrow ones and are handled above.
+            //
+            // **The whole set, once, and debounced by the store.** A configuration file with twenty
+            // keys can emit twenty frames, and one refetch per frame is twenty requests for one edit.
+            is EventPayload.ConfigUpdated -> {
+                agents.values.forEach { it.invalidate() }
+                models.values.forEach { it.invalidate() }
+                defaultModels.values.forEach { it.invalidate() }
+                composerCatalogs.invalidate(null)
+                integrations.invalidate()
+                configuration.invalidate(null)
+            }
 
             // The Phase 8 catalogs. All of these events are empty-payload except the two MCP ones, so
             // the location in the envelope is the only thing to act on and an event without one

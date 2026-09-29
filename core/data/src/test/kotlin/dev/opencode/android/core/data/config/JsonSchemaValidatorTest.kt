@@ -32,8 +32,8 @@ class JsonSchemaValidatorTest {
             """
             {
               "${'$'}schema": "https://opencode.ai/config.json",
-              "model": "anthropic/claude-sonnet-4",
-              "small_model": "anthropic/claude-haiku",
+              "model": "placeholder-provider/placeholder-model",
+              "small_model": "placeholder-provider/small-placeholder-model",
               "default_agent": "build",
               "share": "disabled",
               "autoupdate": "notify",
@@ -44,7 +44,7 @@ class JsonSchemaValidatorTest {
               "subagent_depth": 3,
               "instructions": ["AGENTS.md", "docs/style.md"],
               "plugin": ["opencode-plugin-hooks"],
-              "enabled_providers": ["anthropic"],
+              "enabled_providers": ["placeholder-provider"],
               "disabled_providers": ["ollama"],
               "tool_output": { "max_lines": 400, "max_bytes": 40000 },
               "watcher": { "ignore": [".git/**"] },
@@ -194,7 +194,7 @@ class JsonSchemaValidatorTest {
         // `model` is `{"type": "string", "$ref": "https://models.dev/model-schema.json#/$defs/Model"}`.
         // A validator that followed the `$ref` exclusively would apply no check at all to the one key
         // the guided default-model template writes.
-        assertSameProblems(emptyList(), validator.validate(json("""{"model": "anthropic/claude"}""")))
+        assertSameProblems(emptyList(), validator.validate(json("""{"model": "placeholder-provider/placeholder-model"}""")))
 
         val wrong = validator.validate(json("""{"model": 42}"""))
         assertEquals(listOf("type"), wrong.map { it.keyword })

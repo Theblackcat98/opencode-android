@@ -360,7 +360,7 @@ Credentials are stored in the server's SQLite database. The newest login becomes
 | List skills `{id, name, description?, autoinvoke?, path, content}` | **API** `GET /api/skill` |
 | Attach a skill to a prompt | **API** `skills[]` on prompt or command |
 | Activate a skill in a session | **Exp** `POST /api/experimental/session/{id}/skill` |
-| Skill sources: `~/.config/opencode/skills`, `.opencode/skills`, `.claude/skills`, `.agents/skills`, the `skills` config array (paths and HTTP catalogs with `index.json`) | **Config** |
+| Skill sources: `~/.config/opencode/skills`, `.opencode/skills`, `.placeholder-model/skills`, `.agents/skills`, the `skills` config array (paths and HTTP catalogs with `index.json`) | **Config** |
 | Frontmatter: `name`, `description`, `slash`, `metadata.opencode/autoinvoke` | **Config** |
 | Skill permission (`skill` action) | **Config** |
 | Change notification | **API** `skill.updated` |

@@ -8,6 +8,9 @@ import dev.opencode.android.core.data.capability.ExperimentalRoute
 import dev.opencode.android.core.data.capability.RouteAvailability
 import dev.opencode.android.core.data.integrations.ActionFailure
 import dev.opencode.android.core.data.server.FileReader
+import dev.opencode.android.core.data.sync.ResourceKey
+import dev.opencode.android.core.data.sync.SyncStatus
+import dev.opencode.android.core.data.sync.SyncedResource
 import dev.opencode.android.core.data.server.ServerDataSet
 import dev.opencode.android.core.model.ConfigEntry
 import dev.opencode.android.core.model.InstructionEntry
@@ -63,13 +66,35 @@ class ConfigSurface(
     private val admin: AdminApi,
     private val files: FileReader,
     private val schema: ConfigSchema,
+    private val scope: kotlinx.coroutines.CoroutineScope,
+    private val serverId: String,
 ) {
-
     // ------------------------------------------------------------------------------ capability
 
     private val configUpdateState = MutableStateFlow<RouteAvailability>(RouteAvailability.Unknown)
     private val instructionsState = MutableStateFlow<RouteAvailability>(RouteAvailability.Unknown)
     private val fsWriteState = MutableStateFlow<RouteAvailability>(RouteAvailability.Unknown)
+
+    /**
+     * `config.get` per directory, as a [SyncedResource].
+     *
+     * **A resource and not a bare read, because `config.updated` has to mean something.** The event
+     * says "a configuration document changed" with no payload, so the only correct response is to stop
+     * answering from a cache the app now knows is stale — and a bare read has no cache to stop
+     * answering from. It is keyed by directory for the reason every other catalog is: a project's
+     * configuration is not another's.
+     */
+    private val entries = java.util.concurrent.ConcurrentHashMap<String, SyncedResource<List<ConfigEntry>>>()
+
+    /** `config.get` for [directory], as a resource a caller can `sync`, watch and invalidate. */
+    fun entries(directory: String?): SyncedResource<List<ConfigEntry>> = entries.getOrPut(directory.orEmpty()) {
+        SyncedResource(
+            key = ResourceKey(serverId, "config:${directory.orEmpty()}"),
+            name = "config.get(${directory.orEmpty()})",
+            scope = scope,
+            loader = { admin.getConfig(directory) },
+        )
+    }
 
     /** Whether this server has `experimental.config.update`. */
     val configUpdate: StateFlow<RouteAvailability> = configUpdateState.asStateFlow()
@@ -139,9 +164,20 @@ class ConfigSurface(
     suspend fun documents(
         directory: String?,
         facts: Map<Int, ConfigFileFacts> = emptyMap(),
-    ): ConfigDocuments = guarded { admin.getConfig(directory) }
-        .map { ConfigDocuments(it, ConfigExplorer.rows(schema, it, facts)) }
-        .getOrElse { ConfigDocuments(emptyList(), emptyList(), failure = it.classified()) }
+    ): ConfigDocuments {
+        val store = entries(directory)
+        store.sync()
+        val state = store.state.value
+        if (state.status is SyncStatus.Failed) {
+            return ConfigDocuments(
+                entries = emptyList(),
+                rows = emptyList(),
+                failure = ActionFailure((state.status as SyncStatus.Failed).error.toActionError()),
+            )
+        }
+        val list = state.value.orEmpty()
+        return ConfigDocuments(list, ConfigExplorer.rows(schema, list, facts))
+    }
 
     /**
      * The classification of a throwable that came out of a call.
@@ -156,6 +192,20 @@ class ConfigSurface(
 
     /** The vendored schema, which every screen reads its key list and its validator from. */
     fun schema(): ConfigSchema = schema
+
+    /**
+     * Drops the cached documents for a location, which is what `config.updated` asks for.
+     *
+     * **Invalidated rather than re-read here.** The event means "something changed", not "here is the
+     * new value", so the honest response is to stop answering from a cache the app now knows is stale;
+     * the next read asks the server. Re-reading from inside the event handler would make a twenty-key
+     * edit cost twenty requests.
+     */
+    fun invalidate(directory: String? = null) {
+        if (directory != null) entries(directory).invalidate() else entries.values.forEach { it.invalidate() }
+    }
+
+
 
     /**
      * Reads a configuration file's own text, for the editor and for a document's source facts.
