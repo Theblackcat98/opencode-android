@@ -54,6 +54,26 @@ enum class ExperimentalRoute {
      * said they want it fetching URLs.
      */
     WELLKNOWN_INTEGRATION,
+
+    /**
+     * `PATCH /api/experimental/config` — the global `shell` setting.
+     *
+     * **Its own switch, and separate from [FS_WRITE] on purpose.** Both write configuration; only one
+     * of them changes how the agent behaves. `shell` decides which program runs for the `bash` tool and
+     * for every terminal, and [FS_WRITE] can write anything at all, so a switch that covered both
+     * would either be too broad for a shell picker or too narrow for a file editor. Two switches, two
+     * confirmations, two different words in the dialog.
+     */
+    CONFIG_UPDATE,
+
+    /**
+     * `GET`/`PUT`/`DELETE` on `api/experimental/session/{id}/instructions/entries`.
+     *
+     * **One switch for three routes because they are one feature**: an entry can only be removed if it
+     * was put and only be put if the list can be read, and a panel that could add an instruction but
+     * not take it away would be worse than no panel.
+     */
+    SESSION_INSTRUCTIONS,
     ;
 
     /** The label the settings switch shows, which `strings.xml` supplies. */

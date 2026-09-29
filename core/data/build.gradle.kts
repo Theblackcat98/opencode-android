@@ -33,3 +33,28 @@ dependencies {
     testImplementation(libs.androidx.room.runtime)
     testImplementation(libs.robolectric)
 }
+
+// ------------------------------------------------------------------ the vendored config schema
+//
+// The configuration editor validates `opencode.jsonc` against `api/opencode-2.0.x/config.schema.json`,
+// which Phase 0 vendored for exactly this. It is **copied** into this module's assets rather than
+// duplicated as a checked-in resource, so the bytes the app validates against are the repository's
+// bytes and a schema update is one `git pull` rather than two edits that can disagree.
+//
+// `SyncVendoredAssetsTask` is used rather than `Copy` because AGP's generated-source-directory API
+// needs a `DirectoryProperty` output and Gradle's copy tasks only expose a `File`; registering the
+// directory through `variant.sources.assets` is also what makes the dependency explicit, so a clean
+// checkout cannot fail later at packaging with an asset-not-found that says nothing about the cause.
+val syncConfigSchema = tasks.register<SyncVendoredAssetsTask>("syncConfigSchema") {
+    label.set("vendored configuration schema")
+    from.set(rootProject.layout.projectDirectory.dir("api/opencode-2.0.x"))
+    include.set(setOf("config.schema.json"))
+    rename.set(emptyMap())
+    into.set(layout.buildDirectory.dir("generated/configSchema"))
+}
+
+androidComponents {
+    onVariants { variant ->
+        variant.sources.assets?.addGeneratedSourceDirectory(syncConfigSchema, SyncVendoredAssetsTask::into)
+    }
+}

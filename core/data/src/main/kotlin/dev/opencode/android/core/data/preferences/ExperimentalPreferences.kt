@@ -46,6 +46,26 @@ data class ExperimentalSettings(
      * the user's part of that decision.
      */
     val wellknownIntegrations: Boolean = false,
+    /**
+     * Whether this app may set the server's global `shell`. Off by default.
+     *
+     * **Its own switch rather than a fifth use of [fileWrites].** `shell` decides which program runs
+     * the `bash` tool and every terminal on the server, so it is a behaviour change, but it is a
+     * single documented key on a route that accepts nothing else (`Config.Patch` is
+     * `additionalProperties: false`). A user who will not let the app edit their configuration files
+     * has not said no to picking a shell from the list the server itself reported, and a user who
+     * says yes to the shell picker has not said yes to arbitrary text being written to disk.
+     */
+    val configUpdate: Boolean = false,
+    /**
+     * Whether this app may read and write a session's durable instruction entries. Off by default.
+     *
+     * **A separate switch because these entries change what the agent is told, in a session that is
+     * already running.** A file write is a change the user makes deliberately and reviews; an
+     * instruction entry announces itself at the next step boundary of a session mid-turn, so the
+     * user has less of a chance to notice it. That is a different risk and gets its own consent.
+     */
+    val sessionInstructions: Boolean = false,
 )
 
 /**
@@ -74,6 +94,10 @@ interface ExperimentalPreferences {
     suspend fun setMcpRuntime(enabled: Boolean)
 
     suspend fun setWellknownIntegrations(enabled: Boolean)
+
+    suspend fun setConfigUpdate(enabled: Boolean)
+
+    suspend fun setSessionInstructions(enabled: Boolean)
 }
 
 /** The DataStore-backed store the app uses. */
@@ -89,6 +113,8 @@ class DataStoreExperimentalPreferences @Inject constructor(
             persistentPty = preferences[PERSISTENT_PTY] ?: false,
             mcpRuntime = preferences[MCP_RUNTIME] ?: false,
             wellknownIntegrations = preferences[WELLKNOWN_INTEGRATIONS] ?: false,
+            configUpdate = preferences[CONFIG_UPDATE] ?: false,
+            sessionInstructions = preferences[SESSION_INSTRUCTIONS] ?: false,
         )
     }
 
@@ -112,11 +138,21 @@ class DataStoreExperimentalPreferences @Inject constructor(
         context.experimentalPreferences.edit { it[WELLKNOWN_INTEGRATIONS] = enabled }
     }
 
+    override suspend fun setConfigUpdate(enabled: Boolean) {
+        context.experimentalPreferences.edit { it[CONFIG_UPDATE] = enabled }
+    }
+
+    override suspend fun setSessionInstructions(enabled: Boolean) {
+        context.experimentalPreferences.edit { it[SESSION_INSTRUCTIONS] = enabled }
+    }
+
     private companion object {
         val FILE_WRITES = booleanPreferencesKey("fs_write")
         val SESSION_TRANSFER = booleanPreferencesKey("session_transfer")
         val PERSISTENT_PTY = booleanPreferencesKey("persistent_pty")
         val MCP_RUNTIME = booleanPreferencesKey("mcp_runtime")
         val WELLKNOWN_INTEGRATIONS = booleanPreferencesKey("wellknown_integrations")
+        val CONFIG_UPDATE = booleanPreferencesKey("config_update")
+        val SESSION_INSTRUCTIONS = booleanPreferencesKey("session_instructions")
     }
 }

@@ -1,5 +1,6 @@
 package dev.opencode.android.core.data.server
 
+import dev.opencode.android.core.data.config.ConfigSchema
 import dev.opencode.android.core.data.connection.ServerConnection
 import dev.opencode.android.core.data.connection.ServerConnectionManager
 import dev.opencode.android.core.data.repository.ServerRepository
@@ -36,6 +37,7 @@ class ServerDataRegistry @Inject constructor(
     private val apiFactory: ServerApiFactory,
     private val cache: ReadCacheStore,
     private val selfCheck: TimelineSelfCheck,
+    private val schema: ConfigSchema,
 ) {
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val sets = LinkedHashMap<String, ServerDataSet>()
@@ -78,6 +80,7 @@ class ServerDataRegistry @Inject constructor(
             scope = scope,
             cache = cache,
             selfCheck = selfCheck,
+            schema = schema,
         ).also { sets[profile.id] = it }
     }
 
@@ -94,6 +97,7 @@ class ServerDataRegistry @Inject constructor(
             scope = scope,
             cache = cache,
             selfCheck = selfCheck,
+            schema = schema,
         )
         sets[profile.id] = set
         bind(set, connection)

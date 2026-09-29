@@ -17,6 +17,7 @@ dependencies {
     compileOnly(libs.ksp.gradle.plugin)
     compileOnly(libs.room.gradle.plugin)
     compileOnly(libs.roborazzi.gradle.plugin)
+    implementation(libs.kotlin.gradle.plugin)
 }
 
 tasks {

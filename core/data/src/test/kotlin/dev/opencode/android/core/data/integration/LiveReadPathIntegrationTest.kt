@@ -1,5 +1,5 @@
 package dev.opencode.android.core.data.integration
-
+import dev.opencode.android.core.data.config.VendoredSchema
 import dev.opencode.android.core.data.server.ServerDataSet
 import dev.opencode.android.core.data.timeline.TimelineConvergence
 import dev.opencode.android.core.data.timeline.TimelineReducer
@@ -208,7 +208,7 @@ class LiveReadPathIntegrationTest {
     @Test
     fun `a store set reaches the same state the API returns`() = runBlocking {
         val sessionID = driveTurn("stores")
-        val set = ServerDataSet("live", api, scope, NoCache)
+        val set = ServerDataSet("live", api, scope, NoCache, schema = VendoredSchema.schema())
         set.start()
 
         val session = withTimeout(STORE_TIMEOUT_MILLIS) { set.sessions.loadSession(sessionID) }

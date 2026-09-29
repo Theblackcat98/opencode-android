@@ -1,5 +1,8 @@
 package dev.opencode.android.core.data.server
 
+import dev.opencode.android.core.data.config.ConfigSchema
+import dev.opencode.android.core.data.config.ConfigSurface
+import dev.opencode.android.core.data.config.RetrofitAdminApi
 import dev.opencode.android.core.data.integrations.IntegrationSurface
 import dev.opencode.android.core.data.timeline.TimelineDivergence
 import dev.opencode.android.core.data.execution.ExecutionSurface
@@ -64,6 +67,7 @@ class ServerDataSet(
     private val scope: CoroutineScope,
     private val cache: ReadCacheStore,
     private val selfCheck: TimelineSelfCheck = TimelineSelfCheck.Noop,
+    private val schema: ConfigSchema,
 ) {    /** `project.list`. Not location-scoped: one list for the whole server. */
     val projects: SyncedResource<List<Project>> = SyncedResource(
         key = ResourceKey(serverId),
@@ -140,6 +144,25 @@ class ServerDataSet(
 
     /** `fs.read`, `fs.find` and the file browser behind the file viewer. */
     val files: FileReader = FileReader(api)
+
+    /**
+     * The Phase 9 surface: `config.get` and its rows, the shell setting, the saved approvals, the
+     * session instruction entries, the loaded locations and the V1 migration status — plus the file
+     * write path, because every configuration edit outside `shell` is a file edit (features doc §33.5).
+     *
+     * **Declared after [files] because it wraps it, and Kotlin initializes in declaration order.**
+     * The file writer is what turns a validated document into bytes on the server's disk, and this
+     * phase has no other route for editing anything but `shell`.
+     *
+     * **The schema arrives as a value, not as a `Context`.** It is the app's vendored asset parsed
+     * once by Hilt, which is what lets the explorer and the validator be tested on the JVM against the
+     * real 39 KB file rather than against a hand-written subset of it.
+     */
+    val configuration: ConfigSurface = ConfigSurface(
+        admin = RetrofitAdminApi(api),
+        files = files,
+        schema = schema,
+    )
 
     /**
      * The composer's catalogs: `command.list`, `skill.list`, `reference.list` and the `fs.find`

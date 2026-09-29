@@ -1,5 +1,5 @@
 package dev.opencode.android.core.data.server
-
+import dev.opencode.android.core.data.config.VendoredSchema
 import dev.opencode.android.core.data.sync.SyncStatus
 import dev.opencode.android.core.model.event.Event
 import dev.opencode.android.core.network.ServerApi
@@ -68,6 +68,7 @@ class ServerDataSetComposerEventsTest {
             api = api,
             scope = scope,
             cache = FakeReadCacheStore(),
+            schema = VendoredSchema.schema(),
         )
     }
 

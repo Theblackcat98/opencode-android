@@ -4,6 +4,8 @@ import dev.opencode.android.core.model.AgentInfo
 import dev.opencode.android.core.model.CommandAttempt
 import dev.opencode.android.core.model.CommandAttemptStatus
 import dev.opencode.android.core.model.CommandInfo
+import dev.opencode.android.core.model.ConfigEntry
+import dev.opencode.android.core.model.ConfigPatchRequest
 import dev.opencode.android.core.model.ConnectCommandRequest
 import dev.opencode.android.core.model.ConnectKeyRequest
 import dev.opencode.android.core.model.ConnectOAuthCompleteRequest
@@ -17,13 +19,17 @@ import dev.opencode.android.core.model.FormDetail
 import dev.opencode.android.core.model.FormInfo
 import dev.opencode.android.core.model.FormReplyPayload
 import dev.opencode.android.core.model.InboxUpdateRequest
+import dev.opencode.android.core.model.InstructionEntry
+import dev.opencode.android.core.model.InstructionEntryRequest
 import dev.opencode.android.core.model.IntegrationInfo
 import dev.opencode.android.core.model.InterruptResult
+import dev.opencode.android.core.model.LoadedLocation
 import dev.opencode.android.core.model.LocationInfo
 import dev.opencode.android.core.model.LocationScoped
 import dev.opencode.android.core.model.McpAddRequest
 import dev.opencode.android.core.model.McpResourceCatalog
 import dev.opencode.android.core.model.McpServer
+import dev.opencode.android.core.model.MigrationStatus
 import dev.opencode.android.core.model.ModelInfo
 import dev.opencode.android.core.model.OAuthAttempt
 import dev.opencode.android.core.model.OAuthAttemptStatus
@@ -42,6 +48,7 @@ import dev.opencode.android.core.model.PtyCreateRequest
 import dev.opencode.android.core.model.PtyTicketToken
 import dev.opencode.android.core.model.PtyUpdateRequest
 import dev.opencode.android.core.model.ReferenceInfo
+import dev.opencode.android.core.model.SavedPermission
 import dev.opencode.android.core.model.ServerInfo
 import dev.opencode.android.core.model.SessionCommandRequest
 import dev.opencode.android.core.model.SessionCompactRequest
@@ -1290,4 +1297,140 @@ interface ServerApi {
         @Body body: WebSearchQueryRequest,
         @Query(LocationParam.QUERY_KEY) directory: String? = null,
     ): LocationScoped<WebSearchResponse>
+
+    // -------------------------------------- Phase 9: configuration, permissions and maintenance
+
+    // ------------------------------------------------------------------ config (4 operations)
+
+    /**
+     * `config.get`: the configuration documents and discovery sources for a location, **from lowest
+     * to highest priority** (features doc §33.3).
+     *
+     * **The order in the answer is the precedence order**, and it is the only place that order comes
+     * from: the client does not sort these by path, because a project file has to beat the global one
+     * and a path sort would not produce that. An entry is either a parsed `document` (with its own
+     * cumulative `info`) or a `directory` the server searched and found nothing in, and the second
+     * kind is kept because "your key is not taking effect because the file is in the wrong place" is
+     * exactly what a `directory` entry explains.
+     */
+    @GET("api/config")
+    suspend fun getConfig(
+        @Query(LocationParam.QUERY_KEY) directory: String? = null,
+    ): List<ConfigEntry>
+
+    /**
+     * `experimental.config.update`: `{"shell": "…"}`.
+     *
+     * **`shell` is the only key this route accepts** (`Config.Patch` is `additionalProperties:
+     * false` with `shell` required), and it writes the **global** configuration rather than the
+     * location's. That asymmetry is why it is a separate method from the file editor and why its
+     * confirmation names the global file: a user editing their project's file would not expect a
+     * button to change the file every project on the box reads.
+     */
+    @PATCH("api/experimental/config")
+    suspend fun updateConfig(
+        @Body body: ConfigPatchRequest,
+    ): Unit
+
+    /**
+     * `location.reload`: shuts down and rebuilds every loaded location.
+     *
+     * `204` once all replacement builds settle, and `503` while a location cannot be rebuilt. It
+     * emits `location.shutdown` per location, which is the event the client uses to drop and then
+     * re-read its caches — so the response arriving means the rebuild is done and the next read is
+     * the new configuration rather than the old one.
+     */
+    @POST("api/location/reload")
+    suspend fun reloadLocations(): Unit
+
+    // ------------------------------------------------------------------ saved permissions (2)
+
+    /**
+     * `permission.saved.list`: the standing approvals, optionally for one project.
+     *
+     * Each row is one remembered `(projectID, action, resource)` decision, so removing one makes the
+     * server ask again for that exact action — a privilege change in the other direction, which is
+     * why the removal is confirmed (plan §5.2).
+     */
+    @GET("api/permission/saved")
+    suspend fun listSavedPermissions(
+        @Query("projectID") projectID: String? = null,
+    ): DataResponse<List<SavedPermission>>
+
+    /** `permission.saved.remove`: forgets one standing approval. `204`. */
+    @DELETE("api/permission/saved/{id}")
+    suspend fun removeSavedPermission(
+        @Path("id") id: String,
+    ): Unit
+
+    // ------------------------------------------------------------------ session instructions (3)
+
+    /**
+     * `experimental.session.instructions.entry.list`: the durable instruction entries of one session.
+     *
+     * "Durable" is the operative word (features doc §26): an entry is not a chat message, it is a
+     * key and value attached to the session and announced as updates at the next step boundary, so it
+     * survives the turn it was added in.
+     */
+    @GET("api/experimental/session/{sessionID}/instructions/entries")
+    suspend fun listInstructionEntries(
+        @Path("sessionID") sessionID: String,
+    ): DataResponse<List<InstructionEntry>>
+
+    /**
+     * `experimental.session.instructions.entry.put`: attaches or replaces one entry. `204`.
+     *
+     * The value is sent as a **JSON string** and the server parses it, which is the only way a phone
+     * can enter a value of any JSON type: the spec's body is `{"value": …}` with no type, and a
+     * client that could only send strings could not write the object or array entries that make an
+     * entry useful. A `413` comes back as
+     * [dev.opencode.android.core.model.ApiError.InstructionEntryValueTooLarge].
+     */
+    @PUT("api/experimental/session/{sessionID}/instructions/entries/{key}")
+    suspend fun putInstructionEntry(
+        @Path("sessionID") sessionID: String,
+        @Path("key") key: String,
+        @Body body: InstructionEntryRequest,
+    ): Unit
+
+    /** `experimental.session.instructions.entry.remove`: drops one entry. `204`. */
+    @DELETE("api/experimental/session/{sessionID}/instructions/entries/{key}")
+    suspend fun removeInstructionEntry(
+        @Path("sessionID") sessionID: String,
+        @Path("key") key: String,
+    ): Unit
+
+    // ------------------------------------------------------------------ loaded locations (2)
+
+    /**
+     * `debug.location.list`: the locations the server currently holds cached services for.
+     *
+     * **Not location-scoped**, which is the point: it is the one route that answers "what is this
+     * server holding right now", so it cannot take a location.
+     */
+    @GET("api/debug/location")
+    suspend fun listLoadedLocations(): List<LoadedLocation>
+
+    /**
+     * `debug.location.evict`: drops one location's cached services so its next use boots them fresh.
+     *
+     * **Disruptive but recoverable.** Anything cached for that location is rebuilt on next use, so
+     * nothing is lost — but the location's running work is interrupted, which is why the confirmation
+     * names the directory rather than the action.
+     */
+    @DELETE("api/debug/location")
+    suspend fun evictLocation(
+        @Query(LocationParam.QUERY_KEY) directory: String? = null,
+    ): Unit
+
+    // ------------------------------------------------------------------ migration (1)
+
+    /**
+     * `experimental.migration.v1.status`: the V1-to-V2 session-history migration.
+     *
+     * `running` is the only state with progress and its `numerator`/`denominator` are individually
+     * nullable, so a screen must show the label alone rather than a `0/0` it would have invented.
+     */
+    @GET("api/experimental/migration/v1")
+    suspend fun getMigrationStatus(): MigrationStatus
 }

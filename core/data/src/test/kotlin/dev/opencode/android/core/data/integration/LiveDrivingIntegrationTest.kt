@@ -1,5 +1,5 @@
 package dev.opencode.android.core.data.integration
-
+import dev.opencode.android.core.data.config.VendoredSchema
 import dev.opencode.android.core.data.action.ActionErrorKind
 import dev.opencode.android.core.data.forms.FormEngine
 import dev.opencode.android.core.data.server.EventDispatcher
@@ -90,7 +90,7 @@ class LiveDrivingIntegrationTest {
         val password = DevServerHarness.password!!
         api = ServerApiFactory(okHttpClient = OkHttpClient(), credentialProvider = { password })
             .createForReads(DevServerHarness.url!!.trimEnd('/'))
-        set = ServerDataSet("live", api, scope, NoCache)
+        set = ServerDataSet("live", api, scope, NoCache, schema = VendoredSchema.schema())
         commands = set.commands
         requests = set.requests
     }
