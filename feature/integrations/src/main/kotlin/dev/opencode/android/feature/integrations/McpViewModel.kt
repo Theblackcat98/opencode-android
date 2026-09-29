@@ -2,6 +2,7 @@ package dev.opencode.android.feature.integrations
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.opencode.android.core.data.action.ActionError
 import dev.opencode.android.core.data.action.toActionError
 import dev.opencode.android.core.data.integrations.IntegrationSurface
@@ -74,6 +75,7 @@ data class McpUiState(
  * `needs_auth` without one gets a row that says so and no button, because there is no flow this
  * client could start.
  */
+@HiltViewModel
 class McpViewModel @Inject constructor(
     private val dataSets: ServerDataRegistry,
     private val experimental: ExperimentalPreferences,

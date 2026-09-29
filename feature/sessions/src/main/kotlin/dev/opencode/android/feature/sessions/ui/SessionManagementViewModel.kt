@@ -2,6 +2,7 @@ package dev.opencode.android.feature.sessions.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.opencode.android.core.data.action.ActionError
 import dev.opencode.android.core.data.action.toActionError
 import dev.opencode.android.core.data.server.ServerDataRegistry
@@ -31,6 +32,7 @@ import javax.inject.Inject
  * **Copy produces text through [TranscriptFormatter]**, not through the composables, so what the
  * clipboard receives is a pure function of the message list and is unit tested.
  */
+@HiltViewModel
 class SessionManagementViewModel @Inject constructor(
     private val dataSets: ServerDataRegistry,
 ) : ViewModel() {

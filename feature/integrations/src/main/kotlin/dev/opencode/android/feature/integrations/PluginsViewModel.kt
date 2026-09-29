@@ -2,6 +2,7 @@ package dev.opencode.android.feature.integrations
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.opencode.android.core.data.action.ActionError
 import dev.opencode.android.core.data.action.toActionError
 import dev.opencode.android.core.data.server.ServerDataRegistry
@@ -55,6 +56,7 @@ data class PluginsUiState(
  * failure, not an empty answer: "the registry is unreachable" and "everything is current" are
  * opposites and the status line has to say which one happened.
  */
+@HiltViewModel
 class PluginsViewModel @Inject constructor(
     private val dataSets: ServerDataRegistry,
 ) : ViewModel() {
@@ -200,6 +202,7 @@ data class ProvidersUiState(
  * links to the editor, which is the honest arrangement rather than a control that silently does
  * nothing.
  */
+@HiltViewModel
 class ProvidersViewModel @Inject constructor(
     private val dataSets: ServerDataRegistry,
 ) : ViewModel() {
@@ -272,6 +275,7 @@ data class WebSearchUiState(
  * whether their default works needs to know *which* provider answered — so the screen shows
  * [WebSearchResponse.providerID] and never the requested value.
  */
+@HiltViewModel
 class WebSearchViewModel @Inject constructor(
     private val dataSets: ServerDataRegistry,
 ) : ViewModel() {

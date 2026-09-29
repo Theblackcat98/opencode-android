@@ -2,6 +2,7 @@ package dev.opencode.android.feature.sessions.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.opencode.android.core.data.attention.OpenSessionTracker
 import dev.opencode.android.core.data.attention.SessionViewMarker
 import dev.opencode.android.core.data.connection.ServerConnectionManager
@@ -111,6 +112,7 @@ sealed interface SessionActivityUi {
  * graph has to keep in step with, so a deep link into a server that is not active yet still lands
  * on the right home.
  */
+@HiltViewModel
 class HomeViewModel @Inject constructor(
     private val connectionManager: ServerConnectionManager,
     private val servers: ServerRepository,
@@ -139,10 +141,15 @@ class HomeViewModel @Inject constructor(
  * the store, so the list cannot disagree with the events that produced it (plan §4.2, "The server
  * echoes; the client never guesses").
  */
-class SessionListViewModel @Inject constructor(
+@HiltViewModel
+class SessionListViewModel(
     private val dataSets: ServerDataRegistry,
     clock: () -> Long = System::currentTimeMillis,
 ) : ViewModel() {
+    /** Hilt's constructor: Dagger cannot supply the clock, so the production one is fixed here. */
+    @Inject
+    constructor(dataSets: ServerDataRegistry) : this(dataSets, System::currentTimeMillis)
+
     private val searchText = MutableStateFlow("")
 
     /**
@@ -259,11 +266,19 @@ private fun List<SessionRow>.filterBySearch(search: String): List<SessionRow> {
  * (plan §6). Both come from the server: the tokens from the session's own projection and the limit
  * from the location's model catalog, which is why the set keeps a models catalog per directory.
  */
-class SessionViewModel @Inject constructor(
+@HiltViewModel
+class SessionViewModel(
     private val dataSets: ServerDataRegistry,
     private val openSessions: OpenSessionTracker,
     clock: () -> Long = System::currentTimeMillis,
 ) : ViewModel() {
+    /** Hilt's constructor: Dagger cannot supply the clock, so the production one is fixed here. */
+    @Inject
+    constructor(
+        dataSets: ServerDataRegistry,
+        openSessions: OpenSessionTracker,
+    ) : this(dataSets, openSessions, System::currentTimeMillis)
+
     private val follow = MutableStateFlow(true)
     private val openSession = MutableStateFlow<String?>(null)
 

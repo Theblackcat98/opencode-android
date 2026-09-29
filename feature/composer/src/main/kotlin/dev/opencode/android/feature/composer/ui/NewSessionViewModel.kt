@@ -2,6 +2,7 @@ package dev.opencode.android.feature.composer.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.opencode.android.core.data.catalog.AgentCatalog
 import dev.opencode.android.core.data.catalog.ModelCatalog
 import dev.opencode.android.core.data.preferences.ModelPreferences
@@ -93,6 +94,7 @@ data class NewSessionUiState(
  * joining and normalizing locally: a path this client invented is one the server never offered.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
+@HiltViewModel
 class NewSessionViewModel @Inject constructor(
     private val dataSets: ServerDataRegistry,
     private val modelPreferences: ModelPreferences,

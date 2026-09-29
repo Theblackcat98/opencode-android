@@ -2,6 +2,7 @@ package dev.opencode.android.feature.execution
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.opencode.android.core.data.action.toActionError
 import dev.opencode.android.core.data.attention.OpenLocationTracker
 import dev.opencode.android.core.data.execution.ShellOutputPoller
@@ -60,6 +61,7 @@ data class ShellsUiState(
  * **Killing is two steps** (plan §5.2: a dangerous action asks). [killTarget] is the row awaiting the
  * confirmation, and no request is sent until the user answers.
  */
+@HiltViewModel
 class ShellsViewModel @Inject constructor(
     private val dataSets: ServerDataRegistry,
     private val openLocations: OpenLocationTracker,

@@ -2,6 +2,7 @@ package dev.opencode.android.feature.review
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.opencode.android.core.data.action.ActionError
 import dev.opencode.android.core.data.action.toActionError
 import dev.opencode.android.core.data.capability.ExperimentalRoute
@@ -169,6 +170,7 @@ data class PromptParts(
  * happens inside it, so a thousand-line patch costs one pass on a background dispatcher and the UI
  * thread only ever sees a finished value (plan §5.4).
  */
+@HiltViewModel
 class ReviewViewModel @Inject constructor(
     private val dataSets: ServerDataRegistry,
     private val experimental: ExperimentalPreferences,

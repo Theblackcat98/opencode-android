@@ -2,6 +2,7 @@ package dev.opencode.android.feature.requests.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.opencode.android.core.data.attention.AttentionPreferences
 import dev.opencode.android.core.data.attention.AttentionSettings
 import dev.opencode.android.core.data.attention.QuietHours
@@ -52,6 +53,7 @@ data class PendingAutoApprove(
  * change is staged in [AttentionSettingsUiState.awaitingConfirmation] and only written by
  * [confirmAutoApprove]. Turning it *off* is not staged, because that is the safe direction.
  */
+@HiltViewModel
 class AttentionSettingsViewModel @Inject constructor(
     private val preferences: AttentionPreferences,
     dataSets: ServerDataRegistry,

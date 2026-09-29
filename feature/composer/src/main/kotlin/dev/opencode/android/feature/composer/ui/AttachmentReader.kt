@@ -79,8 +79,7 @@ class AttachmentReader(
     @Inject
     constructor(
         @ApplicationContext context: Context,
-        ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
-    ) : this(ContentResolverImages(context.contentResolver), ioDispatcher)
+    ) : this(ContentResolverImages(context.contentResolver))
 
     /**
      * Reads the image at [source] and prepares it for sending.

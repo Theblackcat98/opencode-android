@@ -2,6 +2,7 @@ package dev.opencode.android.feature.integrations
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.opencode.android.core.data.action.ActionError
 import dev.opencode.android.core.data.action.ActionErrorKind
 import dev.opencode.android.core.data.action.toActionError
@@ -166,6 +167,7 @@ data class PendingCredentialAction(
  * on the tap rather than after a round trip that may be on a failing network — the server is still
  * told, because an attempt nobody cancelled keeps a browser tab and a pending credential alive.
  */
+@HiltViewModel
 class ConnectViewModel @Inject constructor(
     private val dataSets: ServerDataRegistry,
     private val experimental: ExperimentalPreferences,

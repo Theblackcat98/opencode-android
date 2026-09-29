@@ -2,6 +2,7 @@ package dev.opencode.android.feature.servers.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.opencode.android.core.data.action.toActionError
 import dev.opencode.android.core.data.capability.ExperimentalRoute
 import dev.opencode.android.core.data.capability.RouteAvailability
@@ -60,6 +61,7 @@ data class HostLifecycleState(
  * accident loses every persistent terminal on the server at once, including other people's `vim`s, and
  * there is no way to get them back from the phone.
  */
+@HiltViewModel
 class HostLifecycleViewModel @Inject constructor(
     private val dataSets: ServerDataRegistry,
     private val preferences: ExperimentalPreferences,

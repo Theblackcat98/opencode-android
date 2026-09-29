@@ -2,6 +2,7 @@ package dev.opencode.android.feature.execution
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.opencode.android.core.data.action.toActionError
 import dev.opencode.android.core.data.connection.ServerConnectionManager
 import dev.opencode.android.core.data.server.ServerDataRegistry
@@ -102,6 +103,7 @@ data class TerminalUiState(
  * layouts costs at most a couple of `pty.update` calls and never sends a `size {rows: 0}` the server
  * refuses.
  */
+@HiltViewModel
 class TerminalViewModel @Inject constructor(
     private val dataSets: ServerDataRegistry,
     private val connections: ServerConnectionManager,

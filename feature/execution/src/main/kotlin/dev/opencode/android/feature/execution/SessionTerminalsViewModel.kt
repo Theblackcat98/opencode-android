@@ -2,6 +2,7 @@ package dev.opencode.android.feature.execution
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.opencode.android.core.data.action.toActionError
 import dev.opencode.android.core.data.execution.PersistentPtyAvailability
 import dev.opencode.android.core.data.execution.SessionTerminalState
@@ -82,6 +83,7 @@ data class TerminalRow(
  * controlled terminal's *rendered* screen, which is a picture of what it looked like; the live stream
  * is the WebSocket, and this pane is what there is when the route exists and the socket does not.
  */
+@HiltViewModel
 class SessionTerminalsViewModel @Inject constructor(
     private val dataSets: ServerDataRegistry,
     private val preferences: ExperimentalPreferences,

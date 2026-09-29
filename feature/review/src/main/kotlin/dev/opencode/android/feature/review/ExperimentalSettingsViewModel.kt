@@ -2,6 +2,7 @@ package dev.opencode.android.feature.review
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.opencode.android.core.data.preferences.ExperimentalPreferences
 import dev.opencode.android.core.data.preferences.ExperimentalSettings
 import kotlinx.coroutines.flow.SharingStarted
@@ -21,6 +22,7 @@ import javax.inject.Inject
  * active is a connection question and belongs to the stores; the decision "may this app write to a
  * server" is the user's and is the same whichever one they are looking at.
  */
+@HiltViewModel
 class ExperimentalSettingsViewModel @Inject constructor(
     private val preferences: ExperimentalPreferences,
 ) : ViewModel() {

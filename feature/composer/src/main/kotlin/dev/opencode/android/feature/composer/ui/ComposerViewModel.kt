@@ -2,6 +2,7 @@ package dev.opencode.android.feature.composer.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.opencode.android.core.data.action.ActionError
 import dev.opencode.android.core.data.action.ActionErrorKind
 import dev.opencode.android.core.data.catalog.AgentCatalog
@@ -253,6 +254,7 @@ data class ComposerUiState(
  * that is a projection of the session's location like everything else.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
+@HiltViewModel
 class ComposerViewModel @Inject constructor(
     private val dataSets: ServerDataRegistry,
     private val modelPreferences: ModelPreferences,

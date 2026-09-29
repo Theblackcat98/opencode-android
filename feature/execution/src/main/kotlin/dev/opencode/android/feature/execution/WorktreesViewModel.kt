@@ -2,6 +2,7 @@ package dev.opencode.android.feature.execution
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.opencode.android.core.data.action.toActionError
 import dev.opencode.android.core.data.execution.WorktreeRemoval
 import dev.opencode.android.core.data.execution.WorktreeState
@@ -58,6 +59,7 @@ data class ResolvedRow(
  * directory" is the same call. The delivery mode is passed through rather than chosen here, because
  * deciding how a queued prompt is delivered during a move is a change the user did not ask for.
  */
+@HiltViewModel
 class WorktreesViewModel @Inject constructor(
     private val dataSets: ServerDataRegistry,
 ) : ViewModel() {
@@ -262,6 +264,7 @@ data class ProjectSettingsUiState(
  * the sheet shows exactly what will be sent, and the icon it draws is the one the user last set — an
  * emoji if there is one, the URL if there is one, and the colour behind either.
  */
+@HiltViewModel
 class ProjectSettingsViewModel @Inject constructor(
     private val dataSets: ServerDataRegistry,
 ) : ViewModel() {

@@ -2,6 +2,7 @@ package dev.opencode.android.feature.review
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.opencode.android.core.data.action.ActionError
 import dev.opencode.android.core.data.action.toActionError
 import dev.opencode.android.core.data.capability.CapabilityPolicy
@@ -111,6 +112,7 @@ sealed interface TransferResult {
  * messages, each of which is summarized; doing that on the UI thread for a long session is the one
  * place this screen could drop frames, and it is a pure function so moving it costs nothing.
  */
+@HiltViewModel
 class HistoryViewModel @Inject constructor(
     private val dataSets: ServerDataRegistry,
 ) : ViewModel() {

@@ -2,6 +2,7 @@ package dev.opencode.android.feature.sessions.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.opencode.android.core.data.server.PendingRequest
 import dev.opencode.android.core.data.server.ServerDataRegistry
 import kotlinx.coroutines.flow.SharingStarted
@@ -18,6 +19,7 @@ import javax.inject.Inject
  * permission blocks the agent until it is answered, and a badge is the one signal that survives the
  * app being backgrounded (Phase 4 turns the same number into a notification).
  */
+@HiltViewModel
 class PendingRequestsViewModel @Inject constructor(
     dataSets: ServerDataRegistry,
 ) : ViewModel() {

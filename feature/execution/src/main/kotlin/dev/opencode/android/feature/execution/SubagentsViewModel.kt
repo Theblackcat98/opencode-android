@@ -2,6 +2,7 @@ package dev.opencode.android.feature.execution
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.opencode.android.core.data.action.toActionError
 import dev.opencode.android.core.data.execution.SessionNode
 import dev.opencode.android.core.data.execution.SessionTree
@@ -84,6 +85,7 @@ data class SubagentChip(
  * `session.execution.interrupted` event. A second code path would be a second thing that could disagree
  * about whether the child stopped.
  */
+@HiltViewModel
 class SubagentsViewModel @Inject constructor(
     private val dataSets: ServerDataRegistry,
 ) : ViewModel() {
