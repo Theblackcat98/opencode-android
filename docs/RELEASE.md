@@ -13,7 +13,7 @@ Everything a release needs, and an honest statement of what has not been done.
 | The Play Console track progression | **Not run.** No account, no upload. |
 | GitHub Releases | **Not published.** No release was cut. |
 | The manual test matrix | **Not run.** No device, no emulator, no second device. |
-| The Phase 10 screens | **Not built.** The operations are real and tested; nothing puts them on a display. See `docs/CHANGELOG.md`. |
+| The Phase 10 screens | **Mostly not built.** The usage dashboard exists and is not reachable from any navigation route. The RPC console, session-log viewer and the rest have a data layer and no screen; the LAN prober, theme import, palette, widget, tile, shortcuts, tabs and adaptive layouts have nothing. See Phase 11 in the plan. |
 | Version | `0.1.0`, `versionCode` 1 |
 
 **No signed artifact exists.** That is the accurate statement, and nothing in this repository claims
@@ -119,15 +119,19 @@ a debug one.** A release-only crash from a stripped serializer is a common and e
 
 ## What a release still needs that this phase could not do
 
+The full list, numbered, is Phase 11 in the plan; this is the release-facing subset.
+
 1. Run the manual test matrix and record the results. **This is the open exit criterion.**
 2. Produce a signed artifact from real signing material.
 3. Run the Play Console track progression: internal, then closed, then production.
 4. Publish the GitHub release.
-5. Build the Phase 10 screens the phase plan lists and this runbook does not have: the insights
-   dashboard, the RPC console, the session-log viewer, the widget, the Quick Settings tile, app
-   shortcuts, the command palette and leader keys, session tabs, the adaptive list-detail layouts, the
-   LAN prober and the OpenCode theme import. Their data layers are built and tested, so each is a
-   screen over something that already works.
+5. Finish the Phase 10 feature list, which is Phase 11 items 11.1 to 11.15 in
+   [`ANDROID_APP_PLAN.md`](./ANDROID_APP_PLAN.md#phase-11-screens-adaptive-ui-and-the-release-l): link the
+   built-but-unreachable usage dashboard into navigation; put screens over the RPC console, the
+   session-log viewer, quick ask, pair another device and the TUI control flows, whose data layers exist;
+   and build from nothing the LAN prober, the OpenCode theme import, the command palette and leader keys,
+   session tabs, the adaptive list-detail layouts, the widget, the Quick Settings tile, app shortcuts,
+   baseline profiles, the in-app changelog and the compatibility matrix.
 6. Fix accessibility finding **A-1** from the audit — a live region on the turn boundary — before
    the closed track, since it is the difference between the app being usable and not with a screen
    reader.

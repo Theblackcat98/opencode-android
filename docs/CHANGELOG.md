@@ -10,11 +10,11 @@ The first release candidate, and it is **not shippable**. The plan's exit criter
 that is met: see [`COVERAGE.md`](./COVERAGE.md) for the audit and
 [`MANUAL_TEST_MATRIX.md`](./MANUAL_TEST_MATRIX.md) for what still has to be run by hand.
 
-**Scope, stated plainly.** The wire and state half of Phase 10 is built and tested. The screen half is
-not: the operations below exist, are called, are capability-gated and are covered by tests over real
-HTTP, but nothing in the app puts them on a display yet. The plan's scope list for the phase is
-[`ANDROID_APP_PLAN.md`](./ANDROID_APP_PLAN.md) §6; the difference between it and this list is what is
-left to do.
+**Scope, stated plainly.** The wire and state half of Phase 10 is built and tested. One screen is built,
+the usage dashboard, and **it is not reachable**: no navigation route and no Manage entry opens it. Every
+other Phase 10 capability below has no screen, so nothing in the app puts it on a display. The plan's scope
+for the phase is [`ANDROID_APP_PLAN.md`](./ANDROID_APP_PLAN.md) §6, and everything not done is listed in its
+[Phase 11](./ANDROID_APP_PLAN.md#phase-11-screens-adaptive-ui-and-the-release-l).
 
 ### Added
 
@@ -33,10 +33,18 @@ left to do.
 - Quick ask (`experimental.generate.text`) and pair another device (`POST /api/pair` — capability-gated,
   because the route is not in the published spec).
 
-**TUI control events**, which had payload classes since P0 and no handler: a toast becomes a snackbar
-at the server's own variant, an opt-in "follow desktop" mode mirrors the TUI's session and composer and
-is off by default, and a command that would change server state is offered rather than performed. A
-command this build does not know is shown verbatim rather than dropped.
+**TUI control events**, which had payload classes since P0 and no handler. `TuiControl` maps a toast to
+a snackbar model at the server's own variant, holds an opt-in "follow desktop" mode that is off by default
+and gates prompt and session mirroring, and marks a command that would change server state as offered
+rather than performed; a command this build does not know is kept verbatim rather than dropped. These are
+asserted in tests of `TuiControl`. **Nothing in `feature` or `app` collects its flows yet**, so none of it
+is visible on a phone.
+
+**The usage dashboard screen** (`feature/insights`): the server's own day buckets drawn as a heatmap, with
+the grid described once for a screen reader; a period with no calls says so rather than showing "0%
+reliable"; `tools=none` says the column is off; an unknown mode says so instead of drawing zeros. It has a
+screen-content test and no screenshot baseline. **It is not linked into the navigation graph or the Manage
+row**, so a user cannot open it.
 
 **Coverage.** Every row in the plan's §7 and §8 matrices is implemented and tested: 138 of 138
 operations declared, wired and tested, and 94 of 94 event types handled and tested. The audit of what
@@ -55,10 +63,14 @@ regression.
   [accessibility audit](./ACCESSIBILITY_AUDIT.md), a [coverage audit](./COVERAGE.md), a
   [manual test matrix](./MANUAL_TEST_MATRIX.md) and a [release runbook](./RELEASE.md).
 
-**Not built:** the insights screens, the RPC console screen, the session-log viewer, the home-screen
-widget, the Quick Settings tile, app shortcuts, the command palette and leader keys, session tabs, the
-adaptive list-detail layouts, the LAN prober and the OpenCode theme import. The phase plan lists all
-of them; this changelog does not claim them.
+**Not built.** Everything not done is listed once, in Phase 11 of the plan. In outline:
+
+- *Data layer only, no screen:* the RPC console and `rpc.*` viewer, the session-log viewer, synthetic
+  notes, wait-until-idle, programmatic permission and form creation, quick ask, pair another device, and
+  the surfaces for the TUI control flows.
+- *Nothing exists:* the LAN prober, the OpenCode theme import, the command palette and leader keys,
+  session tabs, adaptive list-detail layouts, the home-screen widget, the Quick Settings tile, app
+  shortcuts, baseline profiles, the in-app changelog and the compatibility matrix.
 
 ### Fixed
 
@@ -85,13 +97,14 @@ of them; this changelog does not claim them.
 
 ### Known limitations
 
+- **Several matrix rows cannot pass yet**, because the feature they test does not exist (see the note in [`MANUAL_TEST_MATRIX.md`](./MANUAL_TEST_MATRIX.md)).
 - **The release candidate has not passed the manual test matrix.** There is no device, no emulator
   and no second device in the build environment. The matrix is written down and unrun; see
   [`MANUAL_TEST_MATRIX.md`](./MANUAL_TEST_MATRIX.md).
 - **No signed artifact was produced.** No keystore exists and none was created. The build is ready
   for one and refuses to pretend otherwise; see [`RELEASE.md`](./RELEASE.md).
-- An unrecognised TUI command is shown but not performed. A newer TUI's commands need an app
-  action before they can be run from the phone.
+- An unrecognised TUI command is kept but not performed, and until Phase 11 no screen shows it. A newer
+  TUI's commands need an app action before they can be run from the phone.
 - The terminal is a JavaScript grid with no semantics. The session transcript carries the same output
   and is accessible; the terminal is the power feature, not the accessible one.
 - An unencrypted `http://` server is permitted and is required for the common case. Every non-loopback

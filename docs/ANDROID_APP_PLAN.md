@@ -4,7 +4,7 @@ This plan covers a native Android app that connects to an OpenCode V2 server on 
 the phone can reach, and drives every feature the server exposes. The feature inventory it builds on is
 [`OPENCODE_V2_FEATURES.md`](./OPENCODE_V2_FEATURES.md), referred to below as "features doc § n".
 
-The work is split into eleven phases, P0 to P10. Each phase ships a usable app, and each one is built on the
+The work is split into twelve phases, P0 to P11. Each phase ships a usable app, and each one is built on the
 infrastructure of the phases before it. No phase needs to reopen an earlier one; later phases only reuse and extend
 what exists. [§7](#7-api-coverage-matrix) and [§8](#8-event-coverage-matrix) assign every API operation and every event
 type to a phase, which is how "drives every feature" is checked.
@@ -121,7 +121,7 @@ feature/review           Diffs, VCS, files, revert and fork                     
 feature/execution        Subagents, shells, terminals, worktrees                          (P7)
 feature/integrations     Providers, accounts, MCP, plugins, web search                    (P8)
 feature/admin            Configuration, permissions admin, maintenance                    (P9)
-feature/insights         Stats, RPC console, extras                                       (P10)
+feature/insights         Stats, RPC console, extras                                       (P10, P11)
 ```
 
 ### 4.2 Runtime data flow
@@ -227,7 +227,8 @@ phases that reuse it get cheaper as a result.
 | P7 | Execution surfaces | WebSocket and terminal component, process panels, worktree flows | P10 | Complete |
 | P8 | Integrations | OAuth, key and command login flows, MCP and plugin management | P9 | Complete |
 | P9 | Configuration | Config explorer and validated file editor | P10 | Complete |
-| P10 | Insights and release | Stats, RPC console, TUI control, session log, adaptive polish, release pipeline | n/a | Complete |
+| P10 | Insights and release | Stats, RPC console, TUI control, session log, adaptive polish, release pipeline | P11 | Data layer and coverage complete; one screen built and not yet reachable; the rest of the feature list and the release are **not done** (see P11) |
+| P11 | Screens, adaptive UI and the release | Every P10 capability on a screen, the adaptive shell, the release itself | n/a | **Not started** |
 
 Relative size: S is small, M is medium, L is large.
 
@@ -1934,13 +1935,28 @@ a union member arriving as something other than a JSON object threw out of the d
 falling back to `Unknown`, which would have taken the event connection down over one malformed frame.
 
 **Scope, stated plainly.** The *wire and state* half of this phase is built and tested: the nine
-operations are declared, called, capability-gated and covered by tests over real HTTP, and the TUI
-control events are handled and wired to the surfaces that read them. The *screen* half is not. There is
-no insights screen, no RPC console screen, no session-log viewer, no home-screen widget, no Quick
-Settings tile, no app shortcuts, no command palette or leader keys, no session tabs, no adaptive
-list-detail layouts, no LAN prober and no OpenCode theme import. Everything in the feature list above
-is therefore a capability rather than a screen, and this phase's Status should be read with that
-distinction in mind: the exit criterion it set is met, and the feature list it also set is not.
+operations are declared, called by a store or surface in `core/data`, capability-gated and covered by
+tests over real HTTP, and the four `tui.*` events and the `rpc.*` family are decoded, dispatched and
+reduced into `TuiControl`. The *screen* half is mostly not built, and one piece of it is built and not
+yet reachable:
+
+- **Built, tested, and not reachable.** The usage dashboard (`InsightsScreen`, `InsightsViewModel` and a
+  screen-content test). No navigation route in `app` and no `ManageDestination` entry opens it, so a
+  user cannot get to it.
+- **Wire and state only, no screen.** The RPC console, the session-log viewer (`SessionLogClient`),
+  synthetic notes, wait-until-idle, programmatic permission and form creation, quick ask, pair another
+  device (`createPairingCode`) and the `rpc.*` event viewer. `TuiControl` exposes its toast, command,
+  prompt-append and session-select flows and its follow-desktop switch, and **nothing in `feature` or
+  `app` collects them**, so a TUI toast does not yet become a snackbar on a phone.
+- **Nothing at all, not even a data layer.** The LAN prober, the OpenCode theme import, the command
+  palette and leader keys, session tabs, the adaptive list-detail layouts, the home-screen widget, the
+  Quick Settings tile and app shortcuts, baseline profiles, the in-app changelog and the published
+  compatibility matrix.
+
+"Wired" in the coverage audit means production code in `core/data` reaches the operation, not that a
+screen does, so "138 of 138 wired" and "nothing puts this on a display" are both true. The phase's
+exit criterion was coverage and it is met; the feature list it also set is not, and that difference is
+what [Phase 11](#phase-11-screens-adaptive-ui-and-the-release-l) exists to carry.
 
 What a release still has to do is in [`RELEASE.md`](./RELEASE.md): run the manual matrix on real
 hardware, produce a signed artifact from real signing material, and walk the Play track. Two open
@@ -1952,6 +1968,75 @@ The audits are [`SECURITY_REVIEW.md`](./SECURITY_REVIEW.md), [`PRIVACY_REVIEW.md
 and [`ACCESSIBILITY_AUDIT.md`](./ACCESSIBILITY_AUDIT.md). Each states what was checked mechanically and
 what needs a device, because "verified" and "read" are different answers and only the first one is
 worth anything.
+
+---
+
+### Phase 11: Screens, adaptive UI and the release (L)
+
+**Goal.** Finish what Phase 10's feature list promised and its exit criterion did not require, then do the
+release work that needs hardware, accounts and signing material. This phase exists so that everything not yet
+done is on one list. It is the measure of what is left; the other documents point here rather than keeping a
+second copy.
+
+**Builds on.** Phase 10's data layer (`InsightsSurface`, `SessionLogClient`, `TuiControl`, the capability
+policy), the forms engine, the terminal and the config surfaces.
+
+**Status.** Not started. Where an item says *data layer exists* it is a screen over something that already
+works; where it says *nothing exists* there is no code for it.
+
+**A. Put the existing capabilities on a screen**
+
+| # | Item | State today |
+| --- | --- | --- |
+| 11.1 | **Reach the usage dashboard.** A Manage entry and a navigation route, hidden on a server that does not serve `experimental.session.stats`. | Screen, view model and content test exist; nothing opens them. |
+| 11.2 | **TUI control surfaces.** Collect `TuiControl.toasts` into a snackbar, offer `commands` rather than performing state-changing ones, and add the follow-desktop switch (off by default) with prompt-append and session-select behind it. | Data layer exists; nothing collects the flows. |
+| 11.3 | **RPC console and `rpc.*` event viewer.** JSON in, answer or error out, refusing an id or method that would break the URL. | Data layer exists (`callRpc`, `TuiControl.rpcEvents`). |
+| 11.4 | **Session-log viewer.** Replay and stop at `log.synced`, cancellable. | Data layer exists (`SessionLogClient`). |
+| 11.5 | **Advanced session tools.** Synthetic notes labelled as synthetic, wait-until-idle that can be stopped, and programmatic permission and form creation labelled as plugin-created. | Data layer exists. |
+| 11.6 | **Quick ask.** A surface for `experimental.generate.text`, reused by the widget and the tile in 11.10. | Data layer exists (`generateText`). |
+| 11.7 | **Pair another device.** A QR shown on the phone, hidden on a server that answers 404 to `POST /api/pair`. | Data layer exists (`createPairingCode`). |
+
+**B. Build what does not exist yet**
+
+| # | Item | State today |
+| --- | --- | --- |
+| 11.8 | **LAN discovery helper** (opt-in, off by default, cancellable): probe the local `/24` on 49374, 4096 and custom ports for a `401 {"_tag":"UnauthorizedError"}` or `/api/info`. | Nothing exists. |
+| 11.9 | **Command palette and leader keys** (Ctrl+P and the TUI's keybinds), **plus a route to the palette that needs no keyboard** (accessibility finding A-2). | Nothing exists. |
+| 11.10 | **Home-screen widget** (running sessions, pending approvals, quick ask), **Quick Settings tile** and **app shortcuts**. | Nothing exists. The launcher badge (`LauncherBadges`) is the unread count, not these. |
+| 11.11 | **Session tabs.** | Nothing exists. |
+| 11.12 | **Adaptive list-detail layouts** for tablets, foldables and ChromeOS. | Nothing exists; no window-size-class logic is in the app. Only the P6 diff switches to side by side. |
+| 11.13 | **OpenCode theme import**: read `themes/*.json` through the file API and map the V2 tokens onto a Material colour scheme, with a contrast check on the result. | Nothing exists. |
+| 11.14 | **Baseline profiles.** | Nothing exists. |
+| 11.15 | **In-app changelog** and a **published compatibility matrix**. | Nothing exists. |
+
+**C. Fix, decide and verify**
+
+| # | Item | Source |
+| --- | --- | --- |
+| 11.16 | Accessibility **A-1**: a polite live region on the turn boundary (`session.execution.succeeded`, `permission.asked`), not on the stream. Needed before the closed track. | [`ACCESSIBILITY_AUDIT.md`](./ACCESSIBILITY_AUDIT.md) |
+| 11.17 | Contrast check over the code palette and over a sample imported theme; 2.0× font-scale baselines for the timeline and the composer. | [`ACCESSIBILITY_AUDIT.md`](./ACCESSIBILITY_AUDIT.md) |
+| 11.18 | **Owner decisions:** whether the keystore key requires user authentication; whether the unencrypted message cache stays as it is; whether to ship an app-lock switch. | [`SECURITY_REVIEW.md`](./SECURITY_REVIEW.md), [`PRIVACY_REVIEW.md`](./PRIVACY_REVIEW.md) |
+| 11.19 | Confirm no `BuildConfig.DEBUG`-gated logging beyond the one call, and re-read the `FileProvider` and extraction rules against the release's `minSdk`. | [`SECURITY_REVIEW.md`](./SECURITY_REVIEW.md) §7 |
+| 11.20 | A live-server pass: run the `Live*IntegrationTest` classes against a real `opencode serve` with a password and a fake provider. | [`COVERAGE.md`](./COVERAGE.md) |
+
+**D. The release, which needs a device, an account and signing material**
+
+| # | Item | Source |
+| --- | --- | --- |
+| 11.21 | Run [`MANUAL_TEST_MATRIX.md`](./MANUAL_TEST_MATRIX.md) on a signed, minified build and record every row. Rows for features in A and B cannot pass until those items are built. | Phase 10's second exit criterion, still open |
+| 11.22 | Run a minified (R8) release build on a device. R8 has produced an APK that no one has executed. | [`RELEASE.md`](./RELEASE.md) |
+| 11.23 | Generate a keystore and produce signed Play and F-Droid artifacts; verify with `apksigner`. | [`RELEASE.md`](./RELEASE.md) |
+| 11.24 | Walk the Play track: internal, then closed, then production. | [`RELEASE.md`](./RELEASE.md) |
+| 11.25 | Cut the GitHub release with both APKs, mapping files and SHA-256s. | [`RELEASE.md`](./RELEASE.md) |
+
+**Exit criteria.**
+
+- Every item in A and B is built, tested, and reachable from a screen, a widget, a tile or a shortcut.
+  "Reachable" is checked by a test that opens it from the app's navigation, because "declared" and
+  "wired" have already been shown not to mean that.
+- Items 11.16 to 11.20 are done or, for 11.18, decided and recorded.
+- The manual test matrix has no blank row, and the release candidate passes it.
+- A signed artifact exists and the release has been published.
 
 ---
 
@@ -2115,7 +2200,7 @@ that delivers it.
 | P7 | 30 | Complete |
 | P8 | 27 | Complete |
 | P9 | 11 | Complete |
-| P10 | 9 | Complete |
+| P10 | 9 | Complete (declared, wired and tested; screens are P11) |
 
 Total: 138 (136 spec operations plus the 2 pairing routes).
 
@@ -2140,7 +2225,7 @@ and is covered by the reducer or invalidation tests.
 | P7 | `worktree.updated` (re-reads the one named project and nothing else), `worktree.resolved` (recorded as an adoption, then re-read), `pty.created`, `pty.updated` (renames in place, so every open view follows the title), `pty.exited`, `pty.deleted`, `persistent-pty.added`, `persistent-pty.removed`, `shell.created`, `shell.exited` (the status and exit code land on the row, and the poller stops), `shell.deleted` | Complete |
 | P8 | `credential.updated`, `credential.switched` (invalidate the integrations list of every open location), `integration.updated`, `provider.updated`, `plugin.updated`, `websearch.updated` (one catalog each, and nothing else), `mcp.status.changed {server}` (invalidate the server list only), `mcp.resources.changed {server}` (invalidate the resource catalog only) | Complete |
 | P9 | `config.updated` | Complete |
-| P10 | `tui.prompt.append`, `tui.command.execute`, `tui.toast.show`, `tui.session.select`, `rpc.<rpcID>.<event>` | Planned |
+| P10 | `tui.prompt.append`, `tui.command.execute`, `tui.toast.show`, `tui.session.select`, `rpc.<rpcID>.<event>` (all decoded and reduced into `TuiControl`, and tested; **no screen collects them yet**, which is P11) | Handled and tested |
 
 ---
 
