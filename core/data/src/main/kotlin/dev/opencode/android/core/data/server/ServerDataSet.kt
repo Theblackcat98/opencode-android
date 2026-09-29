@@ -3,48 +3,48 @@ package dev.opencode.android.core.data.server
 import dev.opencode.android.core.data.config.ConfigSchema
 import dev.opencode.android.core.data.config.ConfigSurface
 import dev.opencode.android.core.data.config.RetrofitAdminApi
-import dev.opencode.android.core.data.integrations.IntegrationSurface
-import dev.opencode.android.core.data.timeline.TimelineDivergence
+import dev.opencode.android.core.data.execution.ExecutionSurface
 import dev.opencode.android.core.data.insights.InsightsSurface
 import dev.opencode.android.core.data.insights.SessionLogClient
+import dev.opencode.android.core.data.integrations.IntegrationSurface
+import dev.opencode.android.core.data.sync.ResourceKey
+import dev.opencode.android.core.data.sync.SyncedResource
+import dev.opencode.android.core.data.timeline.TimelineDivergence
 import dev.opencode.android.core.data.tui.TuiControl
-import dev.opencode.android.core.data.execution.ExecutionSurface
 import dev.opencode.android.core.database.cache.ReadCacheStore
 import dev.opencode.android.core.model.AgentInfo
 import dev.opencode.android.core.model.LocationInfo
 import dev.opencode.android.core.model.ModelInfo
 import dev.opencode.android.core.model.Project
+import dev.opencode.android.core.model.event.CredentialSwitched
 import dev.opencode.android.core.model.event.Event
 import dev.opencode.android.core.model.event.EventPayload
-import dev.opencode.android.core.model.event.InstallationUpdateAvailable
 import dev.opencode.android.core.model.event.FilesystemChanged
+import dev.opencode.android.core.model.event.InstallationUpdateAvailable
 import dev.opencode.android.core.model.event.InstallationUpdated
-import dev.opencode.android.core.model.event.ProjectUpdated
+import dev.opencode.android.core.model.event.McpResourcesChanged
+import dev.opencode.android.core.model.event.McpStatusChanged
 import dev.opencode.android.core.model.event.PersistentPtyAdded
 import dev.opencode.android.core.model.event.PersistentPtyRemoved
+import dev.opencode.android.core.model.event.ProjectUpdated
 import dev.opencode.android.core.model.event.PtyCreated
 import dev.opencode.android.core.model.event.PtyDeleted
 import dev.opencode.android.core.model.event.PtyExited
 import dev.opencode.android.core.model.event.PtyUpdated
-import dev.opencode.android.core.model.event.CredentialSwitched
-import dev.opencode.android.core.model.event.McpResourcesChanged
-import dev.opencode.android.core.model.event.McpStatusChanged
+import dev.opencode.android.core.model.event.SessionRevertCleared
+import dev.opencode.android.core.model.event.SessionRevertCommitted
+import dev.opencode.android.core.model.event.SessionRevertStaged
 import dev.opencode.android.core.model.event.ShellCreated
+import dev.opencode.android.core.model.event.ShellDeleted
+import dev.opencode.android.core.model.event.ShellExited
 import dev.opencode.android.core.model.event.TuiCommandExecute
 import dev.opencode.android.core.model.event.TuiPromptAppend
 import dev.opencode.android.core.model.event.TuiSessionSelect
 import dev.opencode.android.core.model.event.TuiToastShow
-import dev.opencode.android.core.model.event.ShellDeleted
-import dev.opencode.android.core.model.event.ShellExited
+import dev.opencode.android.core.model.event.VcsBranchUpdated
 import dev.opencode.android.core.model.event.WorktreeResolved
 import dev.opencode.android.core.model.event.WorktreeUpdated
-import dev.opencode.android.core.model.event.SessionRevertCleared
-import dev.opencode.android.core.model.event.SessionRevertCommitted
-import dev.opencode.android.core.model.event.SessionRevertStaged
-import dev.opencode.android.core.model.event.VcsBranchUpdated
 import dev.opencode.android.core.network.ServerApi
-import dev.opencode.android.core.data.sync.ResourceKey
-import dev.opencode.android.core.data.sync.SyncedResource
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -75,7 +75,8 @@ class ServerDataSet(
     private val cache: ReadCacheStore,
     private val selfCheck: TimelineSelfCheck = TimelineSelfCheck.Noop,
     private val schema: ConfigSchema,
-) {    /** `project.list`. Not location-scoped: one list for the whole server. */
+) {
+    /** `project.list`. Not location-scoped: one list for the whole server. */
     val projects: SyncedResource<List<Project>> = SyncedResource(
         key = ResourceKey(serverId),
         name = "project.list",
@@ -317,8 +318,11 @@ class ServerDataSet(
         val payload = event.payload
         when (payload) {
             is ProjectUpdated -> projects.invalidate()
+
             is EventPayload.AgentUpdated -> invalidateFor(event) { agents(it) }
+
             is EventPayload.ModelUpdated -> invalidateFor(event) { models(it) }
+
             is EventPayload.ModelsDevRefreshed -> {
                 models.values.forEach { it.invalidate() }
                 defaultModels.values.forEach { it.invalidate() }
@@ -407,6 +411,7 @@ class ServerDataSet(
             }
 
             is SessionRevertStaged -> revertCommands.applyStaged(payload.revert)
+
             is SessionRevertCleared, is SessionRevertCommitted -> revertCommands.applyStaged(null)
 
             // ------------------------------------------------------------------ Phase 10: TUI

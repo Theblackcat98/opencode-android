@@ -72,7 +72,10 @@ class SecretHandlingTest {
     @Test
     fun `a decoded secret equals the one that was sent without being readable from the state`() {
         val request = ConnectKeyRequest(Secret.of(key))
-        val decoded = OpenCodeJson.decodeFromString(ConnectKeyRequest.serializer(), OpenCodeJson.encodeToString(ConnectKeyRequest.serializer(), request))
+        val decoded = OpenCodeJson.decodeFromString(
+            ConnectKeyRequest.serializer(),
+            OpenCodeJson.encodeToString(ConnectKeyRequest.serializer(), request),
+        )
         // Equality is on the value, so a test can assert "the right key was sent" without writing the
         // key into the assertion — which is where a secret ends up in a CI log.
         assertEquals(request, decoded)

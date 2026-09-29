@@ -97,6 +97,7 @@ class JsonSchemaValidator(private val schema: JsonObject) {
     private fun check(node: JsonElement, rule: JsonElement, path: String, found: MutableList<SchemaDiagnostic>) {
         when (rule) {
             is JsonObject -> checkSchema(node, rule, path, found)
+
             // `true` and `false` are legal schemas in 2020-12. `false` rejects everything and `true`
             // accepts everything; the vendored file uses the object form throughout, so both are
             // honoured rather than assumed away.
@@ -180,7 +181,12 @@ class JsonSchemaValidator(private val schema: JsonObject) {
         }
     }
 
-    private fun checkObjectNode(node: JsonObject, rule: JsonObject, path: String, found: MutableList<SchemaDiagnostic>) {
+    private fun checkObjectNode(
+        node: JsonObject,
+        rule: JsonObject,
+        path: String,
+        found: MutableList<SchemaDiagnostic>,
+    ) {
         val properties = rule["properties"] as? JsonObject
 
         (rule["required"] as? JsonArray)?.forEach { entry ->
@@ -196,9 +202,12 @@ class JsonSchemaValidator(private val schema: JsonObject) {
             val childRule = properties?.get(key)
             when {
                 childRule != null -> check(value, childRule, childPath, found)
+
                 additional == null -> Unit
+
                 additional is JsonPrimitive && additional.booleanOrNull == false ->
                     found += report(childPath, "additionalProperties", "a key this schema allows", describe(value))
+
                 // A schema rather than a boolean: every named key is checked above and this checks
                 // the rest, which is how `agent`, `command`, `provider` and `mcp` are shaped.
                 else -> check(value, additional, childPath, found)
@@ -259,15 +268,23 @@ class JsonSchemaValidator(private val schema: JsonObject) {
 
     private fun matchesType(node: JsonElement, type: String): Boolean = when (type) {
         "object" -> node is JsonObject
+
         "array" -> node is JsonArray
+
         "string" -> node is JsonPrimitive && node.isString
+
         "boolean" -> node is JsonPrimitive && node.booleanOrNull != null
+
         // An integer is a number with no fractional part. `1.0` is a number and not an integer, so a
         // config saying `"mcp_timeout": 1.5` is rejected for the same reason `0` is.
-        "integer" -> node is JsonPrimitive && !node.isString &&
-            node.doubleOrNull?.let { !it.isInfinite() && !it.isNaN() && it == Math.floor(it) } == true
+        "integer" ->
+            node is JsonPrimitive && !node.isString &&
+                node.doubleOrNull?.let { !it.isInfinite() && !it.isNaN() && it == Math.floor(it) } == true
+
         "number" -> node is JsonPrimitive && !node.isString && node.doubleOrNull != null
+
         "null" -> node is JsonNull
+
         // A type this dialect does not define cannot reject, and inventing a rejection for it would
         // make a future schema addition fail every document.
         else -> true
@@ -283,6 +300,7 @@ class JsonSchemaValidator(private val schema: JsonObject) {
      */
     private fun describe(node: JsonElement): String = when (node) {
         is JsonNull -> "null"
+
         is JsonPrimitive -> when {
             node.isString -> "a string of ${node.contentOrNull.orEmpty().length} characters"
             node.booleanOrNull != null -> "the boolean ${node.content}"
@@ -291,6 +309,7 @@ class JsonSchemaValidator(private val schema: JsonObject) {
         }
 
         is JsonArray -> "an array of ${node.size} ${entry(node.size)}"
+
         is JsonObject -> "an object with ${node.size} ${entry(node.size)}"
     }
 
@@ -359,7 +378,10 @@ class JsonSchemaValidator(private val schema: JsonObject) {
 
         /** Keywords that carry no assertion, so ignoring them is correct. */
         val ANNOTATION_KEYWORDS: Set<String> = setOf(
-            "description", "hidden", "allowComments", "allowTrailingCommas",
+            "description",
+            "hidden",
+            "allowComments",
+            "allowTrailingCommas",
         )
     }
 }

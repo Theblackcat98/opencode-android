@@ -35,7 +35,9 @@ class ReviewServer(
     val statuses = mutableMapOf<String, Int>()
 
     /** Requests the app made, in order, so a test can assert on the query it sent. */
-    val requests: List<String> get() = synchronized(recorded) { recorded.map { "${it.method} ${it.url.encodedPath}?${it.url.query}" } }
+    val requests: List<String> get() = synchronized(recorded) {
+        recorded.map { "${it.method} ${it.url.encodedPath}?${it.url.query}" }
+    }
 
     init {
         server.dispatcher = object : Dispatcher() {

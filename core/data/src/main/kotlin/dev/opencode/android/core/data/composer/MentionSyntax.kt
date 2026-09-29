@@ -161,9 +161,8 @@ object ServerPath {
     fun encodePath(path: String): String = buildString {
         path.toByteArray(Charsets.UTF_8).forEach { byte ->
             val c = byte.toInt().toChar()
-            if (c.isLetterOrDigit() && c.code < 128 || c == '-' || c == '.' || c == '_' || c == '~' ||
-                c == '/' || c == ':'
-            ) {
+            val unreserved = c == '-' || c == '.' || c == '_' || c == '~' || c == '/' || c == ':'
+            if ((c.isLetterOrDigit() && c.code < 128) || unreserved) {
                 append(c)
             } else {
                 append('%').append("%02X".format(byte.toInt() and 0xFF))

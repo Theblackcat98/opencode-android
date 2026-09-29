@@ -26,19 +26,19 @@ sealed interface ReviewScope {
     /** "Uncommitted": HEAD to the working copy. */
     data object Uncommitted : ReviewScope {
         override val id: String get() = "uncommitted"
-        override val mode: String get() = VcsDiffMode.Working
+        override val mode: String get() = VcsDiffMode.WORKING
     }
 
     /** "Committed": the merge base to HEAD. */
     data object Committed : ReviewScope {
         override val id: String get() = "committed"
-        override val mode: String get() = VcsDiffMode.Committed
+        override val mode: String get() = VcsDiffMode.COMMITTED
     }
 
     /** "All": the merge base to the working copy. */
     data object All : ReviewScope {
         override val id: String get() = "all"
-        override val mode: String get() = VcsDiffMode.Branch
+        override val mode: String get() = VcsDiffMode.BRANCH
     }
 
     companion object {
@@ -63,11 +63,11 @@ sealed interface ReviewScope {
  */
 object VcsDiffMode {
     /** HEAD to the working copy. */
-    const val Working: String = "working"
+    const val WORKING: String = "working"
 
     /** The merge base to HEAD. */
-    const val Committed: String = "committed"
+    const val COMMITTED: String = "committed"
 
     /** The merge base to the working copy. */
-    const val Branch: String = "branch"
+    const val BRANCH: String = "branch"
 }

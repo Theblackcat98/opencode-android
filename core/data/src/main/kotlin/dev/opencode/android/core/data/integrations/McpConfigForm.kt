@@ -72,7 +72,13 @@ object McpConfigForm {
         }
         listOf(draft.startupTimeout, draft.catalogTimeout, draft.executionTimeout)
             .filter { it.isNotBlank() }
-            .forEach { if (it.trim().toLongOrNull()?.let { value -> value > 0 } != true) add(McpConfigProblem.NOT_A_POSITIVE_INTEGER) }
+            .forEach {
+                if (it.trim().toLongOrNull()?.let { value -> value > 0 } !=
+                    true
+                ) {
+                    add(McpConfigProblem.NOT_A_POSITIVE_INTEGER)
+                }
+            }
     }
 
     /** Whether the draft may be sent. */

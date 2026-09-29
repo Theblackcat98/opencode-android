@@ -113,13 +113,21 @@ fun AttachSourceSheet(
         title = { Text(stringResource(dev.opencode.android.feature.composer.R.string.composer_attach)) },
         text = {
             Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(0.dp)) {
-                SourceRow(stringResource(dev.opencode.android.feature.composer.R.string.composer_attach_photo)) { onPick(AttachSource.PHOTO) }
-                SourceRow(stringResource(dev.opencode.android.feature.composer.R.string.composer_attach_camera)) { onPick(AttachSource.CAMERA) }
-                SourceRow(stringResource(dev.opencode.android.feature.composer.R.string.composer_attach_file)) { onPick(AttachSource.FILE) }
+                SourceRow(stringResource(dev.opencode.android.feature.composer.R.string.composer_attach_photo)) {
+                    onPick(AttachSource.PHOTO)
+                }
+                SourceRow(stringResource(dev.opencode.android.feature.composer.R.string.composer_attach_camera)) {
+                    onPick(AttachSource.CAMERA)
+                }
+                SourceRow(stringResource(dev.opencode.android.feature.composer.R.string.composer_attach_file)) {
+                    onPick(AttachSource.FILE)
+                }
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(dev.opencode.android.feature.composer.R.string.composer_dismiss)) }
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(dev.opencode.android.feature.composer.R.string.composer_dismiss))
+            }
         },
     )
 }

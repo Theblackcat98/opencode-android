@@ -22,7 +22,6 @@ import dev.opencode.android.core.model.SyntheticInputRequest
 import dev.opencode.android.core.model.SyntheticInputResult
 import dev.opencode.android.core.model.ToolDetailMode
 import dev.opencode.android.core.network.ServerApi
-import java.util.concurrent.atomic.AtomicLong
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -30,6 +29,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
+import java.util.concurrent.atomic.AtomicLong
 
 /**
  * The Phase 10 read and write surface: usage statistics, the plugin RPC console, quick ask, the

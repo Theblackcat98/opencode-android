@@ -4,8 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dev.opencode.android.core.data.action.toActionError
 import dev.opencode.android.core.data.capability.ExperimentalRoute
-import dev.opencode.android.core.data.execution.PersistentPtyAvailability
 import dev.opencode.android.core.data.capability.RouteAvailability
+import dev.opencode.android.core.data.execution.PersistentPtyAvailability
 import dev.opencode.android.core.data.preferences.ExperimentalPreferences
 import dev.opencode.android.core.data.server.ServerDataRegistry
 import dev.opencode.android.core.model.SessionTerminalHandoff
@@ -179,7 +179,9 @@ private fun PersistentPtyAvailability.toRouteAvailability(): RouteAvailability =
     // them is stopped. Mapping it to `Absent` would hide the only page that can say "start the host",
     // and mapping it to `Unknown` would offer the action without ever having proved the route exists.
     is PersistentPtyAvailability.HostDown -> RouteAvailability.Present
+
     is PersistentPtyAvailability.Absent -> RouteAvailability.Absent(httpStatus)
+
     is PersistentPtyAvailability.Unknown -> RouteAvailability.Unknown
 }
 

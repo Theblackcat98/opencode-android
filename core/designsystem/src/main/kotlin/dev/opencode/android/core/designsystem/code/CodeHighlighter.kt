@@ -132,6 +132,7 @@ object CodeHighlighter {
         )
 
         CodeLanguage.XML, CodeLanguage.MARKDOWN -> markupLike(language)
+
         CodeLanguage.SQL -> dataLike(
             keywords = SQL_KEYWORDS,
             stringDelimiters = listOf('\'', '"'),
@@ -148,6 +149,7 @@ object CodeHighlighter {
         )
 
         CodeLanguage.DIFF -> diffLike()
+
         CodeLanguage.PLAIN_TEXT -> hashLike(emptyList(), emptyList(), emptyList(), emptySet())
     }
 }

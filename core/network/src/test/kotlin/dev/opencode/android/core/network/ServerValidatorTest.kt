@@ -1,19 +1,19 @@
 package dev.opencode.android.core.network
 
+import kotlinx.coroutines.test.runTest
 import mockwebserver3.Dispatcher
 import mockwebserver3.MockResponse
 import mockwebserver3.MockWebServer
 import mockwebserver3.RecordedRequest
 import okhttp3.Credentials
 import okhttp3.OkHttpClient
-import okhttp3.tls.HeldCertificate
 import okhttp3.tls.HandshakeCertificates
+import okhttp3.tls.HeldCertificate
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
-import kotlinx.coroutines.test.runTest
 import org.junit.Test
 import java.util.concurrent.TimeUnit
 

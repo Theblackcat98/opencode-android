@@ -10,26 +10,28 @@ import dev.opencode.android.core.model.ModelRef
 import dev.opencode.android.core.model.PermissionEffect
 import dev.opencode.android.core.model.SessionStats
 import dev.opencode.android.core.model.SessionStatsTools
-import dev.opencode.android.core.model.ToolTotals
 import dev.opencode.android.core.model.ToolDetailMode
+import dev.opencode.android.core.model.ToolTotals
 import dev.opencode.android.core.network.ServerApi
 import dev.opencode.android.core.network.ServerApiFactory
-import java.util.concurrent.atomic.AtomicInteger
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.toList
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withTimeout
-import kotlin.time.Duration.Companion.seconds
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
 import kotlinx.serialization.json.putJsonObject
+import mockwebserver3.Dispatcher
+import mockwebserver3.MockResponse
+import mockwebserver3.MockWebServer
+import mockwebserver3.RecordedRequest
 import okhttp3.OkHttpClient
 import okio.ByteString
 import org.junit.After
@@ -39,10 +41,8 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
-import mockwebserver3.Dispatcher
-import mockwebserver3.MockResponse
-import mockwebserver3.MockWebServer
-import mockwebserver3.RecordedRequest
+import java.util.concurrent.atomic.AtomicInteger
+import kotlin.time.Duration.Companion.seconds
 
 /**
  * The Phase 10 wire, over real HTTP.
@@ -297,9 +297,13 @@ class InsightsWireTest {
     fun `an rpc call refuses a segment that would break the url`() = runTest {
         for (bad in listOf("", "  ", ".", "..", "a/b", "a?b", "a#b")) {
             val result = surface.callRpc(bad, "status")
-            assertEquals("rpc id '$bad'", ActionErrorKind.INVALID_REQUEST, result.exceptionOrNull()?.let {
-                (it as dev.opencode.android.core.data.integrations.ActionFailure).error.kind
-            })
+            assertEquals(
+                "rpc id '$bad'",
+                ActionErrorKind.INVALID_REQUEST,
+                result.exceptionOrNull()?.let {
+                    (it as dev.opencode.android.core.data.integrations.ActionFailure).error.kind
+                },
+            )
         }
         val methodResult = surface.callRpc("good", "bad/method")
         assertEquals(
@@ -553,7 +557,10 @@ class InsightsWireTest {
         server.dispatcher = object : Dispatcher() {
             override fun dispatch(request: RecordedRequest): MockResponse {
                 synchronized(sent) { sent += request }
-                synchronized(requests) { requests += "${request.method} ${request.url.encodedPath}?${request.url.query ?: ""}" }
+                synchronized(requests) {
+                    requests +=
+                        "${request.method} ${request.url.encodedPath}?${request.url.query ?: ""}"
+                }
                 return MockResponse.Builder()
                     .code(200)
                     .addHeader("Content-Type", "text/event-stream")

@@ -310,6 +310,7 @@ class PtySocket(
         frames.forEach { frame ->
             when (frame) {
                 is PtyFrame.Output -> if (frame.text.isNotEmpty()) _output.tryEmit(frame.text)
+
                 is PtyFrame.Cursor -> {
                     _cursor.value = frame.cursor
                     // The first cursor frame is what "the replay is complete" means.

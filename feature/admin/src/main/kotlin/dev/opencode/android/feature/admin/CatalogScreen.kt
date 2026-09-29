@@ -30,8 +30,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import dev.opencode.android.core.data.action.toActionError
-import dev.opencode.android.core.data.sync.SyncedState
 import dev.opencode.android.core.data.sync.SyncStatus
+import dev.opencode.android.core.data.sync.SyncedState
 import dev.opencode.android.core.model.AgentInfo
 import dev.opencode.android.core.model.CommandInfo
 import dev.opencode.android.core.model.ReferenceInfo
@@ -73,8 +73,10 @@ data class CatalogUiState(
     val skills: SyncedState<List<SkillInfo>> = SyncedState(),
     val references: SyncedState<List<ReferenceInfo>> = SyncedState(),
 ) {
-    /** The rows of the current tab, filtered by the search field. */
-    /** The load state of the tab being shown, so the screen has one branch rather than four. */
+    /**
+     * The rows of the current tab, filtered by the search field.
+     * The load state of the tab being shown, so the screen has one branch rather than four.
+     */
     val currentStatus: SyncStatus
         get() = when (tab) {
             AdminCatalog.AGENTS -> agents.status
@@ -170,10 +172,12 @@ private fun referenceRow(reference: ReferenceInfo) = CatalogRow(
     facts = buildList {
         when (val source = reference.source) {
             is ReferenceSource.Local -> add("Path" to source.path)
+
             is ReferenceSource.Git -> {
                 add("Repository" to source.repository)
                 source.branch?.let { add("Branch" to it) }
             }
+
             is ReferenceSource.Unknown -> add("Source" to "unknown")
         }
         if (reference.hidden == true) add("Hidden" to "yes")

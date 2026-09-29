@@ -32,7 +32,6 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -41,9 +40,9 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import dev.opencode.android.core.designsystem.format.Formatters
-import kotlinx.coroutines.launch
 import dev.opencode.android.feature.sessions.R
 import dev.opencode.android.feature.sessions.ui.timeline.TimelineList
+import kotlinx.coroutines.launch
 
 /**
  * One session: the header, the timeline, and follow mode.
@@ -169,18 +168,18 @@ fun SessionScreen(
 /** Title, agent, model, context gauge and cost: everything the plan's header carries. */
 @Composable
 private fun Subtitle(state: SessionUiState) {
-        Column {
-            state.forkedAt?.let { boundary ->
-                // A fork's origin is the server's own `Session.fork` boundary. Saying so matters
-                // because a copy is indistinguishable from a session that happened to be short, and
-                // a user who forked to try something does not know which of the two they are in.
-                Text(
-                    text = stringResource(R.string.session_forked_from, boundary),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            Row(verticalAlignment = Alignment.CenterVertically) {
+    Column {
+        state.forkedAt?.let { boundary ->
+            // A fork's origin is the server's own `Session.fork` boundary. Saying so matters
+            // because a copy is indistinguishable from a session that happened to be short, and
+            // a user who forked to try something does not know which of the two they are in.
+            Text(
+                text = stringResource(R.string.session_forked_from, boundary),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Row(verticalAlignment = Alignment.CenterVertically) {
             state.agent?.let { agent ->
                 Text(
                     text = agent,

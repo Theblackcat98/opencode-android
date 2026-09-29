@@ -6,7 +6,6 @@ import dev.opencode.android.core.model.FinishReason
 import dev.opencode.android.core.model.InboxItem
 import dev.opencode.android.core.model.InterruptReason
 import dev.opencode.android.core.model.Outcome
-import dev.opencode.android.core.model.withDelivery
 import dev.opencode.android.core.model.SessionMessage
 import dev.opencode.android.core.model.StructuredError
 import dev.opencode.android.core.model.ToolContent
@@ -29,8 +28,8 @@ import dev.opencode.android.core.model.event.SessionModelSelected
 import dev.opencode.android.core.model.event.SessionReasoningDelta
 import dev.opencode.android.core.model.event.SessionReasoningEnded
 import dev.opencode.android.core.model.event.SessionReasoningStarted
-import dev.opencode.android.core.model.event.SessionRevertCommitted
 import dev.opencode.android.core.model.event.SessionRetryScheduled
+import dev.opencode.android.core.model.event.SessionRevertCommitted
 import dev.opencode.android.core.model.event.SessionShellEnded
 import dev.opencode.android.core.model.event.SessionShellStarted
 import dev.opencode.android.core.model.event.SessionStepEnded
@@ -48,6 +47,7 @@ import dev.opencode.android.core.model.event.SessionToolInputEnded
 import dev.opencode.android.core.model.event.SessionToolInputStarted
 import dev.opencode.android.core.model.event.SessionToolProgress
 import dev.opencode.android.core.model.event.SessionToolSuccess
+import dev.opencode.android.core.model.withDelivery
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
 
@@ -162,6 +162,7 @@ object TimelineReducer {
         val draft = Draft(state)
         when (val payload = event.payload) {
             is SessionStepStarted -> draft.stepStarted(event, payload)
+
             is SessionStepStreamed -> draft.editAssistant(payload.assistantMessageID) {
                 it.copy(time = it.time.copy(streamed = event.created ?: it.time.streamed))
             }

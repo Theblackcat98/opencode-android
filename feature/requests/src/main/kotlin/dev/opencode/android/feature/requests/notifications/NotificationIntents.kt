@@ -81,8 +81,8 @@ object NotificationIntents {
      * notification code lives in a feature module and the activity in the app, so naming the class
      * would invert the dependency; asking for the package's own launch intent is also correct across
      * the `play` and `fdroid` flavors, which have different application ids in a debug build.
+     * The package's own launch intent, used as a shortcut's target.
      */
-    /** The package's own launch intent, used as a shortcut's target. */
     fun launchIntent(context: Context): Intent =
         (context.packageManager.getLaunchIntentForPackage(context.packageName) ?: Intent(ACTION_OPEN_SESSION))
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
@@ -93,8 +93,10 @@ object NotificationIntents {
         sessionId: String,
         codes: AttentionActionCodes,
     ): PendingIntent {
-        val intent = (context.packageManager.getLaunchIntentForPackage(context.packageName)
-            ?: Intent(ACTION_OPEN_SESSION)).apply {
+        val intent = (
+            context.packageManager.getLaunchIntentForPackage(context.packageName)
+                ?: Intent(ACTION_OPEN_SESSION)
+            ).apply {
             action = ACTION_OPEN_SESSION
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
             putExtra(EXTRA_SERVER_ID, serverId)
@@ -121,8 +123,10 @@ object NotificationIntents {
         directory: String,
         codes: AttentionActionCodes,
     ): PendingIntent {
-        val intent = (context.packageManager.getLaunchIntentForPackage(context.packageName)
-            ?: Intent(ACTION_OPEN_LOCATION)).apply {
+        val intent = (
+            context.packageManager.getLaunchIntentForPackage(context.packageName)
+                ?: Intent(ACTION_OPEN_LOCATION)
+            ).apply {
             action = ACTION_OPEN_LOCATION
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
             putExtra(EXTRA_SERVER_ID, serverId)

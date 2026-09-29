@@ -98,7 +98,11 @@ class PromptAssemblerTest {
 
     @Test
     fun `a mention of an agent becomes an agent attachment, not a file`() {
-        val request = (PromptAssembler.assemble(ComposerInput(text = "ask @build about it", agents = agents)) as Assembly.Prompt)
+        val request = (
+            PromptAssembler.assemble(
+                ComposerInput(text = "ask @build about it", agents = agents),
+            ) as Assembly.Prompt
+            )
             .request
         assertEquals(listOf("build"), request.agents?.map { it.name })
         assertNull(request.files)
@@ -107,7 +111,11 @@ class PromptAssemblerTest {
 
     @Test
     fun `a mention of a path becomes a file uri`() {
-        val request = (PromptAssembler.assemble(ComposerInput(text = "read @a.ts", location = "/work")) as Assembly.Prompt)
+        val request = (
+            PromptAssembler.assemble(
+                ComposerInput(text = "read @a.ts", location = "/work"),
+            ) as Assembly.Prompt
+            )
             .request
         assertEquals(listOf("file:///work/a.ts"), request.files?.map { it.uri })
         assertNull(request.agents)
@@ -115,7 +123,11 @@ class PromptAssemblerTest {
 
     @Test
     fun `a mention of a path with a range becomes a ranged uri`() {
-        val request = (PromptAssembler.assemble(ComposerInput(text = "read @a.ts#20-45", location = "/work")) as Assembly.Prompt)
+        val request = (
+            PromptAssembler.assemble(
+                ComposerInput(text = "read @a.ts#20-45", location = "/work"),
+            ) as Assembly.Prompt
+            )
             .request
         assertEquals(listOf("file:///work/a.ts?start=20&end=45"), request.files?.map { it.uri })
     }
@@ -137,7 +149,11 @@ class PromptAssemblerTest {
 
     @Test
     fun `two different mentions are two attachments`() {
-        val request = (PromptAssembler.assemble(ComposerInput(text = "@a.ts and @b.ts", location = "/work")) as Assembly.Prompt)
+        val request = (
+            PromptAssembler.assemble(
+                ComposerInput(text = "@a.ts and @b.ts", location = "/work"),
+            ) as Assembly.Prompt
+            )
             .request
         assertEquals(
             listOf("file:///work/a.ts", "file:///work/b.ts"),
@@ -147,29 +163,35 @@ class PromptAssemblerTest {
 
     @Test
     fun `skills are attached as the api takes them`() {
-        val request = (PromptAssembler.assemble(
-            ComposerInput(text = "go", skills = listOf(PromptSkillInput("review"))),
-        ) as Assembly.Prompt).request
+        val request = (
+            PromptAssembler.assemble(
+                ComposerInput(text = "go", skills = listOf(PromptSkillInput("review"))),
+            ) as Assembly.Prompt
+            ).request
         assertEquals(listOf("review"), request.skills?.map { it.id })
     }
 
     @Test
     fun `skills travel on a command too`() {
-        val request = (PromptAssembler.assemble(
-            ComposerInput(
-                text = "/deploy now",
-                serverCommands = serverCommands,
-                skills = listOf(PromptSkillInput("review")),
-            ),
-        ) as Assembly.Command).request
+        val request = (
+            PromptAssembler.assemble(
+                ComposerInput(
+                    text = "/deploy now",
+                    serverCommands = serverCommands,
+                    skills = listOf(PromptSkillInput("review")),
+                ),
+            ) as Assembly.Command
+            ).request
         assertEquals(listOf("review"), request.skills?.map { it.id })
     }
 
     @Test
     fun `queued delivery is sent as queue`() {
-        val request = (PromptAssembler.assemble(
-            ComposerInput(text = "later", delivery = Delivery.Queue),
-        ) as Assembly.Prompt).request
+        val request = (
+            PromptAssembler.assemble(
+                ComposerInput(text = "later", delivery = Delivery.Queue),
+            ) as Assembly.Prompt
+            ).request
         assertEquals(Delivery.Queue, request.delivery)
     }
 
@@ -178,9 +200,11 @@ class PromptAssemblerTest {
         val steered = (PromptAssembler.assemble(ComposerInput(text = "x", resume = true)) as Assembly.Prompt).request
         assertEquals(true, steered.resume)
 
-        val queued = (PromptAssembler.assemble(
-            ComposerInput(text = "x", resume = true, delivery = Delivery.Queue),
-        ) as Assembly.Prompt).request
+        val queued = (
+            PromptAssembler.assemble(
+                ComposerInput(text = "x", resume = true, delivery = Delivery.Queue),
+            ) as Assembly.Prompt
+            ).request
         assertNull("a queued prompt waits anyway; resume would contradict it", queued.resume)
     }
 
@@ -232,7 +256,13 @@ class PromptAssemblerTest {
             ComposerInput(
                 text = "read",
                 attachments = listOf(
-                    AttachmentDraft("1", "spec.pdf", "file:///work/spec.pdf", AttachmentKind.BINARY, mime = "application/pdf"),
+                    AttachmentDraft(
+                        "1",
+                        "spec.pdf",
+                        "file:///work/spec.pdf",
+                        AttachmentKind.BINARY,
+                        mime = "application/pdf",
+                    ),
                 ),
                 model = model(images = true),
             ),

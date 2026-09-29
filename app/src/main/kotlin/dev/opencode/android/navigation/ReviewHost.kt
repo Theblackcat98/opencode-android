@@ -15,15 +15,15 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.opencode.android.core.data.composer.FileReadResult
 import dev.opencode.android.core.data.composer.LineRange
-import dev.opencode.android.feature.composer.R as ComposerR
 import dev.opencode.android.feature.composer.ui.ComposerViewModel
 import dev.opencode.android.feature.review.FileBrowserScreen
 import dev.opencode.android.feature.review.ReviewCommentDialog
 import dev.opencode.android.feature.review.ReviewScreen
 import dev.opencode.android.feature.review.ReviewViewModel
-import dev.opencode.android.feature.review.R as ReviewR
 import dev.opencode.android.feature.review.WriteOutcome
 import java.io.File
+import dev.opencode.android.feature.composer.R as ComposerR
+import dev.opencode.android.feature.review.R as ReviewR
 
 /**
  * The review destination, and the composition root for everything Phase 6 adds to a session.

@@ -43,7 +43,12 @@ interface ReadCacheStore {
      *
      * [messages] is the window the store holds, not the whole transcript.
      */
-    suspend fun writeMessages(serverId: String, sessionId: String, messages: List<SessionMessage>, keep: Int = MESSAGE_LIMIT)
+    suspend fun writeMessages(
+        serverId: String,
+        sessionId: String,
+        messages: List<SessionMessage>,
+        keep: Int = MESSAGE_LIMIT,
+    )
 
     suspend fun deleteMessages(serverId: String, sessionId: String)
 

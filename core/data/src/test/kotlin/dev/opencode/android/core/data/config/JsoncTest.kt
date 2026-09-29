@@ -113,10 +113,15 @@ class JsoncTest {
     fun `a trailing comma followed by a comment is removed`() {
         // Both the comma and the comment go, and the newline between them survives, so the close brace
         // is still on its own line and a diagnostic below it does not move.
-        val masked = Jsonc.mask("""{"a":1, // done
-}""")
-        assertEquals("""{"a":1  ${" ".repeat(7)}
-}""", masked)
+        val masked = Jsonc.mask(
+            """{"a":1, // done
+}""",
+        )
+        assertEquals(
+            """{"a":1  ${" ".repeat(7)}
+}""",
+            masked,
+        )
     }
 
     @Test

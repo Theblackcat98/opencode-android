@@ -67,8 +67,11 @@ object TerminalBridgeCodec {
         val type = (obj["type"] as? JsonPrimitive)?.contentOrNull ?: return null
         return when (type) {
             Ready.TYPE -> TerminalBridgeMessage.Ready
+
             Input.TYPE -> payload(obj, Input.TYPE)?.let { TerminalBridgeMessage.Input(it) }
+
             Resize.TYPE -> resize(obj)
+
             Selection.TYPE -> bounded(obj, Selection.TYPE, MAX_SELECTION_CHARS)
                 ?.let { TerminalBridgeMessage.Selection(it) }
 
@@ -89,7 +92,9 @@ object TerminalBridgeCodec {
             Host.serializer(),
             when (message) {
                 is TerminalHostMessage.Output -> Host(type = Output.TYPE, data = message.data)
+
                 is TerminalHostMessage.Cursor -> Host(type = Cursor.TYPE, cursor = message.cursor)
+
                 is TerminalHostMessage.State -> Host(
                     type = State.TYPE,
                     state = message.state,
@@ -158,8 +163,8 @@ object TerminalBridgeCodec {
         return primitive.intOrNull
     }
 
-    /** One host message on the wire, with every field optional because the page ignores extras. */
     /**
+     * One host message on the wire, with every field optional because the page ignores extras.
      * One host message on the wire.
      *
      * The field order is the order the page reads them in (`state` before `cursor`), because

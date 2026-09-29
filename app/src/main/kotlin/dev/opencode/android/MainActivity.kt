@@ -10,9 +10,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import dagger.hilt.android.AndroidEntryPoint
+import dev.opencode.android.core.data.server.ServerDataRegistry
 import dev.opencode.android.core.designsystem.theme.OpenCodeTheme
 import dev.opencode.android.feature.requests.notifications.NotificationIntents
-import dev.opencode.android.core.data.server.ServerDataRegistry
 import dev.opencode.android.navigation.OpenCodeApp
 import javax.inject.Inject
 

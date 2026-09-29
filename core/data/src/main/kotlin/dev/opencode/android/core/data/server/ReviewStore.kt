@@ -81,7 +81,12 @@ class ReviewStore(
         _state.value = _state.value.copy(scope = scope, base = base, loading = true, error = null)
         val result: Result<List<FileDiff>> = when {
             mode == null && session != null -> call {
-                api.sessionDiff(session.id, (scope as? ReviewScope.LastTurn)?.from, (scope as? ReviewScope.LastTurn)?.to, context).data
+                api.sessionDiff(
+                    session.id,
+                    (scope as? ReviewScope.LastTurn)?.from,
+                    (scope as? ReviewScope.LastTurn)?.to,
+                    context,
+                ).data
             }
 
             mode == null -> {
@@ -207,7 +212,9 @@ class ReviewStore(
     }
 
     /** `session.context`: the messages after the last compaction. */
-    suspend fun context(sessionID: String): Result<List<SessionMessage>> = call { api.getSessionContext(sessionID).data }
+    suspend fun context(sessionID: String): Result<List<SessionMessage>> = call {
+        api.getSessionContext(sessionID).data
+    }
 
     private suspend inline fun <T> call(crossinline block: suspend () -> T): Result<T> = try {
         Result.success(block())

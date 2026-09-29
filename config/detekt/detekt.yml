@@ -1,0 +1,75 @@
+# detekt configuration (plan §3, Quality).
+#
+# The defaults are kept and this file narrows them to what this codebase can actually hold. Each
+# entry says what it is for, because a linter configuration nobody can explain is one nobody dares
+# to change, and a linter nobody dares to change is how it stops being enforced.
+#
+# **No baseline.** A baseline is how "zero findings" is faked: every existing finding gets listed
+# and the rule stops mattering for exactly the code that needed it most. Findings are fixed or the
+# rule is turned off here, with the reason.
+
+build:
+  maxIssues: 0
+
+complexity:
+  LongParameterList:
+    # The model types mirror published schemas, and a schema with fifteen required fields is a
+    # fifteen-parameter constructor. Compressing them into builders would hide the shape.
+    active: false
+  LongMethod:
+    active: true
+    threshold: 80
+  TooManyFunctions:
+    active: false
+  NestedBlockDepth:
+    active: true
+    threshold: 6
+
+style:
+  MagicNumber:
+    active: true
+    # The stats heatmap, the streak and the token arithmetic are all numbers with a meaning. A bare
+    # `31` in a sum says less than the name does, so a handful of them are named where it matters.
+    ignoreNumbers: ['-1', '0', '1', '2', '100']
+  MaxLineLength:
+    active: true
+    maxLineLength: 120
+  ReturnCount:
+    active: true
+    max: 4
+  UnusedPrivateMember:
+    active: true
+  ForbiddenComment:
+    active: true
+    # The two comments in this repository that must never survive a merge: a disabled test and a
+    # value left in from debugging.
+    comments:
+      - reason: 'A disabled test is a test that does not run.'
+        value: 'TODO:fixme:'
+      - reason: 'A disabled test is a test that does not run.'
+        value: 'FIXME:'
+      - reason: 'Debug output left in a shipped build.'
+        value: 'STOPSHIP:'
+
+exceptions:
+  TooGenericExceptionCaught:
+    active: true
+    # `catch (error: Throwable)` is the shape every boundary in this app uses: a Retrofit call
+    # throws HttpException, a socket throws IOException, and a decoder throws SerializationException.
+    # The catch is turned into a classified ActionError, which is the point.
+    exceptionNames:
+      - 'Error'
+      - 'Exception'
+      - 'Throwable'
+  SwallowedException:
+    active: false
+
+naming:
+  FunctionNaming:
+    active: true
+    # Compose test helpers and Compose composables are PascalCase by convention, and the Roborazzi
+    # capture helpers follow.
+    ignoreAnnotated: ['Composable']
+  TopLevelPropertyNaming:
+    active: true
+    constantPattern: '[A-Z][_A-Za-z0-9]*'

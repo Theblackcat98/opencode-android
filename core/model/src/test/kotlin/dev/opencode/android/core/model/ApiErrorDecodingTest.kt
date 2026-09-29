@@ -60,12 +60,18 @@ class ApiErrorDecodingTest {
     fun decodesVariousKnownErrorTypes() {
         val cases = listOf(
             """{"_tag":"ForbiddenError","message":"Forbidden access"}""" to ApiError.Forbidden("Forbidden access"),
-            """{"_tag":"InvalidRequestError","message":"Bad field","field":"title"}""" to ApiError.InvalidRequest("Bad field", field = "title"),
-            """{"_tag":"ConflictError","message":"ID exists","resource":"session"}""" to ApiError.Conflict("ID exists", resource = "session"),
-            """{"_tag":"SessionBusyError","message":"Session is busy","sessionID":"ses_1"}""" to ApiError.SessionBusy("Session is busy", sessionID = "ses_1"),
-            """{"_tag":"FileNotFoundError","message":"Not found","path":"/test/a.txt"}""" to ApiError.FileNotFound("Not found", path = "/test/a.txt"),
-            """{"_tag":"AgentNotFoundError","message":"Agent unknown","agentID":"custom"}""" to ApiError.AgentNotFound("Agent unknown", agentID = "custom"),
-            """{"_tag":"CommandExecutionError","message":"Failed","command":"ls"}""" to ApiError.CommandExecution("Failed", command = "ls"),
+            """{"_tag":"InvalidRequestError","message":"Bad field","field":"title"}""" to
+                ApiError.InvalidRequest("Bad field", field = "title"),
+            """{"_tag":"ConflictError","message":"ID exists","resource":"session"}""" to
+                ApiError.Conflict("ID exists", resource = "session"),
+            """{"_tag":"SessionBusyError","message":"Session is busy","sessionID":"ses_1"}""" to
+                ApiError.SessionBusy("Session is busy", sessionID = "ses_1"),
+            """{"_tag":"FileNotFoundError","message":"Not found","path":"/test/a.txt"}""" to
+                ApiError.FileNotFound("Not found", path = "/test/a.txt"),
+            """{"_tag":"AgentNotFoundError","message":"Agent unknown","agentID":"custom"}""" to
+                ApiError.AgentNotFound("Agent unknown", agentID = "custom"),
+            """{"_tag":"CommandExecutionError","message":"Failed","command":"ls"}""" to
+                ApiError.CommandExecution("Failed", command = "ls"),
         )
 
         for ((json, expected) in cases) {

@@ -15,8 +15,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
@@ -165,7 +165,9 @@ fun TimelineMessageItem(
 ) {
     when (message) {
         is SessionMessage.User -> UserMessageCard(message, modifier)
+
         is SessionMessage.Assistant -> AssistantMessageCard(message, modifier, onOpenChangedFile)
+
         is SessionMessage.Synthetic -> NoticeCard(
             title = stringResource(R.string.timeline_synthetic),
             body = message.text,
@@ -188,11 +190,17 @@ fun TimelineMessageItem(
         )
 
         is SessionMessage.Shell -> ShellMessageCard(message, modifier)
+
         is SessionMessage.Compaction -> CompactionCard(message, modifier)
+
         is SessionMessage.Idle -> IdleDivider(message, modifier)
+
         is SessionMessage.AgentSwitched -> AgentSwitchMarker(message, modifier)
+
         is SessionMessage.ModelSwitched -> ModelSwitchMarker(message, modifier)
+
         is SessionMessage.LocationSwitched -> LocationSwitchMarker(message, modifier)
+
         is SessionMessage.Unknown -> UnknownMessage(message, modifier)
     }
 }
@@ -317,6 +325,7 @@ private fun AssistantMessageCard(
                 }
 
                 is AssistantContent.Reasoning -> ReasoningBlock(part, Modifier.padding(top = 4.dp))
+
                 is AssistantContent.Tool -> {
                     val card = part.toCard()
                     ToolCardView(card, Modifier.padding(top = 4.dp))

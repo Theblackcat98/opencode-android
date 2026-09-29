@@ -1,0 +1,87 @@
+# EditorConfig, for ktlint (plan §3, Quality).
+#
+# ktlint reads this directly, so the rules that are turned off are turned off here rather than in
+# code, and every one of them is off for a reason this file states.
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+
+[*.{yml,yaml,json,toml}]
+indent_size = 2
+
+[*.md]
+trim_trailing_whitespace = false
+
+[*.kt]
+indent_size = 4
+
+[*.kts]
+indent_size = 4
+
+# ---------------------------------------------------------------- Kotlin rules
+#
+# Written once per file extension rather than as `[*.{kt,kts}]`: the section header is a glob and a
+# brace pattern is not one, so a combined header matches nothing at all and the rules below it are
+# silently not applied. That is the kind of mistake that makes a linter look configured and behave
+# otherwise, so it is spelled out twice.
+[*.kt]
+ktlint_code_style = intellij_idea
+max_line_length = 140
+
+[*.kts]
+ktlint_code_style = intellij_idea
+max_line_length = 140
+
+# 140, not 120. The limit has to be one the codebase can actually hold, and at 120 there were 92
+# violations that were almost all single-line JSON fixtures in tests — wrapping a fixture into a
+# string concatenation makes it harder to check against the schema, which is the one thing a fixture
+# has to be good at. 140 still catches the unmaintainable cases, and every production line over it
+# is wrapped.
+#
+# Three rules off, and the code is deliberately written the way it is because of them.
+#
+# `class-signature` and `function-signature` expand every short parameter list onto its own line.
+# That is the right default for a generated API and the wrong one here: the model types mirror
+# published schemas, and `data class Time(val created: Long)` says what the schema says in one line
+# where the expanded form says the same thing in four. Turning these off keeps a one-line data class
+# one line, which is why several hundred of them are written that way.
+ktlint_standard_class-signature = disabled
+ktlint_standard_function-signature = disabled
+
+# `parameter-list-wrapping` is the companion rule and has the same effect on a wrapped list.
+ktlint_standard_parameter-list-wrapping = disabled
+
+# Composable functions are PascalCase by Compose's own convention, and so are the Roborazzi capture
+# helpers. The default rule calls both a naming error. This property is also handed to Spotless
+# directly, because Spotless does not carry per-rule properties across from the editorconfig.
+ktlint_function_naming_ignore_when_annotated_with = Composable
+
+# A recorded event or a server answer is one long line because that is how the server sends it, and
+# splitting it into a string concatenation makes the fixture impossible to compare with the spec.
+# So the length rule is off for test sources, where the long lines are data rather than code. Every
+# other rule still applies there, and production sources are held to 140.
+[core/data/src/test/**/*.kt]
+max_line_length = off
+
+[core/network/src/test/**/*.kt]
+max_line_length = off
+
+[core/model/src/test/**/*.kt]
+max_line_length = off
+
+[core/database/src/test/**/*.kt]
+max_line_length = off
+
+[core/designsystem/src/test/**/*.kt]
+max_line_length = off
+
+[feature/*/src/test/**/*.kt]
+max_line_length = off
+
+[app/src/test/**/*.kt]
+max_line_length = off

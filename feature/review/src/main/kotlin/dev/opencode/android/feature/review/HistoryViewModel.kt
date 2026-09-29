@@ -241,7 +241,9 @@ class HistoryViewModel @Inject constructor(
                     val encoded = withContext(Dispatchers.Default) {
                         runCatching { OpenCodeJson.encodeToString(SessionTransfer.serializer(), transfer) }.getOrNull()
                     }
-                    if (encoded == null) TransferResult.Refused(REFUSED_OFF) else {
+                    if (encoded == null) {
+                        TransferResult.Refused(REFUSED_OFF)
+                    } else {
                         _state.value = _state.value.copy(exported = encoded)
                         TransferResult.Exported(transfer.messages.size)
                     }

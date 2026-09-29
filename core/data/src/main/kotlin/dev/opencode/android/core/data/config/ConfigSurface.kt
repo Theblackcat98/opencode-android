@@ -8,10 +8,10 @@ import dev.opencode.android.core.data.capability.ExperimentalRoute
 import dev.opencode.android.core.data.capability.RouteAvailability
 import dev.opencode.android.core.data.integrations.ActionFailure
 import dev.opencode.android.core.data.server.FileReader
+import dev.opencode.android.core.data.server.ServerDataSet
 import dev.opencode.android.core.data.sync.ResourceKey
 import dev.opencode.android.core.data.sync.SyncStatus
 import dev.opencode.android.core.data.sync.SyncedResource
-import dev.opencode.android.core.data.server.ServerDataSet
 import dev.opencode.android.core.model.ConfigEntry
 import dev.opencode.android.core.model.InstructionEntry
 import dev.opencode.android.core.model.LoadedLocation
@@ -204,8 +204,6 @@ class ConfigSurface(
     fun invalidate(directory: String? = null) {
         if (directory != null) entries(directory).invalidate() else entries.values.forEach { it.invalidate() }
     }
-
-
 
     /**
      * Reads a configuration file's own text, for the editor and for a document's source facts.
@@ -484,17 +482,19 @@ class ConfigSurface(
     ): ReloadReport {
         val asked = guarded { admin.getConfig(directory) }
         val failure = asked.exceptionOrNull()
-        if (failure != null) return ReloadReport(
-            asked = false,
-            diagnostics = listOf(
-                SchemaDiagnostic(
-                    path = "",
-                    keyword = "reload",
-                    expected = "the server to re-read its configuration",
-                    found = "it could not be asked",
+        if (failure != null) {
+            return ReloadReport(
+                asked = false,
+                diagnostics = listOf(
+                    SchemaDiagnostic(
+                        path = "",
+                        keyword = "reload",
+                        expected = "the server to re-read its configuration",
+                        found = "it could not be asked",
+                    ),
                 ),
-            ),
-        )
+            )
+        }
         val entries = asked.getOrThrow()
         val documents = entries.filterIsInstance<ConfigEntry.Document>()
         val effective = documents.lastOrNull()?.info

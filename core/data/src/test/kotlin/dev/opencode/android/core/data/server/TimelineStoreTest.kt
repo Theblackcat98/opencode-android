@@ -1,7 +1,7 @@
 package dev.opencode.android.core.data.server
 
-import dev.opencode.android.core.data.timeline.TimelineDivergence
 import dev.opencode.android.core.data.server.TimelineSelfCheck
+import dev.opencode.android.core.data.timeline.TimelineDivergence
 import dev.opencode.android.core.data.timeline.TimelineState
 import dev.opencode.android.core.model.SessionMessage
 import dev.opencode.android.core.model.event.Event
@@ -68,7 +68,13 @@ class TimelineStoreTest {
         await("the server page never replaced the cache") {
             store.state.value.messages.size == 1 && store.state.value.messages[0].id == "msg_fresh"
         }
-        assertEquals("the server's page replaces the cache", listOf("msg_fresh"), store.state.value.messages.map { it.id })
+        assertEquals(
+            "the server's page replaces the cache",
+            listOf("msg_fresh"),
+            store.state.value.messages.map {
+                it.id
+            },
+        )
     }
 
     @Test
@@ -157,8 +163,14 @@ class TimelineStoreTest {
         store.start()
         await("the first page never arrived") { store.state.value.messages.size == 2 }
 
-        store.apply(Event.decode("""{"id":"evt_idle","created":30,"type":"session.execution.succeeded","data":{"sessionID":"ses_a"}}"""))
-        await("the timeline did not settle as expected") { store.state.value.messages.any { it is SessionMessage.Idle } }
+        store.apply(
+            Event.decode(
+                """{"id":"evt_idle","created":30,"type":"session.execution.succeeded","data":{"sessionID":"ses_a"}}""",
+            ),
+        )
+        await("the timeline did not settle as expected") {
+            store.state.value.messages.any { it is SessionMessage.Idle }
+        }
         delay(300)
 
         assertTrue("a converged timeline must report nothing, saw $reported", reported.isEmpty())
@@ -174,8 +186,14 @@ class TimelineStoreTest {
         val store = newStore()
         store.start()
         await("the first page never arrived") { store.state.value.messages.size == 2 }
-        store.apply(Event.decode("""{"id":"evt_idle","created":30,"type":"session.execution.succeeded","data":{"sessionID":"ses_a"}}"""))
-        await("the timeline did not settle as expected") { store.state.value.messages.any { it is SessionMessage.Idle } }
+        store.apply(
+            Event.decode(
+                """{"id":"evt_idle","created":30,"type":"session.execution.succeeded","data":{"sessionID":"ses_a"}}""",
+            ),
+        )
+        await("the timeline did not settle as expected") {
+            store.state.value.messages.any { it is SessionMessage.Idle }
+        }
 
         // A divergence the reducer really did miss: the server knows a message this client never saw.
         server.messagePage = listOf(
@@ -193,11 +211,19 @@ class TimelineStoreTest {
         val store = newStore()
         store.start()
         await("the first page never arrived") { store.state.value.messages.size == 2 }
-        assertTrue(store.apply(Event.decode("""{"id":"evt_synthetic","created":9,"type":"session.synthetic","data":{"sessionID":"ses_a","text":"local"}}""")))
+        assertTrue(
+            store.apply(
+                Event.decode(
+                    """{"id":"evt_synthetic","created":9,"type":"session.synthetic","data":{"sessionID":"ses_a","text":"local"}}""",
+                ),
+            ),
+        )
 
         server.messagePage = listOf(userMessage("msg_3"), userMessage("msg_2"))
         store.resync()
-        await("the timeline did not settle as expected") { store.state.value.messages.none { it is SessionMessage.Synthetic } }
+        await("the timeline did not settle as expected") {
+            store.state.value.messages.none { it is SessionMessage.Synthetic }
+        }
         assertEquals(
             "a resync is the server's projection, not a merge with a guess",
             listOf("msg_2", "msg_3"),

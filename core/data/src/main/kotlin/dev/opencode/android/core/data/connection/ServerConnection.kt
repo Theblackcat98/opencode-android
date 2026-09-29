@@ -105,9 +105,13 @@ class ServerConnection(
 
     private fun ConnectionState.toServerHealth(): ServerHealth = when (this) {
         is ConnectionState.Connected -> ServerHealth.CONNECTED
+
         is ConnectionState.Connecting -> ServerHealth.CONNECTING
+
         is ConnectionState.Suspended -> ServerHealth.DISCONNECTED
+
         is ConnectionState.Idle -> ServerHealth.DISCONNECTED
+
         // A rejected credential is the one failure a retry cannot fix, so it is its own state: the
         // registry turns it into a "pair again" action.
         is ConnectionState.Disconnected -> when {

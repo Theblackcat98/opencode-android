@@ -26,12 +26,19 @@ internal fun String.toServerBaseUrlOrNull(): String? = runCatching { toServerBas
 fun AddServerErrorType.messageRes(): Int = when (this) {
     // The most common first-run failure by far: the server only listens on localhost.
     AddServerErrorType.UNREACHABLE -> R.string.error_unreachable
+
     AddServerErrorType.UNAUTHORIZED -> R.string.error_unauthorized
+
     AddServerErrorType.PAIRING_CODE_REJECTED -> R.string.error_pairing_code_rejected
+
     AddServerErrorType.TLS_ERROR -> R.string.error_tls
+
     AddServerErrorType.TIMEOUT -> R.string.error_timeout
+
     AddServerErrorType.UNKNOWN_HOST -> R.string.error_unknown_host
+
     AddServerErrorType.UNSUPPORTED_VERSION -> R.string.error_unsupported_version
+
     AddServerErrorType.SERVER_ERROR -> R.string.error_server
 }
 
@@ -60,9 +67,13 @@ fun ServerHealth.labelRes(): Int = when (this) {
 @StringRes
 fun ConnectionState.labelRes(): Int = when (this) {
     is ConnectionState.Idle -> R.string.state_idle
+
     is ConnectionState.Connecting -> R.string.state_connecting
+
     is ConnectionState.Connected -> R.string.state_connected
+
     is ConnectionState.Suspended -> R.string.state_suspended
+
     is ConnectionState.Disconnected -> when {
         cause == DisconnectCause.AUTHORIZATION_REQUIRED -> R.string.state_reauth_required
         willRetry -> R.string.state_retrying

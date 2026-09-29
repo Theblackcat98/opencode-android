@@ -273,7 +273,11 @@ class LiveReadPathIntegrationTest {
         /** The integration test only needs the reads, so nothing is written to the cache. */
         val NoCache: ReadCacheStore = object : ReadCacheStore {
             override suspend fun readSessions(serverId: String, directory: String?, limit: Int): List<SessionInfo> = emptyList()
-            override suspend fun writeSessions(serverId: String, directory: String?, sessions: List<SessionInfo>) = Unit
+            override suspend fun writeSessions(
+                serverId: String,
+                directory: String?,
+                sessions: List<SessionInfo>,
+            ) = Unit
             override suspend fun readSession(serverId: String, sessionId: String): SessionInfo? = null
             override suspend fun writeSession(serverId: String, sessionId: String, session: SessionInfo) = Unit
             override suspend fun deleteSession(serverId: String, sessionId: String) = Unit

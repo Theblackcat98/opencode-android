@@ -22,8 +22,8 @@ import dev.opencode.android.feature.review.HistoryPanel
 import dev.opencode.android.feature.review.HistoryViewModel
 import dev.opencode.android.feature.review.TransferFormat
 import dev.opencode.android.feature.review.TransferResult
-import dev.opencode.android.feature.review.R as ReviewR
 import java.io.File
+import dev.opencode.android.feature.review.R as ReviewR
 
 /**
  * The history panel and the experimental switches, over a session (plan §6, "History tools").

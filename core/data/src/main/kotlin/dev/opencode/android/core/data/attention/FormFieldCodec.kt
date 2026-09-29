@@ -4,8 +4,8 @@ import dev.opencode.android.core.model.FormField
 import dev.opencode.android.core.model.FormInfo
 import dev.opencode.android.core.model.FormOption
 import dev.opencode.android.core.model.FormValues
-import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -206,6 +206,7 @@ private fun JsonElement.textOrNull(): String? = (this as? JsonPrimitive)?.takeIf
 
 private fun JsonElement.numberOrNull(): Double? = when (this) {
     is JsonNull -> null
+
     is JsonPrimitive -> when {
         isString -> when (content) {
             "Infinity" -> Double.POSITIVE_INFINITY
@@ -220,7 +221,9 @@ private fun JsonElement.numberOrNull(): Double? = when (this) {
     else -> null
 }
 
-private fun JsonElement.booleanOrNull(): Boolean? = (this as? JsonPrimitive)?.takeIf { !it.isString }?.content?.toBooleanStrictOrNull()
+private fun JsonElement.booleanOrNull(): Boolean? = (this as? JsonPrimitive)?.takeIf {
+    !it.isString
+}?.content?.toBooleanStrictOrNull()
 
 private fun JsonElement.textsOrEmpty(): List<String> =
     (this as? JsonArray)

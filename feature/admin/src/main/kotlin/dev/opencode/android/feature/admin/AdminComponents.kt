@@ -23,6 +23,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import dev.opencode.android.core.data.action.ActionError
+import dev.opencode.android.core.data.config.DocumentParseFailure
 import dev.opencode.android.core.data.config.SchemaDiagnostic
 import dev.opencode.android.core.data.config.WritePlan
 
@@ -156,7 +157,7 @@ fun DiagnosticRow(diagnostic: SchemaDiagnostic, modifier: Modifier = Modifier) {
  * quoting the bytes, because the parser's own text includes the document.
  */
 @Composable
-fun ParseFailureRow(failure: dev.opencode.android.core.data.config.DocumentParseFailure, modifier: Modifier = Modifier) {
+fun ParseFailureRow(failure: DocumentParseFailure, modifier: Modifier = Modifier) {
     Card(
         modifier = modifier.fillMaxWidth().padding(vertical = 4.dp),
         colors = CardDefaults.cardColors(

@@ -1,6 +1,7 @@
 package dev.opencode.android.core.network
 
 import app.cash.turbine.test
+import dev.opencode.android.core.testing.Fixtures
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -19,7 +20,6 @@ import mockwebserver3.MockWebServer
 import mockwebserver3.RecordedRequest
 import okhttp3.Credentials
 import okhttp3.OkHttpClient
-import dev.opencode.android.core.testing.Fixtures
 import okio.BufferedSink
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -196,7 +196,10 @@ class EventStreamClientTest {
         assertEquals(2, client.logs.value.count { it.type == ConnectionEventType.CONNECTED })
         assertTrue(
             "The watchdog drop was not reported as a quiet stream",
-            client.logs.value.any { it.type == ConnectionEventType.DISCONNECTED && it.message == EventStreamClient.WATCHDOG_REASON },
+            client.logs.value.any {
+                it.type == ConnectionEventType.DISCONNECTED &&
+                    it.message == EventStreamClient.WATCHDOG_REASON
+            },
         )
     }
 
@@ -228,7 +231,10 @@ class EventStreamClientTest {
         client.start(scope)
 
         withTimeout(AWAIT_MILLIS) {
-            client.state.first { it is ConnectionState.Disconnected && it.cause == DisconnectCause.AUTHORIZATION_REQUIRED }
+            client.state.first {
+                it is ConnectionState.Disconnected &&
+                    it.cause == DisconnectCause.AUTHORIZATION_REQUIRED
+            }
         }
         val failed = client.state.value as ConnectionState.Disconnected
         assertEquals(false, failed.willRetry)
@@ -553,6 +559,7 @@ class EventStreamClientTest {
     private companion object {
         /** Real 2.0.18 events, recorded by the Phase 0 fixture harness. */
         val recordedEvents: List<String> by lazy { Fixtures.events() }
+
         /**
          * Every wait is bounded. An unbounded `first { }` on a state that never changes hangs the
          * whole Gradle test task with no output, which is worse than a failure.

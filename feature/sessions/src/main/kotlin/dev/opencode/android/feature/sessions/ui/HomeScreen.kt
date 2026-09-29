@@ -2,9 +2,9 @@ package dev.opencode.android.feature.sessions.ui
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -445,11 +445,11 @@ private fun EmptyHome(
         )
         Spacer(Modifier.height(16.dp))
         Button(onClick = onNewSessionClick) { Text(stringResource(R.string.home_new_session)) }
-    // The Manage row is here too, because a server with no sessions still has accounts to connect
-    // and MCP servers to authenticate — which is the first thing a user does with a fresh server.
-    if (onManageClick != null && manageDirectory != null) {
-        ManageRow(onManageClick = onManageClick, directory = manageDirectory)
-    }
+        // The Manage row is here too, because a server with no sessions still has accounts to connect
+        // and MCP servers to authenticate — which is the first thing a user does with a fresh server.
+        if (onManageClick != null && manageDirectory != null) {
+            ManageRow(onManageClick = onManageClick, directory = manageDirectory)
+        }
     }
 }
 

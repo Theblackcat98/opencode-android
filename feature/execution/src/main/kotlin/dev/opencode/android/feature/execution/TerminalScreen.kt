@@ -169,8 +169,6 @@ fun TerminalScreen(
  * sheet — so the baselines record this chrome and the page itself is asserted rather than photographed.
  * It is also the honest shape: everything this client decides about a terminal is here, and the page
  * only draws what it is handed.
- */
-/**
  * The header: the stream's own state, the two quick actions, and the reconnect.
  *
  * **The state is the socket's, not a guess.** `Live` only after the server's cursor frame, so a header

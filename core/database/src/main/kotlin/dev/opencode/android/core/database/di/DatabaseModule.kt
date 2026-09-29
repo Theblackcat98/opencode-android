@@ -7,8 +7,8 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
-import dev.opencode.android.core.database.cache.ReadCacheStore
 import dev.opencode.android.core.database.OpenCodeDatabase
+import dev.opencode.android.core.database.cache.ReadCacheStore
 import dev.opencode.android.core.database.cache.RoomReadCacheStore
 import dev.opencode.android.core.database.dao.ServerDao
 import javax.inject.Singleton
@@ -21,25 +21,19 @@ object DatabaseModule {
     @Singleton
     fun provideOpenCodeDatabase(
         @ApplicationContext context: Context,
-    ): OpenCodeDatabase {
-        return Room.databaseBuilder(
-            context,
-            OpenCodeDatabase::class.java,
-            "opencode.db",
-        )
-            .fallbackToDestructiveMigration(dropAllTables = true)
-            .build()
-    }
+    ): OpenCodeDatabase = Room.databaseBuilder(
+        context,
+        OpenCodeDatabase::class.java,
+        "opencode.db",
+    )
+        .fallbackToDestructiveMigration(dropAllTables = true)
+        .build()
 
     @Provides
-    fun provideServerDao(database: OpenCodeDatabase): ServerDao {
-        return database.serverDao()
-    }
+    fun provideServerDao(database: OpenCodeDatabase): ServerDao = database.serverDao()
 
     /** The offline cache of session lists and recent timelines. */
     @Provides
     @Singleton
-    fun provideReadCacheStore(database: OpenCodeDatabase): ReadCacheStore {
-        return RoomReadCacheStore(database)
-    }
+    fun provideReadCacheStore(database: OpenCodeDatabase): ReadCacheStore = RoomReadCacheStore(database)
 }

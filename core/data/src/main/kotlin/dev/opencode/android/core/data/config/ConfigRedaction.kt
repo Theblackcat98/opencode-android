@@ -87,6 +87,7 @@ object ConfigRedaction {
     /** Whether a value at [key] may be shown to a person. */
     fun mayReveal(key: String?, value: JsonElement): Boolean = when (value) {
         is JsonPrimitive -> !value.isString || (!isSecretKey(key.orEmpty()) && !isSecretValue(value.content))
+
         // A container is described by its shape, never by its contents, so an object whose *nested*
         // keys hold secrets cannot leak by being expanded. The rows inside it go through this
         // function again, one key at a time.
@@ -101,6 +102,7 @@ object ConfigRedaction {
      */
     fun describe(key: String?, value: JsonElement): String = when (value) {
         is JsonNull -> "null"
+
         is JsonPrimitive -> when {
             value.isString -> {
                 val text = value.content
@@ -112,11 +114,14 @@ object ConfigRedaction {
             }
 
             value.booleanOrNull != null -> value.content
+
             value.doubleOrNull != null -> value.content
+
             else -> "a value"
         }
 
         is JsonArray -> "a list of ${value.size} ${entry(value.size)}"
+
         is JsonObject -> "an object with ${value.size} ${entry(value.size)}"
     }
 

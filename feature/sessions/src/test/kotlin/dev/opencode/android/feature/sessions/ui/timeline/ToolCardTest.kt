@@ -58,7 +58,11 @@ class ToolCardTest {
         assertEquals(ToolStatus.Streaming, tool("read", emptyMap(), state = ToolState.Streaming("{")).toCard().status)
         assertEquals(
             ToolStatus.Running,
-            tool("read", mapOf("filePath" to "a"), state = ToolState.Running(json(mapOf("filePath" to "a")), emptyMap()))
+            tool(
+                "read",
+                mapOf("filePath" to "a"),
+                state = ToolState.Running(json(mapOf("filePath" to "a")), emptyMap()),
+            )
                 .toCard().status,
         )
         assertTrue(tool("read", mapOf("filePath" to "a"), output = "body").toCard().status is ToolStatus.Completed)

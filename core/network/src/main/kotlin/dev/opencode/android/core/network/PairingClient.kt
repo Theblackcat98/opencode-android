@@ -70,6 +70,7 @@ class PairingClient(
                 }
 
                 is SerializationException -> PairingErrorType.MALFORMED_RESPONSE
+
                 else -> if (e is IOException) PairingErrorType.UNREACHABLE else PairingErrorType.SERVER_ERROR
             }
             val detail = e.message ?: e.javaClass.simpleName

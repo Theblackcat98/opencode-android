@@ -24,6 +24,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
@@ -155,8 +156,7 @@ fun ProjectSettingsSheet(
             style = MaterialTheme.typography.bodySmall,
         )
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(
-                onClick = onDismiss) {
+            Button(onClick = onDismiss) {
                 Text(stringResource(R.string.action_close))
             }
             Button(
@@ -251,7 +251,7 @@ private fun ProjectField(
  * a person types. Alpha is defaulted to opaque rather than to zero, which is what a three-digit colour
  * with no alpha component means.
  */
-private fun String.toComposeColorOrDefault(fallback: androidx.compose.ui.graphics.Color): androidx.compose.ui.graphics.Color {
+private fun String.toComposeColorOrDefault(fallback: Color): Color {
     val hex = trim().removePrefix("#")
     val expanded = when (hex.length) {
         3, 4 -> hex.map { "$it$it" }.joinToString("")

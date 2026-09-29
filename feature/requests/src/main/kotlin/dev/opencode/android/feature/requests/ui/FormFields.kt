@@ -1,9 +1,9 @@
 package dev.opencode.android.feature.requests.ui
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -177,7 +177,9 @@ private fun StringFieldRow(
             OutlinedTextField(
                 value = if (customOnly) text else "",
                 onValueChange = { onAnswerChange(field.key, FormValues.string(it)) },
-                label = if (field.options.isEmpty()) null else {
+                label = if (field.options.isEmpty()) {
+                    null
+                } else {
                     { Text(stringResource(R.string.form_custom_option)) }
                 },
                 placeholder = field.placeholder?.let { { Text(it) } },

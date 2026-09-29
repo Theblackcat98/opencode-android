@@ -168,7 +168,9 @@ fun AttentionSettingsContent(
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         ListItem(
-            headlineContent = { Text(stringResource(R.string.settings_title), style = MaterialTheme.typography.titleLarge) },
+            headlineContent = {
+                Text(stringResource(R.string.settings_title), style = MaterialTheme.typography.titleLarge)
+            },
         )
 
         HorizontalDivider()

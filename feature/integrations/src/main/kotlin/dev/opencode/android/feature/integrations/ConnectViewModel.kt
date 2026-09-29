@@ -9,12 +9,12 @@ import dev.opencode.android.core.data.integrations.ConnectAttemptPoller
 import dev.opencode.android.core.data.integrations.ConnectAttemptProgress
 import dev.opencode.android.core.data.integrations.ConnectAttemptState
 import dev.opencode.android.core.data.integrations.ConnectOutcome
-import dev.opencode.android.core.data.integrations.outcome
 import dev.opencode.android.core.data.integrations.CredentialAction
 import dev.opencode.android.core.data.integrations.IntegrationFlow
-import dev.opencode.android.core.data.integrations.IntegrationForm
 import dev.opencode.android.core.data.integrations.IntegrationFlows
+import dev.opencode.android.core.data.integrations.IntegrationForm
 import dev.opencode.android.core.data.integrations.McpConfigForm
+import dev.opencode.android.core.data.integrations.outcome
 import dev.opencode.android.core.data.preferences.ExperimentalPreferences
 import dev.opencode.android.core.data.server.ServerDataRegistry
 import dev.opencode.android.core.data.sync.SyncedState
@@ -22,7 +22,6 @@ import dev.opencode.android.core.model.ConnectionInfo
 import dev.opencode.android.core.model.FormAnswer
 import dev.opencode.android.core.model.IntegrationInfo
 import dev.opencode.android.core.model.IntegrationMethod
-
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -107,9 +106,13 @@ data class ConnectUiState(
             // A key login needs the key *and* a valid form; an OAuth one needs the form only,
             // because the browser is where the key-equivalent is entered.
             IntegrationFlow.KEY -> keyDraft.isNotBlank() && IntegrationForm.isReady(active.method, formAnswers)
+
             IntegrationFlow.OAUTH -> IntegrationForm.isReady(active.method, formAnswers)
+
             IntegrationFlow.COMMAND -> IntegrationForm.isReady(active.method, formAnswers)
+
             IntegrationFlow.ENVIRONMENT, IntegrationFlow.UNSUPPORTED -> false
+
             null -> false
         }
 
@@ -375,7 +378,10 @@ class ConnectViewModel @Inject constructor(
     private fun onAttemptStarted(directory: String, active: ActiveConnect, attempt: dev.opencode.android.core.model.OAuthAttempt) {
         _state.value = _state.value.copy(
             busy = false,
-            progress = ConnectAttemptProgress(attemptID = attempt.attemptID, state = ConnectAttemptState.Pending),
+            progress = ConnectAttemptProgress(
+                attemptID = attempt.attemptID,
+                state = ConnectAttemptState.Pending,
+            ),
             oauthAttemptUrl = attempt.safeUrl,
             oauthInstructions = attempt.instructions,
             oauthMode = attempt.mode,
@@ -522,6 +528,7 @@ class ConnectViewModel @Inject constructor(
                 )
 
                 CredentialAction.ACTIVATE -> set.integrations.activateCredential(pending.connection.id)
+
                 CredentialAction.REMOVE -> set.integrations.removeCredential(pending.connection.id)
             }
             finish(result, directory = directory)

@@ -181,7 +181,7 @@ object DrivingFixtures {
                 required = true,
                 options = listOf(
                     FormOption(value = "builtin", label = "Built-in"),
-                    FormOption(value = "exa", label = "Exa"),
+                    FormOption(value = "placeholder-search", label = "Exa"),
                 ),
             ),
         ),
@@ -245,7 +245,7 @@ object DrivingFixtures {
             ModelInfo(
                 id = "other",
                 modelID = "other",
-                providerID = "other-provider",
+                providerID = "placeholder-provider",
                 name = "Other provider model",
                 capabilities = ModelInfo.Capabilities(tools = false),
                 cost = listOf(ModelInfo.Cost()),

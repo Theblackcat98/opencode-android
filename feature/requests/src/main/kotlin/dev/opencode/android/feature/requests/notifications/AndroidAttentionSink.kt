@@ -10,10 +10,10 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import dev.opencode.android.core.data.attention.AttentionActionCodes
-import dev.opencode.android.core.data.attention.AuthOutcome
 import dev.opencode.android.core.data.attention.AttentionNotice
 import dev.opencode.android.core.data.attention.AttentionReconcile
 import dev.opencode.android.core.data.attention.AttentionSink
+import dev.opencode.android.core.data.attention.AuthOutcome
 import dev.opencode.android.core.data.attention.NotificationIds
 import dev.opencode.android.core.data.attention.NotificationSlot
 import dev.opencode.android.feature.requests.R
@@ -85,18 +85,18 @@ class AndroidAttentionSink @Inject constructor(
                 ),
             )
 
-            /**
-             * The outcome of a login the user started (Phase 8).
-             *
-             * **Posted on its own channel, and the body names the outcome rather than a generic
-             * "done".** A user who left the app for a consent screen comes back asking one question —
-             * did it work — and a failed or expired attempt is the answer they need as much as a
-             * success. A single "login finished" line would be a lie for two of the three outcomes.
-             *
-             * The category is `CATEGORY_STATUS`, not `CATEGORY_ERROR`: a failed login is an
-             * information message, and putting it in the error category makes it heads-up and sticky
-             * in a way a provider refusing a grant does not warrant.
-             */
+            //
+            // The outcome of a login the user started (Phase 8).
+            //
+            // **Posted on its own channel, and the body names the outcome rather than a generic
+            // "done".** A user who left the app for a consent screen comes back asking one question —
+            // did it work — and a failed or expired attempt is the answer they need as much as a
+            // success. A single "login finished" line would be a lie for two of the three outcomes.
+            //
+            // The category is `CATEGORY_STATUS`, not `CATEGORY_ERROR`: a failed login is an
+            // information message, and putting it in the error category makes it heads-up and sticky
+            // in a way a provider refusing a grant does not warrant.
+            // /
             is AttentionNotice.AuthCompleted -> post(
                 slot = NotificationSlot.AuthCompleted(
                     serverId = notice.integrationID,

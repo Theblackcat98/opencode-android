@@ -30,7 +30,10 @@ class PairingLinkTest {
     @Test
     fun dropsADefaultPort() {
         assertEquals("http://box.example.com", PairingLink.parse("http://box.example.com:80/auth/connect/c")?.baseUrl)
-        assertEquals("https://box.example.com", PairingLink.parse("https://box.example.com:443/auth/connect/c")?.baseUrl)
+        assertEquals(
+            "https://box.example.com",
+            PairingLink.parse("https://box.example.com:443/auth/connect/c")?.baseUrl,
+        )
     }
 
     @Test

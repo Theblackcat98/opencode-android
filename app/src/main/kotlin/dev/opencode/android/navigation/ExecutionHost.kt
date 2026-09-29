@@ -1,8 +1,7 @@
 package dev.opencode.android.navigation
 
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Icon
@@ -10,9 +9,10 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.res.stringResource
@@ -158,7 +158,10 @@ fun SubagentsHost(
     ) { padding ->
         SubagentsScreen(
             state = state,
-            onSelect = { id -> viewModel.select(id); onOpenSession(id) },
+            onSelect = { id ->
+                viewModel.select(id)
+                onOpenSession(id)
+            },
             // Each jump answers the id it moved to. Reading `state.parentID` back after the selection
             // changed would ask the combined flow for a value it may not have published yet, and the
             // two orderings differ by a whole level of the tree.

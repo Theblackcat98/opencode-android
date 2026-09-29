@@ -19,11 +19,22 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import dev.opencode.android.OpenLocationTarget
 import dev.opencode.android.OpenSessionTarget
+import dev.opencode.android.core.data.server.ServerDataRegistry
+import dev.opencode.android.core.data.server.ServerDataSet
+import dev.opencode.android.core.data.sync.SyncStatus
+import dev.opencode.android.core.data.sync.SyncedState
+import dev.opencode.android.core.model.AgentInfo
+import dev.opencode.android.core.model.CommandInfo
 import dev.opencode.android.core.model.PermissionReply
+import dev.opencode.android.core.model.ReferenceInfo
+import dev.opencode.android.core.model.SkillInfo
+import dev.opencode.android.feature.admin.AdminCatalog
+import dev.opencode.android.feature.admin.CatalogUiState
 import dev.opencode.android.feature.composer.ui.ComposerViewModel
 import dev.opencode.android.feature.composer.ui.LocationChoice
 import dev.opencode.android.feature.composer.ui.NewSessionSheet
 import dev.opencode.android.feature.composer.ui.NewSessionViewModel
+import dev.opencode.android.feature.execution.ProjectSettingsHost
 import dev.opencode.android.feature.requests.ui.PendingRequestsScreen
 import dev.opencode.android.feature.requests.ui.RequestActions
 import dev.opencode.android.feature.servers.ui.AddServerScreen
@@ -34,20 +45,9 @@ import dev.opencode.android.feature.servers.ui.ServersScreen
 import dev.opencode.android.feature.sessions.ui.HomeRoute
 import dev.opencode.android.feature.sessions.ui.ManageDestination
 import dev.opencode.android.feature.sessions.ui.PendingRequestsViewModel
-import dev.opencode.android.feature.admin.AdminCatalog
-import dev.opencode.android.feature.admin.CatalogUiState
-import dev.opencode.android.core.data.sync.SyncStatus
-import dev.opencode.android.core.data.sync.SyncedState
+import dev.opencode.android.feature.sessions.ui.SessionListRoute
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import dev.opencode.android.core.data.server.ServerDataRegistry
-import dev.opencode.android.core.data.server.ServerDataSet
-import dev.opencode.android.core.model.AgentInfo
-import dev.opencode.android.core.model.CommandInfo
-import dev.opencode.android.core.model.ReferenceInfo
-import dev.opencode.android.core.model.SkillInfo
-import dev.opencode.android.feature.execution.ProjectSettingsHost
-import dev.opencode.android.feature.sessions.ui.SessionListRoute
 import kotlinx.serialization.Serializable
 import javax.inject.Inject
 
@@ -310,23 +310,32 @@ fun OpenCodeApp(
                     when (destination) {
                         ManageDestination.ACCOUNTS ->
                             navController.navigate(ConnectRoute(route.serverId, directory))
+
                         ManageDestination.PROVIDERS ->
                             navController.navigate(ProvidersRoute(route.serverId, directory))
+
                         ManageDestination.MCP ->
                             navController.navigate(McpRoute(route.serverId, directory))
+
                         ManageDestination.PLUGINS ->
                             navController.navigate(PluginsRoute(route.serverId, directory))
+
                         ManageDestination.WEB_SEARCH ->
                             navController.navigate(WebSearchRoute(route.serverId, directory))
+
                         // ---------------------------------------------------------------- Phase 9
                         ManageDestination.CONFIGURATION ->
                             navController.navigate(ConfigRoute(route.serverId, directory))
+
                         ManageDestination.AGENTS ->
                             navController.navigate(CatalogRoute(route.serverId, directory, "agents"))
+
                         ManageDestination.DEFINITIONS ->
                             navController.navigate(CatalogRoute(route.serverId, directory, "commands"))
+
                         ManageDestination.PERMISSIONS ->
                             navController.navigate(PermissionsRoute(route.serverId, directory))
+
                         // Maintenance is server-wide, so it takes no directory: it lists what the server
                         // has loaded and what would be dropped, which is a property of the server.
                         ManageDestination.MAINTENANCE ->
@@ -586,7 +595,9 @@ fun OpenCodeApp(
             ConfigHost(
                 directory = route.directory,
                 onNavigateBack = { navController.popBackStack() },
-                onOpenEditor = { path -> navController.navigate(ConfigEditorRoute(route.serverId, route.directory, path)) },
+                onOpenEditor = { path ->
+                    navController.navigate(ConfigEditorRoute(route.serverId, route.directory, path))
+                },
                 onOpenDefinitions = {
                     navController.navigate(DefinitionRoute(route.serverId, route.directory, "agent", ""))
                 },

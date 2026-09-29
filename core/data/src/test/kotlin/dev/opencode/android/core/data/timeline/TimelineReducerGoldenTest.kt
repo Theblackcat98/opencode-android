@@ -1,13 +1,13 @@
 package dev.opencode.android.core.data.timeline
 
+import dev.opencode.android.core.model.Delivery
+import dev.opencode.android.core.model.InboxItem
 import dev.opencode.android.core.model.Paged
 import dev.opencode.android.core.model.SessionMessage
 import dev.opencode.android.core.model.event.Event
 import dev.opencode.android.core.model.event.EventPayload
 import dev.opencode.android.core.model.json.OpenCodeJson
 import dev.opencode.android.core.testing.Fixtures
-import dev.opencode.android.core.model.Delivery
-import dev.opencode.android.core.model.InboxItem
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue

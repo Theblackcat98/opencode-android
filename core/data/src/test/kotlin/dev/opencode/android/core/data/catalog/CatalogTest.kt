@@ -76,15 +76,15 @@ class CatalogTest {
         val model = ModelInfo(
             id = "model-2026",
             modelID = "model-2026-preview",
-            providerID = "openai",
+            providerID = "placeholder-provider",
             name = "GPT 5 Codex",
             family = "gpt",
             limit = ModelInfo.Limit(context = 200_000, output = 4096),
         )
-        listOf("gpt 5", "MODEL-2026", "codex".takeIf { false } ?: "openai", "gpt").forEach { term ->
+        listOf("gpt 5", "MODEL-2026", "codex".takeIf { false } ?: "placeholder-provider", "gpt").forEach { term ->
             assertTrue("'$term' should match", ModelCatalog.matches(model, term))
         }
-        assertFalse(ModelCatalog.matches(model, "anthropic"))
+        assertFalse(ModelCatalog.matches(model, "placeholder-integration"))
     }
 
     @Test
@@ -124,7 +124,10 @@ class CatalogTest {
     @Test
     fun `capability badges come from the model, not from a guess`() {
         val tools = ModelInfo(
-            id = "a", modelID = "a", providerID = "p", name = "a",
+            id = "a",
+            modelID = "a",
+            providerID = "p",
+            name = "a",
             capabilities = ModelInfo.Capabilities(tools = true, input = listOf("text", "image")),
             limit = ModelInfo.Limit(context = 1, output = 1),
         )

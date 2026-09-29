@@ -6,7 +6,6 @@ import dev.opencode.android.core.data.integrations.ActionFailure
 import dev.opencode.android.core.network.ServerApi
 import dev.opencode.android.core.network.SseMessage
 import dev.opencode.android.core.network.SseParser
-import java.io.BufferedReader
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
@@ -14,6 +13,7 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import java.io.BufferedReader
 import kotlin.coroutines.coroutineContext
 
 /**

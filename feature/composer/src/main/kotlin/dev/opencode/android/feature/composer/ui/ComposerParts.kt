@@ -162,7 +162,10 @@ fun AttachmentChips(
         modifier = modifier.fillMaxWidth(),
         color = MaterialTheme.colorScheme.surfaceContainer,
     ) {
-        Column(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Column(
+            Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
             attachments.forEach { attachment ->
                 AttachmentChip(attachment = attachment, onRemove = { onRemove(attachment.id) })
             }

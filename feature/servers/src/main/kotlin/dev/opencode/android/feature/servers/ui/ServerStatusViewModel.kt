@@ -12,8 +12,8 @@ import dev.opencode.android.core.data.repository.toAddServerErrorType
 import dev.opencode.android.core.model.ServerInfo
 import dev.opencode.android.core.network.ConnectionLogEntry
 import dev.opencode.android.core.network.ConnectionState
-import dev.opencode.android.core.network.ServerValidator
 import dev.opencode.android.core.network.ServerValidationResult
+import dev.opencode.android.core.network.ServerValidator
 import dev.opencode.android.core.network.VersionStatus
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

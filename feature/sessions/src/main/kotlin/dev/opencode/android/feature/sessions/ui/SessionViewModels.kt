@@ -8,11 +8,11 @@ import dev.opencode.android.core.data.connection.ServerConnectionManager
 import dev.opencode.android.core.data.repository.ServerRepository
 import dev.opencode.android.core.data.server.PagingState
 import dev.opencode.android.core.data.server.ServerDataRegistry
+import dev.opencode.android.core.data.server.ServerDataSet
 import dev.opencode.android.core.data.server.SessionActivity
 import dev.opencode.android.core.data.server.SessionFilter
 import dev.opencode.android.core.data.server.SessionRow
 import dev.opencode.android.core.data.server.SessionStore
-import dev.opencode.android.core.data.server.ServerDataSet
 import dev.opencode.android.core.data.server.TimelinePaging
 import dev.opencode.android.core.data.server.TimelineStore
 import dev.opencode.android.core.model.ForkBoundary
@@ -20,6 +20,7 @@ import dev.opencode.android.core.model.ModelInfo
 import dev.opencode.android.core.model.Project
 import dev.opencode.android.core.model.SessionMessage
 import dev.opencode.android.core.model.SessionStatus
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -30,7 +31,6 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -82,7 +82,13 @@ data class SessionUiState(
      */
     val forkedAt: String? = null,
 ) {
-    val contextPercent: Int get() = if (contextLimit > 0) ((contextUsed * 100) / contextLimit).toInt().coerceIn(0, 100) else 0
+    val contextPercent: Int get() = if (contextLimit >
+        0
+    ) {
+        ((contextUsed * 100) / contextLimit).toInt().coerceIn(0, 100)
+    } else {
+        0
+    }
 }
 
 data class SessionModelUi(

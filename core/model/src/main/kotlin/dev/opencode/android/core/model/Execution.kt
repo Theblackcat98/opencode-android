@@ -5,17 +5,16 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
 
-/**
- * The execution surface's wire shapes: shells, terminals, worktrees, and the two writes that move a
- * session or reconfigure a project (features doc §29–§32).
- *
- * **The PTY response types are the event payload types.** `Pty` (schema) and `PtyInfo` (the
- * `pty.created` / `pty.updated` payload) are the same fields, and `PersistentPty.Info` and
- * `PersistentPtyInfo` are the same fields again. Two types for one shape is a second thing to keep in
- * step, and a terminal that `pty.list` renders with a different title from the one `pty.updated`
- * carries is exactly the bug that comes from it, so [PtyInfo] and [PersistentPtyInfo] are used for
- * both the route answers and the events.
- */
+// The execution surface's wire shapes: shells, terminals, worktrees, and the two writes that move a
+// session or reconfigure a project (features doc §29–§32).
+//
+// **The PTY response types are the event payload types.** `Pty` (schema) and `PtyInfo` (the
+// `pty.created` / `pty.updated` payload) are the same fields, and `PersistentPty.Info` and
+// `PersistentPtyInfo` are the same fields again. Two types for one shape is a second thing to keep in
+// step, and a terminal that `pty.list` renders with a different title from the one `pty.updated`
+// carries is exactly the bug that comes from it, so [PtyInfo] and [PersistentPtyInfo] are used for
+// both the route answers and the events.
+// /
 
 // ------------------------------------------------------------------------------- shells
 

@@ -391,7 +391,10 @@ fun InstructionsScreen(
             title = { Text(stringResource(R.string.admin_instructions_remove_title)) },
             text = { Text(stringResource(R.string.admin_instructions_remove_body, key)) },
             confirmButton = {
-                TextButton(onClick = onConfirmRemove, modifier = Modifier.testTag(AdminTags.CONFIRM_REMOVE_INSTRUCTION)) {
+                TextButton(
+                    onClick = onConfirmRemove,
+                    modifier = Modifier.testTag(AdminTags.CONFIRM_REMOVE_INSTRUCTION),
+                ) {
                     Text(stringResource(R.string.admin_instructions_remove_confirm))
                 }
             },

@@ -61,6 +61,7 @@ enum class AttentionChannelSpec(
         R.string.channel_retry_description,
         NotificationManager.IMPORTANCE_DEFAULT,
     ),
+
     /**
      * A login the user started finished, one way or another (Phase 8).
      *

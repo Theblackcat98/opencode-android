@@ -245,6 +245,7 @@ class ExecutionCommands(
     } catch (error: Throwable) {
         when (val kind = error.toActionError().kind) {
             ActionErrorKind.NOT_FOUND -> null
+
             else -> {
                 _error.value = error.toActionError()
                 null
@@ -322,8 +323,10 @@ class ExecutionCommands(
     }
 }
 
-/** A failed call, carrying the classified [ActionError] so a caller need not classify it again. */
-/** The one [ActionFailure], in the action package; see its note for why. */
+/**
+ * A failed call, carrying the classified [ActionError] so a caller need not classify it again.
+ * The one [ActionFailure], in the action package; see its note for why.
+ */
 typealias ActionFailure = dev.opencode.android.core.data.action.ActionFailure
 
 /**

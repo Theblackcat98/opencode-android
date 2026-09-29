@@ -71,7 +71,10 @@ class ConfigDocumentTest {
         val source = """{"enterprise": {"url": "$secret"}}}"""
         val failed = ConfigDocument.parse(source) as ParsedDocument.Failed
 
-        assertFalse("a parse failure leaked the document: ${failed.failure.reason}", failed.failure.reason.contains(secret))
+        assertFalse(
+            "a parse failure leaked the document: ${failed.failure.reason}",
+            failed.failure.reason.contains(secret),
+        )
         assertFalse(failed.toString().contains(secret))
     }
 
@@ -104,12 +107,12 @@ class ConfigDocumentTest {
   "model": "placeholder-provider/placeholder-model",
   "share": "manual"
 }"""
-        val edited = ConfigDocument.setInText(source, "model", JsonPrimitive("placeholder-provider/other-model"))
+        val edited = ConfigDocument.setInText(source, "model", JsonPrimitive("placeholder-provider/placeholder-model"))
 
         assertEquals(
             """{
   // the default model for new sessions
-  "model": "placeholder-provider/other-model",
+  "model": "placeholder-provider/placeholder-model",
   "share": "manual"
 }""",
             edited,
@@ -230,7 +233,7 @@ class ConfigDocumentTest {
   "mcp": { "files": { "type": "remote", "url": "https://mcp.example.com/" } }
 }"""
         var text = source
-        text = ConfigDocument.setInText(text, "model", JsonPrimitive("placeholder-provider/other-model"))
+        text = ConfigDocument.setInText(text, "model", JsonPrimitive("placeholder-provider/placeholder-model"))
         text = ConfigDocument.setInText(text, "share", JsonPrimitive("disabled"))
 
         assertTrue(text.contains("keep this"))
@@ -266,7 +269,11 @@ class ConfigTemplatesTest {
     fun `the default model template writes the string the file schema accepts`() {
         // The projection also accepts the three-field object, and writing it here would be rejected by
         // the file's own schema — which is the class of mistake this validator exists to catch.
-        val outcome = ConfigTemplates.build(schema, ModelTemplate("placeholder-provider", "placeholder-model", "high"), json("{}"))
+        val outcome = ConfigTemplates.build(
+            schema,
+            ModelTemplate("placeholder-provider", "placeholder-model", "high"),
+            json("{}"),
+        )
 
         assertTrue(outcome is TemplateOutcome.Ready)
         val document = (outcome as TemplateOutcome.Ready).document as JsonObject
@@ -283,7 +290,10 @@ class ConfigTemplatesTest {
             // A variant carrying a second `#`, which the spec's pattern does not allow.
             ModelTemplate("placeholder-provider", "placeholder-model", "a#b"),
         ).forEach { template ->
-            assertTrue("$template is not a model reference", ConfigTemplates.build(schema, template, json("{}")) is TemplateOutcome.NotReady)
+            assertTrue(
+                "$template is not a model reference",
+                ConfigTemplates.build(schema, template, json("{}")) is TemplateOutcome.NotReady,
+            )
         }
         // And the shapes the form does produce are accepted, a blank variant field meaning "no variant".
         listOf(
@@ -291,7 +301,10 @@ class ConfigTemplatesTest {
             ModelTemplate("placeholder-provider", "placeholder-model", ""),
             ModelTemplate("placeholder-provider", "placeholder-model", "  "),
         ).forEach {
-            assertTrue("$it is a model reference", ConfigTemplates.build(schema, it, json("{}")) is TemplateOutcome.Ready)
+            assertTrue(
+                "$it is a model reference",
+                ConfigTemplates.build(schema, it, json("{}")) is TemplateOutcome.Ready,
+            )
         }
     }
 
@@ -449,15 +462,22 @@ class ConfigTemplatesTest {
             ),
         )
 
-        assertEquals(listOf("codemode", "protocol", "the separate startup, catalog and execution timeouts"), template.unsupported)
+        assertEquals(
+            listOf("codemode", "protocol", "the separate startup, catalog and execution timeouts"),
+            template.unsupported,
+        )
         // It is still writable — the file just says less than the draft did.
         assertTrue(ConfigTemplates.build(schema, template, json("{}")) is TemplateOutcome.Ready)
     }
 
     @Test
     fun `the MCP template writes the single timeout the file accepts`() {
-        val template = McpTemplate("t", McpServerConfig.Local(command = listOf("run"), timeout = McpTimeout(execution = 2500)))
-        assertEquals("2500", ((template.value() as JsonObject).getValue("t") as JsonObject).getValue("timeout").toString())
+        val template =
+            McpTemplate("t", McpServerConfig.Local(command = listOf("run"), timeout = McpTimeout(execution = 2500)))
+        assertEquals(
+            "2500",
+            ((template.value() as JsonObject).getValue("t") as JsonObject).getValue("timeout").toString(),
+        )
     }
 
     @Test
@@ -468,11 +488,15 @@ class ConfigTemplatesTest {
     @Test
     fun `a template merges into an existing document without losing what is there`() {
         val existing = """{"model": "placeholder-provider/placeholder-model", "watcher": {"ignore": [".git/**"]}}"""
-        val outcome = ConfigTemplates.build(schema, ModelTemplate("other-provider", "other-model"), ConfigDocument.parse(existing).documentOrNull!!)
+        val outcome = ConfigTemplates.build(
+            schema,
+            ModelTemplate("placeholder-provider", "placeholder-model"),
+            ConfigDocument.parse(existing).documentOrNull!!,
+        )
 
         val document = (outcome as TemplateOutcome.Ready).document as JsonObject
         // The model was replaced, which is the point; the watcher was left alone, which is the promise.
-        assertEquals("other-provider/other-model", (document["model"] as JsonPrimitive).content)
+        assertEquals("placeholder-provider/placeholder-model", (document["model"] as JsonPrimitive).content)
         assertTrue("an unrelated key must survive", document.containsKey("watcher"))
     }
 

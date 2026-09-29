@@ -59,7 +59,6 @@ sealed interface ConnectAttemptState {
      * reconnecting.
      */
     data class Unreachable(val message: String) : ConnectAttemptState
-    ;
 
     /** Whether the flow is over, whichever way it ended. */
     val isTerminal: Boolean
@@ -240,10 +239,15 @@ class ConnectAttemptPoller(
         current: ConnectAttemptProgress,
     ): ConnectAttemptProgress = when (status) {
         null -> current.copy(state = ConnectAttemptState.Expired)
+
         is OAuthAttemptStatus.Pending -> current.copy(state = ConnectAttemptState.Pending)
+
         is OAuthAttemptStatus.Complete -> current.copy(state = ConnectAttemptState.Complete)
+
         is OAuthAttemptStatus.Failed -> current.copy(state = ConnectAttemptState.Failed(status.message))
+
         is OAuthAttemptStatus.Expired -> current.copy(state = ConnectAttemptState.Expired)
+
         // An unknown status is not a terminal state. Treating it as one would end a login because a
         // server added a status this build has not heard of; treating it as pending costs one more
         // poll and the attempt's own expiry still ends it.
@@ -255,6 +259,7 @@ class ConnectAttemptPoller(
         current: ConnectAttemptProgress,
     ): ConnectAttemptProgress = when (status) {
         null -> current.copy(state = ConnectAttemptState.Expired)
+
         is CommandAttemptStatus.Pending -> current.copy(
             state = ConnectAttemptState.Pending,
             output = append(current.output, status.message),
@@ -270,6 +275,7 @@ class ConnectAttemptPoller(
         )
 
         is CommandAttemptStatus.Expired -> current.copy(state = ConnectAttemptState.Expired)
+
         is CommandAttemptStatus.Unknown -> current.copy(state = ConnectAttemptState.Pending)
     }
 
@@ -294,6 +300,7 @@ class ConnectAttemptPoller(
          * nothing, and every poll is a request on a phone that may be on a metered connection.
          */
         const val DEFAULT_INTERVAL_MILLIS: Long = 2_000L
+
         /**
          * How many polls before the attempt is called expired.
          *
@@ -345,7 +352,10 @@ fun ConnectAttemptState.outcome(): ConnectOutcome = when (this) {
         ConnectOutcome.KEEP_WAITING
 
     ConnectAttemptState.Complete -> ConnectOutcome.REFRESH_AND_CLOSE
+
     is ConnectAttemptState.Failed -> ConnectOutcome.SHOW_FAILURE
+
     ConnectAttemptState.Expired -> ConnectOutcome.SHOW_EXPIRY
+
     ConnectAttemptState.Cancelled -> ConnectOutcome.STAY_CLOSED
 }

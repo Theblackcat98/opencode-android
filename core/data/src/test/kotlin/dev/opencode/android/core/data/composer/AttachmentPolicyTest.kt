@@ -130,7 +130,7 @@ class AttachmentPolicyTest {
     @Test
     fun `a draft describes itself with what it knows`() {
         val draft = picture(2048).copy(range = LineRange(1, 2))
-        assertEquals("shot.png · #1-2 · 2048 B", draft.describe { "${it} B" })
+        assertEquals("shot.png · #1-2 · 2048 B", draft.describe { "$it B" })
     }
 
     private fun picture(bytes: Long) = AttachmentDraft(

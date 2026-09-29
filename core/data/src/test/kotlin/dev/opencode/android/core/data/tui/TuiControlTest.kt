@@ -3,12 +3,12 @@ package dev.opencode.android.core.data.tui
 import dev.opencode.android.core.model.event.Event
 import dev.opencode.android.core.model.event.EventPayload
 import dev.opencode.android.core.model.json.OpenCodeJson
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.put
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue

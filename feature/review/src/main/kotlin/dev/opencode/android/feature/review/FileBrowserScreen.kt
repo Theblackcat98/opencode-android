@@ -250,16 +250,16 @@ fun FileBrowserContent(
         // back to the top on every read would make browsing and then opening a file unusable.
         val listState = rememberLazyListState()
         if (!searching) {
-        LazyColumn(
-            modifier = Modifier.weight(1f, fill = content == null),
-            state = listState,
-        ) {
-            items(entries, key = { it.path }) { entry ->
-                FileRow(entry = entry, reading = reading) {
-                    if (entry.isDirectory) onEnter(entry) else onRead(entry)
+            LazyColumn(
+                modifier = Modifier.weight(1f, fill = content == null),
+                state = listState,
+            ) {
+                items(entries, key = { it.path }) { entry ->
+                    FileRow(entry = entry, reading = reading) {
+                        if (entry.isDirectory) onEnter(entry) else onRead(entry)
+                    }
                 }
             }
-        }
         }
 
         if (content != null) {
@@ -519,7 +519,7 @@ private fun FileActions(
     onDownload: () -> Unit,
     onWrite: (FileReadResult, String) -> Unit,
 ) {
-        var editing by remember { mutableStateOf(false) }
+    var editing by remember { mutableStateOf(false) }
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
         Text(
             text = file.label,

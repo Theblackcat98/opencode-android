@@ -2,10 +2,10 @@ package dev.opencode.android.feature.integrations
 
 import androidx.compose.runtime.Composable
 import dev.opencode.android.core.data.integrations.McpServerDraft
+import dev.opencode.android.core.model.ConnectionInfo
 import dev.opencode.android.core.model.McpResource
 import dev.opencode.android.core.model.McpServer
 import dev.opencode.android.core.model.ProviderInfo
-import dev.opencode.android.core.model.ConnectionInfo
 
 /**
  * The screens wired to no-ops, for a screenshot.
@@ -24,7 +24,11 @@ internal fun ConnectScreenFixture(state: ConnectUiState) {
     ConnectScreen(
         state = state,
         onMethodClick = {},
-        onCredentialAction = { _: ConnectionInfo.Credential, _: dev.opencode.android.core.data.integrations.CredentialAction -> },
+        onCredentialAction = {
+                _: ConnectionInfo.Credential,
+                _: dev.opencode.android.core.data.integrations.CredentialAction,
+            ->
+        },
         onConfirmCredential = {},
         onCancelCredential = {},
         onConfirmLabelChange = {},

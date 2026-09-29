@@ -229,7 +229,9 @@ class DefaultServerRepository(
         )
 
         when {
-            credential == null -> Unit // Unchanged: the user did not touch the field.
+            credential == null -> Unit
+
+            // Unchanged: the user did not touch the field.
             credential.isBlank() -> {
                 credentialStore.removeCredential(id)
                 credentialCache.forget(cleanBaseUrl)
@@ -283,6 +285,7 @@ class DefaultServerRepository(
     ): AddServerOutcome = withContext(ioDispatcher) {
         val token = when (val redemption = pairingClient.redeem(pairingLink)) {
             is PairingRedemptionResult.Success -> redemption.token
+
             is PairingRedemptionResult.Failure -> return@withContext AddServerOutcome.Failure(
                 errorType = redemption.errorType.toAddServerErrorType(),
                 technicalDetail = redemption.technicalDetail,
@@ -346,6 +349,7 @@ class DefaultServerRepository(
 
         val token = when (val redemption = pairingClient.redeem(pairingLink)) {
             is PairingRedemptionResult.Success -> redemption.token
+
             is PairingRedemptionResult.Failure -> return@withContext AddServerOutcome.Failure(
                 errorType = redemption.errorType.toAddServerErrorType(),
                 technicalDetail = redemption.technicalDetail,

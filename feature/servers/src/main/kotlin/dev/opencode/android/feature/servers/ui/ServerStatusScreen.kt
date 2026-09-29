@@ -270,7 +270,11 @@ private fun StatusHeaderCard(
             )
 
             Text(
-                text = stringResource(R.string.status_info_row, stringResource(R.string.state_label), stringResource(uiState.connectionState.labelRes())),
+                text = stringResource(
+                    R.string.status_info_row,
+                    stringResource(R.string.state_label),
+                    stringResource(uiState.connectionState.labelRes()),
+                ),
                 style = MaterialTheme.typography.bodySmall,
             )
 
@@ -615,7 +619,9 @@ private fun ConnectionLogItem(log: ConnectionLogEntry) {
     val formattedTime = timeFormat.format(Date(log.timestamp))
     val badgeColor = when (log.type) {
         ConnectionEventType.CONNECTED, ConnectionEventType.RESYNC -> MaterialTheme.colorScheme.primaryContainer
+
         ConnectionEventType.CONNECTING, ConnectionEventType.HEARTBEAT -> MaterialTheme.colorScheme.secondaryContainer
+
         ConnectionEventType.ERROR, ConnectionEventType.WATCHDOG_TIMEOUT, ConnectionEventType.EVENTS_DROPPED ->
             MaterialTheme.colorScheme.errorContainer
 

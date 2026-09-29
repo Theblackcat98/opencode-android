@@ -11,6 +11,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -20,12 +21,12 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.ListItem
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
@@ -38,7 +39,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import dev.opencode.android.core.data.integrations.McpConfigProblem
@@ -47,8 +47,8 @@ import dev.opencode.android.core.model.McpProtocol
 import dev.opencode.android.core.model.McpResource
 import dev.opencode.android.core.model.McpServer
 import dev.opencode.android.core.model.McpStatus
-import dev.opencode.android.core.model.PluginState
 import dev.opencode.android.core.model.PluginSource
+import dev.opencode.android.core.model.PluginState
 
 /**
  * The MCP screen: the server list with status, the runtime writes, and the resource catalog.
@@ -261,8 +261,6 @@ private fun McpActions(
  * **The form never assembles a config itself.** It collects a draft, and the only thing that turns a
  * draft into a `local` or `remote` union is the same object the store calls, so a form that collected
  * the wrong fields would fail the store's validation rather than send a request the server rejects.
- */
-/**
  * The add-a-server sheet's content, without the sheet's chrome, so it can be screenshotted.
  *
  * A `ModalBottomSheet` renders into a window of its own, which a Roborazzi capture does not see: the
@@ -424,8 +422,8 @@ private fun TimeoutFields(
  * the user wants is for it to be in the next prompt, and the composer owns prompt contents. So the
  * pick is published and the host hands it over, which is the same arrangement the composer's own
  * attach flows use.
+ * The resource catalog's content, without the sheet's chrome, so it can be screenshotted.
  */
-/** The resource catalog's content, without the sheet's chrome, so it can be screenshotted. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun McpResourceSheetContent(
@@ -451,7 +449,11 @@ fun McpResourceSheetContent(
                 headlineContent = { Text(resource.name) },
                 supportingContent = {
                     Column {
-                        Text(resource.uri, style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace)
+                        Text(
+                            resource.uri,
+                            style = MaterialTheme.typography.bodySmall,
+                            fontFamily = FontFamily.Monospace,
+                        )
                         resource.description?.let {
                             Text(it, style = MaterialTheme.typography.bodySmall)
                         }
@@ -460,7 +462,9 @@ fun McpResourceSheetContent(
                 trailingContent = {
                     TextButton(
                         onClick = { onAttach(resource) },
-                        modifier = Modifier.testTag(IntegrationsTags.server("resource:${resource.server}/${resource.name}")),
+                        modifier = Modifier.testTag(
+                            IntegrationsTags.server("resource:${resource.server}/${resource.name}"),
+                        ),
                     ) {
                         Icon(Icons.Filled.Link, contentDescription = null)
                         Text(stringResource(R.string.mcp_attach), modifier = Modifier.padding(start = 4.dp))
@@ -473,7 +477,11 @@ fun McpResourceSheetContent(
             ListItem(
                 headlineContent = { Text(template.name) },
                 supportingContent = {
-                    Text(template.uriTemplate, style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace)
+                    Text(
+                        template.uriTemplate,
+                        style = MaterialTheme.typography.bodySmall,
+                        fontFamily = FontFamily.Monospace,
+                    )
                 },
             )
             HorizontalDivider()

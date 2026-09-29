@@ -12,8 +12,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.viewinterop.AndroidView
 import dev.opencode.android.core.data.terminal.TerminalBridgeCodec
 import dev.opencode.android.core.data.terminal.TerminalBridgeMessage
@@ -182,7 +182,6 @@ open class TerminalChannel {
         // length, and a bound that leaves the overshoot in place is a bound that drifts by a chunk.
         buffer.delete(0, buffer.length - BUFFER_LIMIT)
     }
-
 
     private companion object {
         /**

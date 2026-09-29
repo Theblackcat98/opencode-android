@@ -70,11 +70,14 @@ class AndroidKeystoreCredentialStore(
             }.generateKey()
         }
     } catch (e: Exception) {
-        if (allowInsecureFallbackKey) fallbackKey()
-        else throw CredentialStoreUnavailableException(
-            "The Android Keystore is unavailable, so credentials cannot be stored safely",
-            e,
-        )
+        if (allowInsecureFallbackKey) {
+            fallbackKey()
+        } else {
+            throw CredentialStoreUnavailableException(
+                "The Android Keystore is unavailable, so credentials cannot be stored safely",
+                e,
+            )
+        }
     }
 
     private fun fallbackKey(): SecretKey {

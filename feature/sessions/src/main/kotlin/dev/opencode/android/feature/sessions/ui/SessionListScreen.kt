@@ -120,7 +120,9 @@ fun SessionListScreen(
             )
             when {
                 state.rows.isEmpty() && state.paging.loading -> Loading()
+
                 state.rows.isEmpty() -> EmptyState()
+
                 else -> LazyColumn(
                     state = listState,
                     modifier = Modifier.fillMaxSize(),
@@ -292,6 +294,7 @@ private fun SessionRow.badgeLabels(now: Long): List<String> = buildList {
         )
 
         SessionActivity.Running -> add(stringResource(R.string.sessions_running_description))
+
         SessionActivity.Idle, SessionActivity.Unknown -> Unit
     }
     if (isUnread) add(stringResource(R.string.sessions_unread_description))
@@ -325,6 +328,7 @@ private fun PagingFooter(paging: PagingState, onLoadMore: () -> Unit) {
     ) {
         when {
             paging.loading -> CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+
             paging.hasMore -> Text(
                 text = stringResource(R.string.sessions_load_more),
                 style = MaterialTheme.typography.labelMedium,

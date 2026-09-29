@@ -5,6 +5,9 @@ import dev.opencode.android.core.data.composer.LineRange
 import dev.opencode.android.core.model.Delivery
 import dev.opencode.android.core.model.FileDiff
 import dev.opencode.android.core.model.SessionRevert
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 
 /**
  * What the client knows about a staged revert, and what undo is allowed to do next.
@@ -138,7 +141,9 @@ object RevertPlan {
             SendPreparation.Wait("the revert is being committed")
 
         state.busy -> SendPreparation.Wait("a revert is in progress")
+
         state.staged != null -> SendPreparation.CommitThenSend
+
         else -> SendPreparation.Send
     }
 }
@@ -288,13 +293,14 @@ object ChangedFiles {
         val files = metadata?.get("files") ?: return emptyList()
         val array = when (files) {
             is kotlinx.serialization.json.JsonArray -> files
-            is kotlinx.serialization.json.JsonObject -> kotlinx.serialization.json.JsonArray(listOf(files))
+            is JsonObject -> JsonArray(listOf(files))
             else -> return emptyList()
         }
         return array.mapNotNull { element ->
             when (element) {
                 is kotlinx.serialization.json.JsonPrimitive -> element.content.takeIf { it.isNotBlank() }
-                is kotlinx.serialization.json.JsonObject -> (element["file"] as? kotlinx.serialization.json.JsonPrimitive)
+
+                is JsonObject -> (element["file"] as? JsonPrimitive)
                     ?.content?.takeIf { it.isNotBlank() }
 
                 else -> null

@@ -122,7 +122,11 @@ class ExecutionOperationsTest : ExecutionServerTest() {
     @Test
     fun `pty update sends the size and not the title`() = runBlocking {
         server.answer("PUT /api/pty/pty_1", """{"location":{"directory":"$directory"},"data":$PTY}""")
-        server.api.updatePty("pty_1", dev.opencode.android.core.model.PtyUpdateRequest(size = PtySize(24, 80)), directory)
+        server.api.updatePty(
+            "pty_1",
+            dev.opencode.android.core.model.PtyUpdateRequest(size = PtySize(24, 80)),
+            directory,
+        )
         // Resizing does not rename: a `pty.update` that carried the old title would fire `pty.updated`
         // and make every open view of the terminal appear to change.
         assertEquals("""{"size":{"rows":24,"cols":80}}""", server.lastBody("/api/pty/pty_1"))
@@ -235,7 +239,10 @@ class ExecutionOperationsTest : ExecutionServerTest() {
         server.answer("PUT /api/experimental/persistent-pty/pty_1", """{"data":$PERSISTENT_INFO}""")
         server.api.updateSessionTerminal(
             "pty_1",
-            dev.opencode.android.core.model.SessionTerminalUpdateRequest(attachmentID = "att_1", size = PtySize(30, 100)),
+            dev.opencode.android.core.model.SessionTerminalUpdateRequest(
+                attachmentID = "att_1",
+                size = PtySize(30, 100),
+            ),
         )
         assertEquals(
             """{"attachmentID":"att_1","size":{"rows":30,"cols":100}}""",
@@ -372,8 +379,11 @@ class ExecutionOperationsTest : ExecutionServerTest() {
 
     @Test
     fun `a project update sends only the fields the user changed`() = runBlocking {
-        server.answer("PATCH /api/project/prj_1", """{"id":"prj_1","canonical":"/work","time":{""" +
-            """"created":1,"updated":1,"active":1},"sandboxes":[]}""")
+        server.answer(
+            "PATCH /api/project/prj_1",
+            """{"id":"prj_1","canonical":"/work","time":{""" +
+                """"created":1,"updated":1,"active":1},"sandboxes":[]}""",
+        )
         val updated = server.api.updateProject(
             "prj_1",
             dev.opencode.android.core.model.ProjectUpdateRequest(

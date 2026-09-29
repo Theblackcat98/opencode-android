@@ -104,9 +104,13 @@ class NotificationActionReceiver : BroadcastReceiver() {
         }
         when (action) {
             is AttentionAction.ReplyPermission -> replyPermission(context, set, action)
+
             is AttentionAction.AnswerForm -> answerForm(context, set, action, intent)
+
             is AttentionAction.CancelForm -> cancelForm(context, set, action)
+
             is AttentionAction.Interrupt -> interrupt(context, set, action)
+
             // Opening a session or a location is the activity's job; the receiver has nothing to do
             // but finish.
             is AttentionAction.OpenSession, is AttentionAction.OpenLocation -> Unit
@@ -164,7 +168,11 @@ class NotificationActionReceiver : BroadcastReceiver() {
         }
         val answer = remoteInputAnswer(key, text)
         if (answer == null) {
-            report(context, action, ActionError(ActionErrorKind.INVALID_REQUEST, context.getString(R.string.notify_form_blank)))
+            report(
+                context,
+                action,
+                ActionError(ActionErrorKind.INVALID_REQUEST, context.getString(R.string.notify_form_blank)),
+            )
             return
         }
         // The same validation the on-screen renderer applies. A shade answer that skipped it would be
@@ -172,7 +180,11 @@ class NotificationActionReceiver : BroadcastReceiver() {
         val fields = action.fields.ifEmpty { form.fields.map(::encodeField) }
         val problems = FormEngine.validate(fields.toFormFields(), mapOf(key to answer))
         if (problems.isNotEmpty()) {
-            report(context, action, ActionError(ActionErrorKind.INVALID_REQUEST, context.getString(R.string.notify_form_invalid)))
+            report(
+                context,
+                action,
+                ActionError(ActionErrorKind.INVALID_REQUEST, context.getString(R.string.notify_form_invalid)),
+            )
             return
         }
         val error = withTimeoutOrNull(ACTION_TIMEOUT_MILLIS) {
@@ -238,7 +250,10 @@ class NotificationActionReceiver : BroadcastReceiver() {
             )
             .build()
         NotificationManagerCompat.from(context)
-            .notify(ids.idFor(NotificationSlot.Confirmation(action.serverId, request.id, request.sessionID)), notification)
+            .notify(
+                ids.idFor(NotificationSlot.Confirmation(action.serverId, request.id, request.sessionID)),
+                notification,
+            )
     }
 
     private fun findPermission(set: ServerDataSet, action: AttentionAction.ReplyPermission): PermissionRequest? =
@@ -265,9 +280,13 @@ class NotificationActionReceiver : BroadcastReceiver() {
             }
 
             is AttentionAction.AnswerForm -> R.string.action_answer
+
             is AttentionAction.CancelForm -> R.string.action_cancel
+
             is AttentionAction.Interrupt -> R.string.action_interrupt
+
             is AttentionAction.OpenSession -> R.string.action_open
+
             is AttentionAction.OpenLocation -> R.string.action_open
         },
     )

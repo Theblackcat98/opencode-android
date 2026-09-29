@@ -120,7 +120,6 @@ class SessionStore(
         scope.launch { page(filter).refresh() }
     }
 
-
     /** Loads the active filter's first page, showing the cached copy first when there is one. */
     fun start() {
         val filter = _filter.value
@@ -217,9 +216,13 @@ class SessionStore(
             }
 
             is SessionRenamed -> update(sessionID, touched) { it.copy(title = payload.title) }
+
             is SessionAgentSelected -> update(sessionID, touched) { it.copy(agent = payload.agent) }
+
             is SessionModelSelected -> update(sessionID, touched) { it.copy(model = payload.model) }
+
             is SessionMetadataUpdated -> update(sessionID, touched) { it.copy(metadata = payload.metadata) }
+
             is SessionPermissions -> update(sessionID, touched) { it.copy(permissions = payload.permissions) }
 
             is SessionMoved -> update(sessionID, touched) {
@@ -230,7 +233,9 @@ class SessionStore(
                 )
             }
 
-            is SessionUsageUpdated -> update(sessionID, touched) { it.copy(cost = payload.cost, tokens = payload.tokens) }
+            is SessionUsageUpdated -> update(sessionID, touched) {
+                it.copy(cost = payload.cost, tokens = payload.tokens)
+            }
 
             is SessionViewed -> update(sessionID, touched) { it.copy(time = it.time.copy(viewed = payload.idle)) }
 
@@ -242,7 +247,9 @@ class SessionStore(
             }
 
             is SessionExecutionSucceeded -> finishTurn(sessionID, touched, Outcome.Succeeded)
+
             is SessionExecutionFailed -> finishTurn(sessionID, touched, Outcome.Failed)
+
             is SessionExecutionInterrupted -> finishTurn(sessionID, touched, Outcome.Interrupted)
 
             is SessionStatusUpdated -> {
@@ -259,7 +266,9 @@ class SessionStore(
                         )
 
                         SessionStatus.Busy -> SessionActivity.Running
+
                         SessionStatus.Idle -> SessionActivity.Idle
+
                         is SessionStatus.Unknown -> _activity.value[id] ?: SessionActivity.Unknown
                     },
                 )
@@ -267,11 +276,14 @@ class SessionStore(
             }
 
             is SessionRevertStaged -> update(sessionID, null) { it.copy(revert = payload.revert) }
+
             is SessionRevertCleared -> update(sessionID, null) { it.copy(revert = null) }
+
             is SessionRevertCommitted -> update(sessionID, null) { it.copy(revert = null) }
 
             // A fork creates a different session, which arrives with its own session.created.
             is SessionForked -> false
+
             else -> false
         }
     }

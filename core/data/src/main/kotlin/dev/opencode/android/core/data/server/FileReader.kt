@@ -66,7 +66,12 @@ class FileReader(
     }
 
     /** `fs.find`: the quick-open search, the same call the composer's `@` uses. */
-    suspend fun find(directory: String, query: String, type: String? = null, limit: String? = "50"): Result<List<FileSystemEntry>> =
+    suspend fun find(
+        directory: String,
+        query: String,
+        type: String? = null,
+        limit: String? = "50",
+    ): Result<List<FileSystemEntry>> =
         guarded { api.findFiles(directory = directory, query = query, type = type, limit = limit).data }
 
     /**
@@ -97,7 +102,11 @@ class FileReader(
         // the only thing that knows that, so the encoding is chosen here rather than asked for.
         val mediaType = api.OCTET_STREAM.toMediaTypeOrNull()
         val written: Result<FileSystemWrite> = guarded {
-            api.writeFile(path = path, directory = directory, body = text.toByteArray(Charsets.UTF_8).toRequestBody(mediaType)).data
+            api.writeFile(
+                path = path,
+                directory = directory,
+                body = text.toByteArray(Charsets.UTF_8).toRequestBody(mediaType),
+            ).data
         }
         if (written.isFailure) return Result.failure(written.exceptionOrNull()!!)
         return read(directory, path)

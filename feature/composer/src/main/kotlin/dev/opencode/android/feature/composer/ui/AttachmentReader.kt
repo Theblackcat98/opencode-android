@@ -244,5 +244,4 @@ class AttachmentReader(
         val perPixel = if (mime == "image/png") 3L else 1L
         return ImageDownscale.base64Length(width.toLong() * height * perPixel)
     }
-
 }

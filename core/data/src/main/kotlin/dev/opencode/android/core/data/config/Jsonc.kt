@@ -37,6 +37,7 @@ object Jsonc {
         while (index < length) {
             when {
                 text[index] == '"' -> index = skipString(text, index)
+
                 text[index] == '/' -> when {
                     index + 1 < length && text[index + 1] == '/' -> {
                         blankToEndOfLine(out, text, index)
@@ -165,7 +166,11 @@ object Jsonc {
         while (index < text.length) {
             when {
                 text[index].isWhitespace() -> index++
-                text[index] == '/' && index + 1 < text.length && text[index + 1] == '/' -> index = endOfLine(text, index)
+
+                text[index] == '/' && index + 1 < text.length && text[index + 1] == '/' ->
+                    index =
+                        endOfLine(text, index)
+
                 text[index] == '/' && index + 1 < text.length && text[index + 1] == '*' ->
                     index = endOfBlockComment(text, index)
 

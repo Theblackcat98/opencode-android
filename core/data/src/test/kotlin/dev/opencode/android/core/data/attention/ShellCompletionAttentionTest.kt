@@ -105,8 +105,10 @@ class ShellCompletionAttentionTest {
         val again = AttentionReconciler.draftsFor(
             state(finishedShells = listOf(finished.copy(completedAtMillis = 2_000L))),
         )
-        assertTrue(first.single { it.channel == AttentionChannel.SHELL_FINISHED }.slot !=
-            again.single { it.channel == AttentionChannel.SHELL_FINISHED }.slot)
+        assertTrue(
+            first.single { it.channel == AttentionChannel.SHELL_FINISHED }.slot !=
+                again.single { it.channel == AttentionChannel.SHELL_FINISHED }.slot,
+        )
     }
 
     @Test

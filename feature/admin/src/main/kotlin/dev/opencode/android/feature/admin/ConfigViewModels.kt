@@ -3,6 +3,8 @@ package dev.opencode.android.feature.admin
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dev.opencode.android.core.data.action.ActionError
+import dev.opencode.android.core.data.config.AgentTemplate
+import dev.opencode.android.core.data.config.ConfigDocument
 import dev.opencode.android.core.data.config.ConfigDocuments
 import dev.opencode.android.core.data.config.ConfigFileFacts
 import dev.opencode.android.core.data.config.ConfigFileRead
@@ -12,12 +14,14 @@ import dev.opencode.android.core.data.config.ConfigSchema
 import dev.opencode.android.core.data.config.ConfigSurface
 import dev.opencode.android.core.data.config.DocumentParseFailure
 import dev.opencode.android.core.data.config.Jsonc
+import dev.opencode.android.core.data.config.McpTemplate
+import dev.opencode.android.core.data.config.ModelTemplate
 import dev.opencode.android.core.data.config.ParsedDocument
+import dev.opencode.android.core.data.config.PermissionTemplate
 import dev.opencode.android.core.data.config.SchemaDiagnostic
 import dev.opencode.android.core.data.config.TemplateOutcome
 import dev.opencode.android.core.data.config.TemplateProblem
 import dev.opencode.android.core.data.config.WritePlan
-import dev.opencode.android.core.data.config.ConfigDocument
 import dev.opencode.android.core.data.integrations.ActionFailure
 import dev.opencode.android.core.data.integrations.McpConfigForm
 import dev.opencode.android.core.data.preferences.ExperimentalPreferences
@@ -26,10 +30,6 @@ import dev.opencode.android.core.model.ConfigEntry
 import dev.opencode.android.core.model.McpServerConfig
 import dev.opencode.android.core.model.PermissionEffect
 import dev.opencode.android.core.model.SafeNavigationUrl
-import dev.opencode.android.core.data.config.AgentTemplate
-import dev.opencode.android.core.data.config.McpTemplate
-import dev.opencode.android.core.data.config.ModelTemplate
-import dev.opencode.android.core.data.config.PermissionTemplate
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -287,10 +287,25 @@ data class ConfigTemplateDraft(
         }
 
         ConfigTemplateChoice.PERMISSION ->
-            if (action.isBlank()) null else PermissionTemplate(action.trim(), resource.trim(), PermissionEffect(effect.trim()))
+            if (action.isBlank()) {
+                null
+            } else {
+                PermissionTemplate(
+                    action.trim(),
+                    resource.trim(),
+                    PermissionEffect(effect.trim()),
+                )
+            }
 
         ConfigTemplateChoice.AGENT ->
-            if (name.isBlank()) null else AgentTemplate(name = name.trim(), mode = mode.trim().takeIf(String::isNotBlank))
+            if (name.isBlank()) {
+                null
+            } else {
+                AgentTemplate(
+                    name = name.trim(),
+                    mode = mode.trim().takeIf(String::isNotBlank),
+                )
+            }
 
         ConfigTemplateChoice.MCP -> when (mcpKind) {
             "local" -> if (mcpCommand.isBlank() || name.isBlank()) {
@@ -426,6 +441,7 @@ class ConfigEditorViewModel(
      */
     internal fun check(text: String, schema: ConfigSchema): Answer = when (val parsed = ConfigDocument.parse(text)) {
         is ParsedDocument.Failed -> Answer(parsed.failure, emptyList())
+
         is ParsedDocument.Parsed -> Answer(
             null,
             schema.validator().validate(parsed.document).map { it.withLine(text) },
@@ -463,7 +479,11 @@ class ConfigEditorViewModel(
                 TemplateOutcome.NotReady(TemplateProblem.REQUIRED_FIELD)
             } else {
                 val document = ConfigDocument.parse(_state.value.draft).documentOrNull ?: JsonObject(emptyMap())
-                dev.opencode.android.core.data.config.ConfigTemplates.build(set.configuration.schema(), template, document)
+                dev.opencode.android.core.data.config.ConfigTemplates.build(
+                    set.configuration.schema(),
+                    template,
+                    document,
+                )
             },
         )
     }

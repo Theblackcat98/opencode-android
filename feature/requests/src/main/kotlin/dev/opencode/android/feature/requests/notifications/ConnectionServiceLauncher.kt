@@ -7,10 +7,10 @@ import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
 import dagger.hilt.android.qualifiers.ApplicationContext
-import dev.opencode.android.core.data.presence.PresenceSignalsSource
 import dev.opencode.android.core.data.presence.PresenceDecision
 import dev.opencode.android.core.data.presence.PresencePolicy
 import dev.opencode.android.core.data.presence.PresenceSignals
+import dev.opencode.android.core.data.presence.PresenceSignalsSource
 import dev.opencode.android.core.data.presence.StartExemption
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -47,10 +47,10 @@ class ConnectionServiceLauncher @Inject constructor(
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
-    private val _appForeground = MutableStateFlow(false)
+    private val appForeground = MutableStateFlow(false)
 
     /** An exemption a caller offered that the app's own state would not justify. */
-    private val _exemption = MutableStateFlow(StartExemption.NONE)
+    private val callerExemption = MutableStateFlow(StartExemption.NONE)
 
     private val _requested = MutableStateFlow(false)
 
@@ -72,8 +72,8 @@ class ConnectionServiceLauncher @Inject constructor(
         watcher = scope.launch {
             combine(
                 presence.signals,
-                _appForeground,
-                _exemption,
+                appForeground,
+                callerExemption,
                 _requested,
             ) { signals, foreground, exemption, requested ->
                 Evaluation(signals, foreground, exemption, requested)
@@ -109,14 +109,14 @@ class ConnectionServiceLauncher @Inject constructor(
     }
 
     override fun onStart(owner: LifecycleOwner) {
-        _appForeground.value = true
+        appForeground.value = true
     }
 
     override fun onStop(owner: LifecycleOwner) {
-        _appForeground.value = false
+        appForeground.value = false
         // An offered exemption is spent on the start it was given for; keeping it would let one
         // notification tap hold the service up for as long as there was work.
-        _exemption.value = StartExemption.NONE
+        callerExemption.value = StartExemption.NONE
     }
 
     /**
@@ -125,8 +125,8 @@ class ConnectionServiceLauncher @Inject constructor(
      * Used by the notification-action path, where the user's tap is itself a documented exemption.
      */
     fun offer(exemption: StartExemption) {
-        _exemption.value = exemption
-        evaluate(Evaluation(presence.signals.value, _appForeground.value, exemption, _requested.value))
+        callerExemption.value = exemption
+        evaluate(Evaluation(presence.signals.value, appForeground.value, exemption, _requested.value))
     }
 
     /** Called by the service when it stops, so the next piece of work can start it again. */

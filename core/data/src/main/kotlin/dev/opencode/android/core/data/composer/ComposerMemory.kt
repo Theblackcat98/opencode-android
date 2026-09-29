@@ -9,9 +9,9 @@ import androidx.datastore.preferences.preferencesDataStore
 import dev.opencode.android.core.model.json.OpenCodeJson
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.serialization.Serializable
 import javax.inject.Inject
 import javax.inject.Singleton
-import kotlinx.serialization.Serializable
 
 private val Context.composerPreferences: DataStore<Preferences> by preferencesDataStore(name = "composer")
 

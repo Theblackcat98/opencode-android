@@ -66,7 +66,11 @@ class IntegrationStoreTest : IntegrationsServerTest() {
     @Test
     fun `a 404 from the runtime mcp route hides the runtime writes and only them`() = runBlocking {
         val surface = surface()
-        server.answer("POST /api/experimental/mcp/files/connect", """{"_tag":"McpServerNotFoundError","server":"files","message":"no such route"}""", 404)
+        server.answer(
+            "POST /api/experimental/mcp/files/connect",
+            """{"_tag":"McpServerNotFoundError","server":"files","message":"no such route"}""",
+            404,
+        )
 
         val result = surface.connectMcpServer(server.directory, "files")
 
@@ -171,7 +175,11 @@ class IntegrationStoreTest : IntegrationsServerTest() {
         surface.apply(event("integration.updated", "{}"))
         awaitCount(before + 1)
 
-        assertEquals("an empty-payload event must cost exactly one refetch", before + 1, server.countOf("api/integration?"))
+        assertEquals(
+            "an empty-payload event must cost exactly one refetch",
+            before + 1,
+            server.countOf("api/integration?"),
+        )
     }
 
     @Test
@@ -200,7 +208,9 @@ class IntegrationStoreTest : IntegrationsServerTest() {
         surface.integrations(server.directory).sync()
         val before = server.countOf("api/integration?")
 
-        surface.apply(event("credential.switched", """{"integrationID":"anthropic","credentialID":"cred_2"}"""))
+        surface.apply(
+            event("credential.switched", """{"integrationID":"placeholder-integration","credentialID":"cred_2"}"""),
+        )
         awaitCount(before + 1)
         settle()
 

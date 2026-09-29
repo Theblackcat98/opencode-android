@@ -1,8 +1,8 @@
 package dev.opencode.android.core.network
 
+import kotlinx.coroutines.runBlocking
 import mockwebserver3.MockResponse
 import mockwebserver3.MockWebServer
-import kotlinx.coroutines.runBlocking
 import okhttp3.OkHttpClient
 import org.junit.After
 import org.junit.Assert.assertEquals

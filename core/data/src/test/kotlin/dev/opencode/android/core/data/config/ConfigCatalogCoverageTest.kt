@@ -69,7 +69,14 @@ class ConfigCatalogCoverageTest {
         // produced, and a user would be shown a key they cannot type into their file.
         val rows = ConfigExplorer.rows(schema, emptyList()).map { it.key.key }
         listOf(
-            "permissions", "agents", "snapshots", "commands", "plugins", "providers", "update", "media",
+            "permissions",
+            "agents",
+            "snapshots",
+            "commands",
+            "plugins",
+            "providers",
+            "update",
+            "media",
         ).forEach { assertFalse("$it is a projection name, not a file key", rows.contains(it)) }
     }
 
@@ -209,7 +216,14 @@ class ConfigCatalogCoverageTest {
         // so the row links to the file rather than offering an editor.
         assertEquals(
             listOf("experimental"),
-            schema.keys.filter { ConfigRow(it, dev.opencode.android.core.data.config.ConfigValue(null, null, emptyList(), emptyList()), null, false).isReadOnly }
+            schema.keys.filter {
+                ConfigRow(
+                    it,
+                    dev.opencode.android.core.data.config.ConfigValue(null, null, emptyList(), emptyList()),
+                    null,
+                    false,
+                ).isReadOnly
+            }
                 .map { it.key },
         )
     }

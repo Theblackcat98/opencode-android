@@ -74,6 +74,7 @@ enum class ClientAction {
     COMPACT,
     SIDE_QUESTION,
     EDITOR,
+
     /** `session.revert.stage` and the composer restore that follows it. */
     UNDO,
 
@@ -214,7 +215,17 @@ object CompletionEngine {
                 ) to rank(mention, ServerPath.label(entry.path), query)
             }
             .filter { it.second >= 0 }
-            .sortedWith(compareBy({ it.second }, { if (it.first.kind == CompletionKind.DIRECTORY) 0 else 1 }, { it.first.detail.orEmpty().lowercase() }))
+            .sortedWith(
+                compareBy({ it.second }, {
+                    if (it.first.kind ==
+                        CompletionKind.DIRECTORY
+                    ) {
+                        0
+                    } else {
+                        1
+                    }
+                }, { it.first.detail.orEmpty().lowercase() }),
+            )
             .map { it.first }
         val references = catalog.references
             .filter { it.hidden != true }

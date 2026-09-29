@@ -33,4 +33,6 @@ data class ShellOutput(
 )
 
 /** Exit code as sent in `shell` messages, where it may be a non-finite number string. */
-typealias ExtendedNumber = @Serializable(with = ExtendedNumberSerializer::class) Double
+typealias ExtendedNumber =
+    @Serializable(with = ExtendedNumberSerializer::class)
+    Double

@@ -237,12 +237,16 @@ private fun StatusDot(row: ShellRow) {
 @Composable
 fun shellStatusLabel(row: ShellRow): String = when (row.info.status) {
     ShellStatus.Running -> stringResource(R.string.shells_running)
-    ShellStatus.Exited -> row.info.exit
-        ?.let { stringResource(R.string.shells_exited, it) }
-        ?: stringResource(R.string.shells_exited_unknown)
+
+    ShellStatus.Exited ->
+        row.info.exit
+            ?.let { stringResource(R.string.shells_exited, it) }
+            ?: stringResource(R.string.shells_exited_unknown)
 
     ShellStatus.Timeout -> stringResource(R.string.shells_timed_out)
+
     ShellStatus.Killed -> stringResource(R.string.shells_killed)
+
     else -> row.info.status.value
 }
 

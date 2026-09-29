@@ -6,14 +6,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.ui.Modifier
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.junit4.createComposeRule
-import androidx.compose.ui.unit.Density
-import androidx.compose.material3.Text
 import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import com.github.takahirom.roborazzi.captureRoboImage
 import dev.opencode.android.core.data.review.CommentSelection
@@ -155,7 +155,11 @@ class ReviewScreenshotTest {
     @Test
     fun emptyReview() = capture("review-empty") {
         ReviewScreen(
-            state = reviewState().copy(files = emptyList(), tree = FileTree.build(emptyList()), scope = ReviewScope.Committed),
+            state = reviewState().copy(
+                files = emptyList(),
+                tree = FileTree.build(emptyList()),
+                scope = ReviewScope.Committed,
+            ),
             onSelectScope = {},
             onOpenFile = {},
             onNextFile = {},
@@ -487,7 +491,12 @@ class ReviewScreenshotTest {
                 directory = "/home/dev/project",
                 info = VcsInfo(provider = "git", branch = VcsBranch(current = "phase-6", default = "main")),
                 files = files.map {
-                    VcsFileStatus(file = it.file, additions = it.additions, deletions = it.deletions, status = it.status)
+                    VcsFileStatus(
+                        file = it.file,
+                        additions = it.additions,
+                        deletions = it.deletions,
+                        status = it.status,
+                    )
                 },
                 base = dev.opencode.android.core.model.VcsBase(
                     name = "main",
@@ -548,7 +557,13 @@ class ReviewScreenshotTest {
             )
             dev.opencode.android.feature.composer.ui.ReviewCommentChips(
                 comments = listOf(
-                    CommentSelection.onDiff("src/main/kotlin/ReviewViewModel.kt", 10, 12, "this needs a bound", emptyList()),
+                    CommentSelection.onDiff(
+                        "src/main/kotlin/ReviewViewModel.kt",
+                        10,
+                        12,
+                        "this needs a bound",
+                        emptyList(),
+                    ),
                 ),
                 onRemove = {},
             )

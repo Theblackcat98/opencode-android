@@ -20,16 +20,13 @@ import androidx.compose.ui.unit.dp
 import com.github.takahirom.roborazzi.captureRoboImage
 import dev.opencode.android.core.data.attention.AttentionAction
 import dev.opencode.android.core.data.attention.AttentionActionCodes
-import dev.opencode.android.core.data.attention.AttentionSettings as StoredAttentionSettings
-import dev.opencode.android.core.data.attention.QuietHours as StoredQuietHours
-import dev.opencode.android.core.data.attention.RemoteInputSpec
-import dev.opencode.android.core.data.attention.encodeField
-import dev.opencode.android.feature.requests.R
 import dev.opencode.android.core.data.attention.AttentionChannel
 import dev.opencode.android.core.data.attention.AttentionDraft
 import dev.opencode.android.core.data.attention.NotificationContent
 import dev.opencode.android.core.data.attention.NotificationIds
 import dev.opencode.android.core.data.attention.NotificationSlot
+import dev.opencode.android.core.data.attention.RemoteInputSpec
+import dev.opencode.android.core.data.attention.encodeField
 import dev.opencode.android.core.data.presence.RunningSession
 import dev.opencode.android.core.designsystem.theme.OpenCodeTheme
 import dev.opencode.android.core.model.FormField
@@ -37,6 +34,7 @@ import dev.opencode.android.core.model.FormKind
 import dev.opencode.android.core.model.Outcome
 import dev.opencode.android.core.model.PermissionReply
 import dev.opencode.android.core.model.PermissionRequest
+import dev.opencode.android.feature.requests.R
 import dev.opencode.android.feature.requests.ui.AttentionSettingsContent
 import dev.opencode.android.feature.requests.ui.AttentionSettingsUiState
 import dev.opencode.android.feature.requests.ui.PendingAutoApprove
@@ -47,6 +45,8 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
+import dev.opencode.android.core.data.attention.AttentionSettings as StoredAttentionSettings
+import dev.opencode.android.core.data.attention.QuietHours as StoredQuietHours
 
 /**
  * Screenshots of what Phase 4 puts in front of the user (plan §5.3, "UI"; §5.4, dynamic type).
@@ -90,7 +90,11 @@ class AttentionScreenshotTest {
 
     @Test
     fun permissionNotificationDark() = capture("notify-permission-dark", dark = true) {
-        NotificationCard(builder.build(permissionDraft(resources = listOf("/srv/project/src", "/srv/project/README.md", "/srv/.env"))))
+        NotificationCard(
+            builder.build(
+                permissionDraft(resources = listOf("/srv/project/src", "/srv/project/README.md", "/srv/.env")),
+            ),
+        )
     }
 
     @Test

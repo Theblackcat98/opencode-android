@@ -11,7 +11,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material3.Switch
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
@@ -20,6 +19,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable

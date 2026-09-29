@@ -52,6 +52,7 @@ class ServerDataSetComposerEventsTest {
                 .body(
                     when (request.url.encodedPath) {
                         "/api/command" -> """{"location":{"directory":"x"},"data":[{"name":"deploy"}]}"""
+
                         "/api/skill" ->
                             """{"location":{"directory":"x"},"data":[{"id":"s","name":"S","path":"/s","content":""}]}"""
 

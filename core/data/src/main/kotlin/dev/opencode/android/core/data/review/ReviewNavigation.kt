@@ -132,9 +132,13 @@ class ReviewedFiles(initial: Set<String> = emptySet()) {
 
     operator fun contains(key: String): Boolean = key in keys
 
-    fun add(key: String) { keys += key }
+    fun add(key: String) {
+        keys += key
+    }
 
-    fun remove(key: String) { keys -= key }
+    fun remove(key: String) {
+        keys -= key
+    }
 
     /** Marks or unmarks, which is what a toggle does. */
     fun toggle(key: String): Boolean = if (key in keys) {

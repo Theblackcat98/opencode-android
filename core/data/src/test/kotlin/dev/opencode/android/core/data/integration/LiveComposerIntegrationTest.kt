@@ -1,17 +1,17 @@
 package dev.opencode.android.core.data.integration
 
-import dev.opencode.android.core.data.server.SessionCommands
 import dev.opencode.android.core.data.composer.AttachmentDraft
 import dev.opencode.android.core.data.composer.AttachmentKind
-import dev.opencode.android.core.data.composer.AttachmentProblem
 import dev.opencode.android.core.data.composer.AttachmentPolicy
+import dev.opencode.android.core.data.composer.AttachmentProblem
 import dev.opencode.android.core.data.composer.AttachmentVerdict
 import dev.opencode.android.core.data.composer.ServerPath
+import dev.opencode.android.core.data.server.SessionCommands
 import dev.opencode.android.core.model.CommandInfo
-import dev.opencode.android.core.model.ModelRef
 import dev.opencode.android.core.model.Delivery
 import dev.opencode.android.core.model.FileSystemEntry
 import dev.opencode.android.core.model.InboxItem
+import dev.opencode.android.core.model.ModelRef
 import dev.opencode.android.core.model.PromptFileInput
 import dev.opencode.android.core.model.ReferenceInfo
 import dev.opencode.android.core.model.SkillInfo
@@ -150,7 +150,11 @@ class LiveComposerIntegrationTest {
         assertTrue("the prompt was accepted", result.isSuccess)
         val echoed = result.getOrThrow()
         val stored = ((echoed.item as InboxItem.User).payload.files ?: emptyList()).single()
-        assertEquals("the server read the file and recorded its bytes", marker.readText().trim(), String(java.util.Base64.getDecoder().decode(stored.data)))
+        assertEquals(
+            "the server read the file and recorded its bytes",
+            marker.readText().trim(),
+            String(java.util.Base64.getDecoder().decode(stored.data)),
+        )
         assertTrue(
             "the provider request must carry the file's content, which is the whole criterion",
             awaitProviderRequest(mark) { body -> marker.readText().trim() in body },
@@ -201,7 +205,10 @@ class LiveComposerIntegrationTest {
             mime = "image/png",
         )
 
-        assertEquals(AttachmentVerdict.NeedsConfirmation(AttachmentProblem.MODEL_TAKES_NO_IMAGES), AttachmentPolicy.verify(draft, model))
+        assertEquals(
+            AttachmentVerdict.NeedsConfirmation(AttachmentProblem.MODEL_TAKES_NO_IMAGES),
+            AttachmentPolicy.verify(draft, model),
+        )
     }
 
     @Test

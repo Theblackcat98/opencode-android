@@ -1,7 +1,6 @@
 package dev.opencode.android.core.data.tui
 
 import dev.opencode.android.core.model.event.Event
-
 import dev.opencode.android.core.model.event.EventPayload
 import dev.opencode.android.core.model.event.TuiCommandExecute
 import dev.opencode.android.core.model.event.TuiPromptAppend

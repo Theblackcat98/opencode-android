@@ -3,18 +3,18 @@ package dev.opencode.android.core.data.integration
 import dev.opencode.android.core.data.config.ConfigDocument
 import dev.opencode.android.core.data.config.ConfigSchema
 import dev.opencode.android.core.data.config.ConfigSurface
+import dev.opencode.android.core.data.config.ConfigTemplates
 import dev.opencode.android.core.data.config.McpTemplate
 import dev.opencode.android.core.data.config.ModelTemplate
 import dev.opencode.android.core.data.config.PermissionTemplate
 import dev.opencode.android.core.data.config.RetrofitAdminApi
 import dev.opencode.android.core.data.config.TemplateOutcome
-import dev.opencode.android.core.data.config.ConfigTemplates
 import dev.opencode.android.core.data.server.FileReader
 import dev.opencode.android.core.model.McpServerConfig
 import dev.opencode.android.core.model.PermissionEffect
-import dev.opencode.android.core.testing.VendoredSpec
 import dev.opencode.android.core.network.ServerApi
 import dev.opencode.android.core.network.ServerApiFactory
+import dev.opencode.android.core.testing.VendoredSpec
 import dev.opencode.android.core.testing.integration.DevServerHarness
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -507,6 +507,7 @@ class LiveConfigIntegrationTest {
         val read = surface.readFile(workDirectory, path)
         val text = when (read) {
             is dev.opencode.android.core.data.config.ConfigFileRead.Found -> read.file.text.orEmpty()
+
             is dev.opencode.android.core.data.config.ConfigFileRead.Missing -> {
                 // A file the test creates is its own to clean up, and the restore writes back the empty
                 // text rather than the harness's content.

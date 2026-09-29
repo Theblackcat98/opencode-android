@@ -21,10 +21,10 @@ import dev.opencode.android.core.model.PluginInfo
 import dev.opencode.android.core.model.PluginUpdateRequest
 import dev.opencode.android.core.model.ProviderInfo
 import dev.opencode.android.core.model.Secret
-import dev.opencode.android.core.model.WellknownSourceRequest
 import dev.opencode.android.core.model.WebSearchProviderInfo
 import dev.opencode.android.core.model.WebSearchQueryRequest
 import dev.opencode.android.core.model.WebSearchResponse
+import dev.opencode.android.core.model.WellknownSourceRequest
 import dev.opencode.android.core.model.event.CredentialSwitched
 import dev.opencode.android.core.model.event.Event
 import dev.opencode.android.core.model.event.EventPayload
@@ -138,8 +138,10 @@ class IntegrationSurface(
 
     /** The directories this client has opened, which is what a resync and a shutdown walk. */
     val directories: Set<String>
-        get() = (integrations.keys + providers.keys + mcpServers.keys + mcpResources.keys +
-            plugins.keys + webSearchProviders.keys).toSet()
+        get() = (
+            integrations.keys + providers.keys + mcpServers.keys + mcpResources.keys +
+                plugins.keys + webSearchProviders.keys
+            ).toSet()
 
     // ------------------------------------------------------------------------------ capability
 
@@ -247,7 +249,13 @@ class IntegrationSurface(
     } catch (cancellation: CancellationException) {
         throw cancellation
     } catch (error: Throwable) {
-        if (error.toActionError().kind == dev.opencode.android.core.data.action.ActionErrorKind.NOT_FOUND) null else throw error
+        if (error.toActionError().kind ==
+            dev.opencode.android.core.data.action.ActionErrorKind.NOT_FOUND
+        ) {
+            null
+        } else {
+            throw error
+        }
     }
 
     /**
@@ -295,7 +303,13 @@ class IntegrationSurface(
     } catch (cancellation: CancellationException) {
         throw cancellation
     } catch (error: Throwable) {
-        if (error.toActionError().kind == dev.opencode.android.core.data.action.ActionErrorKind.NOT_FOUND) null else throw error
+        if (error.toActionError().kind ==
+            dev.opencode.android.core.data.action.ActionErrorKind.NOT_FOUND
+        ) {
+            null
+        } else {
+            throw error
+        }
     }
 
     /** `integration.command.cancel`. */
@@ -474,11 +488,17 @@ class IntegrationSurface(
             -> integrations.values.forEach { it.invalidate() }
 
             is EventPayload.ProviderUpdated -> providers.values.forEach { it.invalidate() }
+
             is EventPayload.WebsearchUpdated -> webSearchProviders.values.forEach { it.invalidate() }
+
             is EventPayload.PluginUpdated -> plugins.values.forEach { it.invalidate() }
+
             is McpStatusChanged -> mcpServers.values.forEach { it.invalidate() }
+
             is McpResourcesChanged -> mcpResources.values.forEach { it.invalidate() }
+
             is CredentialSwitched -> integrations.values.forEach { it.invalidate() }
+
             else -> Unit
         }
     }
@@ -571,6 +591,8 @@ class IntegrationSurface(
     private fun <T> failure(error: ActionError): Result<T> = Result.failure(ActionFailure(error))
 }
 
-/** A write that failed, carrying the classification every screen reports. */
-/** The one [ActionFailure], in the action package; see its note for why. */
+/**
+ * A write that failed, carrying the classification every screen reports.
+ * The one [ActionFailure], in the action package; see its note for why.
+ */
 typealias ActionFailure = dev.opencode.android.core.data.action.ActionFailure

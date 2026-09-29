@@ -5,8 +5,8 @@ import dev.opencode.android.core.data.action.toActionError
 import dev.opencode.android.core.model.Delivery
 import dev.opencode.android.core.model.Project
 import dev.opencode.android.core.model.ProjectUpdateRequest
-import dev.opencode.android.core.model.ShellInfo
 import dev.opencode.android.core.model.SessionMoveRequest
+import dev.opencode.android.core.model.ShellInfo
 import dev.opencode.android.core.model.event.Event
 import dev.opencode.android.core.model.event.ShellExited
 import dev.opencode.android.core.network.ServerApi

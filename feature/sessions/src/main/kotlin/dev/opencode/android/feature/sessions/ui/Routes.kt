@@ -4,8 +4,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 /**
  * The per-server home, wired to the stores.

@@ -3,10 +3,10 @@ package dev.opencode.android.core.network
 import dev.opencode.android.core.model.json.OpenCodeJson
 import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import retrofit2.Retrofit
 import retrofit2.converter.kotlinx.serialization.asConverterFactory
-import okhttp3.MediaType.Companion.toMediaType
 
 /**
  * Builds a [ServerApi] per server.

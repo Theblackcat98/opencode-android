@@ -95,7 +95,9 @@ object TimelineConvergence {
                     TimelineDivergence(
                         kind = DivergenceKind.ORDER_DIFFERS,
                         messageId = left.getOrNull(at) ?: right.getOrNull(at) ?: "-",
-                        detail = "reduced=${left.joinToString(",").abbreviate()} projected=${right.joinToString(",").abbreviate()}",
+                        detail = "reduced=${left.joinToString(
+                            ",",
+                        ).abbreviate()} projected=${right.joinToString(",").abbreviate()}",
                     ),
                 )
             }

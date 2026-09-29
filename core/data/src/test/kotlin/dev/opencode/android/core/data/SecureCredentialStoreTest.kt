@@ -93,7 +93,15 @@ class SecureCredentialStoreTest {
     fun aTamperedRecordReadsBackAsNoCredentialSoTheAppRePairs() {
         store.saveCredential("srv-1", "token")
         val tampered = requireNotNull(prefs.getString("cred_srv-1", null))
-            .map { if (it == 'A') 'B' else if (it == 'B') 'C' else it }
+            .map {
+                if (it == 'A') {
+                    'B'
+                } else if (it == 'B') {
+                    'C'
+                } else {
+                    it
+                }
+            }
             .joinToString("")
         prefs.edit().putString("cred_srv-1", tampered).commit()
 

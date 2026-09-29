@@ -49,7 +49,7 @@ enum class DefinitionKind(val id: String) {
     /** The path for [name] relative to the location directory. */
     fun relativePath(name: String): String = when (this) {
         INSTRUCTIONS -> fileName(name)
-        else -> "${directory}/${fileName(name)}"
+        else -> "$directory/${fileName(name)}"
     }
 
     /** The front-matter keys this kind understands, which is what the template writes. */
@@ -86,7 +86,7 @@ object DefinitionTemplates {
         return when (kind) {
             DefinitionKind.AGENT -> buildString {
                 appendLine("---")
-                appendLine("description: ${quote("When to use ${name}")}")
+                appendLine("description: ${quote("When to use $name")}")
                 appendLine("mode: primary")
                 appendLine("---")
                 appendLine()

@@ -1,5 +1,6 @@
 package dev.opencode.android.core.data.server
 
+import dev.opencode.android.core.model.SessionStatus
 import dev.opencode.android.core.model.event.Event
 import dev.opencode.android.core.model.event.EventPayload
 import dev.opencode.android.core.model.event.SessionCreated
@@ -10,15 +11,14 @@ import dev.opencode.android.core.model.event.SessionIdle
 import dev.opencode.android.core.model.event.SessionRenamed
 import dev.opencode.android.core.model.event.SessionStatusUpdated
 import dev.opencode.android.core.model.event.SessionUsageUpdated
-import dev.opencode.android.core.model.SessionStatus
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.withTimeout
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -217,13 +217,30 @@ class SessionStoreTest {
         server.sessions = listOf(sessionFixture("ses_a", title = "before", updated = 10L))
         store.start()
         awaitQuiescent()
-        assertTrue(store.apply(Event.decode("""{"id":"evt_1","created":60,"type":"session.renamed","data":{"sessionID":"ses_a","title":"after"}}""")))
+        assertTrue(
+            store.apply(
+                Event.decode(
+                    """{"id":"evt_1","created":60,"type":"session.renamed","data":{"sessionID":"ses_a","title":"after"}}""",
+                ),
+            ),
+        )
         awaitState("the renamed title never reached the list") {
             store.visibleRows.value.singleOrNull()?.title == "after"
         }
         assertEquals("after", store.visibleRows.value.single().title)
-        assertEquals("an event must not move a session's clock backwards", 60L, store.visibleRows.value.single().updated)
-        assertFalse("nothing changed, so nothing is reported", store.apply(Event.decode("""{"id":"evt_2","created":60,"type":"session.renamed","data":{"sessionID":"ses_a","title":"after"}}""")))
+        assertEquals(
+            "an event must not move a session's clock backwards",
+            60L,
+            store.visibleRows.value.single().updated,
+        )
+        assertFalse(
+            "nothing changed, so nothing is reported",
+            store.apply(
+                Event.decode(
+                    """{"id":"evt_2","created":60,"type":"session.renamed","data":{"sessionID":"ses_a","title":"after"}}""",
+                ),
+            ),
+        )
     }
 
     @Test
@@ -233,16 +250,28 @@ class SessionStoreTest {
         store.start()
         awaitQuiescent()
 
-        store.apply(Event.decode("""{"id":"evt_1","created":70,"type":"session.usage.updated","data":{"sessionID":"ses_a","cost":1.25,"tokens":{"input":10,"output":5,"reasoning":0,"cache":{"read":0,"write":0}}}}"""))
+        store.apply(
+            Event.decode(
+                """{"id":"evt_1","created":70,"type":"session.usage.updated","data":{"sessionID":"ses_a","cost":1.25,"tokens":{"input":10,"output":5,"reasoning":0,"cache":{"read":0,"write":0}}}}""",
+            ),
+        )
         awaitState("the usage update never reached the list") { store.visibleRows.value.single().cost == 1.25 }
         val row = store.visibleRows.value.single()
         assertEquals(1.25, row.cost, 0.0001)
         assertEquals(15L, row.tokens)
 
-        store.apply(Event.decode("""{"id":"evt_2","created":71,"type":"session.execution.started","data":{"sessionID":"ses_a"}}"""))
+        store.apply(
+            Event.decode(
+                """{"id":"evt_2","created":71,"type":"session.execution.started","data":{"sessionID":"ses_a"}}""",
+            ),
+        )
         awaitState("the running badge never appeared") { store.visibleRows.value.single().isRunning }
 
-        store.apply(Event.decode("""{"id":"evt_3","created":72,"type":"session.execution.succeeded","data":{"sessionID":"ses_a"}}"""))
+        store.apply(
+            Event.decode(
+                """{"id":"evt_3","created":72,"type":"session.execution.succeeded","data":{"sessionID":"ses_a"}}""",
+            ),
+        )
         awaitState("the finished turn never settled on the row") {
             val row = store.visibleRows.value.single()
             !row.isRunning && row.session.outcome == dev.opencode.android.core.model.Outcome.Succeeded
@@ -280,7 +309,11 @@ class SessionStoreTest {
         server.sessions = listOf(sessionFixture("ses_a"), sessionFixture("ses_b"))
         store.start()
         awaitQuiescent()
-        store.apply(Event.decode("""{"id":"evt_1","created":90,"type":"session.execution.started","data":{"sessionID":"ses_a"}}"""))
+        store.apply(
+            Event.decode(
+                """{"id":"evt_1","created":90,"type":"session.execution.started","data":{"sessionID":"ses_a"}}""",
+            ),
+        )
         awaitState("the running badge never appeared") { store.visibleRows.value.first { it.id == "ses_a" }.isRunning }
 
         server.running = mutableSetOf("ses_b")
@@ -314,7 +347,13 @@ class SessionStoreTest {
         server.sessions = emptyList()
         store.start()
         awaitQuiescent()
-        assertFalse(store.apply(Event.decode("""{"id":"evt_1","created":30,"type":"session.renamed","data":{"sessionID":"ses_ghost","title":"x"}}""")))
+        assertFalse(
+            store.apply(
+                Event.decode(
+                    """{"id":"evt_1","created":30,"type":"session.renamed","data":{"sessionID":"ses_ghost","title":"x"}}""",
+                ),
+            ),
+        )
         assertTrue(store.visibleRows.value.isEmpty())
     }
 

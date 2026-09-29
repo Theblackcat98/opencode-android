@@ -1,5 +1,6 @@
 package dev.opencode.android.core.data.integrations
 
+import dev.opencode.android.core.data.forms.FieldProblem
 import dev.opencode.android.core.data.forms.FormEngine
 import dev.opencode.android.core.model.ConnectionInfo
 import dev.opencode.android.core.model.FormAnswer
@@ -96,7 +97,7 @@ object IntegrationForm {
         FormEngine.toAnswer(fieldsOf(method), answers).takeIf { it.isNotEmpty() }
 
     /** The problems keyed by field, for the UI to mark fields with. */
-    fun problemsOf(method: IntegrationMethod, answers: FormAnswer): Map<String, dev.opencode.android.core.data.forms.FieldProblem> =
+    fun problemsOf(method: IntegrationMethod, answers: FormAnswer): Map<String, FieldProblem> =
         FormEngine.validate(fieldsOf(method), answers)
 }
 
@@ -145,6 +146,11 @@ enum class CredentialAction {
 /** Whether a connection row is a credential the app can act on, and how. */
 val ConnectionInfo.actions: List<CredentialAction>
     get() = when (this) {
-        is ConnectionInfo.Credential -> listOf(CredentialAction.RENAME, CredentialAction.ACTIVATE, CredentialAction.REMOVE)
+        is ConnectionInfo.Credential -> listOf(
+            CredentialAction.RENAME,
+            CredentialAction.ACTIVATE,
+            CredentialAction.REMOVE,
+        )
+
         is ConnectionInfo.Env, is ConnectionInfo.Unknown -> emptyList()
     }

@@ -45,20 +45,28 @@ enum class VersionStatus {
 enum class ValidationErrorType {
     /** Nothing answered on that address. Usually the server still listens on localhost only. */
     CONNECTION_REFUSED,
+
     /** The password or token was rejected: re-pair. */
     UNAUTHORIZED,
+
     /** A certificate could not be validated. */
     TLS_ERROR,
+
     /** The connection or the response timed out. */
     TIMEOUT,
+
     /** Not an OpenCode V2 server (a V1 server, or something else entirely on that port). */
     UNSUPPORTED_VERSION,
+
     /** The host name could not be resolved. */
     UNKNOWN_HOST,
+
     /** The server answered with an error status. */
     SERVER_ERROR,
+
     /** The server answered with something that is not an OpenCode server response. */
     MALFORMED_RESPONSE,
+
     /** Any other failure. */
     UNKNOWN,
 }
@@ -115,6 +123,7 @@ class ServerValidator(
             }
 
             is SerializationException -> ValidationErrorType.MALFORMED_RESPONSE
+
             is ConnectException,
             is NoRouteToHostException,
             is PortUnreachableException,
@@ -125,7 +134,9 @@ class ServerValidator(
             -> ValidationErrorType.TIMEOUT
 
             is SSLException -> ValidationErrorType.TLS_ERROR
+
             is UnknownHostException -> ValidationErrorType.UNKNOWN_HOST
+
             else -> ValidationErrorType.UNKNOWN
         }
         return ServerValidationResult.Failure(

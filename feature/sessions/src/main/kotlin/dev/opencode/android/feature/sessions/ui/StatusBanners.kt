@@ -17,8 +17,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
-import dev.opencode.android.core.model.StructuredError
 import dev.opencode.android.core.model.FinishReason
+import dev.opencode.android.core.model.StructuredError
 import dev.opencode.android.feature.sessions.R
 import java.util.concurrent.TimeUnit
 

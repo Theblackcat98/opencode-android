@@ -21,8 +21,8 @@ import okhttp3.OkHttpClient
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotSame
-import org.junit.Assert.assertSame
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -182,7 +182,9 @@ class RequestCenterTest {
     @Test
     fun `a rejected reply reports the failure and leaves the request pending`() = runTest {
         center.apply(askedEvent(REQUEST))
-        server.enqueue(jsonResponse(404, """{"_tag":"PermissionNotFoundError","message":"gone","requestID":"${REQUEST.id}"}"""))
+        server.enqueue(
+            jsonResponse(404, """{"_tag":"PermissionNotFoundError","message":"gone","requestID":"${REQUEST.id}"}"""),
+        )
         val error = center.replyPermission(REQUEST, PermissionReply.Reject, feedback = "no")
 
         assertEquals(ActionErrorKind.NOT_FOUND, error?.kind)

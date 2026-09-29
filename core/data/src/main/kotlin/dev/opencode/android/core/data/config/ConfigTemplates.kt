@@ -166,11 +166,11 @@ data class PermissionTemplate(
     override val isPrivilegeChange: Boolean get() = true
 
     /** The effects the file's `PermissionActionConfig` allows. A template may not write anything else. */
-    val ALLOWED_EFFECTS: Set<String> = setOf("allow", "deny", "ask")
+    val allowedEffects: Set<String> = setOf("allow", "deny", "ask")
 
     override fun value(): JsonElement? {
         if (action.isBlank()) return null
-        if (effect.value !in ALLOWED_EFFECTS) return null
+        if (effect.value !in allowedEffects) return null
         val leaf = JsonPrimitive(effect.value)
         val forAction = if (resource.isBlank()) leaf else JsonObject(mapOf(resource to leaf))
         return JsonObject(mapOf(action to forAction))
@@ -239,7 +239,7 @@ data class AgentTemplate(
     override val isPrivilegeChange: Boolean get() = true
 
     /** The modes `AgentConfig` allows. Anything else is the schema's rejection, not a silent drop. */
-    val ALLOWED_MODES: Set<String> = setOf("subagent", "primary", "all")
+    val allowedModes: Set<String> = setOf("subagent", "primary", "all")
 
     override fun value(): JsonElement? {
         if (name.isBlank()) return null
@@ -252,7 +252,7 @@ data class AgentTemplate(
             color?.takeIf { it.isNotBlank() }?.let { put("color", JsonPrimitive(it)) }
             description?.takeIf { it.isNotBlank() }?.let { put("description", JsonPrimitive(it)) }
             permission
-                ?.filterValues { effect -> effect.value in PermissionTemplate("x", "y", effect).ALLOWED_EFFECTS }
+                ?.filterValues { effect -> effect.value in PermissionTemplate("x", "y", effect).allowedEffects }
                 ?.takeIf { it.isNotEmpty() }
                 ?.let { values -> put("permission", JsonObject(values.mapValues { (_, e) -> JsonPrimitive(e.value) })) }
             prompt?.takeIf { it.isNotBlank() }?.let { put("prompt", JsonPrimitive(it)) }

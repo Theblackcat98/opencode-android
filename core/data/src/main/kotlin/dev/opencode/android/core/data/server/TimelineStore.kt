@@ -7,12 +7,12 @@ import dev.opencode.android.core.data.timeline.TimelineReducer
 import dev.opencode.android.core.data.timeline.TimelineState
 import dev.opencode.android.core.database.cache.ReadCacheStore
 import dev.opencode.android.core.model.SessionMessage
+import dev.opencode.android.core.model.SessionStatus
 import dev.opencode.android.core.model.event.Event
 import dev.opencode.android.core.model.event.SessionExecutionFailed
 import dev.opencode.android.core.model.event.SessionExecutionInterrupted
 import dev.opencode.android.core.model.event.SessionExecutionSucceeded
 import dev.opencode.android.core.model.event.SessionStatusUpdated
-import dev.opencode.android.core.model.SessionStatus
 import dev.opencode.android.core.network.ServerApi
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job

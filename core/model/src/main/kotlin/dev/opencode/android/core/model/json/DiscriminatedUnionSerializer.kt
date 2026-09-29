@@ -1,6 +1,5 @@
 package dev.opencode.android.core.model.json
 
-import kotlin.reflect.KClass
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.descriptors.SerialDescriptor
@@ -13,6 +12,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlin.reflect.KClass
 
 /**
  * A union member that the client does not recognize. It keeps the raw JSON so that nothing is lost
@@ -84,6 +84,7 @@ abstract class DiscriminatedUnionSerializer<T : Any>(
         }
         val variant = byType[value::class]
             ?: throw SerializationException("${descriptor.serialName}: no variant registered for ${value::class}")
+
         @Suppress("UNCHECKED_CAST")
         val body = output.json.encodeToJsonElement(variant.serializer as KSerializer<T>, value).jsonObject
         output.encodeJsonElement(JsonObject(mapOf(discriminator to JsonPrimitive(variant.tag)) + body))
@@ -95,6 +96,8 @@ inline fun <reified V : Any> variant(tag: String, serializer: KSerializer<V>): D
     DiscriminatedUnionSerializer.Variant(tag, V::class, serializer)
 
 /** Reads a string field of a raw object, for [UnknownVariant] implementations. */
-internal fun JsonObject.stringOrNull(key: String): String? = (this[key] as? JsonPrimitive)?.takeIf { it.isString }?.contentOrNull
+internal fun JsonObject.stringOrNull(key: String): String? = (this[key] as? JsonPrimitive)?.takeIf {
+    it.isString
+}?.contentOrNull
 
 internal fun JsonObject.primitiveContent(key: String): String? = this[key]?.jsonPrimitive?.contentOrNull

@@ -1,12 +1,12 @@
 package dev.opencode.android.core.model
 
+import dev.opencode.android.core.model.json.DiscriminatedUnionSerializer
+import dev.opencode.android.core.model.json.UnknownVariant
+import dev.opencode.android.core.model.json.variant
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
-import dev.opencode.android.core.model.json.DiscriminatedUnionSerializer
-import dev.opencode.android.core.model.json.UnknownVariant
-import dev.opencode.android.core.model.json.variant
 
 /** One loaded location (`GET /api/debug/location`, schema `Location.PublicRef`). */
 @Serializable

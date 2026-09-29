@@ -194,7 +194,10 @@ class JsonSchemaValidatorTest {
         // `model` is `{"type": "string", "$ref": "https://models.dev/model-schema.json#/$defs/Model"}`.
         // A validator that followed the `$ref` exclusively would apply no check at all to the one key
         // the guided default-model template writes.
-        assertSameProblems(emptyList(), validator.validate(json("""{"model": "placeholder-provider/placeholder-model"}""")))
+        assertSameProblems(
+            emptyList(),
+            validator.validate(json("""{"model": "placeholder-provider/placeholder-model"}""")),
+        )
 
         val wrong = validator.validate(json("""{"model": 42}"""))
         assertEquals(listOf("type"), wrong.map { it.keyword })

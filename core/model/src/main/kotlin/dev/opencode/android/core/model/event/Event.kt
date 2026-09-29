@@ -3,8 +3,8 @@ package dev.opencode.android.core.model.event
 import dev.opencode.android.core.model.LocationRef
 import dev.opencode.android.core.model.json.OpenCodeJson
 import kotlinx.serialization.KSerializer
-import kotlinx.serialization.SerializationException
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.SerializationException
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder

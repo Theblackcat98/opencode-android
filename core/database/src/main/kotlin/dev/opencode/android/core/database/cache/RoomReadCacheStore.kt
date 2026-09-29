@@ -23,7 +23,6 @@ class RoomReadCacheStore(
     private val sessionDao = database.cachedSessionDao()
     private val messageDao = database.cachedMessageDao()
 
-
     override suspend fun readSessions(
         serverId: String,
         directory: String?,

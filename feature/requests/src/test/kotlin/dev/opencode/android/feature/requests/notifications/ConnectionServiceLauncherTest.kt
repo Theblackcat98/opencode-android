@@ -1,10 +1,10 @@
 package dev.opencode.android.feature.requests.notifications
 
 import android.content.Context
-import androidx.test.core.app.ApplicationProvider
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
+import androidx.test.core.app.ApplicationProvider
 import dev.opencode.android.core.data.presence.PresenceSignals
 import dev.opencode.android.core.data.presence.PresenceSignalsSource
 import dev.opencode.android.core.data.presence.RunningSession

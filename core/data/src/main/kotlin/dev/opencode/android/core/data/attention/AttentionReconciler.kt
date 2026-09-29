@@ -233,7 +233,8 @@ object AttentionReconciler {
         )
     }
 
-    private fun retryDraft(state: AttentionState, session: AttentionSession): AttentionDraft? {        val activity = session.activity
+    private fun retryDraft(state: AttentionState, session: AttentionSession): AttentionDraft? {
+        val activity = session.activity
         if (activity !is SessionActivity.Retrying) return null
         if (state.suppresses(session.id, AttentionChannel.RETRY)) return null
         return AttentionDraft(

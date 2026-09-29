@@ -149,7 +149,10 @@ class TerminalBridgeTest {
 
     @Test
     fun `a cursor message is a number`() {
-        assertEquals("""{"type":"cursor","cursor":4096}""", TerminalBridgeCodec.encode(TerminalHostMessage.Cursor(4096)))
+        assertEquals(
+            """{"type":"cursor","cursor":4096}""",
+            TerminalBridgeCodec.encode(TerminalHostMessage.Cursor(4096)),
+        )
     }
 
     @Test

@@ -21,6 +21,7 @@ class AndroidApplicationConventionPlugin : Plugin<Project> {
     override fun apply(target: Project) = with(target) {
         pluginManager.apply("com.android.application")
         pluginManager.apply(libs.pluginId("kotlin-compose"))
+        pluginManager.apply("opencode.android.quality")
         extensions.configure<ApplicationExtension> {
             namespace = NAMESPACE_ROOT
             configureKotlinAndroid(this)

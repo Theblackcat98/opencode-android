@@ -1,8 +1,8 @@
 package dev.opencode.android.core.testing
 
-import java.io.InputStream
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
+import java.io.InputStream
 
 /**
  * Loads test fixtures recorded from live OpenCode servers (src/main/resources/fixtures).

@@ -282,9 +282,9 @@ private class NumericFormFieldSerializer(private val integer: Boolean) : KSerial
             .copy(integer = integer)
     }
 
-    override fun serialize(encoder: Encoder, value: FormField.NumberField) {
-        throw SerializationException("A numeric form field is only ever decoded; the server owns these shapes")
-    }
+    override fun serialize(encoder: Encoder, value: FormField.NumberField): Unit = throw SerializationException(
+        "A numeric form field is only ever decoded; the server owns these shapes",
+    )
 }
 
 /** One choice of a `string` or `multiselect` field (schema `Form.Option`). */

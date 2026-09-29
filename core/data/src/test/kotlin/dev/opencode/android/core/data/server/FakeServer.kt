@@ -18,10 +18,10 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import mockwebserver3.Dispatcher
-import okhttp3.OkHttpClient
 import mockwebserver3.MockResponse
 import mockwebserver3.MockWebServer
 import mockwebserver3.RecordedRequest
+import okhttp3.OkHttpClient
 
 /**
  * A real [ServerApi] over a [MockWebServer], so cursors, ordering and the location parameter are
@@ -60,12 +60,14 @@ class FakeServer(
                 }
                 val body = when {
                     path.startsWith("/api/session/active") -> dataResponse(runningMap())
+
                     path.endsWith("/message") || path.contains("/message?") -> encode(
                         Paged.serializer(SessionMessage.serializer()),
                         Paged(messagePage, Paged.Cursor(null, messageCursorNext)),
                     )
 
                     path.startsWith("/api/session?") -> sessionsPage(path)
+
                     path.matches(Regex("/api/session/ses_[^/?]+")) -> dataResponse(
                         encodeJson(
                             SessionInfo.serializer(),
@@ -77,6 +79,7 @@ class FakeServer(
                         kotlinx.serialization.builtins.ListSerializer(Project.serializer()),
                         projects,
                     )
+
                     path.startsWith("/api/location") -> encode(
                         LocationInfo.serializer(),
                         LocationInfo(

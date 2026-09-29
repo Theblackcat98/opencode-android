@@ -1,5 +1,6 @@
 package dev.opencode.android.core.data.integration
 
+import dev.opencode.android.core.data.action.toActionError
 import dev.opencode.android.core.data.composer.LineRange
 import dev.opencode.android.core.data.review.CommentSelection
 import dev.opencode.android.core.data.review.ReviewComments
@@ -9,9 +10,10 @@ import dev.opencode.android.core.data.server.RevertCommands
 import dev.opencode.android.core.data.server.ReviewStore
 import dev.opencode.android.core.data.server.SessionCommands
 import dev.opencode.android.core.data.server.VcsStore
-import dev.opencode.android.core.data.action.toActionError
 import dev.opencode.android.core.model.Delivery
 import dev.opencode.android.core.model.ModelRef
+import dev.opencode.android.core.model.SessionMessage
+import dev.opencode.android.core.model.SessionTransfer
 import dev.opencode.android.core.network.ServerApi
 import dev.opencode.android.core.network.ServerApiFactory
 import dev.opencode.android.core.testing.integration.DevServerHarness
@@ -120,8 +122,10 @@ class LiveReviewIntegrationTest {
 
         // The server stored the comment where the web app reads it, which is what makes the format
         // portable rather than merely plausible.
-        val stored = ((prompt.getOrThrow().item as dev.opencode.android.core.model.InboxItem.User).payload.metadata
-            ?: emptyMap())["opencodeComment"]
+        val stored = (
+            (prompt.getOrThrow().item as dev.opencode.android.core.model.InboxItem.User).payload.metadata
+                ?: emptyMap()
+            )["opencodeComment"]
         assertNotNull("the prompt must carry metadata.opencodeComment, got nothing", stored)
         // The round trip is asserted over the **wire meaning** — the path, the `selection` string, the
         // text and the preview — and not over the in-memory range, because the web app's format is
@@ -251,8 +255,14 @@ class LiveReviewIntegrationTest {
         assertEquals("the fork records its origin", sessionId, info.fork?.sessionID)
         // The boundary is the message the fork was cut before, which is what the UI shows.
         val boundary = info.fork?.boundary
-        assertTrue("the boundary is `before` this message: $boundary", boundary is dev.opencode.android.core.model.ForkBoundary.Before)
-        assertEquals(first.getOrThrow().id, (boundary as? dev.opencode.android.core.model.ForkBoundary.Before)?.messageID)
+        assertTrue(
+            "the boundary is `before` this message: $boundary",
+            boundary is dev.opencode.android.core.model.ForkBoundary.Before,
+        )
+        assertEquals(
+            first.getOrThrow().id,
+            (boundary as? dev.opencode.android.core.model.ForkBoundary.Before)?.messageID,
+        )
     }
 
     // ------------------------------------------------------------------ exit criterion 4
@@ -265,7 +275,13 @@ class LiveReviewIntegrationTest {
         val listing = files.listAndWait(workDirectory, null)
         assertNull("fs.list of the location should be readable", listing)
         val entries = files.state.value.entries
-        assertTrue("the file this test wrote must be listed, got ${entries.map { it.name }}", entries.any { it.name == file.name })
+        assertTrue(
+            "the file this test wrote must be listed, got ${entries.map { it.name }}",
+            entries.any {
+                it.name ==
+                    file.name
+            },
+        )
 
         val read = files.read(workDirectory, file.name)
         assertTrue("fs.read should be accepted, got ${read.exceptionOrNull()}", read.isSuccess)
@@ -355,13 +371,12 @@ class LiveReviewIntegrationTest {
     fun `an experimental route reports what it can and cannot do`() = runBlocking {
         val write = files.write(workDirectory, "experimental-probe.txt", "written by the app\n")
         val export = review.export(sessionId, sanitize = true)
-        val import_ = review.import(
-            dev.opencode.android.core.model.SessionTransfer(info = export.getOrNull()?.info ?: return@runBlocking, messages = emptyList<dev.opencode.android.core.model.SessionMessage>()),
-        )
+        val exported = export.getOrNull() ?: return@runBlocking
+        val restored = review.import(SessionTransfer(info = exported.info, messages = emptyList<SessionMessage>()))
 
         // 2.0.18 serves some experimental routes and not others. Both answers are a pass; what is
         // asserted is that each one is *classified* — a 404 hides the feature and a 500 does not.
-        listOf(write, export, import_).forEach { result ->
+        listOf(write, export, restored).forEach { result ->
             val error = result.exceptionOrNull()
             if (error != null) {
                 assertTrue(
@@ -385,7 +400,9 @@ class LiveReviewIntegrationTest {
         val context = review.context(sessionId)
 
         assertTrue("session.context should be accepted, got ${context.exceptionOrNull()}", context.isSuccess)
-        val entries = dev.opencode.android.core.data.server.SessionContextInspector.inspect(context.getOrNull().orEmpty())
+        val entries = dev.opencode.android.core.data.server.SessionContextInspector.inspect(
+            context.getOrNull().orEmpty(),
+        )
         entries.forEach { entry ->
             assertTrue("every entry names its type: $entry", entry.type.isNotBlank())
         }

@@ -75,11 +75,15 @@ class CapabilityPolicyTest {
         // probe exists to detect.
         assertEquals(
             RouteAvailability.Absent(HTTP_METHOD_NOT_ALLOWED),
-            CapabilityPolicy.from(ActionError(kind = ActionErrorKind.SERVER, message = "", httpStatus = HTTP_METHOD_NOT_ALLOWED)),
+            CapabilityPolicy.from(
+                ActionError(kind = ActionErrorKind.SERVER, message = "", httpStatus = HTTP_METHOD_NOT_ALLOWED),
+            ),
         )
         assertEquals(
             RouteAvailability.Absent(HTTP_NOT_FOUND),
-            CapabilityPolicy.from(ActionError(kind = ActionErrorKind.SERVER, message = "", httpStatus = HTTP_NOT_FOUND)),
+            CapabilityPolicy.from(
+                ActionError(kind = ActionErrorKind.SERVER, message = "", httpStatus = HTTP_NOT_FOUND),
+            ),
         )
         // A 500 is present, not absent: the route clearly is there.
         assertNull(CapabilityPolicy.from(ActionError(kind = ActionErrorKind.SERVER, message = "", httpStatus = 500)))

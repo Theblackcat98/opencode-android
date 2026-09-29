@@ -64,8 +64,11 @@ fun ComposerContextRow(state: ComposerUiState, modifier: Modifier = Modifier) {
 @Composable
 private fun describeIntent(state: ComposerUiState): String = when (val intent = state.intent) {
     is PromptIntent.Shell -> stringResource(R.string.composer_context_shell)
+
     is PromptIntent.Command -> stringResource(R.string.composer_context_command, intent.name)
+
     is PromptIntent.Client -> stringResource(R.string.composer_context_client)
+
     is PromptIntent.Prompt -> if (state.text.isBlank() && state.attachments.isNotEmpty()) {
         stringResource(R.string.composer_context_none)
     } else {
@@ -107,7 +110,9 @@ fun ComposerProblemRow(
         )
 
         ComposerProblem.NO_SESSION -> stringResource(R.string.composer_no_session)
+
         ComposerProblem.REVERT_BLOCKED -> stringResource(R.string.composer_revert_blocked)
+
         ComposerProblem.SEARCH_FAILED -> stringResource(R.string.composer_search_failed)
     }
     Surface(

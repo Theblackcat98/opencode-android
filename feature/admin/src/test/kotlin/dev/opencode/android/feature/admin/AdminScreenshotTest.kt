@@ -28,13 +28,13 @@ import dev.opencode.android.core.model.ConfigEntry
 import dev.opencode.android.core.model.InstructionEntry
 import dev.opencode.android.core.model.LoadedLocation
 import dev.opencode.android.core.model.MigrationStatus
+import dev.opencode.android.core.model.ModelRef
 import dev.opencode.android.core.model.PermissionEffect
 import dev.opencode.android.core.model.PermissionRule
 import dev.opencode.android.core.model.ReferenceInfo
 import dev.opencode.android.core.model.ReferenceSource
 import dev.opencode.android.core.model.SavedPermission
 import dev.opencode.android.core.model.SkillInfo
-import dev.opencode.android.core.model.ModelRef
 import dev.opencode.android.core.testing.VendoredSpec
 import org.junit.Rule
 import org.junit.Test
@@ -129,10 +129,28 @@ class AdminScreenshotTest {
     fun configEditorInvalid() = capture("config-editor-invalid") {
         ConfigEditorScreenFixture(
             editorState().copy(
-                draft = "{\n  // the default model\n  \"modle\": \"placeholder-provider/other-model\",\n  \"snapshot\": \"yes\"\n}",
+                draft = "{\n" +
+                    "  // the default model\n" +
+                    "  \"modle\": \"placeholder-provider/placeholder-model\",\n" +
+                    "  \"snapshot\": \"yes\"\n" +
+                    "}",
                 diagnostics = listOf(
-                    SchemaDiagnostic("/modle", "additionalProperties", "a key this schema allows", "a string of 9 characters", line = 3, column = 3),
-                    SchemaDiagnostic("/snapshot", "type", "a boolean", "a string of 3 characters", line = 4, column = 3),
+                    SchemaDiagnostic(
+                        "/modle",
+                        "additionalProperties",
+                        "a key this schema allows",
+                        "a string of 9 characters",
+                        line = 3,
+                        column = 3,
+                    ),
+                    SchemaDiagnostic(
+                        "/snapshot",
+                        "type",
+                        "a boolean",
+                        "a string of 3 characters",
+                        line = 4,
+                        column = 3,
+                    ),
                 ),
             ),
         )
@@ -142,7 +160,11 @@ class AdminScreenshotTest {
     fun configEditorSyntaxError() = capture("config-editor-syntax") {
         ConfigEditorScreenFixture(
             editorState().copy(
-                parseFailure = DocumentParseFailure(line = 4, column = 14, reason = "Expected '}' but had an unexpected value"),
+                parseFailure = DocumentParseFailure(
+                    line = 4,
+                    column = 14,
+                    reason = "Expected '}' but had an unexpected value",
+                ),
             ),
         )
     }
@@ -193,7 +215,9 @@ class AdminScreenshotTest {
                 resource = "*",
                 effect = "ask",
             ),
-            outcome = TemplateOutcome.Ready(kotlinx.serialization.json.Json.parseToJsonElement("""{"permission":{"bash":{"*":"ask"}}}""")),
+            outcome = TemplateOutcome.Ready(
+                kotlinx.serialization.json.Json.parseToJsonElement("""{"permission":{"bash":{"*":"ask"}}}"""),
+            ),
         )
     }
 
@@ -236,7 +260,11 @@ class AdminScreenshotTest {
     @Test
     fun definitionEditorInvalidName() = capture("definition-agent-bad-name") {
         DefinitionScreenFixture(
-            definitionState().copy(name = "../escape", nameProblem = "A name may use letters, digits, dots, dashes and underscores only", path = ""),
+            definitionState().copy(
+                name = "../escape",
+                nameProblem = "A name may use letters, digits, dots, dashes and underscores only",
+                path = "",
+            ),
         )
     }
 
@@ -323,7 +351,9 @@ class AdminScreenshotTest {
     }
 
     @Test
-    fun instructionsDark() = capture("instructions-dark", dark = true) { InstructionsScreenFixture(instructionsState()) }
+    fun instructionsDark() = capture("instructions-dark", dark = true) {
+        InstructionsScreenFixture(instructionsState())
+    }
 
     // ------------------------------------------------------------------ catalogs
 
@@ -405,7 +435,7 @@ class AdminScreenshotTest {
         val projectConfig = document(
             "/work/app/.opencode/opencode.jsonc",
             dev.opencode.android.core.model.ConfigInfo(
-                model = dev.opencode.android.core.model.ConfigModel.Ref("other-provider", "other-model"),
+                model = dev.opencode.android.core.model.ConfigModel.Ref("placeholder-provider", "other-model"),
                 shell = "/bin/zsh",
                 share = "disabled",
                 default_agent = "build",
@@ -442,7 +472,7 @@ class AdminScreenshotTest {
         val editorText = """
             {
               // the default model for new sessions
-              "model": "placeholder-provider/other-model",
+              "model": "placeholder-provider/placeholder-model",
               "share": "disabled",
               "mcp": {
                 "files": {
@@ -508,8 +538,20 @@ class AdminScreenshotTest {
             sessionID = "ses_1",
             savedLoaded = true,
             saved = listOf(
-                SavedPermission("perm_1", "prj_1", "bash", "git status", SavedPermission.Time(1_700_000_000_000, 1_700_000_000_000)),
-                SavedPermission("perm_2", "prj_1", "edit", "/work/app/src/**", SavedPermission.Time(1_700_000_100_000, 1_700_000_100_000)),
+                SavedPermission(
+                    "perm_1",
+                    "prj_1",
+                    "bash",
+                    "git status",
+                    SavedPermission.Time(1_700_000_000_000, 1_700_000_000_000),
+                ),
+                SavedPermission(
+                    "perm_2",
+                    "prj_1",
+                    "edit",
+                    "/work/app/src/**",
+                    SavedPermission.Time(1_700_000_100_000, 1_700_000_100_000),
+                ),
             ),
             rules = listOf(
                 PermissionRule("bash", "*", PermissionEffect.Ask),

@@ -4,7 +4,6 @@ import dev.opencode.android.core.model.event.Event
 import dev.opencode.android.core.model.event.EventPayload
 import dev.opencode.android.core.model.json.OpenCodeJson
 import dev.opencode.android.core.testing.Fixtures
-import java.io.File
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
@@ -15,6 +14,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.io.File
 
 /**
  * Every one of the 93 named event types decodes to its own payload class and survives a round trip.

@@ -1,10 +1,10 @@
 package dev.opencode.android.feature.execution
 
+import dev.opencode.android.core.data.terminal.ExtraKeys
 import dev.opencode.android.core.data.terminal.TerminalBridgeCodec
 import dev.opencode.android.core.data.terminal.TerminalBridgeMessage
 import dev.opencode.android.core.data.terminal.TerminalGrid
 import dev.opencode.android.core.data.terminal.TerminalGridSize
-import dev.opencode.android.core.data.terminal.ExtraKeys
 import dev.opencode.android.core.data.terminal.TerminalHostMessage
 import dev.opencode.android.core.data.terminal.TerminalInput
 import dev.opencode.android.core.data.terminal.TerminalKey

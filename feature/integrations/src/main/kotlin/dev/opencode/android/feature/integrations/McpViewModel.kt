@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dev.opencode.android.core.data.action.ActionError
 import dev.opencode.android.core.data.action.toActionError
+import dev.opencode.android.core.data.integrations.IntegrationSurface
 import dev.opencode.android.core.data.integrations.McpConfigForm
 import dev.opencode.android.core.data.integrations.McpConfigProblem
 import dev.opencode.android.core.data.integrations.McpServerDraft
@@ -124,9 +125,9 @@ class McpViewModel @Inject constructor(
 
     // ------------------------------------------------------------------------------ runtime writes
 
-    fun connect(server: McpServer) = runtimeWrite { it.connectMcpServer(_directory(), server.name) }
+    fun connect(server: McpServer) = runtimeWrite { it.connectMcpServer(currentDirectory(), server.name) }
 
-    fun disconnect(server: McpServer) = runtimeWrite { it.disconnectMcpServer(_directory(), server.name) }
+    fun disconnect(server: McpServer) = runtimeWrite { it.disconnectMcpServer(currentDirectory(), server.name) }
 
     fun requestRemove(server: McpServer) {
         _state.value = _state.value.copy(removeTarget = server.name, error = null)
@@ -140,7 +141,7 @@ class McpViewModel @Inject constructor(
     fun confirmRemove() {
         val target = _state.value.removeTarget ?: return
         _state.value = _state.value.copy(removeTarget = null)
-        runtimeWrite { it.removeMcpServer(_directory(), target) }
+        runtimeWrite { it.removeMcpServer(currentDirectory(), target) }
     }
 
     // ------------------------------------------------------------------------------ the add form
@@ -169,7 +170,7 @@ class McpViewModel @Inject constructor(
      */
     fun addServer() {
         val set = dataSets.active.value ?: return
-        val directory = _directory()
+        val directory = currentDirectory()
         val config: McpServerConfig = McpConfigForm.toConfig(_state.value.draft) ?: return
         val name = _state.value.draft.name.trim()
         _state.value = _state.value.copy(busy = true, error = null)
@@ -191,7 +192,7 @@ class McpViewModel @Inject constructor(
     fun openResources() {
         _state.value = _state.value.copy(resourcesOpen = true)
         val set = dataSets.active.value ?: return
-        viewModelScope.launch { set.integrations.mcpResources(_directory()).sync(force = true) }
+        viewModelScope.launch { set.integrations.mcpResources(currentDirectory()).sync(force = true) }
     }
 
     fun closeResources() {
@@ -228,9 +229,9 @@ class McpViewModel @Inject constructor(
 
     private var resourcesJob: Job? = null
 
-    private fun _directory(): String = _state.value.directory.orEmpty()
+    private fun currentDirectory(): String = _state.value.directory.orEmpty()
 
-    private fun runtimeWrite(block: suspend (dev.opencode.android.core.data.integrations.IntegrationSurface) -> Result<Unit>) {
+    private fun runtimeWrite(block: suspend (IntegrationSurface) -> Result<Unit>) {
         val set = dataSets.active.value ?: return
         _state.value = _state.value.copy(busy = true, error = null)
         viewModelScope.launch {
@@ -238,7 +239,7 @@ class McpViewModel @Inject constructor(
             val error = result.exceptionOrNull()?.toActionError()
             _state.value = _state.value.copy(busy = false, error = error)
             if (error == null) {
-                val directory = _directory()
+                val directory = currentDirectory()
                 viewModelScope.launch { set.integrations.mcpServers(directory).sync(force = true) }
             }
         }

@@ -5,8 +5,8 @@ import mockwebserver3.MockResponse
 import mockwebserver3.MockWebServer
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import okhttp3.tls.HeldCertificate
 import okhttp3.tls.HandshakeCertificates
+import okhttp3.tls.HeldCertificate
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertSame

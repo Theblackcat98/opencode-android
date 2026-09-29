@@ -60,7 +60,7 @@ internal object SessionInboxInfoSerializer : KSerializer<SessionInboxInfo> {
             body +
                 ("id" to kotlinx.serialization.json.JsonPrimitive(value.id)) +
                 ("sessionID" to kotlinx.serialization.json.JsonPrimitive(value.sessionID)) +
-                ("time" to output.json.encodeToJsonElement(SessionMessage.CreatedTime.serializer(), value.time))
+                ("time" to output.json.encodeToJsonElement(SessionMessage.CreatedTime.serializer(), value.time)),
         )
         output.encodeJsonElement(merged)
     }

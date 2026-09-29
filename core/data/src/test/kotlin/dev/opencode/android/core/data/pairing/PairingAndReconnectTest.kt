@@ -115,12 +115,14 @@ class PairingAndReconnectTest {
         server.dispatcher = object : Dispatcher() {
             override fun dispatch(request: RecordedRequest): MockResponse = when (request.url.encodedPath) {
                 REDEEM_PATH -> json("""{"token":"$token"}""")
+
                 INFO_PATH -> {
                     infoAuthHeader = request.headers["Authorization"]
                     json(serverInfo())
                 }
 
                 EVENT_PATH -> sse(SERVER_CONNECTED)
+
                 else -> notFound()
             }
         }
@@ -220,7 +222,9 @@ class PairingAndReconnectTest {
         server.dispatcher = object : Dispatcher() {
             override fun dispatch(request: RecordedRequest): MockResponse = when (request.url.encodedPath) {
                 REDEEM_PATH -> json("""{"token":"live-token"}""")
+
                 INFO_PATH -> json(serverInfo())
+
                 // Each attempt gets a short-lived stream that ends by itself, which is what a
                 // server restart looks like to the client.
                 // A declared content length ends the response, which is what a server restart

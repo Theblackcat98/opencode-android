@@ -32,6 +32,7 @@ enum class CodeTokenKind {
     COMMENT,
     ANNOTATION,
     PUNCTUATION,
+
     /** A section marker, a shebang, a reStructuredText underline. Rare, and worth seeing. */
     MARKER,
     ;

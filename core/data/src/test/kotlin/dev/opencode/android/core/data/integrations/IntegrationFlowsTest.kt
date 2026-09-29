@@ -63,8 +63,11 @@ class IntegrationFlowsTest {
         // A button on an env or unknown method is a control that cannot do anything, which is the
         // dead-button defect. This asserts the property the screen's `onClick` set is built from.
         val startable = listOf(
-            IntegrationFlow.KEY, IntegrationFlow.OAUTH, IntegrationFlow.COMMAND,
-            IntegrationFlow.ENVIRONMENT, IntegrationFlow.UNSUPPORTED,
+            IntegrationFlow.KEY,
+            IntegrationFlow.OAUTH,
+            IntegrationFlow.COMMAND,
+            IntegrationFlow.ENVIRONMENT,
+            IntegrationFlow.UNSUPPORTED,
         ).filter { it.isStartable }
         assertEquals(listOf(IntegrationFlow.KEY, IntegrationFlow.OAUTH, IntegrationFlow.COMMAND), startable)
     }
@@ -158,10 +161,10 @@ class IntegrationFlowsTest {
         // mapping has to hold for the decoded value, not only for a hand-built one. A `when` written
         // against constructors would pass every other test in this file and still mis-dispatch the
         // one shape the server actually produces.
-        assertEquals(IntegrationFlow.KEY, IntegrationFlows.of(decode(Fixtures.keyJson)))
-        assertEquals(IntegrationFlow.OAUTH, IntegrationFlows.of(decode(Fixtures.oauthJson)))
-        assertEquals(IntegrationFlow.COMMAND, IntegrationFlows.of(decode(Fixtures.commandJson)))
-        assertEquals(IntegrationFlow.ENVIRONMENT, IntegrationFlows.of(decode(Fixtures.envJson)))
+        assertEquals(IntegrationFlow.KEY, IntegrationFlows.of(decode(Fixtures.KEY_JSON)))
+        assertEquals(IntegrationFlow.OAUTH, IntegrationFlows.of(decode(Fixtures.OAUTH_JSON)))
+        assertEquals(IntegrationFlow.COMMAND, IntegrationFlows.of(decode(Fixtures.COMMAND_JSON)))
+        assertEquals(IntegrationFlow.ENVIRONMENT, IntegrationFlows.of(decode(Fixtures.ENV_JSON)))
     }
 
     @Test
@@ -179,20 +182,20 @@ class IntegrationFlowsTest {
         // fallback is a stable English default rather than an empty button.
         val bare = OpenCodeJson.decodeFromString<IntegrationMethod>("""{"type":"key"}""")
         assertEquals("API key", bare.label)
-        val named = OpenCodeJson.decodeFromString<IntegrationMethod>(Fixtures.keyJson)
+        val named = OpenCodeJson.decodeFromString<IntegrationMethod>(Fixtures.KEY_JSON)
         assertEquals("API key", named.label)
     }
 
     @Test
     fun `an oauth method decodes with the id the complete route needs`() {
-        val oauth = OpenCodeJson.decodeFromString<IntegrationMethod>(Fixtures.oauthJson) as IntegrationMethod.OAuth
+        val oauth = OpenCodeJson.decodeFromString<IntegrationMethod>(Fixtures.OAUTH_JSON) as IntegrationMethod.OAuth
         assertEquals("oauth-default", oauth.id)
         assertEquals("Sign in with Microsoft", oauth.label)
     }
 
     @Test
     fun `a command method decodes with the command the host will run`() {
-        val command = OpenCodeJson.decodeFromString<IntegrationMethod>(Fixtures.commandJson) as IntegrationMethod.Command
+        val command = OpenCodeJson.decodeFromString<IntegrationMethod>(Fixtures.COMMAND_JSON) as IntegrationMethod.Command
         // The user is shown this before it runs on their own machine, so the decoded list is the
         // thing the confirmation dialog must render rather than a re-formatting of it.
         assertEquals(listOf("gh", "auth", "login"), command.command)
@@ -226,8 +229,10 @@ private fun decode(json: String): IntegrationMethod = OpenCodeJson.decodeFromStr
 
 /** Named fixtures, kept out of the test body so the assertions read as claims. */
 internal object Fixtures {
-    const val keyJson = """{"type":"key","label":"API key","form":[{"key":"resourceName","type":"string","required":true}]}"""
-    const val oauthJson = """{"type":"oauth","id":"oauth-default","label":"Sign in with Microsoft"}"""
-    const val commandJson = """{"type":"command","id":"cli","label":"Use the CLI","command":["gh","auth","login"]}"""
-    const val envJson = """{"type":"env","names":["ANTHROPIC_API_KEY"]}"""
+    const val KEY_JSON =
+        """{"type":"key","label":"API key",""" +
+            """"form":[{"key":"resourceName","type":"string","required":true}]}"""
+    const val OAUTH_JSON = """{"type":"oauth","id":"oauth-default","label":"Sign in with Microsoft"}"""
+    const val COMMAND_JSON = """{"type":"command","id":"cli","label":"Use the CLI","command":["gh","auth","login"]}"""
+    const val ENV_JSON = """{"type":"env","names":["ANTHROPIC_API_KEY"]}"""
 }

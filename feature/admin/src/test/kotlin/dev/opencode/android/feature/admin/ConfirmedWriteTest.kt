@@ -72,7 +72,7 @@ class ConfirmedWriteTest : AdminServerTest() {
     fun `a file write plan names the file, the consequence and the byte counts`() {
         val plan = surface.planFileWrite(
             path = ".opencode/opencode.jsonc",
-            text = """{"model":"placeholder-provider/other-model"}""",
+            text = """{"model":"placeholder-provider/placeholder-model"}""",
             consequence = "This replaces .opencode/opencode.jsonc; the server reads it after a reload",
             isPrivilegeChange = false,
             existing = """{"model":"placeholder-provider/placeholder-model"}""",
@@ -84,7 +84,7 @@ class ConfirmedWriteTest : AdminServerTest() {
         assertTrue("the consequence must name the file", plan.consequence.contains(".opencode/opencode.jsonc"))
         assertFalse("the consequence must say what happens next", plan.consequence.isBlank())
         assertEquals("""{"model":"placeholder-provider/placeholder-model"}""".toByteArray().size, plan.previousBytes)
-        assertEquals(plan.bytes, """{"model":"placeholder-provider/other-model"}""".toByteArray().size)
+        assertEquals(plan.bytes, """{"model":"placeholder-provider/placeholder-model"}""".toByteArray().size)
         assertFalse("an existing file is not a new one", plan.isNewFile)
         assertTrue("a validated plan has nothing left to complain about", plan.diagnostics.isEmpty())
     }
@@ -111,7 +111,7 @@ class ConfirmedWriteTest : AdminServerTest() {
         // validation entirely (features doc §33.5).
         val plan = surface.planFileWrite(
             path = ".opencode/opencode.jsonc",
-            text = """{"modle":"placeholder-provider/other-model"}""",
+            text = """{"modle":"placeholder-provider/placeholder-model"}""",
             consequence = "This replaces the file",
             isPrivilegeChange = false,
             existing = "{}",
@@ -171,7 +171,7 @@ class ConfirmedWriteTest : AdminServerTest() {
 
     @Test
     fun `a committed write goes through write, reload and a fresh config get`() = runTest {
-        val written = """{"model":"placeholder-provider/other-model"}"""
+        val written = """{"model":"placeholder-provider/placeholder-model"}"""
         server.answer(
             "POST /api/experimental/fs/write",
             """{"location":{"directory":"/work/app"},"data":{"path":".opencode/opencode.jsonc"}}""",
@@ -182,7 +182,7 @@ class ConfirmedWriteTest : AdminServerTest() {
         server.answer("POST /api/location/reload", "", 204)
         server.answer(
             "GET /api/config",
-            """[{"type":"document","path":"/work/app/.opencode/opencode.jsonc","info":{"model":"placeholder-provider/other-model"}}]""",
+            """[{"type":"document","path":"/work/app/.opencode/opencode.jsonc","info":{"model":"placeholder-provider/placeholder-model"}}]""",
         )
 
         val plan = surface.planFileWrite(
@@ -218,7 +218,7 @@ class ConfirmedWriteTest : AdminServerTest() {
             "POST /api/experimental/fs/write",
             """{"location":{"directory":"/work/app"},"data":{"path":"/elsewhere/opencode.jsonc"}}""",
         )
-        server.answerPrefix("GET", "/api/fs/read/", """{"model":"placeholder-provider/other-model"}""")
+        server.answerPrefix("GET", "/api/fs/read/", """{"model":"placeholder-provider/placeholder-model"}""")
         server.answer("POST /api/location/reload", "", 204)
         server.answer(
             "GET /api/config",
@@ -227,7 +227,7 @@ class ConfirmedWriteTest : AdminServerTest() {
 
         val plan = surface.planFileWrite(
             path = "/elsewhere/opencode.jsonc",
-            text = """{"model":"placeholder-provider/other-model"}""",
+            text = """{"model":"placeholder-provider/placeholder-model"}""",
             consequence = "This replaces the file",
             isPrivilegeChange = false,
             existing = null,
@@ -413,12 +413,18 @@ class ConfirmedWriteTest : AdminServerTest() {
         // Unterminated after a real value, so the parser echoes the bytes it choked on in its message.
         val failure = ConfigDocument.parse("""{"username": "$secret"}}""")
 
-        assertTrue("the document must not parse", failure is dev.opencode.android.core.data.config.ParsedDocument.Failed)
+        assertTrue(
+            "the document must not parse",
+            failure is dev.opencode.android.core.data.config.ParsedDocument.Failed,
+        )
         assertFalse(
             "the failure leaked the document: $failure",
             failure.toString().contains(secret),
         )
-        assertTrue("and it still says where", (failure as dev.opencode.android.core.data.config.ParsedDocument.Failed).failure.line >= 1)
+        assertTrue(
+            "and it still says where",
+            (failure as dev.opencode.android.core.data.config.ParsedDocument.Failed).failure.line >= 1,
+        )
     }
 
     @Test
@@ -599,12 +605,15 @@ class ConfirmedWriteTest : AdminServerTest() {
             """
             [
               {"type":"document","path":"/root/.config/opencode/opencode.json","info":{"model":"placeholder-provider/placeholder-model"}},
-              {"type":"document","path":"/work/app/.opencode/opencode.jsonc","info":{"model":"placeholder-provider/other-model"}}
+              {"type":"document","path":"/work/app/.opencode/opencode.jsonc","info":{"model":"placeholder-provider/placeholder-model"}}
             ]
             """.trimIndent(),
         )
         val bytes = dev.opencode.android.core.data.composer.ServerPath.encodePath("/work/app/.opencode/opencode.jsonc")
-        server.answer("GET /api/fs/read/$bytes", """{"model":"placeholder-provider/other-model","share":"disabled"}""")
+        server.answer(
+            "GET /api/fs/read/$bytes",
+            """{"model":"placeholder-provider/placeholder-model","share":"disabled"}""",
+        )
 
         val documents = surface.documents("/work/app")
         val nearest = documents.entries.indexOfLast { it is ConfigEntry.Document }
@@ -613,7 +622,9 @@ class ConfirmedWriteTest : AdminServerTest() {
             mapOf(
                 nearest to dev.opencode.android.core.data.config.ConfigFileFacts(
                     nearest,
-                    ConfigDocument.topLevelKeys("""{"model":"placeholder-provider/other-model","share":"disabled"}"""),
+                    ConfigDocument.topLevelKeys(
+                        """{"model":"placeholder-provider/placeholder-model","share":"disabled"}""",
+                    ),
                 ),
             ),
         )
@@ -622,7 +633,7 @@ class ConfirmedWriteTest : AdminServerTest() {
         // The nearest file sets it, and because only the nearest file was read the row says which one.
         assertEquals(1, row.value.setters.size)
         assertEquals("/work/app/.opencode/opencode.jsonc", row.value.setters.single().path)
-        assertEquals("placeholder-provider/other-model", row.effective.let { (it as JsonPrimitive).content })
+        assertEquals("placeholder-provider/placeholder-model", row.effective.let { (it as JsonPrimitive).content })
         assertTrue(documents.rows.first { it.key.key == "model" }.isReported)
     }
 

@@ -14,6 +14,7 @@ import dev.opencode.android.core.data.review.FileNode
 import dev.opencode.android.core.data.review.FileTree
 import dev.opencode.android.core.data.review.ParsedFile
 import dev.opencode.android.core.data.review.RestoredFile
+import dev.opencode.android.core.data.review.RevertPlan
 import dev.opencode.android.core.data.review.ReviewComment
 import dev.opencode.android.core.data.review.ReviewComments
 import dev.opencode.android.core.data.review.ReviewNavigator
@@ -21,21 +22,20 @@ import dev.opencode.android.core.data.review.ReviewPosition
 import dev.opencode.android.core.data.review.ReviewScope
 import dev.opencode.android.core.data.review.ReviewTarget
 import dev.opencode.android.core.data.review.ReviewedFiles
-import dev.opencode.android.core.data.review.RevertPlan
+import dev.opencode.android.core.data.server.FileBrowserState
 import dev.opencode.android.core.data.server.ReviewState
 import dev.opencode.android.core.data.server.ServerDataRegistry
 import dev.opencode.android.core.data.server.SessionContextInspector
-import dev.opencode.android.core.data.server.FileBrowserState
 import dev.opencode.android.core.data.server.VcsState
 import dev.opencode.android.core.model.FileSystemEntry
 import dev.opencode.android.core.model.SessionRevert
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.Dispatchers
 import kotlinx.serialization.json.JsonElement
 import javax.inject.Inject
 
@@ -497,7 +497,6 @@ class ReviewViewModel @Inject constructor(
         store.removeComment(index)
         foldComments()
     }
-
 
     /**
      * The comments, the metadata and the readable text a prompt carrying them needs.

@@ -111,16 +111,25 @@ fun Throwable.toActionError(): ActionError {
 
 private fun kindOf(error: ApiError): ActionErrorKind = when (error) {
     is ApiError.Unauthorized -> ActionErrorKind.UNAUTHORIZED
+
     is ApiError.Forbidden -> ActionErrorKind.FORBIDDEN
+
     is ApiError.Conflict -> ActionErrorKind.CONFLICT
+
     is ApiError.SessionBusy -> ActionErrorKind.SESSION_BUSY
+
     is ApiError.InvalidRequest -> ActionErrorKind.INVALID_REQUEST
+
     // A form the server has already answered or cancelled is a conflict, not a server fault: it is
     // the ordinary result of answering from two clients, and the UI says "already answered".
     is ApiError.FormAlreadySettled -> ActionErrorKind.CONFLICT
+
     is ApiError.FormInvalidAnswer -> ActionErrorKind.INVALID_REQUEST
+
     is ApiError.InstructionEntryValueTooLarge -> ActionErrorKind.INVALID_REQUEST
+
     is ApiError.ServiceUnavailable -> ActionErrorKind.SERVER
+
     // Every "the thing you named is not here" tag is [ActionErrorKind.NOT_FOUND], not a server fault.
     //
     // **These were the ones capability detection depends on.** Phase 8 probes

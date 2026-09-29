@@ -4,11 +4,13 @@ import dev.opencode.android.core.data.action.ActionErrorKind
 import dev.opencode.android.core.data.action.toActionError
 import dev.opencode.android.core.model.Delivery
 import dev.opencode.android.core.model.InboxItem
+import dev.opencode.android.core.model.ModelRef
 import dev.opencode.android.core.model.PromptAgentAttachment
 import dev.opencode.android.core.model.PromptFileInput
 import dev.opencode.android.core.model.PromptFileSource
 import dev.opencode.android.core.model.PromptSkillInput
-import dev.opencode.android.core.model.ModelRef
+import dev.opencode.android.core.model.SessionInfo
+import dev.opencode.android.core.model.SessionMessage
 import dev.opencode.android.core.network.ServerApi
 import dev.opencode.android.core.network.ServerApiFactory
 import kotlinx.coroutines.CoroutineScope
@@ -66,7 +68,9 @@ class SessionCommandsTest {
 
     @Test
     fun `a prompt carries a client id, the delivery and the resume flag`() = runTest {
-        server.enqueue(json(200, """{"data":{"id":"msg_1","sessionID":"ses_a","type":"user","payload":{"text":"hi"},"delivery":"steer"}}"""))
+        server.enqueue(
+            json(200, """{"data":{"id":"msg_1","sessionID":"ses_a","type":"user","payload":{"text":"hi"},"delivery":"steer"}}"""),
+        )
         val result = commands.prompt("ses_a", "hi", delivery = Delivery.Queue, resume = false)
 
         assertTrue(result.isSuccess)
@@ -80,7 +84,9 @@ class SessionCommandsTest {
 
     @Test
     fun `a prompt shows a pending item immediately and the event reconciles it`() = runTest {
-        server.enqueue(json(200, """{"data":{"id":"msg_1","sessionID":"ses_a","type":"user","payload":{"text":"hi"},"delivery":"steer"}}"""))
+        server.enqueue(
+            json(200, """{"data":{"id":"msg_1","sessionID":"ses_a","type":"user","payload":{"text":"hi"},"delivery":"steer"}}"""),
+        )
         commands.prompt("ses_a", "hi")
 
         val pending = timeline.state.value.pending
@@ -123,7 +129,12 @@ class SessionCommandsTest {
 
     @Test
     fun `a create omits what the user did not choose`() = runTest {
-        server.enqueue(json(200, """{"data":{"id":"ses_new","projectID":"p","cost":0,"tokens":{"input":0,"output":0,"reasoning":0,"cache":{"read":0,"write":0}},"time":{"created":1,"updated":1},"location":{"directory":"/w"}}}"""))
+        server.enqueue(
+            json(
+                200,
+                """{"data":{"id":"ses_new","projectID":"p","cost":0,"tokens":{"input":0,"output":0,"reasoning":0,"cache":{"read":0,"write":0}},"time":{"created":1,"updated":1},"location":{"directory":"/w"}}}""",
+            ),
+        )
         val result = commands.create(title = "Name", directory = "/w")
 
         assertEquals("ses_new", result.getOrNull()?.id)
@@ -352,13 +363,13 @@ class SessionCommandsTest {
     /** The commands never read the cache, so this store writes nothing. */
     private companion object {
         val NoCache = object : dev.opencode.android.core.database.cache.ReadCacheStore {
-            override suspend fun readSessions(serverId: String, directory: String?, limit: Int) = emptyList<dev.opencode.android.core.model.SessionInfo>()
-            override suspend fun writeSessions(serverId: String, directory: String?, sessions: List<dev.opencode.android.core.model.SessionInfo>) = Unit
-            override suspend fun readSession(serverId: String, sessionId: String): dev.opencode.android.core.model.SessionInfo? = null
-            override suspend fun writeSession(serverId: String, sessionId: String, session: dev.opencode.android.core.model.SessionInfo) = Unit
+            override suspend fun readSessions(serverId: String, directory: String?, limit: Int) = emptyList<SessionInfo>()
+            override suspend fun writeSessions(serverId: String, directory: String?, sessions: List<SessionInfo>) = Unit
+            override suspend fun readSession(serverId: String, sessionId: String): SessionInfo? = null
+            override suspend fun writeSession(serverId: String, sessionId: String, session: SessionInfo) = Unit
             override suspend fun deleteSession(serverId: String, sessionId: String) = Unit
-            override suspend fun readMessages(serverId: String, sessionId: String, limit: Int) = emptyList<dev.opencode.android.core.model.SessionMessage>()
-            override suspend fun writeMessages(serverId: String, sessionId: String, messages: List<dev.opencode.android.core.model.SessionMessage>, keep: Int) = Unit
+            override suspend fun readMessages(serverId: String, sessionId: String, limit: Int) = emptyList<SessionMessage>()
+            override suspend fun writeMessages(serverId: String, sessionId: String, messages: List<SessionMessage>, keep: Int) = Unit
             override suspend fun deleteMessages(serverId: String, sessionId: String) = Unit
             override suspend fun dropLocation(serverId: String, directory: String?) = Unit
             override suspend fun dropServer(serverId: String) = Unit

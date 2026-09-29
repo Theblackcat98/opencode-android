@@ -101,7 +101,12 @@ object ReviewComments {
      */
     fun metadataOf(comments: List<ReviewComment>): Map<String, JsonElement> = when (comments.size) {
         0 -> emptyMap()
-        1 -> mapOf(OpenCodeComment.KEY to json.encodeToJsonElement(OpenCodeComment.serializer(), comments.single().toMetadata()))
+
+        1 -> mapOf(
+            OpenCodeComment.KEY to
+                json.encodeToJsonElement(OpenCodeComment.serializer(), comments.single().toMetadata()),
+        )
+
         else -> mapOf(
             OpenCodeComment.KEY to JsonArray(
                 comments.map { json.encodeToJsonElement(OpenCodeComment.serializer(), it.toMetadata()) },
@@ -156,7 +161,9 @@ object ReviewComments {
      */
     fun readableText(comments: List<ReviewComment>): String = when (comments.size) {
         0 -> ""
+
         1 -> single(comments.first())
+
         else -> buildString {
             append("Review comments (")
             append(comments.size)

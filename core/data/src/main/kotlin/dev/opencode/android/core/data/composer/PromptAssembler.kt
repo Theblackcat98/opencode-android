@@ -1,5 +1,7 @@
 package dev.opencode.android.core.data.composer
 
+import dev.opencode.android.core.data.review.ReviewComment
+import dev.opencode.android.core.data.review.ReviewComments
 import dev.opencode.android.core.model.AgentInfo
 import dev.opencode.android.core.model.CommandInfo
 import dev.opencode.android.core.model.Delivery
@@ -10,8 +12,6 @@ import dev.opencode.android.core.model.PromptRequest
 import dev.opencode.android.core.model.PromptSkillInput
 import dev.opencode.android.core.model.SessionCommandRequest
 import dev.opencode.android.core.model.SessionShellRequest
-import dev.opencode.android.core.data.review.ReviewComment
-import dev.opencode.android.core.data.review.ReviewComments
 
 /**
  * The composer's whole input, as the value that decides what one send does.
@@ -169,7 +169,11 @@ object PromptAssembler {
     }
 
     /** The intent on its own, for the composer's mode indicator and for tests of the text rules. */
-    fun intentOf(text: String, server: List<CommandInfo> = emptyList(), client: List<ClientCommand> = ClientCommands.ALL): PromptIntent? {
+    fun intentOf(
+        text: String,
+        server: List<CommandInfo> = emptyList(),
+        client: List<ClientCommand> = ClientCommands.ALL,
+    ): PromptIntent? {
         val trimmed = text.trimStart()
         val shell = trimmed.takeIf { it.startsWith(TriggerSpan.BANG) }
         if (shell != null) {
@@ -260,8 +264,10 @@ object PromptAssembler {
         input.attachments.forEach { attachment ->
             when (val verdict = AttachmentPolicy.verify(attachment, input.model)) {
                 is AttachmentVerdict.Blocked -> return Assembly.Refused(PromptProblem.ATTACHMENT_BLOCKED)
+
                 is AttachmentVerdict.NeedsConfirmation ->
                     if (!confirmed) return Assembly.Refused(PromptProblem.ATTACHMENT_NEEDS_CONFIRMATION)
+
                 AttachmentVerdict.Ok -> Unit
             }
         }

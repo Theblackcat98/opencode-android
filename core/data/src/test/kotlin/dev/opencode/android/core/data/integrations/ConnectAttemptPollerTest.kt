@@ -39,7 +39,10 @@ class ConnectAttemptPollerTest {
         poller.startOauth(
             scope = scope,
             attemptID = "att_1",
-            read = { polls++; OAuthAttemptStatus.Pending(window) },
+            read = {
+                polls++
+                OAuthAttemptStatus.Pending(window)
+            },
         )
         advanceUntilIdle()
 
@@ -61,7 +64,16 @@ class ConnectAttemptPollerTest {
         poller.startOauth(
             scope = scope,
             attemptID = "att_1",
-            read = { polls++; if (polls < 3) OAuthAttemptStatus.Pending(window) else OAuthAttemptStatus.Complete(window) },
+            read = {
+                polls++
+                if (polls <
+                    3
+                ) {
+                    OAuthAttemptStatus.Pending(window)
+                } else {
+                    OAuthAttemptStatus.Complete(window)
+                }
+            },
             onState = { seen += it.state },
         )
         advanceUntilIdle()
@@ -112,7 +124,10 @@ class ConnectAttemptPollerTest {
 
         // `null` is what the store answers for a 404: the attempt is gone. Polling it would never
         // produce anything else.
-        poller.startOauth(scope, "att_gone", read = { polls++; null })
+        poller.startOauth(scope, "att_gone", read = {
+            polls++
+            null
+        })
         advanceUntilIdle()
 
         assertEquals(1, polls)
@@ -149,7 +164,10 @@ class ConnectAttemptPollerTest {
         val poller = ConnectAttemptPoller(intervalMillis = 100, maxPolls = 100)
         var polls = 0
 
-        poller.startOauth(scope, "att_1", read = { polls++; OAuthAttemptStatus.Pending(window) })
+        poller.startOauth(scope, "att_1", read = {
+            polls++
+            OAuthAttemptStatus.Pending(window)
+        })
         advanceTimeBy(150)
         val before = polls
         poller.cancel()
@@ -257,9 +275,15 @@ class ConnectAttemptPollerTest {
         val poller = ConnectAttemptPoller(intervalMillis = 100, maxPolls = 100)
         val attempts = mutableListOf<String>()
 
-        poller.startOauth(scope, "att_1", read = { attempts += "att_1"; OAuthAttemptStatus.Pending(window) })
+        poller.startOauth(scope, "att_1", read = {
+            attempts += "att_1"
+            OAuthAttemptStatus.Pending(window)
+        })
         advanceTimeBy(150)
-        poller.startOauth(scope, "att_2", read = { attempts += "att_2"; OAuthAttemptStatus.Complete(window) })
+        poller.startOauth(scope, "att_2", read = {
+            attempts += "att_2"
+            OAuthAttemptStatus.Complete(window)
+        })
         advanceUntilIdle()
 
         assertEquals("att_2", poller.progress.attemptID)

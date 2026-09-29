@@ -89,7 +89,9 @@ class Phase5DecodingTest {
     fun `a prompt file attachment is a uri, not the stored base64`() {
         // The two shapes are genuinely different in the spec, and sending the wrong one is a payload
         // the server cannot read.
-        val raw = """{"uri":"file:///work/src/a.ts?start=20&end=45","name":"a.ts","mention":{"start":3,"end":13,"text":"@a.ts#20-45"}}"""
+        val raw =
+            """{"uri":"file:///work/src/a.ts?start=20&end=45","name":"a.ts",""" +
+                """"mention":{"start":3,"end":13,"text":"@a.ts#20-45"}}"""
         val input = OpenCodeJson.decodeFromString<PromptFileInput>(raw)
         assertEquals("file:///work/src/a.ts?start=20&end=45", input.uri)
         // The range the attachment carries and the offset the mention points at are different

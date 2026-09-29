@@ -239,7 +239,11 @@ class ReviewOperationsTest {
 
     @Test
     fun `a stage that the server refuses changes nothing and says which step failed`() = runTest {
-        server.answer("POST /api/session/ses_1/revert/stage", """{"_tag":"SessionBusyError","message":"busy"}""", status = 409)
+        server.answer(
+            "POST /api/session/ses_1/revert/stage",
+            """{"_tag":"SessionBusyError","message":"busy"}""",
+            status = 409,
+        )
         val reverts = RevertCommands(server.api)
 
         val outcome = reverts.stage(sessionID = "ses_1", messageID = "msg_1", busy = false)
@@ -251,7 +255,11 @@ class ReviewOperationsTest {
 
     @Test
     fun `a stage that the interrupt step fails at never reaches the stage`() = runTest {
-        server.answer("POST /api/session/ses_1/interrupt", """{"_tag":"NotFoundError","message":"gone"}""", status = 404)
+        server.answer(
+            "POST /api/session/ses_1/interrupt",
+            """{"_tag":"NotFoundError","message":"gone"}""",
+            status = 404,
+        )
         val reverts = RevertCommands(server.api)
 
         val outcome = reverts.stage(sessionID = "ses_1", messageID = "msg_1", busy = true)
@@ -323,7 +331,13 @@ class ReviewOperationsTest {
         val revert = SessionRevert(
             messageID = "msg_1",
             files = listOf(
-                dev.opencode.android.core.model.FileDiff("a.kt", "@@ -1 +1 @@\n-a\n+b\n", 1, 1, FileDiffStatus.Modified),
+                dev.opencode.android.core.model.FileDiff(
+                    "a.kt",
+                    "@@ -1 +1 @@\n-a\n+b\n",
+                    1,
+                    1,
+                    FileDiffStatus.Modified,
+                ),
             ),
         )
 
@@ -383,7 +397,12 @@ class ReviewOperationsTest {
                 "HTTP 404",
             ),
         )
-        assertFalse(store.isUsable(dev.opencode.android.core.data.capability.ExperimentalRoute.FS_WRITE, allowedBySetting = true))
+        assertFalse(
+            store.isUsable(
+                dev.opencode.android.core.data.capability.ExperimentalRoute.FS_WRITE,
+                allowedBySetting = true,
+            ),
+        )
 
         // A `500` says nothing about whether the route exists, so it does not clear the absence: the
         // honest answer to "is this feature there" is still "no, it answered 404".
@@ -394,13 +413,23 @@ class ReviewOperationsTest {
                 "HTTP 500",
             ),
         )
-        assertFalse(store.isUsable(dev.opencode.android.core.data.capability.ExperimentalRoute.FS_WRITE, allowedBySetting = true))
+        assertFalse(
+            store.isUsable(
+                dev.opencode.android.core.data.capability.ExperimentalRoute.FS_WRITE,
+                allowedBySetting = true,
+            ),
+        )
     }
 
     @Test
     fun `a route the user has switched off is not offered however well it works`() = runTest {
         val store = ReviewStore("s", server.api)
 
-        assertFalse(store.isUsable(dev.opencode.android.core.data.capability.ExperimentalRoute.SESSION_EXPORT, allowedBySetting = false))
+        assertFalse(
+            store.isUsable(
+                dev.opencode.android.core.data.capability.ExperimentalRoute.SESSION_EXPORT,
+                allowedBySetting = false,
+            ),
+        )
     }
 }

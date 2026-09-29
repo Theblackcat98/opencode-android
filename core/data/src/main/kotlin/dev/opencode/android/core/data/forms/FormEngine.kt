@@ -68,11 +68,15 @@ object FormEngine {
         fields.forEach { field ->
             when (field) {
                 is FormField.StringField -> field.default?.let { put(field.key, FormValues.string(it)) }
+
                 is FormField.NumberField -> field.default?.let { put(field.key, FormValues.number(it)) }
+
                 is FormField.BooleanField -> field.default?.let { put(field.key, FormValues.boolean(it)) }
-                is FormField.MultiselectField -> field.default
-                    .takeIf { it.isNotEmpty() }
-                    ?.let { put(field.key, FormValues.strings(it)) }
+
+                is FormField.MultiselectField ->
+                    field.default
+                        .takeIf { it.isNotEmpty() }
+                        ?.let { put(field.key, FormValues.strings(it)) }
 
                 is FormField.ExternalField, is FormField.Unknown -> Unit
             }
@@ -121,7 +125,9 @@ object FormEngine {
      */
     fun problemOf(field: FormField, value: JsonElement?): FieldProblem? = when (field) {
         is FormField.StringField -> stringProblem(field, value)
+
         is FormField.NumberField -> numberProblem(field, value)
+
         is FormField.BooleanField -> if (field.required && value == null) {
             FieldProblem.REQUIRED
         } else {
@@ -129,6 +135,7 @@ object FormEngine {
         }
 
         is FormField.MultiselectField -> multiselectProblem(field, value)
+
         // An external field is a link, not an answer, and the unknown one has no rules.
         is FormField.ExternalField, is FormField.Unknown -> null
     }

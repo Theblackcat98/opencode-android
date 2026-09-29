@@ -91,6 +91,7 @@ enum class DisconnectCause {
 
     /** A request timed out. */
     TIMEOUT,
+
     /** The server answered with an error status. */
     SERVER_ERROR,
 
@@ -107,6 +108,7 @@ enum class ConnectionEventType {
     ERROR,
     WATCHDOG_TIMEOUT,
     RESYNC,
+
     /** Events were dropped because a consumer could not keep up. */
     EVENTS_DROPPED,
 }
@@ -545,7 +547,9 @@ class EventStreamClient(
                     updateLastActivity(activityAt)
                     when (message) {
                         is SseMessage.Heartbeat -> log(ConnectionEventType.HEARTBEAT, "Heartbeat")
+
                         is SseMessage.Comment -> Unit
+
                         is SseMessage.Data -> {
                             val event = decodeEvent(message.payload) ?: continue
                             // Record before announcing: a collector that waits for `Connected` and then
@@ -676,6 +680,7 @@ class EventStreamClient(
             fun classify(error: Throwable): StreamFailure {
                 val cause = when (error) {
                     is UnknownHostException -> DisconnectCause.UNKNOWN_HOST
+
                     is ConnectException,
                     is NoRouteToHostException,
                     is PortUnreachableException,
@@ -686,7 +691,9 @@ class EventStreamClient(
                     -> DisconnectCause.TIMEOUT
 
                     is SSLException -> DisconnectCause.TLS_ERROR
+
                     is IOException -> DisconnectCause.UNKNOWN
+
                     else -> DisconnectCause.UNKNOWN
                 }
                 val message = error.message?.takeIf { it.isNotBlank() } ?: error.javaClass.simpleName

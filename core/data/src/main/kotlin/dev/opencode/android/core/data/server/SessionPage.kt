@@ -1,7 +1,7 @@
 package dev.opencode.android.core.data.server
 
-import dev.opencode.android.core.data.sync.SyncedResource
 import dev.opencode.android.core.data.sync.ResourceKey
+import dev.opencode.android.core.data.sync.SyncedResource
 import dev.opencode.android.core.database.cache.ReadCacheStore
 import dev.opencode.android.core.model.SessionInfo
 import dev.opencode.android.core.network.ServerApi

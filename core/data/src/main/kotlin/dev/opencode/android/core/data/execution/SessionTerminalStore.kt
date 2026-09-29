@@ -6,8 +6,8 @@ import dev.opencode.android.core.data.action.toActionError
 import dev.opencode.android.core.data.capability.CapabilityPolicy
 import dev.opencode.android.core.data.capability.ExperimentalRoute
 import dev.opencode.android.core.data.capability.RouteAvailability
-import dev.opencode.android.core.model.PtySize
 import dev.opencode.android.core.model.PersistentPtyScreen
+import dev.opencode.android.core.model.PtySize
 import dev.opencode.android.core.model.PtyTicketToken
 import dev.opencode.android.core.model.SessionTerminalCreateRequest
 import dev.opencode.android.core.model.SessionTerminalHandoff
@@ -179,7 +179,10 @@ class SessionTerminalStore(
     suspend fun remove(id: String): Result<Unit> {
         if (!allowedBySetting) return refused()
         val result = call { api.removeSessionTerminal(id) }
-        result.getOrNull()?.let { _state.value = _state.value.copy(terminals = _state.value.terminals.filterNot { it.id == id }) }
+        result.getOrNull()?.let {
+            _state.value =
+                _state.value.copy(terminals = _state.value.terminals.filterNot { it.id == id })
+        }
         return result
     }
 
@@ -293,6 +296,7 @@ class SessionTerminalStore(
             // `ServiceUnavailableError`. A `500` is not that, so it falls back to "present": the routes
             // answered, and a server fault does not prove the feature is gone.
             actionError.kind == ActionErrorKind.SERVER -> PersistentPtyAvailability.HostDown
+
             else -> PersistentPtyAvailability.Present
         }
     }

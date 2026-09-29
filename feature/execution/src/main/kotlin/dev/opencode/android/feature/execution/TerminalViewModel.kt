@@ -276,8 +276,11 @@ class TerminalViewModel @Inject constructor(
             }
 
             is TerminalBridgeMessage.Input -> sendInput(message.data)
+
             is TerminalBridgeMessage.Resize -> resize(message.cols, message.rows)
+
             is TerminalBridgeMessage.Selection -> _state.value = _state.value.copy(selection = message.data)
+
             is TerminalBridgeMessage.Failed -> _state.value = _state.value.copy(error = message.message)
         }
     }

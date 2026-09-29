@@ -151,7 +151,12 @@ class RevertPlanTest {
  */
 class ReviewCommentsTest {
 
-    private fun comment(start: Int, end: Int? = null, text: String = "use a guard here", preview: String? = "if (x) {") =
+    private fun comment(
+        start: Int,
+        end: Int? = null,
+        text: String = "use a guard here",
+        preview: String? = "if (x) {",
+    ) =
         ReviewComment(path = "src/a.ts", range = LineRange(start, end), text = text, preview = preview)
 
     @Test
@@ -440,7 +445,8 @@ class ChangedFilesTest {
 
     @Test
     fun `tool metadata as a list of strings is read`() {
-        val metadata = mapOf("files" to kotlinx.serialization.json.JsonArray(listOf(JsonPrimitive("a.kt"), JsonPrimitive("b.kt"))))
+        val metadata =
+            mapOf("files" to kotlinx.serialization.json.JsonArray(listOf(JsonPrimitive("a.kt"), JsonPrimitive("b.kt"))))
 
         assertEquals(listOf("a.kt", "b.kt"), ChangedFiles.fromToolMetadata(metadata))
     }

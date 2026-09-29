@@ -144,7 +144,23 @@ class ReviewNavigationTest {
 
     private fun file(name: String, hunks: Int) = ParsedFile(
         file = name,
-        hunks = List(hunks) { DiffHunk("h$it", it + 1, 1, it + 1, 1, listOf(DiffLine(DiffLineKind.CONTEXT, "x", it + 1, it + 1))) },
+        hunks = List(hunks) {
+            DiffHunk(
+                "h$it",
+                it + 1,
+                1,
+                it + 1,
+                1,
+                listOf(
+                    DiffLine(
+                        DiffLineKind.CONTEXT,
+                        "x",
+                        it + 1,
+                        it + 1,
+                    ),
+                ),
+            )
+        },
         additions = 0,
         deletions = 0,
         status = dev.opencode.android.core.model.FileDiffStatus.Modified,

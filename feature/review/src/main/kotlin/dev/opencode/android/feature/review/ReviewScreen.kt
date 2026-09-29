@@ -59,12 +59,12 @@ import dev.opencode.android.core.data.review.ParsedFile
 import dev.opencode.android.core.data.review.ReviewComment
 import dev.opencode.android.core.data.review.ReviewScope
 import dev.opencode.android.core.designsystem.code.CodeLanguage
+import dev.opencode.android.core.designsystem.diff.DiffColors
 import dev.opencode.android.core.designsystem.diff.DiffPair
 import dev.opencode.android.core.designsystem.diff.DiffRow
 import dev.opencode.android.core.designsystem.diff.DiffRowKind
 import dev.opencode.android.core.designsystem.diff.DiffRowView
 import dev.opencode.android.core.designsystem.diff.DiffTable
-import dev.opencode.android.core.designsystem.diff.DiffColors
 import dev.opencode.android.core.designsystem.diff.SplitDiffTable
 
 /**
@@ -603,8 +603,8 @@ internal fun ReviewScope.labelRes(): Int = when (this) {
 /** The sentence for an empty review, which differs by scope because the reasons differ. */
 @Composable
 internal fun emptyMessage(state: ReviewUiState): String = when {
-    state.error?.message == ReviewStoreNoSession -> stringResource(R.string.review_no_session)
-    state.error?.message == ReviewStoreNoLocation -> stringResource(R.string.review_no_location)
+    state.error?.message == REVIEW_STORE_NO_SESSION -> stringResource(R.string.review_no_session)
+    state.error?.message == REVIEW_STORE_NO_LOCATION -> stringResource(R.string.review_no_location)
     state.scope is ReviewScope.LastTurn -> stringResource(R.string.review_empty)
     state.scope == ReviewScope.Uncommitted -> stringResource(R.string.review_empty_uncommitted)
     state.scope == ReviewScope.Committed -> stringResource(R.string.review_empty_committed)
@@ -612,8 +612,8 @@ internal fun emptyMessage(state: ReviewUiState): String = when {
 }
 
 /** The two reasons a scope cannot run, spelled as the store does. */
-internal const val ReviewStoreNoSession: String = "no-session"
-internal const val ReviewStoreNoLocation: String = "no-location"
+internal const val REVIEW_STORE_NO_SESSION: String = "no-session"
+internal const val REVIEW_STORE_NO_LOCATION: String = "no-location"
 
 /**
  * The file tree, which is a list of the paths a review contains.
@@ -663,7 +663,7 @@ private fun FileTreeRow(
             .clickable(enabled = !node.isDirectory) { onOpenFile(node.path) }
             .padding(horizontal = 12.dp, vertical = 8.dp)
             .semantics {
-                contentDescription = "${node.name}${if (node.isDirectory) ", directory" else ""}"
+                contentDescription = node.name + if (node.isDirectory) ", directory" else ""
             },
         verticalAlignment = Alignment.CenterVertically,
     ) {

@@ -93,7 +93,14 @@ internal val SQL_KEYWORDS = words(
 )
 
 internal val CSS_KEYWORDS = words(
-    "important", "inherit", "initial", "unset", "auto", "none", "var", "calc",
+    "important",
+    "inherit",
+    "initial",
+    "unset",
+    "auto",
+    "none",
+    "var",
+    "calc",
 )
 
 /**

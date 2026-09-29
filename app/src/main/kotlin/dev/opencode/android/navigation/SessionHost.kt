@@ -2,8 +2,8 @@ package dev.opencode.android.navigation
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material3.Icon
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -37,17 +37,17 @@ import dev.opencode.android.feature.composer.ui.ModelPickerSheet
 import dev.opencode.android.feature.composer.ui.SideQuestionSheet
 import dev.opencode.android.feature.composer.ui.SkillPicker
 import dev.opencode.android.feature.composer.ui.StashList
-import dev.opencode.android.feature.requests.ui.AttentionSettingsSheet
-import dev.opencode.android.feature.requests.ui.RequestActions
-import dev.opencode.android.feature.requests.ui.messageRes
-import dev.opencode.android.feature.requests.ui.takesArgument
 import dev.opencode.android.feature.execution.SubagentStrip
 import dev.opencode.android.feature.execution.SubagentsViewModel
+import dev.opencode.android.feature.requests.ui.AttentionSettingsSheet
+import dev.opencode.android.feature.requests.ui.RequestActions
 import dev.opencode.android.feature.requests.ui.RequestDock
+import dev.opencode.android.feature.requests.ui.messageRes
+import dev.opencode.android.feature.requests.ui.takesArgument
 import dev.opencode.android.feature.sessions.R
 import dev.opencode.android.feature.sessions.ui.SessionActionsSheet
-import dev.opencode.android.feature.sessions.ui.SessionMenuRow
 import dev.opencode.android.feature.sessions.ui.SessionManagementViewModel
+import dev.opencode.android.feature.sessions.ui.SessionMenuRow
 import dev.opencode.android.feature.sessions.ui.SessionScreen
 import dev.opencode.android.feature.sessions.ui.SessionViewModel
 import dev.opencode.android.feature.sessions.ui.UserMessageActions
@@ -158,15 +158,22 @@ fun SessionHost(
         composer.effect.collect { effect ->
             when (effect) {
                 ComposerEffect.NewSession -> onNewSession()
+
                 ComposerEffect.SessionList -> onOpenSessionList()
+
                 ComposerEffect.OpenAgentPicker -> agentPickerOpen = true
+
                 ComposerEffect.OpenModelPicker -> modelPickerOpen = true
+
                 ComposerEffect.OpenEditor -> editorOpen = true
+
                 // `/diff` is the review screen, and the review is another feature; the composition
                 // root is the only place that knows how to get there.
                 ComposerEffect.OpenDiff -> onOpenReview(null)
+
                 // Focus is the field's own business; the empty box is the visible part of the send.
                 ComposerEffect.FocusComposer -> Unit
+
                 // The palette's `/undo`: the composer picked the message, and this is where the
                 // confirmation plan §5.2 asks for is asked.
                 is ComposerEffect.ConfirmUndo -> undoTarget = effect.messageID
@@ -223,7 +230,9 @@ fun SessionHost(
         messageActions = { messageId ->
             // Only a user message is a boundary the server accepts, so only a user message gets the
             // rows; the timeline asks for them and this answers.
-            val message = state.messages.firstOrNull { it.id == messageId } as? dev.opencode.android.core.model.SessionMessage.User
+            val message = state.messages.firstOrNull {
+                it.id == messageId
+            } as? dev.opencode.android.core.model.SessionMessage.User
             if (message != null) {
                 UserMessageActions(
                     messageId = message.id,
@@ -280,7 +289,11 @@ fun SessionHost(
             title = state.title,
             childCount = childCount,
             onRename = { title -> management.rename(title) },
-            onDelete = { management.delete(); actionsOpen = false; onSessionDeleted() },
+            onDelete = {
+                management.delete()
+                actionsOpen = false
+                onSessionDeleted()
+            },
             onCopyMessage = {
                 state.messages.lastOrNull()?.let { message ->
                     clipboard.setText(AnnotatedString(management.copyMessage(message)))
@@ -292,9 +305,18 @@ fun SessionHost(
                 }
             },
             onDismiss = { actionsOpen = false },
-            onOpenAttention = { actionsOpen = false; attentionOpen = true },
-            onOpenHistory = { actionsOpen = false; historyOpen = true },
-            onOpenExperimental = { actionsOpen = false; experimentalOpen = true },
+            onOpenAttention = {
+                actionsOpen = false
+                attentionOpen = true
+            },
+            onOpenHistory = {
+                actionsOpen = false
+                historyOpen = true
+            },
+            onOpenExperimental = {
+                actionsOpen = false
+                experimentalOpen = true
+            },
             executionSlot = {
                 ExecutionMenuRows(
                     directory = state.directory.orEmpty(),
@@ -333,7 +355,10 @@ fun SessionHost(
         AgentPickerSheet(
             agents = composerState.primaryAgents,
             selected = composerState.agent,
-            onSelect = { agent -> composer.selectAgent(agent); agentPickerOpen = false },
+            onSelect = { agent ->
+                composer.selectAgent(agent)
+                agentPickerOpen = false
+            },
             onDismiss = { agentPickerOpen = false },
         )
     }
@@ -344,7 +369,10 @@ fun SessionHost(
             selected = composerState.model,
             search = modelSearch,
             onSearchChange = { modelSearch = it },
-            onSelect = { ref -> composer.selectModel(ref); modelPickerOpen = false },
+            onSelect = { ref ->
+                composer.selectModel(ref)
+                modelPickerOpen = false
+            },
             onSelectVariant = { ref, variant -> composer.selectModel(ref.copy(variant = variant)) },
             onToggleFavorite = composer::toggleFavorite,
             onDismiss = { modelPickerOpen = false },
@@ -411,7 +439,6 @@ fun SessionHost(
         )
     }
 }
-
 
 /**
  * The confirmation that precedes a revert (plan §5.2, "reverting files").

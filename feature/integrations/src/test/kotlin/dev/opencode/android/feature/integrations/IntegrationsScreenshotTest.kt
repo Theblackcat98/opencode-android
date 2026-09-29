@@ -75,19 +75,32 @@ class IntegrationsScreenshotTest {
 
     @Test
     fun connectKeySheet() = capture("connect-key") {
-        ConnectSheetFixture(connectState(active = ActiveConnect("anthropic", "Anthropic", keyMethod(), IntegrationFlowFixture.KEY)))
+        ConnectSheetFixture(
+            connectState(
+                active = ActiveConnect("placeholder-integration", "Anthropic", keyMethod(), IntegrationFlowFixture.KEY),
+            ),
+        )
     }
 
     @Test
     fun connectKeySheetLargeFont() = capture("connect-key-large-font", fontScale = 1.5f) {
-        ConnectSheetFixture(connectState(active = ActiveConnect("anthropic", "Anthropic", keyMethod(), IntegrationFlowFixture.KEY)))
+        ConnectSheetFixture(
+            connectState(
+                active = ActiveConnect("placeholder-integration", "Anthropic", keyMethod(), IntegrationFlowFixture.KEY),
+            ),
+        )
     }
 
     @Test
     fun connectOauthWaiting() = capture("connect-oauth-waiting") {
         ConnectSheetFixture(
             connectState(
-                active = ActiveConnect("anthropic", "Anthropic", oauthMethod(), IntegrationFlowFixture.OAUTH),
+                active = ActiveConnect(
+                    "placeholder-integration",
+                    "Anthropic",
+                    oauthMethod(),
+                    IntegrationFlowFixture.OAUTH,
+                ),
                 progress = ConnectAttemptProgress(attemptID = "att_1", state = ConnectAttemptState.Pending),
                 oauthAttemptUrl = "https://example.com/oauth/authorize",
                 oauthInstructions = "Approve the request in the browser, then come back.",
@@ -100,7 +113,12 @@ class IntegrationsScreenshotTest {
     fun connectDeviceCode() = capture("connect-device-code") {
         ConnectSheetFixture(
             connectState(
-                active = ActiveConnect("github", "GitHub", oauthMethod(id = "oauth-device"), IntegrationFlowFixture.OAUTH),
+                active = ActiveConnect(
+                    "github",
+                    "GitHub",
+                    oauthMethod(id = "oauth-device"),
+                    IntegrationFlowFixture.OAUTH,
+                ),
                 progress = ConnectAttemptProgress(attemptID = "att_2", state = ConnectAttemptState.Pending),
                 oauthMode = "code",
                 codeDraft = "WDJB-MJHT-2K9P",
@@ -149,7 +167,12 @@ class IntegrationsScreenshotTest {
 
     @Test
     fun mcpAddForm() = capture("mcp-add-form") {
-        McpAddSheetFixture(mcpState(addSheetOpen = true, draft = McpServerDraft(name = "files", command = "mcp-server-filesystem /work")))
+        McpAddSheetFixture(
+            mcpState(
+                addSheetOpen = true,
+                draft = McpServerDraft(name = "files", command = "mcp-server-filesystem /work"),
+            ),
+        )
     }
 
     @Test
@@ -184,7 +207,9 @@ class IntegrationsScreenshotTest {
     fun providersList() = capture("providers-list") { ProvidersScreenFixture(providersState()) }
 
     @Test
-    fun providersLargeFont() = capture("providers-large-font", fontScale = 1.5f) { ProvidersScreenFixture(providersState()) }
+    fun providersLargeFont() = capture("providers-large-font", fontScale = 1.5f) {
+        ProvidersScreenFixture(providersState())
+    }
 
     @Test
     fun webSearchResults() = capture("websearch-results") { WebSearchScreenFixture(webSearchState()) }
@@ -291,14 +316,19 @@ class IntegrationsScreenshotTest {
                     ),
                 ),
                 ProviderInfo(
-                    id = "anthropic",
+                    id = "placeholder-integration",
                     name = "Anthropic",
                     activation = "enabled",
-                    packageName = "@ai-sdk/anthropic",
-                    integrationID = "anthropic",
-                    canonical = "anthropic",
+                    packageName = "@ai-sdk/placeholder-integration",
+                    integrationID = "placeholder-integration",
+                    canonical = "placeholder-integration",
                 ),
-                ProviderInfo(id = "disabled-one", name = "Disabled provider", activation = "disabled", packageName = "@ai-sdk/x"),
+                ProviderInfo(
+                    id = "disabled-one",
+                    name = "Disabled provider",
+                    activation = "disabled",
+                    packageName = "@ai-sdk/x",
+                ),
             ),
             status = dev.opencode.android.core.data.sync.SyncStatus.Ready,
         ),
@@ -308,29 +338,34 @@ class IntegrationsScreenshotTest {
     private fun webSearchState() = WebSearchUiState(
         directory = "/work/app",
         providers = SyncedState(
-            value = listOf(WebSearchProviderInfo("exa", "Exa"), WebSearchProviderInfo("tavily", "Tavily")),
+            value = listOf(
+                WebSearchProviderInfo("placeholder-search", "Exa"),
+                WebSearchProviderInfo("placeholder-search-2", "Tavily"),
+            ),
             status = dev.opencode.android.core.data.sync.SyncStatus.Ready,
         ),
-        selected = "exa",
+        selected = "placeholder-search",
         query = "kotlin coroutines structured concurrency",
         response = WebSearchResponse(
-            providerID = "exa",
+            providerID = "placeholder-search",
             results = listOf(
                 WebSearchResult(
                     url = "https://example.com/kotlin/coroutines",
                     title = "Coroutines | Kotlin Documentation",
-                    content = "Structured concurrency is a feature of Kotlin that makes concurrency "
-                        + "easier to manage, with a disciplined approach that keeps code readable.",
+                    content = "Structured concurrency is a feature of Kotlin that makes concurrency " +
+                        "easier to manage, with a disciplined approach that keeps code readable.",
                 ),
             ),
         ),
     )
 
     private fun integration() = IntegrationInfo(
-        id = "anthropic",
+        id = "placeholder-integration",
         name = "Anthropic",
         methods = listOf(
-            IntegrationMethod.Key(form = listOf(FormField.StringField(key = "resourceName", title = "Resource name", required = true))),
+            IntegrationMethod.Key(
+                form = listOf(FormField.StringField(key = "resourceName", title = "Resource name", required = true)),
+            ),
             oauthMethod(),
             IntegrationMethod.Env(listOf("ANTHROPIC_API_KEY")),
         ),
@@ -340,11 +375,17 @@ class IntegrationsScreenshotTest {
         ),
     )
 
-    private fun keyMethod() = IntegrationMethod.Key(form = listOf(FormField.StringField(key = "resourceName", title = "Resource name", required = true)))
+    private fun keyMethod() = IntegrationMethod.Key(
+        form = listOf(FormField.StringField(key = "resourceName", title = "Resource name", required = true)),
+    )
 
     private fun oauthMethod(id: String = "oauth-default") = IntegrationMethod.OAuth(id, "Sign in with Microsoft")
 
-    private fun commandMethod() = IntegrationMethod.Command("cli", "Sign in with the CLI", listOf("gh", "auth", "login"))
+    private fun commandMethod() = IntegrationMethod.Command(
+        "cli",
+        "Sign in with the CLI",
+        listOf("gh", "auth", "login"),
+    )
 
     private fun capture(
         name: String,

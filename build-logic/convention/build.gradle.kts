@@ -18,6 +18,8 @@ dependencies {
     compileOnly(libs.room.gradle.plugin)
     compileOnly(libs.roborazzi.gradle.plugin)
     implementation(libs.kotlin.gradle.plugin)
+    implementation(libs.spotless.gradle.plugin)
+    implementation(libs.detekt.gradle.plugin)
 }
 
 tasks {
@@ -56,6 +58,10 @@ gradlePlugin {
         register("jvmLibrary") {
             id = "opencode.jvm.library"
             implementationClass = "JvmLibraryConventionPlugin"
+        }
+        register("quality") {
+            id = "opencode.android.quality"
+            implementationClass = "QualityConventionPlugin"
         }
     }
 }

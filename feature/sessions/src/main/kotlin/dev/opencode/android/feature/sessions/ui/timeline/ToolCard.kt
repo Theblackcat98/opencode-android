@@ -1,13 +1,13 @@
 package dev.opencode.android.feature.sessions.ui.timeline
 
 import androidx.annotation.StringRes
+import dev.opencode.android.core.data.timeline.textOutput
 import dev.opencode.android.core.model.AssistantContent
 import dev.opencode.android.core.model.Outcome
 import dev.opencode.android.core.model.SessionMessage
 import dev.opencode.android.core.model.StructuredError
 import dev.opencode.android.core.model.ToolState
 import dev.opencode.android.core.model.json.UnknownVariant
-import dev.opencode.android.core.data.timeline.textOutput
 import dev.opencode.android.feature.sessions.R
 
 /**
@@ -136,14 +136,23 @@ private fun subjectOf(kind: ToolCardKind, input: Map<String, String>): String? =
         input["filePath"] ?: input["path"] ?: input["file"]
 
     ToolCardKind.GLOB -> input["pattern"]
+
     ToolCardKind.GREP -> input["pattern"] ?: input["query"]
+
     ToolCardKind.PATCH -> input["patch"]?.lineSequence()?.firstOrNull()
+
     ToolCardKind.SHELL, ToolCardKind.EXECUTE -> input["command"]
+
     ToolCardKind.WEBFETCH -> input["url"]
+
     ToolCardKind.WEBSEARCH -> input["query"]
+
     ToolCardKind.SKILL -> input["name"] ?: input["skill"]
+
     ToolCardKind.SUBAGENT -> input["description"] ?: input["prompt"]
+
     ToolCardKind.QUESTION -> input["question"]
+
     ToolCardKind.GENERIC -> input["input"]
 }
 
@@ -155,14 +164,21 @@ private fun detailOf(
     error: ToolState.Error?,
 ): String? = when (kind) {
     ToolCardKind.SHELL, ToolCardKind.EXECUTE -> completed?.textOutput ?: error?.content?.textOrNull()
+
     ToolCardKind.WEBFETCH, ToolCardKind.WEBSEARCH -> completed?.textOutput
+
     ToolCardKind.QUESTION -> input["answer"] ?: completed?.metadata?.stringOrNull("answers")
-    ToolCardKind.SUBAGENT -> completed?.metadata?.stringOrNull("sessionID") ?: error?.metadata?.stringOrNull("sessionID")
+
+    ToolCardKind.SUBAGENT -> completed?.metadata?.stringOrNull("sessionID")
+        ?: error?.metadata?.stringOrNull("sessionID")
+
     ToolCardKind.EDIT, ToolCardKind.WRITE, ToolCardKind.PATCH ->
         completed?.metadata?.stringOrNull("files") ?: error?.metadata?.stringOrNull("files")
 
     ToolCardKind.READ, ToolCardKind.GLOB, ToolCardKind.GREP -> completed?.textOutput
+
     ToolCardKind.SKILL -> null
+
     ToolCardKind.GENERIC -> completed?.textOutput ?: error?.error?.message
 }
 
@@ -193,4 +209,4 @@ fun Outcome.labelRes(): Int = when (this) {
 }
 
 /** A short, stable key for a `LazyColumn` row (plan §5.4). */
-fun SessionMessage.stableKey(): String = "$id:${created}"
+fun SessionMessage.stableKey(): String = "$id:$created"

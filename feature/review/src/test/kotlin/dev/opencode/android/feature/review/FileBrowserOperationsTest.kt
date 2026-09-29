@@ -235,7 +235,11 @@ class FileBrowserOperationsTest {
         assertEquals("a NUL byte is binary whatever the extension says", FileContentKind.BINARY, nul.kind)
 
         val empty = FileReader.classify("a.kt", ByteArray(0), "text/plain")
-        assertEquals("an empty file is text: a viewer that shows nothing beats a download button", FileContentKind.TEXT, empty.kind)
+        assertEquals(
+            "an empty file is text: a viewer that shows nothing beats a download button",
+            FileContentKind.TEXT,
+            empty.kind,
+        )
         assertEquals(emptyList<String>(), empty.lines)
 
         val noNewline = FileReader.classify("a.kt", "one\ntwo".toByteArray(), "text/plain")
@@ -251,6 +255,8 @@ class FileBrowserOperationsTest {
         )
         // The jump list previews the first non-blank line; the search previews the line that matched.
         // Both come from the same formatted message, so a hit and a jump cannot disagree.
-        assertTrue(dev.opencode.android.core.data.transcript.TranscriptFormatter.message(message).contains("wrap toggle"))
+        assertTrue(
+            dev.opencode.android.core.data.transcript.TranscriptFormatter.message(message).contains("wrap toggle"),
+        )
     }
 }

@@ -9,8 +9,6 @@ import android.os.Build
 import android.os.Bundle
 import dev.opencode.android.core.data.attention.AttentionAction
 import dev.opencode.android.core.data.attention.AttentionActionCodes
-import dev.opencode.android.core.data.server.PendingRequest
-import dev.opencode.android.core.data.attention.encodeField
 import dev.opencode.android.core.data.attention.AttentionChannel
 import dev.opencode.android.core.data.attention.AttentionDraft
 import dev.opencode.android.core.data.attention.EncodedFormField
@@ -18,13 +16,15 @@ import dev.opencode.android.core.data.attention.NotificationContent
 import dev.opencode.android.core.data.attention.NotificationIds
 import dev.opencode.android.core.data.attention.NotificationSlot
 import dev.opencode.android.core.data.attention.RemoteInputSpec
+import dev.opencode.android.core.data.attention.encodeField
 import dev.opencode.android.core.data.presence.RunningSession
-import dev.opencode.android.feature.requests.R
+import dev.opencode.android.core.data.server.PendingRequest
 import dev.opencode.android.core.model.FormField
 import dev.opencode.android.core.model.FormKind
 import dev.opencode.android.core.model.Outcome
 import dev.opencode.android.core.model.PermissionReply
 import dev.opencode.android.core.model.PermissionRequest
+import dev.opencode.android.feature.requests.R
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
@@ -463,7 +463,9 @@ class NotificationPlatformTest {
 
     private fun Notification.Action.remoteInputsOrEmpty(): List<android.app.RemoteInput> = remoteInputs?.toList().orEmpty()
 
-    /** The intent a pending intent was created with, which is what the receiver would receive. */
+    /**
+     * The intent a pending intent was created with, which is what the receiver would receive.
+     */
     private fun savedIntentOf(pendingIntent: PendingIntent): Intent =
         requireNotNull(shadowOf(pendingIntent).savedIntent)
 }

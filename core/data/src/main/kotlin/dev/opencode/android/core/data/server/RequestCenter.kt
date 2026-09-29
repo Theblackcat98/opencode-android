@@ -57,8 +57,8 @@ class RequestCenter(
     private val scope: CoroutineScope,
 ) {
     private val _permissions = MutableStateFlow<Map<String, PermissionRequest>>(emptyMap())
-    private val _forms = MutableStateFlow<Map<String, FormInfo>>(emptyMap())
-    private val _directoryOfSession = MutableStateFlow<Map<String, String>>(emptyMap())
+    private val pendingForms = MutableStateFlow<Map<String, FormInfo>>(emptyMap())
+    private val directoryOfSession = MutableStateFlow<Map<String, String>>(emptyMap())
 
     /**
      * The pending requests as the events left them, without the derived sort.
@@ -72,7 +72,7 @@ class RequestCenter(
     val permissionsById: StateFlow<Map<String, PermissionRequest>> = _permissions.asStateFlow()
 
     /** The pending forms, for the same reason as [permissionsById]. */
-    val formsById: StateFlow<Map<String, FormInfo>> = _forms.asStateFlow()
+    val formsById: StateFlow<Map<String, FormInfo>> = pendingForms.asStateFlow()
 
     /**
      * One derived flow per session, cached.
@@ -89,12 +89,12 @@ class RequestCenter(
         .stateIn(scope, SharingStarted.Eagerly, emptyList())
 
     /** The pending forms, newest first. */
-    val forms: StateFlow<List<FormInfo>> = _forms
+    val forms: StateFlow<List<FormInfo>> = pendingForms
         .map { it.values.sortedByDescending(FormInfo::id) }
         .stateIn(scope, SharingStarted.Eagerly, emptyList())
 
     /** Everything pending, for the global inbox. Forms first: a question is the more urgent wait. */
-    val pending: StateFlow<List<PendingRequest>> = combine(_permissions, _forms) { perms, forms ->
+    val pending: StateFlow<List<PendingRequest>> = combine(_permissions, pendingForms) { perms, forms ->
         buildList<PendingRequest> {
             forms.values.mapTo(this) { PendingRequest.Form(it) }
             perms.values.mapTo(this) { PendingRequest.Permission(it) }
@@ -103,7 +103,7 @@ class RequestCenter(
 
     /** The requests of one session, which is what the session's dock shows. */
     fun forSession(sessionID: String): StateFlow<List<PendingRequest>> = perSession.getOrPut(sessionID) {
-        combine(_permissions, _forms) { perms, forms ->
+        combine(_permissions, pendingForms) { perms, forms ->
             buildList<PendingRequest> {
                 forms.values.filter { it.sessionID == sessionID }.mapTo(this) { PendingRequest.Form(it) }
                 perms.values.filter { it.sessionID == sessionID }.mapTo(this) { PendingRequest.Permission(it) }
@@ -120,7 +120,7 @@ class RequestCenter(
     fun currentPermissions(): List<PermissionRequest> = _permissions.value.values.sortedByDescending { it.id }
 
     /** The forms as of this instant, with no dispatcher in between. */
-    fun currentForms(): List<FormInfo> = _forms.value.values.sortedByDescending { it.id }
+    fun currentForms(): List<FormInfo> = pendingForms.value.values.sortedByDescending { it.id }
 
     /**
      * The directories this center has been asked about, so a resync knows where to look.
@@ -130,7 +130,7 @@ class RequestCenter(
      * would cost a request.
      */
     val knownDirectories: Set<String>
-        get() = _directoryOfSession.value.values.toSet()
+        get() = directoryOfSession.value.values.toSet()
 
     /**
      * Applies one event.
@@ -168,7 +168,8 @@ class RequestCenter(
                 permissions.associateBy(PermissionRequest::id)
         }
         if (forms != null) {
-            _forms.value = _forms.value.filterValues { it.sessionID !in sessions } + forms.associateBy(FormInfo::id)
+            pendingForms.value =
+                pendingForms.value.filterValues { it.sessionID !in sessions } + forms.associateBy(FormInfo::id)
         }
     }
 
@@ -205,8 +206,8 @@ class RequestCenter(
     /** Forgets everything, for example when the server is removed. */
     fun clear() {
         _permissions.value = emptyMap()
-        _forms.value = emptyMap()
-        _directoryOfSession.value = emptyMap()
+        pendingForms.value = emptyMap()
+        directoryOfSession.value = emptyMap()
         perSession.clear()
     }
 
@@ -218,13 +219,13 @@ class RequestCenter(
      */
     fun dropLocation(directory: String) {
         val sessions = sessionsIn(directory)
-        _directoryOfSession.value = _directoryOfSession.value.filterKeys { it !in sessions }
+        directoryOfSession.value = directoryOfSession.value.filterKeys { it !in sessions }
         _permissions.value = _permissions.value.filterValues { it.sessionID !in sessions }
-        _forms.value = _forms.value.filterValues { it.sessionID !in sessions }
+        pendingForms.value = pendingForms.value.filterValues { it.sessionID !in sessions }
     }
 
     private fun sessionsIn(directory: String?): Set<String> =
-        _directoryOfSession.value.filterValues { it == directory }.keys
+        directoryOfSession.value.filterValues { it == directory }.keys
 
     private fun rememberSessionDirectory(payload: EventPayload) {
         val sessionID: String
@@ -242,8 +243,8 @@ class RequestCenter(
 
             else -> return
         }
-        if (_directoryOfSession.value[sessionID] == directory) return
-        _directoryOfSession.value = _directoryOfSession.value + (sessionID to directory)
+        if (directoryOfSession.value[sessionID] == directory) return
+        directoryOfSession.value = directoryOfSession.value + (sessionID to directory)
     }
 
     private fun upsertPermission(request: PermissionRequest): Boolean {
@@ -259,14 +260,14 @@ class RequestCenter(
     }
 
     private fun upsertForm(form: FormInfo): Boolean {
-        if (_forms.value[form.id] == form) return false
-        _forms.value = _forms.value + (form.id to form)
+        if (pendingForms.value[form.id] == form) return false
+        pendingForms.value = pendingForms.value + (form.id to form)
         return true
     }
 
     private fun dropForm(formID: String): Boolean {
-        if (formID !in _forms.value) return false
-        _forms.value = _forms.value - formID
+        if (formID !in pendingForms.value) return false
+        pendingForms.value = pendingForms.value - formID
         return true
     }
 

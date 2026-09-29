@@ -7,10 +7,14 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
+import mockwebserver3.Dispatcher
+import mockwebserver3.MockResponse
+import mockwebserver3.MockWebServer
+import mockwebserver3.RecordedRequest
 import okhttp3.OkHttpClient
 import okhttp3.Response
-import okhttp3.WebSocketListener
 import okhttp3.WebSocket
+import okhttp3.WebSocketListener
 import okio.Buffer
 import okio.ByteString
 import okio.ByteString.Companion.toByteString
@@ -22,10 +26,6 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
-import mockwebserver3.Dispatcher
-import mockwebserver3.MockResponse
-import mockwebserver3.MockWebServer
-import mockwebserver3.RecordedRequest
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit
 
@@ -191,7 +191,10 @@ class PtySocketTest {
 
     @Test
     fun `a base URL with a path prefix keeps it`() {
-        assertEquals("/opencode/api/pty/pty_1/connect", PtySocket.terminalUrl("https://host/opencode", "api/pty/pty_1/connect").encodedPath)
+        assertEquals(
+            "/opencode/api/pty/pty_1/connect",
+            PtySocket.terminalUrl("https://host/opencode", "api/pty/pty_1/connect").encodedPath,
+        )
     }
 
     // ------------------------------------------------------------------ the socket
@@ -362,7 +365,7 @@ class PtySocketTest {
      * regression into a failure with a message instead of a hang.
      */
     private suspend fun awaitState(match: (PtyStreamState) -> Boolean): PtyStreamState =
-        awaitValue("the stream state ${match}") { socketState()?.takeIf(match) }
+        awaitValue("the stream state $match") { socketState()?.takeIf(match) }
 
     private var stateUnderTest: PtySocket? = null
 
@@ -388,8 +391,8 @@ class PtySocketTest {
         throw AssertionError("unreachable")
     }
 
-    /** The server's end of the socket, once the handshake has produced one. */
     /**
+     * The server's end of the socket, once the handshake has produced one.
      * The server's end of the socket, once the handshake has produced one.
      *
      * **Real time, not the test scheduler's.** The handshake happens on OkHttp's own threads, and a

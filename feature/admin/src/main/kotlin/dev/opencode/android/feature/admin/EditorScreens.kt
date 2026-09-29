@@ -145,7 +145,10 @@ fun TemplateSheet(
                             value = draft.name,
                             onValueChange = { value -> onChange { it.copy(name = value) } },
                         )
-                        Text(text = stringResource(R.string.admin_template_mcp_kind), style = MaterialTheme.typography.labelMedium)
+                        Text(
+                            text = stringResource(R.string.admin_template_mcp_kind),
+                            style = MaterialTheme.typography.labelMedium,
+                        )
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             FilterChip(
                                 selected = draft.mcpKind == "remote",

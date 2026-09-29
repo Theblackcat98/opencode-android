@@ -2,17 +2,17 @@ package dev.opencode.android.feature.review
 
 import dev.opencode.android.core.data.review.ParsedFile
 import dev.opencode.android.core.data.review.ReviewScope
+import dev.opencode.android.core.model.CommandInfo
 import dev.opencode.android.core.model.FileDiff
 import dev.opencode.android.core.model.FileDiffStatus
 import dev.opencode.android.core.model.LocationPublicRef
 import dev.opencode.android.core.model.Project
+import dev.opencode.android.core.model.SessionInfo
 import dev.opencode.android.core.model.SkillInfo
 import dev.opencode.android.core.model.TokenUsage
 import dev.opencode.android.core.model.VcsBranch
 import dev.opencode.android.core.model.VcsFileStatus
 import dev.opencode.android.core.model.VcsInfo
-import dev.opencode.android.core.model.CommandInfo
-import dev.opencode.android.core.model.SessionInfo
 import kotlinx.serialization.json.Json
 
 /**
@@ -24,7 +24,10 @@ import kotlinx.serialization.json.Json
  */
 object ReviewFixtures {
 
-    val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
+    val json = Json {
+        ignoreUnknownKeys = true
+        encodeDefaults = true
+    }
 
     const val DIRECTORY = "/home/dev/project"
 
@@ -72,10 +75,12 @@ object ReviewFixtures {
     fun vcsStatus(vararg entries: VcsFileStatus): String =
         """{"location":{"id":"loc","directory":"$DIRECTORY"},"data":${json.encodeToString(entries.toList())}}"""
 
-    val status = VcsFileStatus(file = "src/main/kotlin/A.kt", additions = 2, deletions = 1, status = FileDiffStatus.Modified)
+    val status =
+        VcsFileStatus(file = "src/main/kotlin/A.kt", additions = 2, deletions = 1, status = FileDiffStatus.Modified)
 
     /** A `FileDiff` whose patch is binary, which is a real answer for an image. */
-    val binary = FileDiff(file = "assets/logo.png", patch = "", additions = 0, deletions = 0, status = FileDiffStatus.Added)
+    val binary =
+        FileDiff(file = "assets/logo.png", patch = "", additions = 0, deletions = 0, status = FileDiffStatus.Added)
 
     /** The model types a session projection needs, kept here so the tests do not repeat them. */
     val project = Project(

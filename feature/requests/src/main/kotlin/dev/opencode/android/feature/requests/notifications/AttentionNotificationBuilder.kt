@@ -6,6 +6,7 @@ import android.content.Context
 import androidx.core.app.NotificationCompat
 import androidx.core.app.RemoteInput
 import dev.opencode.android.core.data.attention.AttentionAction
+import dev.opencode.android.core.data.attention.AttentionActionCodes
 import dev.opencode.android.core.data.attention.AttentionChannel
 import dev.opencode.android.core.data.attention.AttentionDraft
 import dev.opencode.android.core.data.attention.AttentionPriority
@@ -13,7 +14,6 @@ import dev.opencode.android.core.data.attention.NotificationContent
 import dev.opencode.android.core.data.attention.NotificationIds
 import dev.opencode.android.core.data.attention.NotificationSlot
 import dev.opencode.android.core.data.attention.RemoteInputSpec
-import dev.opencode.android.core.data.attention.AttentionActionCodes
 import dev.opencode.android.core.model.Outcome
 import dev.opencode.android.core.model.PermissionRequest
 import dev.opencode.android.feature.requests.R
@@ -258,9 +258,13 @@ class AttentionNotificationBuilder(
         }
 
         is AttentionAction.AnswerForm -> R.string.action_answer
+
         is AttentionAction.CancelForm -> R.string.action_cancel
+
         is AttentionAction.OpenSession -> R.string.action_open
+
         is AttentionAction.OpenLocation -> R.string.action_open
+
         is AttentionAction.Interrupt -> R.string.action_interrupt
     }
 
@@ -271,8 +275,11 @@ class AttentionNotificationBuilder(
         }
 
         is AttentionAction.AnswerForm -> R.drawable.ic_notification_reply
+
         is AttentionAction.CancelForm -> R.drawable.ic_notification_reject
+
         is AttentionAction.OpenSession, is AttentionAction.OpenLocation -> R.drawable.ic_notification_open
+
         is AttentionAction.Interrupt -> R.drawable.ic_notification_interrupt
     }
 
@@ -285,8 +292,11 @@ class AttentionNotificationBuilder(
     private fun categoryOf(channel: AttentionChannel): String = when (channel) {
         // A blocked agent behaves like a call: it is waiting on the user and nothing else matters.
         AttentionChannel.PERMISSION -> NotificationCompat.CATEGORY_CALL
+
         AttentionChannel.QUESTION -> NotificationCompat.CATEGORY_PROGRESS
+
         AttentionChannel.RETRY -> NotificationCompat.CATEGORY_ERROR
+
         else -> NotificationCompat.CATEGORY_STATUS
     }
 

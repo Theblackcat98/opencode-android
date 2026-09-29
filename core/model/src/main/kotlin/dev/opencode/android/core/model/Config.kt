@@ -1,5 +1,9 @@
 package dev.opencode.android.core.model
 
+import dev.opencode.android.core.model.json.DiscriminatedUnionSerializer
+import dev.opencode.android.core.model.json.OpenCodeJson
+import dev.opencode.android.core.model.json.UnknownVariant
+import dev.opencode.android.core.model.json.variant
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -14,10 +18,6 @@ import kotlinx.serialization.json.JsonEncoder
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
-import dev.opencode.android.core.model.json.DiscriminatedUnionSerializer
-import dev.opencode.android.core.model.json.OpenCodeJson
-import dev.opencode.android.core.model.json.UnknownVariant
-import dev.opencode.android.core.model.json.variant
 
 /**
  * One entry of `GET /api/config`: a configuration document, or a directory the server searched
@@ -140,35 +140,65 @@ data class ConfigInfo(
      */
     fun projected(fileKey: String): JsonElement? = when (fileKey) {
         "\$schema" -> schema?.let(::JsonPrimitive)
+
         "shell" -> shell?.let(::JsonPrimitive)
+
         "model" -> model?.toJson()
+
         "default_agent" -> default_agent?.let(::JsonPrimitive)
+
         "autoupdate" -> update?.let(::JsonPrimitive)
+
         "share" -> share?.let(::JsonPrimitive)
+
         "enterprise" -> enterprise
+
         "username" -> username?.let(::JsonPrimitive)
-        "permission" -> permissions?.let { OpenCodeJson.encodeToJsonElement(ListSerializer(PermissionRule.serializer()), it) }
+
+        "permission" -> permissions?.let {
+            OpenCodeJson.encodeToJsonElement(ListSerializer(PermissionRule.serializer()), it)
+        }
+
         "agent" -> agents?.let(::JsonObject)
+
         "snapshot" -> snapshots?.let(::JsonPrimitive)
+
         "formatter" -> formatter
+
         "lsp" -> lsp
+
         "attachment" -> media
+
         "tool_output" -> tool_output
+
         "mcp" -> mcp
+
         "compaction" -> compaction
+
         "skills" -> skills
+
         "command" -> commands?.let(::JsonObject)
+
         "instructions" -> instructions
+
         "watcher" -> watcher
+
         "references" -> references
+
         // `websearch` and `worktree` are reachable here but have no key in the configuration file; see
         // `ConfigSchema.PROJECTION_ONLY_KEYS`.
         "websearch" -> websearch
+
         "plugin" -> plugins
+
         "worktree" -> worktree
+
         "warming" -> warming
+
         "provider" -> providers
+
         "experimental" -> experimental
+
         // The eleven keys with no projection: `reference`, `autoshare`, `disabled_providers`,
         // `enabled_providers`, `layout`, `logLevel`, `mode`, `server`, `small_model`,
         // `subagent_depth` and `tools`.
@@ -230,6 +260,7 @@ sealed interface ConfigModel {
 
     fun toJson(): JsonElement = when (this) {
         is Ref -> JsonPrimitive(toFileString())
+
         is Detailed -> JsonObject(
             buildMap {
                 put("providerID", JsonPrimitive(providerID))
@@ -237,6 +268,7 @@ sealed interface ConfigModel {
                 variant?.let { put("variant", JsonPrimitive(it)) }
             },
         )
+
         // An unknown shape is kept as it arrived rather than rendered as a guess.
         is Unknown -> raw
     }
@@ -282,9 +314,11 @@ internal object ConfigModelSerializer : KSerializer<ConfigModel> {
             is JsonPrimitive ->
                 ConfigModel.parse(element.contentOrNull ?: "")
                     ?: ConfigModel.Unknown(JsonObject(mapOf("raw" to element)))
+
             is JsonObject -> runCatching {
                 input.json.decodeFromJsonElement(ConfigModel.Detailed.serializer(), element)
             }.getOrElse { ConfigModel.Unknown(element) }
+
             else -> ConfigModel.Unknown(JsonObject(mapOf("raw" to element)))
         }
     }

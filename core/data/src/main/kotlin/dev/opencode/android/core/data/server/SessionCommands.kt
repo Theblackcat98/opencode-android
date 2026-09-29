@@ -340,8 +340,10 @@ class SessionCommands(
     }
 }
 
-/** A failed driving action, carried as a [Throwable] so it rides in a [Result]. */
-/** The one [ActionFailure], in the action package; see its note for why. */
+/**
+ * A failed driving action, carried as a [Throwable] so it rides in a [Result].
+ * The one [ActionFailure], in the action package; see its note for why.
+ */
 typealias ActionFailure = dev.opencode.android.core.data.action.ActionFailure
 
 /** The [ActionError] of a failed result, or `null` when it succeeded. */

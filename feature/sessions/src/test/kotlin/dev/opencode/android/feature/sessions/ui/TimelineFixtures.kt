@@ -111,15 +111,31 @@ object TimelineFixtures {
     /** One assistant message per compact tool renderer the plan names. */
     fun toolCards(): List<SessionMessage> = listOf(
         tool("read", input = mapOf("filePath" to "src/main/kotlin/Foo.kt"), output = "package dev\n"),
-        tool("glob", input = mapOf("pattern" to "**/*.kt"), output = "src/main/kotlin/Foo.kt\nsrc/test/kotlin/FooTest.kt\n"),
+        tool(
+            "glob",
+            input = mapOf("pattern" to "**/*.kt"),
+            output = "src/main/kotlin/Foo.kt\nsrc/test/kotlin/FooTest.kt\n",
+        ),
         tool(
             "grep",
             input = mapOf("pattern" to "TimelineReducer"),
             output = "core/data/.../TimelineReducer.kt:41:class TimelineReducer\n",
         ),
-        tool("edit", input = mapOf("filePath" to "src/main/kotlin/Foo.kt"), metadata = mapOf("files" to "src/main/kotlin/Foo.kt")),
-        tool("write", input = mapOf("filePath" to "src/main/kotlin/Bar.kt"), metadata = mapOf("files" to "src/main/kotlin/Bar.kt")),
-        tool("patch", input = mapOf("patch" to "*** Begin Patch\n*** Update File: Foo.kt"), output = "Applied 1 change"),
+        tool(
+            "edit",
+            input = mapOf("filePath" to "src/main/kotlin/Foo.kt"),
+            metadata = mapOf("files" to "src/main/kotlin/Foo.kt"),
+        ),
+        tool(
+            "write",
+            input = mapOf("filePath" to "src/main/kotlin/Bar.kt"),
+            metadata = mapOf("files" to "src/main/kotlin/Bar.kt"),
+        ),
+        tool(
+            "patch",
+            input = mapOf("patch" to "*** Begin Patch\n*** Update File: Foo.kt"),
+            output = "Applied 1 change",
+        ),
         tool("bash", input = mapOf("command" to "ls -la"), output = "total 8\ndrwxr-xr-x  build\n"),
         tool("webfetch", input = mapOf("url" to "https://opencode.ai/docs"), output = "# Docs\n"),
         tool("websearch", input = mapOf("query" to "opencode android client"), output = "1. opencode.ai\n"),
@@ -152,9 +168,13 @@ object TimelineFixtures {
                 name = name,
                 executed = true,
                 state = ToolState.Completed(
-                    input = input.mapValues { (_, value) -> JsonPrimitive(value) as kotlinx.serialization.json.JsonElement },
+                    input = input.mapValues { (_, value) ->
+                        JsonPrimitive(value) as kotlinx.serialization.json.JsonElement
+                    },
                     content = listOfNotNull(output?.let { ToolContent.Text(it) }),
-                    metadata = metadata.mapValues { (_, value) -> JsonPrimitive(value) as kotlinx.serialization.json.JsonElement },
+                    metadata = metadata.mapValues { (_, value) ->
+                        JsonPrimitive(value) as kotlinx.serialization.json.JsonElement
+                    },
                 ),
                 time = AssistantContent.Tool.Time(created = 6_000, ran = 6_010, completed = 6_120),
             ),
@@ -271,8 +291,24 @@ object TimelineFixtures {
 
     fun sessionListState(): SessionListUiState = SessionListUiState(
         rows = listOf(
-            row("ses_running", "Refactor the timeline reducer", running = true, unread = true, updated = 1_000, cost = 0.42, tokens = 180_000),
-            row("ses_retry", "Fix the flaky SSE test", retrying = true, unread = true, updated = 900, cost = 0.02, tokens = 3_200),
+            row(
+                "ses_running",
+                "Refactor the timeline reducer",
+                running = true,
+                unread = true,
+                updated = 1_000,
+                cost = 0.42,
+                tokens = 180_000,
+            ),
+            row(
+                "ses_retry",
+                "Fix the flaky SSE test",
+                retrying = true,
+                unread = true,
+                updated = 900,
+                cost = 0.02,
+                tokens = 3_200,
+            ),
             row("ses_plain", "Add the location catalog", updated = 800, cost = 0.11, tokens = 42_000, children = 2),
             row("ses_read", "Review the diff", updated = 700, cost = 0.0, tokens = 0),
         ),
@@ -331,7 +367,15 @@ object TimelineFixtures {
             running -> SessionActivity.Running
             else -> SessionActivity.Idle
         },
-        status = if (retrying) dev.opencode.android.core.model.SessionStatus.Retry(2, "Rate limited", 1_060_000) else dev.opencode.android.core.model.SessionStatus.Idle,
+        status = if (retrying) {
+            dev.opencode.android.core.model.SessionStatus.Retry(
+                2,
+                "Rate limited",
+                1_060_000,
+            )
+        } else {
+            dev.opencode.android.core.model.SessionStatus.Idle
+        },
         childCount = children,
     )
 }

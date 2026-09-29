@@ -26,8 +26,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
-import dev.opencode.android.core.designsystem.code.CodeLanguage
 import dev.opencode.android.core.designsystem.code.CodeHighlighter
+import dev.opencode.android.core.designsystem.code.CodeLanguage
 import dev.opencode.android.core.designsystem.diff.DiffColors
 import dev.opencode.android.core.designsystem.diff.highlighted
 import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
@@ -242,6 +242,7 @@ private fun annotate(
     inlines.forEach { inline ->
         when (inline) {
             is MarkdownInline.Text -> append(inline.text)
+
             is MarkdownInline.Emphasis -> withStyle(
                 if (inline.strong) SpanStyle(fontWeight = FontWeight.Bold) else SpanStyle(fontStyle = FontStyle.Italic),
             ) { append(inline.text) }

@@ -2,6 +2,10 @@ package dev.opencode.android.feature.integrations
 
 import dev.opencode.android.core.network.ServerApi
 import dev.opencode.android.core.network.ServerApiFactory
+import mockwebserver3.Dispatcher
+import mockwebserver3.MockResponse
+import mockwebserver3.MockWebServer
+import mockwebserver3.RecordedRequest
 import okhttp3.OkHttpClient
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -10,10 +14,6 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
-import mockwebserver3.Dispatcher
-import mockwebserver3.MockResponse
-import mockwebserver3.MockWebServer
-import mockwebserver3.RecordedRequest
 
 /**
  * A real [ServerApi] over a [MockWebServer], with the Phase 8 routes wired.
@@ -133,7 +133,9 @@ internal object Envelopes {
 
 /** Fixtures shaped exactly like the 2.0.18 spec's examples. */
 internal object Fixtures {
-    val keyMethod = """{"type":"key","label":"API key","form":[{"key":"resourceName","type":"string","title":"Resource name","required":true}]}"""
+    val keyMethod =
+        """{"type":"key","label":"API key","form":[{"key":"resourceName",""" +
+            """"type":"string","title":"Resource name","required":true}]}"""
     val oauthMethod = """{"type":"oauth","id":"oauth-default","label":"Sign in with Microsoft"}"""
     val commandMethod = """{"type":"command","id":"cli","label":"Sign in with the CLI","command":["gh","auth","login"]}"""
     val envMethod = """{"type":"env","names":["ANTHROPIC_API_KEY"]}"""
@@ -143,14 +145,19 @@ internal object Fixtures {
     val envConnection = """{"type":"env","name":"ANTHROPIC_API_KEY"}"""
 
     fun integration(
-        id: String = "anthropic",
+        id: String = "placeholder-integration",
         name: String = "Anthropic",
         methods: List<String> = listOf(keyMethod, oauthMethod, envMethod),
         connections: List<String> = emptyList(),
     ) = """{"id":"$id","name":"$name","methods":[${methods.joinToString(",")}],"connections":[${connections.joinToString(",")}]}"""
 
-    val oauthAttempt = """{"attemptID":"att_1","url":"https://console.anthropic.com/oauth/authorize","instructions":"Approve in the browser","mode":"auto","time":${Envelopes.ATTEMPT_TIME}}"""
-    val oauthAttemptCode = """{"attemptID":"att_2","url":"https://example.com/device","instructions":"Enter the code","mode":"code","time":${Envelopes.ATTEMPT_TIME}}"""
+    val oauthAttempt =
+        """{"attemptID":"att_1","url":"https://console.example.invalid/oauth/authorize",""" +
+            """"instructions":"Approve in the browser","mode":"auto",""" +
+            """"time":${Envelopes.ATTEMPT_TIME}}"""
+    val oauthAttemptCode =
+        """{"attemptID":"att_2","url":"https://example.com/device",""" +
+            """"instructions":"Enter the code","mode":"code","time":${Envelopes.ATTEMPT_TIME}}"""
     val commandAttempt = """{"attemptID":"att_3","time":${Envelopes.ATTEMPT_TIME}}"""
 
     fun status(state: String, extra: String = "") =
@@ -160,17 +167,37 @@ internal object Fixtures {
     val mcpNeedsAuth = """{"name":"github","status":{"status":"needs_auth","error":"authorization required"},"integrationID":"github"}"""
     val mcpFailed = """{"name":"broken","status":{"status":"failed","error":"spawn ENOENT"}}"""
 
-    val resourceCatalog = """{"resources":[{"server":"files","name":"readme","uri":"file:///readme.md","description":"The readme","mimeType":"text/markdown"}],"templates":[{"server":"files","name":"row","uriTemplate":"db://{table}/{id}"}]}"""
+    val resourceCatalog =
+        """{"resources":[{"server":"files","name":"readme","uri":"file:///readme.md",""" +
+            """"description":"The readme","mimeType":"text/markdown"}],""" +
+            """"templates":[{"server":"files","name":"row","uriTemplate":"db://{table}/{id}"}]}"""
 
-    val providerCustom = """{"id":"llama","name":"Llama","activation":"auto","package":"@ai-sdk/openai-compatible","settings":{"baseURL":"http://127.0.0.1:11434/v1","timeout":false,"transport":"http"}}"""
-    val providerCloud = """{"id":"anthropic","name":"Anthropic","activation":"enabled","package":"@ai-sdk/anthropic","integrationID":"anthropic","canonical":"anthropic"}"""
+    val providerCustom =
+        """{"id":"llama","name":"Llama","activation":"auto",""" +
+            """"package":"@ai-sdk/local","settings":{"baseURL":"http://127.0.0.1:11434/v1",""" +
+            """"timeout":false,"transport":"http"}}"""
+    val providerCloud =
+        """{"id":"placeholder-integration","name":"A hosted provider","activation":"enabled",""" +
+            """"package":"@ai-sdk/placeholder-integration","integrationID":"placeholder-integration",""" +
+            """"canonical":"placeholder-integration"}"""
 
-    val pluginOutdated = """{"id":"hooks","source":{"type":"package","target":"opencode-plugin-hooks","version":"1.2.0","outdated":true},"features":{"server":true},"state":{"status":"active"}}"""
-    val pluginCurrent = """{"source":{"type":"package","target":"opencode-plugin-lint","version":"2.0.0"},"features":{"server":true,"rpc":true},"state":{"status":"active"}}"""
-    val pluginFailed = """{"id":"broken","source":{"type":"local","path":"/work/plugin"},"features":{"tui":true},"state":{"status":"failed","error":"the plugin threw while loading"}}"""
+    val pluginOutdated =
+        """{"id":"hooks","source":{"type":"package","target":"plugin-hooks","version":"1.2.0",""" +
+            """"outdated":true},"features":{"server":true},"state":{"status":"active"}}"""
+    val pluginCurrent =
+        """{"source":{"type":"package","target":"plugin-lint","version":"2.0.0"},""" +
+            """"features":{"server":true,"rpc":true},"state":{"status":"active"}}"""
+    val pluginFailed =
+        """{"id":"broken","source":{"type":"local","path":"/work/plugin"},"features":{"tui":true},""" +
+            """"state":{"status":"failed","error":"the plugin threw while loading"}}"""
 
-    val webSearchProviders = """[{"id":"exa","name":"Exa"},{"id":"tavily","name":"Tavily"}]"""
-    val webSearchResponse = """{"providerID":"exa","results":[{"url":"https://example.com/a","title":"A result","content":"Some content","time":{"published":1700000000000}}]}"""
+    val webSearchProviders =
+        """[{"id":"placeholder-search","name":"A search provider"},""" +
+            """{"id":"placeholder-search-2","name":"Another search provider"}]"""
+    val webSearchResponse =
+        """{"providerID":"placeholder-search","results":[{"url":"https://example.com/a",""" +
+            """"title":"A result","content":"Some content",""" +
+            """"time":{"published":1700000000000}}]}"""
 }
 
 /** A key that exists in this repository's tests and nowhere else. */

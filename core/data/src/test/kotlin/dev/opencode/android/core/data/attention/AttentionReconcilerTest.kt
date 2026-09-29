@@ -171,9 +171,11 @@ class AttentionReconcilerTest {
 
     @Test
     fun `a failed turn and an interrupted one each have their own channel message`() {
-        fun outcomeOf(o: Outcome) = (draftsFor(
-            state(sessions = listOf(session(outcome = o, idle = now, viewed = 0))),
-        ).single().content as NotificationContent.TurnFinished).outcome
+        fun outcomeOf(o: Outcome) = (
+            draftsFor(
+                state(sessions = listOf(session(outcome = o, idle = now, viewed = 0))),
+            ).single().content as NotificationContent.TurnFinished
+            ).outcome
         assertEquals(Outcome.Failed, outcomeOf(Outcome.Failed))
         assertEquals(Outcome.Interrupted, outcomeOf(Outcome.Interrupted))
     }

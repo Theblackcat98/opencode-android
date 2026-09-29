@@ -32,6 +32,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import dev.opencode.android.core.data.sync.SyncStatus
+import dev.opencode.android.core.model.PluginInfo
 import dev.opencode.android.core.model.PluginSource
 import dev.opencode.android.core.model.PluginState
 import dev.opencode.android.core.model.ProviderInfo
@@ -145,7 +146,12 @@ private fun PluginActions(
 
 /** One plugin: where it came from, what it extends, and whether it loaded. */
 @Composable
-private fun PluginRow(plugin: dev.opencode.android.core.model.PluginInfo, selected: Boolean, enabled: Boolean, onToggle: () -> Unit) {
+private fun PluginRow(
+    plugin: PluginInfo,
+    selected: Boolean,
+    enabled: Boolean,
+    onToggle: () -> Unit,
+) {
     ListItem(
         headlineContent = { Text(plugin.name) },
         supportingContent = {

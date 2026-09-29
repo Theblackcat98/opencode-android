@@ -74,9 +74,11 @@ class PresencePolicyTest {
 
     @Test
     fun `the grace period is configurable`() {
-        val short = decide(serviceRunning = true, idleSinceMillis = now, nowMillis = now + 20_000, idleGraceMillis = 15_000)
+        val short =
+            decide(serviceRunning = true, idleSinceMillis = now, nowMillis = now + 20_000, idleGraceMillis = 15_000)
         assertEquals(PresenceDecision.Stop(PresenceReason.IDLE_GRACE_ELAPSED), short)
-        val long = decide(serviceRunning = true, idleSinceMillis = now, nowMillis = now + 20_000, idleGraceMillis = 120_000)
+        val long =
+            decide(serviceRunning = true, idleSinceMillis = now, nowMillis = now + 20_000, idleGraceMillis = 120_000)
         assertEquals(PresenceDecision.Keep(PresenceReason.IDLE_GRACE), long)
     }
 

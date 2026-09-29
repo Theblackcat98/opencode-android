@@ -8,6 +8,10 @@ import dev.opencode.android.core.network.ServerApi
 import dev.opencode.android.core.network.ServerApiFactory
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
+import mockwebserver3.Dispatcher
+import mockwebserver3.MockResponse
+import mockwebserver3.MockWebServer
+import mockwebserver3.RecordedRequest
 import okhttp3.OkHttpClient
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -17,10 +21,6 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
-import mockwebserver3.Dispatcher
-import mockwebserver3.MockResponse
-import mockwebserver3.MockWebServer
-import mockwebserver3.RecordedRequest
 
 /**
  * The parts of the Phase 7 stores a mocking API would let through.
@@ -414,11 +414,11 @@ class ExecutionWireTest {
     private companion object {
         const val INFO =
             """{"id":"pty_1","title":"t","command":"/bin/bash","args":[],"cwd":"/work",""" +
-            """"status":"running","pid":1,"sessionID":"ses_1","foregroundProcess":null,""" +
-            """"size":{"cols":80,"rows":24},"output":{"head":0,"tail":0}}"""
+                """"status":"running","pid":1,"sessionID":"ses_1","foregroundProcess":null,""" +
+                """"size":{"cols":80,"rows":24},"output":{"head":0,"tail":0}}"""
         const val RESIZED =
             """{"id":"pty_1","title":"t","command":"/bin/bash","args":[],"cwd":"/work",""" +
-            """"status":"running","pid":1,"sessionID":"ses_1","foregroundProcess":null,""" +
-            """"size":{"cols":100,"rows":30},"output":{"head":0,"tail":0}}"""
+                """"status":"running","pid":1,"sessionID":"ses_1","foregroundProcess":null,""" +
+                """"size":{"cols":100,"rows":30},"output":{"head":0,"tail":0}}"""
     }
 }

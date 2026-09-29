@@ -1,11 +1,11 @@
 package dev.opencode.android.core.model.event
 
-import kotlin.reflect.KClass
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
+import kotlin.reflect.KClass
 
 /**
  * Chooses the [EventPayload] for an envelope's `type` string. Covers every type in
@@ -28,19 +28,35 @@ internal object EventTypes {
         Binding("command.updated", EventPayload.CommandUpdated::class, EventPayload.CommandUpdated.serializer()),
         Binding("config.updated", EventPayload.ConfigUpdated::class, EventPayload.ConfigUpdated.serializer()),
         Binding("credential.switched", CredentialSwitched::class, CredentialSwitched.serializer()),
-        Binding("credential.updated", EventPayload.CredentialUpdated::class, EventPayload.CredentialUpdated.serializer()),
+        Binding(
+            "credential.updated",
+            EventPayload.CredentialUpdated::class,
+            EventPayload.CredentialUpdated.serializer(),
+        ),
         Binding("filesystem.changed", FilesystemChanged::class, FilesystemChanged.serializer()),
         Binding("form.cancelled", FormCancelled::class, FormCancelled.serializer()),
         Binding("form.created", FormCreated::class, FormCreated.serializer()),
         Binding("form.replied", FormReplied::class, FormReplied.serializer()),
-        Binding("installation.update-available", InstallationUpdateAvailable::class, InstallationUpdateAvailable.serializer()),
+        Binding(
+            "installation.update-available",
+            InstallationUpdateAvailable::class,
+            InstallationUpdateAvailable.serializer(),
+        ),
         Binding("installation.updated", InstallationUpdated::class, InstallationUpdated.serializer()),
-        Binding("integration.updated", EventPayload.IntegrationUpdated::class, EventPayload.IntegrationUpdated.serializer()),
+        Binding(
+            "integration.updated",
+            EventPayload.IntegrationUpdated::class,
+            EventPayload.IntegrationUpdated.serializer(),
+        ),
         Binding("location.shutdown", EventPayload.LocationShutdown::class, EventPayload.LocationShutdown.serializer()),
         Binding("mcp.resources.changed", McpResourcesChanged::class, McpResourcesChanged.serializer()),
         Binding("mcp.status.changed", McpStatusChanged::class, McpStatusChanged.serializer()),
         Binding("model.updated", EventPayload.ModelUpdated::class, EventPayload.ModelUpdated.serializer()),
-        Binding("models-dev.refreshed", EventPayload.ModelsDevRefreshed::class, EventPayload.ModelsDevRefreshed.serializer()),
+        Binding(
+            "models-dev.refreshed",
+            EventPayload.ModelsDevRefreshed::class,
+            EventPayload.ModelsDevRefreshed.serializer(),
+        ),
         Binding("permission.asked", PermissionAsked::class, PermissionAsked.serializer()),
         Binding("permission.replied", PermissionReplied::class, PermissionReplied.serializer()),
         Binding("persistent-pty.added", PersistentPtyAdded::class, PersistentPtyAdded.serializer()),
@@ -62,16 +78,32 @@ internal object EventTypes {
         Binding("session.created", SessionCreated::class, SessionCreated.serializer()),
         Binding("session.deleted", SessionDeleted::class, SessionDeleted.serializer()),
         Binding("session.execution.failed", SessionExecutionFailed::class, SessionExecutionFailed.serializer()),
-        Binding("session.execution.interrupted", SessionExecutionInterrupted::class, SessionExecutionInterrupted.serializer()),
+        Binding(
+            "session.execution.interrupted",
+            SessionExecutionInterrupted::class,
+            SessionExecutionInterrupted.serializer(),
+        ),
         Binding("session.execution.started", SessionExecutionStarted::class, SessionExecutionStarted.serializer()),
-        Binding("session.execution.succeeded", SessionExecutionSucceeded::class, SessionExecutionSucceeded.serializer()),
+        Binding(
+            "session.execution.succeeded",
+            SessionExecutionSucceeded::class,
+            SessionExecutionSucceeded.serializer(),
+        ),
         Binding("session.forked", SessionForked::class, SessionForked.serializer()),
         Binding("session.idle", SessionIdle::class, SessionIdle.serializer()),
         Binding("session.inbox.cancelled", SessionInboxCancelled::class, SessionInboxCancelled.serializer()),
         Binding("session.inbox.delivered", SessionInboxDelivered::class, SessionInboxDelivered.serializer()),
-        Binding("session.inbox.delivery.changed", SessionInboxDeliveryChanged::class, SessionInboxDeliveryChanged.serializer()),
+        Binding(
+            "session.inbox.delivery.changed",
+            SessionInboxDeliveryChanged::class,
+            SessionInboxDeliveryChanged.serializer(),
+        ),
         Binding("session.inbox.enqueued", SessionInboxEnqueued::class, SessionInboxEnqueued.serializer()),
-        Binding("session.instructions.updated", SessionInstructionsUpdated::class, SessionInstructionsUpdated.serializer()),
+        Binding(
+            "session.instructions.updated",
+            SessionInstructionsUpdated::class,
+            SessionInstructionsUpdated.serializer(),
+        ),
         Binding("session.metadata.updated", SessionMetadataUpdated::class, SessionMetadataUpdated.serializer()),
         Binding("session.model.selected", SessionModelSelected::class, SessionModelSelected.serializer()),
         Binding("session.moved", SessionMoved::class, SessionMoved.serializer()),
@@ -140,7 +172,9 @@ internal object EventTypes {
 
     fun encodePayload(json: Json, payload: EventPayload): JsonElement = when (payload) {
         is EventPayload.Unknown -> payload.raw
+
         is EventPayload.Rpc -> payload.data
+
         else -> {
             val binding = byClass[payload::class]
                 ?: throw SerializationException("No event type registered for ${payload::class}")

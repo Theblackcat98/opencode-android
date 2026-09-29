@@ -552,7 +552,9 @@ class MaintenanceViewModel(
                     _state.value = _state.value.copy(reloading = false, outcome = RELOADED)
                     loadLocations()
                 },
-                onFailure = { _state.value = _state.value.copy(reloading = false, error = (it as? ActionFailure)?.error) },
+                onFailure = {
+                    _state.value = _state.value.copy(reloading = false, error = (it as? ActionFailure)?.error)
+                },
             )
         }
     }

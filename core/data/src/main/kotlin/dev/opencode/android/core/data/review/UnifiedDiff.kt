@@ -238,7 +238,12 @@ object UnifiedDiff {
                     raw.isEmpty() -> {
                         // An empty line is a context line whose marker is the line ending. It is the
                         // ordinary case for a diff of a file with a blank line in it.
-                        body += DiffLine(DiffLineKind.CONTEXT, "", oldLine.takeIf { oldSeen < range.oldCount }, newLine.takeIf { newSeen < range.newCount })
+                        body += DiffLine(
+                            DiffLineKind.CONTEXT,
+                            "",
+                            oldLine.takeIf { oldSeen < range.oldCount },
+                            newLine.takeIf { newSeen < range.newCount },
+                        )
                         oldSeen++
                         newSeen++
                         oldLine++
@@ -266,7 +271,12 @@ object UnifiedDiff {
                         // No marker at all. Some producers strip the leading space from context
                         // lines, and a line the parser cannot classify is kept rather than dropped.
                         val text = if (raw[0] == ' ') raw.substring(1) else raw
-                        body += DiffLine(DiffLineKind.CONTEXT, text, oldLine.takeIf { oldSeen < range.oldCount }, newLine.takeIf { newSeen < range.newCount })
+                        body += DiffLine(
+                            DiffLineKind.CONTEXT,
+                            text,
+                            oldLine.takeIf { oldSeen < range.oldCount },
+                            newLine.takeIf { newSeen < range.newCount },
+                        )
                         oldSeen++
                         newSeen++
                         oldLine++
@@ -466,8 +476,8 @@ internal data class HunkHeader(
 ) {
     companion object {
         fun parse(line: String): HunkHeader? {
-            if (!line.startsWith(HunkHeaderPrefix)) return null
-            val body = line.removePrefix(HunkHeaderPrefix).substringBefore("@@")
+            if (!line.startsWith(HUNK_HEADER_PREFIX)) return null
+            val body = line.removePrefix(HUNK_HEADER_PREFIX).substringBefore("@@")
             val parts = body.trim().split(' ')
             val old = parts.getOrNull(0) ?: return null
             val new = parts.getOrNull(1) ?: return null
@@ -484,7 +494,7 @@ internal data class HunkHeader(
             )
         }
 
-        private const val HunkHeaderPrefix = "@@ -"
+        private const val HUNK_HEADER_PREFIX = "@@ -"
 
         private data class Range(val start: Int, val count: Int) {
             companion object {

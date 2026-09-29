@@ -56,10 +56,15 @@ class ConfigUpdatedEventTest {
                 .addHeader("content-type", "application/json")
                 .body(
                     when (request.url.encodedPath) {
-                        "/api/config" -> """[{"type":"document","path":"/work/opencode.json","info":{"share":"disabled"}}]"""
+                        "/api/config" ->
+                            """[{"type":"document","path":"/work/opencode.json","info":{"share":"disabled"}}]"""
+
                         "/api/agent" -> """{"location":{"directory":"x"},"data":[{"name":"build"}]}"""
+
                         "/api/provider" -> """{"location":{"directory":"x"},"data":[{"id":"p"}]}"""
+
                         "/api/mcp" -> """{"location":{"directory":"x"},"data":[{"name":"local"}]}"""
+
                         else -> """{"location":{"directory":"x"},"data":[]}"""
                     },
                 )
@@ -87,8 +92,10 @@ class ConfigUpdatedEventTest {
 
         set.apply(event("config.updated"))
 
-        assertTrue("a changed document must not be answered from a cache the app knows is stale",
-            set.configuration.entries("/work").isStale)
+        assertTrue(
+            "a changed document must not be answered from a cache the app knows is stale",
+            set.configuration.entries("/work").isStale,
+        )
     }
 
     @Test

@@ -85,6 +85,7 @@ object TerminalInput {
         for (key in keys) {
             when (key) {
                 TerminalKey.Control -> control = !control
+
                 TerminalKey.Meta -> meta = !meta
 
                 is TerminalKey.ControlWith -> {
@@ -104,18 +105,24 @@ object TerminalInput {
                             // again, which is what lets a user stop a runaway build with Ctrl C Ctrl C
                             // and walk out of a `vim` with Ctrl [.
                             control && code != null -> out.append(code)
+
                             meta -> out.append(ESCAPE).append(character)
+
                             else -> out.append(character)
                         }
                     }
                 }
 
                 TerminalKey.Escape -> out.append(ESCAPE)
+
                 TerminalKey.Tab -> out.append('\t')
+
                 // CR, not LF: a line discipline that submits on LF submits twice.
                 TerminalKey.Enter -> out.append('\r')
+
                 // DEL, which is what a terminal deletes with rather than the BS a printer would.
                 TerminalKey.Backspace -> out.append('\u007F')
+
                 is TerminalKey.Arrow -> out.append(ESCAPE).append('[').append(key.direction.sequence)
             }
         }
@@ -182,12 +189,19 @@ object ExtraKeys {
      */
     fun label(key: TerminalKey): String = when (key) {
         TerminalKey.Escape -> "ESC"
+
         TerminalKey.Tab -> "TAB"
+
         TerminalKey.Control -> "CTRL"
+
         TerminalKey.Meta -> "ALT"
+
         TerminalKey.Enter -> "⏎"
+
         TerminalKey.Backspace -> "⌫"
+
         is TerminalKey.Literal -> key.value
+
         is TerminalKey.Arrow -> when (key.direction) {
             TerminalKeyDirection.UP -> "↑"
             TerminalKeyDirection.DOWN -> "↓"

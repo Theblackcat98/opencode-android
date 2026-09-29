@@ -165,7 +165,9 @@ class Phase3DecodingTest {
 
     @Test
     fun `a filesystem entry decodes both kinds and names itself`() {
-        val raw = """{"location":{"directory":"/tmp"},"data":[{"path":"src/","type":"directory"},{"path":"README.md","type":"file"}]}"""
+        val raw =
+            """{"location":{"directory":"/tmp"},"data":[""" +
+                """{"path":"src/","type":"directory"},{"path":"README.md","type":"file"}]}"""
         val listing = OpenCodeJson.decodeFromString<LocationScoped<List<FileSystemEntry>>>(raw)
         assertEquals(2, listing.data.size)
         assertEquals("src", listing.data[0].name)

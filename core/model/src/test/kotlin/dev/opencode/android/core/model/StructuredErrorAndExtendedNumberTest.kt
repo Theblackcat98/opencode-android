@@ -69,11 +69,11 @@ class StructuredErrorAndExtendedNumberTest {
 
     @Test
     fun modelRefFormatting() {
-        val refWithoutVariant = ModelRef(id = "gpt-4o", providerID = "openai")
-        assertEquals("openai/gpt-4o", refWithoutVariant.toString())
+        val refWithoutVariant = ModelRef(id = "placeholder-model-1", providerID = "placeholder-provider")
+        assertEquals("placeholder-provider/placeholder-model-1", refWithoutVariant.toString())
 
-        val refWithVariant = ModelRef(id = "o1", providerID = "openai", variant = "high")
-        assertEquals("openai/o1#high", refWithVariant.toString())
+        val refWithVariant = ModelRef(id = "placeholder-variant-1", providerID = "placeholder-provider", variant = "high")
+        assertEquals("placeholder-provider/placeholder-variant-1#high", refWithVariant.toString())
     }
 
     @Test

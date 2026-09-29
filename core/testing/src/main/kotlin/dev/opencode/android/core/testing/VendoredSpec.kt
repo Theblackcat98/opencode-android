@@ -1,11 +1,11 @@
 package dev.opencode.android.core.testing
 
-import java.io.File
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
+import java.io.File
 
 /**
  * The vendored V2 contracts, read from the repository at test time.
@@ -101,6 +101,7 @@ object VendoredSpec {
                             }
 
                             "properties", "\$defs" -> visit(value, seenRefs, keysAreNames = true)
+
                             "prefixItems", "items", "anyOf", "allOf", "oneOf" ->
                                 visit(value, seenRefs, keysAreNames = false)
 
@@ -110,6 +111,7 @@ object VendoredSpec {
                 }
 
                 is JsonArray -> node.forEach { visit(it, seenRefs, keysAreNames) }
+
                 else -> Unit
             }
         }

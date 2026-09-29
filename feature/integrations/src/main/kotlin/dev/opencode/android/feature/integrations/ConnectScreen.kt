@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -29,9 +30,9 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -46,7 +47,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -238,13 +238,16 @@ private fun MethodRow(method: IntegrationMethod, onClick: () -> Unit) {
             Text(
                 text = when (method) {
                     is IntegrationMethod.Key -> stringResource(R.string.connect_method_key)
+
                     is IntegrationMethod.OAuth -> stringResource(R.string.connect_method_oauth)
+
                     is IntegrationMethod.Command -> stringResource(
                         R.string.connect_method_command,
                         method.command.joinToString(" "),
                     )
 
                     is IntegrationMethod.Env -> stringResource(R.string.connect_method_env)
+
                     is IntegrationMethod.Unknown -> stringResource(R.string.connect_method_unknown)
                 },
                 style = MaterialTheme.typography.bodySmall,
@@ -340,7 +343,9 @@ fun ConnectSheetContent(
 
         when (active.flow) {
             IntegrationFlow.KEY -> SecretKeyField(value = state.keyDraft, onValueChange = onKeyChange)
+
             IntegrationFlow.OAUTH -> Unit
+
             IntegrationFlow.COMMAND -> {
                 (active.method as? IntegrationMethod.Command)?.let { method ->
                     Text(

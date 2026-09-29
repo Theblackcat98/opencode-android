@@ -16,7 +16,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.HorizontalDivider
@@ -73,7 +72,10 @@ fun SessionTerminalsPane(
                 modifier = Modifier.weight(1f),
             )
             Text(
-                text = stringResource(R.string.session_terminals_availability, stringResource(state.availabilityKey.toAvailabilityRes())),
+                text = stringResource(
+                    R.string.session_terminals_availability,
+                    stringResource(state.availabilityKey.toAvailabilityRes()),
+                ),
                 style = MaterialTheme.typography.labelSmall,
                 modifier = Modifier.testTag(SessionTerminalTags.AVAILABILITY),
             )

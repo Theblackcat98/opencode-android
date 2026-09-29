@@ -66,14 +66,16 @@ class AdminScreenContentTest {
     private val projectConfig = ConfigEntry.Document(
         pathOrNull = "/work/app/.opencode/opencode.jsonc",
         info = ConfigInfo(
-            model = dev.opencode.android.core.model.ConfigModel.Ref("other-provider", "other-model"),
+            model = dev.opencode.android.core.model.ConfigModel.Ref("placeholder-provider", "other-model"),
             shell = "/bin/zsh",
             share = "disabled",
             default_agent = "build",
             permissions = listOf(PermissionRule("bash", "*", PermissionEffect.Ask)),
             snapshots = true,
             // A provider with a named key: the case the redaction exists for.
-            providers = parse("""{"llama":{"options":{"apiKey":"$PLACEHOLDER_KEY","baseURL":"https://api.example.com"}}}"""),
+            providers = parse(
+                """{"llama":{"options":{"apiKey":"$PLACEHOLDER_KEY","baseURL":"https://api.example.com"}}}""",
+            ),
         ),
     )
 

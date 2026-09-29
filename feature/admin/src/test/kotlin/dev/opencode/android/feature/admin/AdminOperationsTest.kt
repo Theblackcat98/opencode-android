@@ -1,17 +1,5 @@
 package dev.opencode.android.feature.admin
 
-import dev.opencode.android.core.network.ServerApi
-import dev.opencode.android.core.network.ServerApiFactory
-import mockwebserver3.Dispatcher
-import mockwebserver3.MockResponse
-import mockwebserver3.MockWebServer
-import mockwebserver3.RecordedRequest
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.test.runTest
-import okhttp3.OkHttpClient
 import dev.opencode.android.core.data.action.ActionErrorKind
 import dev.opencode.android.core.data.action.toActionError
 import dev.opencode.android.core.data.config.ConfigSchema
@@ -19,7 +7,19 @@ import dev.opencode.android.core.data.config.ConfigSurface
 import dev.opencode.android.core.data.config.RetrofitAdminApi
 import dev.opencode.android.core.data.server.FileReader
 import dev.opencode.android.core.model.MigrationStatus
+import dev.opencode.android.core.network.ServerApi
+import dev.opencode.android.core.network.ServerApiFactory
 import dev.opencode.android.core.testing.VendoredSpec
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.test.runTest
+import mockwebserver3.Dispatcher
+import mockwebserver3.MockResponse
+import mockwebserver3.MockWebServer
+import mockwebserver3.RecordedRequest
+import okhttp3.OkHttpClient
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -166,7 +166,7 @@ class AdminOperationsTest : AdminServerTest() {
               {"type":"document","path":"/root/.config/opencode/opencode.json",
                "info":{"model":"placeholder-provider/placeholder-model","shell":"/bin/sh"}},
               {"type":"document","path":"/work/app/.opencode/opencode.jsonc",
-               "info":{"model":"placeholder-provider/other-model","shell":"/bin/zsh","share":"disabled",
+               "info":{"model":"placeholder-provider/placeholder-model","shell":"/bin/zsh","share":"disabled",
                        "permissions":[{"action":"bash","resource":"*","effect":"ask"}],
                        "watcher":{"ignore":[".git/**"]},
                        "${'$'}schema":"https://opencode.ai/config.json"}}
@@ -182,11 +182,14 @@ class AdminOperationsTest : AdminServerTest() {
         // The order in the answer *is* the precedence, and the test says so by index.
         assertEquals("/root/.config/opencode/opencode.json", documents[0].path)
         assertEquals("placeholder-provider/placeholder-model", documents[0].info.model?.display())
-        assertEquals("placeholder-provider/other-model", documents[1].info.model?.display())
+        assertEquals("placeholder-provider/placeholder-model", documents[1].info.model?.display())
         assertEquals("/bin/zsh", documents[1].info.shell)
         assertEquals("disabled", documents[1].info.share)
         assertEquals(listOf("bash"), documents[1].info.permissions?.map { it.action })
-        assertEquals("/work", entries.filterIsInstance<dev.opencode.android.core.model.ConfigEntry.Directory>().single().path)
+        assertEquals(
+            "/work",
+            entries.filterIsInstance<dev.opencode.android.core.model.ConfigEntry.Directory>().single().path,
+        )
 
         val request = server.requests.single()
         assertTrue("config.get is location-scoped, sent: $request", request.contains("location[directory]="))
@@ -323,7 +326,10 @@ class AdminOperationsTest : AdminServerTest() {
         )
 
         val request = server.requests.single()
-        assertTrue("the key is in the path, sent: $request", request.startsWith("PUT /api/experimental/session/ses_1/instructions/entries/tools"))
+        assertTrue(
+            "the key is in the path, sent: $request",
+            request.startsWith("PUT /api/experimental/session/ses_1/instructions/entries/tools"),
+        )
         assertEquals("""{"value":{"bash":false}}""", server.lastBody("instructions/entries"))
     }
 
@@ -407,7 +413,10 @@ class AdminOperationsTest : AdminServerTest() {
         org.junit.Assert.assertNull(uncounted.denominator)
         val failed = decoded[4] as dev.opencode.android.core.model.MigrationStatus.Error
         assertEquals("the V1 directory could not be read", failed.message)
-        assertTrue("an unknown state must not fail the screen", decoded[5] is dev.opencode.android.core.model.MigrationStatus.Unknown)
+        assertTrue(
+            "an unknown state must not fail the screen",
+            decoded[5] is dev.opencode.android.core.model.MigrationStatus.Unknown,
+        )
     }
 
     // ------------------------------------------------------------------------------ redaction at the boundary

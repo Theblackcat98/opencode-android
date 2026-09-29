@@ -366,8 +366,10 @@ private fun AdminScaffold(
     )
 }
 
-/** The four catalog lists, resolved from the data set, for [CatalogHost]. */
-/** The definition kinds a route may name, so a bad value is a default rather than a crash. */
+/**
+ * The four catalog lists, resolved from the data set, for [CatalogHost].
+ * The definition kinds a route may name, so a bad value is a default rather than a crash.
+ */
 internal fun definitionKindOf(id: String): DefinitionKind = when (id) {
     DefinitionKind.COMMAND.id -> DefinitionKind.COMMAND
     DefinitionKind.SKILL.id -> DefinitionKind.SKILL

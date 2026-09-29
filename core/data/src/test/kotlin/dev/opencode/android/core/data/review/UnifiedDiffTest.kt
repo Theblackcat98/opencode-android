@@ -164,7 +164,13 @@ class UnifiedDiffTest {
     @Test
     fun `a rename keeps the old path and the new one is the file`() {
         val parsed = UnifiedDiff.parse(
-            patch = "diff --git a/old.ts b/new.ts\nsimilarity index 90%\nrename from old.ts\nrename to new.ts\n@@ -1 +1 @@\n-a\n+b\n",
+            patch = "diff --git a/old.ts b/new.ts\n" +
+                "similarity index 90%\n" +
+                "rename from old.ts\n" +
+                "rename to new.ts\n" +
+                "@@ -1 +1 @@\n" +
+                "-a\n" +
+                "+b\n",
             file = "new.ts",
         )
 
@@ -176,7 +182,13 @@ class UnifiedDiffTest {
     @Test
     fun `an added file has no old path`() {
         val parsed = UnifiedDiff.parse(
-            patch = "diff --git a/new.ts b/new.ts\nnew file mode 100644\nindex 0000000..1234567\n--- /dev/null\n+++ b/new.ts\n@@ -0,0 +1 @@\n+hello\n",
+            patch = "diff --git a/new.ts b/new.ts\n" +
+                "new file mode 100644\n" +
+                "index 0000000..1234567\n" +
+                "--- /dev/null\n" +
+                "+++ b/new.ts\n" +
+                "@@ -0,0 +1 @@\n" +
+                "+hello\n",
             file = "new.ts",
         )
 
@@ -271,7 +283,14 @@ class UnifiedDiffTest {
 
     @Test
     fun `the server's counts are the file's counts`() {
-        val diff = FileDiff("a.kt", "@@ -1,1 +1,1 @@\n-a\n+b\n", additions = 7, deletions = 9, status = FileDiffStatus.Modified)
+        val diff =
+            FileDiff(
+                "a.kt",
+                "@@ -1,1 +1,1 @@\n-a\n+b\n",
+                additions = 7,
+                deletions = 9,
+                status = FileDiffStatus.Modified,
+            )
 
         val parsed = UnifiedDiff.parse(diff)
 

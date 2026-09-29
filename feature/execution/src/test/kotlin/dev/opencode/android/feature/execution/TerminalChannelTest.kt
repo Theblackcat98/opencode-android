@@ -142,8 +142,10 @@ class TerminalChannelTest {
 
     @Test
     fun `hardening is not a no-op on a WebView that starts permissive`() {
-        val settings = android.webkit.WebView(androidx.test.core.app.ApplicationProvider
-            .getApplicationContext<android.content.Context>()).settings
+        val settings = android.webkit.WebView(
+            androidx.test.core.app.ApplicationProvider
+                .getApplicationContext<android.content.Context>(),
+        ).settings
         // Everything this test asserts is false by default in a Robolectric WebView, so hardening a
         // default one would pass without `harden` running at all. Turning the permissive settings on
         // first is what makes the call observable.

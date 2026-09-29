@@ -25,7 +25,9 @@ class Phase5ManifestWiringTest {
 
     @Test
     fun `the camera is optional so the app installs on a phone without one`() {
-        val camera = app.elements("uses-feature").single { it.getAttribute("android:name") == "android.hardware.camera" }
+        val camera = app.elements("uses-feature").single {
+            it.getAttribute("android:name") == "android.hardware.camera"
+        }
         assertEquals("false", camera.attribute("required"))
     }
 
@@ -88,9 +90,14 @@ class Phase5ManifestWiringTest {
         assertTrue("/auth/connect/" in prefixes)
     }
 
-    private fun mainActivity(): Element = declarations("activity").single { it.attribute("name").endsWith("MainActivity") }
+    private fun mainActivity(): Element = declarations("activity").single {
+        it.attribute("name").endsWith("MainActivity")
+    }
 
-    private fun usesPermission(name: String): Boolean = app.elements("uses-permission").any { it.getAttribute("android:name") == name }
+    private fun usesPermission(name: String): Boolean = app.elements("uses-permission").any {
+        it.getAttribute("android:name") ==
+            name
+    }
 
     private fun declarations(tag: String): List<Element> = app.elements(tag)
 

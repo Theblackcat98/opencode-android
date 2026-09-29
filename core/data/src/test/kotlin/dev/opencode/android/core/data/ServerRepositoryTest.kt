@@ -196,11 +196,25 @@ class ServerRepositoryTest {
         val first = repository.addServer("S1", "http://localhost:4096", null)
         val second = repository.addServer("S2", "http://localhost:4097", null)
 
-        repository.updateServer(second, "S2", "http://localhost:4097", null, isDefault = true, trustUserCertificates = false)
+        repository.updateServer(
+            second,
+            "S2",
+            "http://localhost:4097",
+            null,
+            isDefault = true,
+            trustUserCertificates = false,
+        )
         assertTrue(repository.getServer(second)!!.isDefault)
         assertFalse(repository.getServer(first)!!.isDefault)
 
-        repository.updateServer(first, "S1", "http://localhost:4096", null, isDefault = true, trustUserCertificates = false)
+        repository.updateServer(
+            first,
+            "S1",
+            "http://localhost:4096",
+            null,
+            isDefault = true,
+            trustUserCertificates = false,
+        )
         assertTrue(repository.getServer(first)!!.isDefault)
         assertFalse(repository.getServer(second)!!.isDefault)
     }

@@ -203,12 +203,14 @@ object ConfigDocument {
         val first = masked[start]
         return when {
             first == '"' -> skipString(masked, start)
+
             first == '{' || first == '[' -> {
                 var depth = 0
                 var index = start
                 while (index < masked.length) {
                     when (masked[index]) {
                         '"' -> index = skipString(masked, index)
+
                         '{', '[' -> {
                             depth++
                             index++
@@ -291,6 +293,7 @@ object ConfigDocument {
         while (index < masked.length) {
             when (masked[index]) {
                 '"' -> index = skipString(masked, index)
+
                 '{', '[' -> {
                     depth++
                     index++

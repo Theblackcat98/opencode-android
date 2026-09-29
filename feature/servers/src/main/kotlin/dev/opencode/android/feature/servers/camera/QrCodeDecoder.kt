@@ -1,13 +1,13 @@
 package dev.opencode.android.feature.servers.camera
 
 import androidx.camera.core.ImageProxy
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.components.SingletonComponent
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
-import androidx.compose.ui.platform.LocalContext
 
 /**
  * Decodes QR payloads out of a camera frame.

@@ -337,10 +337,28 @@ fun SplitDiffTable(
         pairs.forEach { pair ->
             Row(modifier = Modifier.fillMaxWidth()) {
                 Box(modifier = Modifier.weight(1f)) {
-                    pair.left?.let { DiffRowView(it, "l${it.newNumber ?: it.oldNumber}", colors, wrap = wrap, showGutter = showGutter, language = language) }
+                    pair.left?.let {
+                        DiffRowView(
+                            it,
+                            "l${it.newNumber ?: it.oldNumber}",
+                            colors,
+                            wrap = wrap,
+                            showGutter = showGutter,
+                            language = language,
+                        )
+                    }
                 }
                 Box(modifier = Modifier.weight(1f)) {
-                    pair.right?.let { DiffRowView(it, "r${it.newNumber ?: it.oldNumber}", colors, wrap = wrap, showGutter = showGutter, language = language) }
+                    pair.right?.let {
+                        DiffRowView(
+                            it,
+                            "r${it.newNumber ?: it.oldNumber}",
+                            colors,
+                            wrap = wrap,
+                            showGutter = showGutter,
+                            language = language,
+                        )
+                    }
                 }
             }
         }

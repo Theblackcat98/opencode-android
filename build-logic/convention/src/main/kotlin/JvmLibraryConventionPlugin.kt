@@ -12,6 +12,7 @@ import org.gradle.kotlin.dsl.dependencies
 class JvmLibraryConventionPlugin : Plugin<Project> {
     override fun apply(target: Project) = with(target) {
         pluginManager.apply(libs.pluginId("kotlin-jvm"))
+        pluginManager.apply("opencode.android.quality")
         configureKotlinJvm()
         configureTests()
         dependencies {

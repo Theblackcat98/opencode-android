@@ -163,12 +163,16 @@ class ConnectionService : Service(), DefaultLifecycleObserver {
             signals.running.firstOrNull()?.id,
             System.currentTimeMillis(),
         )
-        when (val decision = PresencePolicy.decide(signals.toInputs(
-            serviceRunning = foreground,
-            idleSinceMillis = idleSince,
-            nowMillis = System.currentTimeMillis(),
-            startExemption = startExemption(),
-        ))) {
+        when (
+            val decision = PresencePolicy.decide(
+                signals.toInputs(
+                    serviceRunning = foreground,
+                    idleSinceMillis = idleSince,
+                    nowMillis = System.currentTimeMillis(),
+                    startExemption = startExemption(),
+                ),
+            )
+        ) {
             is PresenceDecision.Start -> promote(signals, settings, autoApprove)
             is PresenceDecision.Stop -> stop()
             is PresenceDecision.Keep -> keep(decision.reason, signals, settings, autoApprove)
@@ -212,10 +216,13 @@ class ConnectionService : Service(), DefaultLifecycleObserver {
         if (foreground) updateOngoing(signals, settings, autoApprove)
         when (reason) {
             PresenceReason.IDLE_GRACE -> scheduleGraceCheck()
+
             // Nothing to do, and nothing to log: the work is waiting and the platform will not let a
             // socket event start a service. The next permitted start picks it up.
             PresenceReason.BACKGROUND_START_REFUSED -> Unit
+
             PresenceReason.NO_SERVER -> Unit
+
             else -> graceTimer?.cancel()
         }
     }

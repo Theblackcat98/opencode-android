@@ -57,7 +57,7 @@ class IntegrationsOperationsTest : IntegrationsServerTest() {
 
         assertEquals(1, integrations.size)
         val integration = integrations.single()
-        assertEquals("anthropic", integration.id)
+        assertEquals("placeholder-integration", integration.id)
         assertEquals(3, integration.methods.size)
         assertEquals(IntegrationMethod.Key::class, integration.methods[0]::class)
         assertEquals(IntegrationMethod.OAuth::class, integration.methods[1]::class)
@@ -73,10 +73,10 @@ class IntegrationsOperationsTest : IntegrationsServerTest() {
 
     @Test
     fun `a key login posts the key, the answer and the label to the connect route`() = runTest {
-        server.answer("POST /api/integration/anthropic/connect/key", "", 204)
+        server.answer("POST /api/integration/placeholder-integration/connect/key", "", 204)
 
         server.api.connectWithKey(
-            integrationID = "anthropic",
+            integrationID = "placeholder-integration",
             body = ConnectKeyRequest(
                 key = Secret.of(PLACEHOLDER_KEY),
                 answer = mapOf("resourceName" to dev.opencode.android.core.model.FormValues.string("team-a")),
@@ -86,7 +86,7 @@ class IntegrationsOperationsTest : IntegrationsServerTest() {
         )
 
         val request = server.requests.single()
-        assertEquals("POST /api/integration/anthropic/connect/key", request.substringBefore('?'))
+        assertEquals("POST /api/integration/placeholder-integration/connect/key", request.substringBefore('?'))
         assertSentDirectory(request)
         val body = server.lastBody("connect/key")!!
         assertTrue("the key must reach the wire", body.contains(PLACEHOLDER_KEY))
@@ -96,10 +96,13 @@ class IntegrationsOperationsTest : IntegrationsServerTest() {
 
     @Test
     fun `an oauth login posts the method id and answers with the attempt to open`() = runTest {
-        server.answer("POST /api/integration/anthropic/connect/oauth", Envelopes.one(Fixtures.oauthAttempt))
+        server.answer(
+            "POST /api/integration/placeholder-integration/connect/oauth",
+            Envelopes.one(Fixtures.oauthAttempt),
+        )
 
         val attempt = server.api.connectWithOauth(
-            integrationID = "anthropic",
+            integrationID = "placeholder-integration",
             body = ConnectOAuthRequest(methodID = "oauth-default", label = "personal"),
             directory = server.directory,
         ).data
@@ -109,17 +112,20 @@ class IntegrationsOperationsTest : IntegrationsServerTest() {
         assertTrue(attempt.isAuto)
         assertEquals("Approve in the browser", attempt.instructions)
         // The URL is server input, and the one the UI may open is the checked one.
-        assertEquals("https://console.anthropic.com/oauth/authorize", attempt.safeUrl)
+        assertEquals("https://console.example.invalid/oauth/authorize", attempt.safeUrl)
         assertTrue(server.lastBody("connect/oauth")!!.contains("oauth-default"))
         assertSentDirectory(server.requests.single())
     }
 
     @Test
     fun `a device code attempt decodes as code mode and never offers a device url`() = runTest {
-        server.answer("POST /api/integration/anthropic/connect/oauth", Envelopes.one(Fixtures.oauthAttemptCode))
+        server.answer(
+            "POST /api/integration/placeholder-integration/connect/oauth",
+            Envelopes.one(Fixtures.oauthAttemptCode),
+        )
 
         val attempt = server.api.connectWithOauth(
-            "anthropic",
+            "placeholder-integration",
             ConnectOAuthRequest("oauth-default"),
             server.directory,
         ).data
@@ -131,74 +137,86 @@ class IntegrationsOperationsTest : IntegrationsServerTest() {
     @Test
     fun `an oauth status poll decodes each of the four states`() = runTest {
         server.answer(
-            "GET /api/integration/anthropic/connect/oauth/att_1",
+            "GET /api/integration/placeholder-integration/connect/oauth/att_1",
             Envelopes.one(Fixtures.status("pending")),
         )
         assertTrue(
-            server.api.getOauthAttemptStatus("anthropic", "att_1", server.directory).data
+            server.api.getOauthAttemptStatus("placeholder-integration", "att_1", server.directory).data
                 is dev.opencode.android.core.model.OAuthAttemptStatus.Pending,
         )
 
         server.answer(
-            "GET /api/integration/anthropic/connect/oauth/att_1",
+            "GET /api/integration/placeholder-integration/connect/oauth/att_1",
             Envelopes.one(Fixtures.status("failed", "\"message\":\"the provider refused\"")),
         )
-        val failed = server.api.getOauthAttemptStatus("anthropic", "att_1", server.directory).data
+        val failed = server.api.getOauthAttemptStatus("placeholder-integration", "att_1", server.directory).data
         assertTrue(failed is dev.opencode.android.core.model.OAuthAttemptStatus.Failed)
-        assertEquals("the provider refused", (failed as dev.opencode.android.core.model.OAuthAttemptStatus.Failed).message)
+        assertEquals(
+            "the provider refused",
+            (failed as dev.opencode.android.core.model.OAuthAttemptStatus.Failed).message,
+        )
 
         server.answer(
-            "GET /api/integration/anthropic/connect/oauth/att_1",
+            "GET /api/integration/placeholder-integration/connect/oauth/att_1",
             Envelopes.one(Fixtures.status("complete")),
         )
         assertTrue(
-            server.api.getOauthAttemptStatus("anthropic", "att_1", server.directory).data
+            server.api.getOauthAttemptStatus("placeholder-integration", "att_1", server.directory).data
                 is dev.opencode.android.core.model.OAuthAttemptStatus.Complete,
         )
 
         server.answer(
-            "GET /api/integration/anthropic/connect/oauth/att_1",
+            "GET /api/integration/placeholder-integration/connect/oauth/att_1",
             Envelopes.one(Fixtures.status("expired")),
         )
         assertTrue(
-            server.api.getOauthAttemptStatus("anthropic", "att_1", server.directory).data
+            server.api.getOauthAttemptStatus("placeholder-integration", "att_1", server.directory).data
                 is dev.opencode.android.core.model.OAuthAttemptStatus.Expired,
         )
     }
 
     @Test
     fun `a code is submitted to the complete route of the attempt`() = runTest {
-        server.answer("POST /api/integration/anthropic/connect/oauth/att_2/complete", "", 204)
+        server.answer("POST /api/integration/placeholder-integration/connect/oauth/att_2/complete", "", 204)
 
         server.api.completeOauthAttempt(
-            "anthropic",
+            "placeholder-integration",
             "att_2",
             ConnectOAuthCompleteRequest("WDJB-MJHT"),
             server.directory,
         )
 
         val request = server.requests.single()
-        assertEquals("POST /api/integration/anthropic/connect/oauth/att_2/complete", request.substringBefore('?'))
+        assertEquals(
+            "POST /api/integration/placeholder-integration/connect/oauth/att_2/complete",
+            request.substringBefore('?'),
+        )
         assertSentDirectory(request)
         assertEquals("""{"code":"WDJB-MJHT"}""", server.lastBody("complete"))
     }
 
     @Test
     fun `an oauth cancel is a delete on the attempt`() = runTest {
-        server.answer("DELETE /api/integration/anthropic/connect/oauth/att_1", "", 204)
+        server.answer("DELETE /api/integration/placeholder-integration/connect/oauth/att_1", "", 204)
 
-        server.api.cancelOauthAttempt("anthropic", "att_1", server.directory)
+        server.api.cancelOauthAttempt("placeholder-integration", "att_1", server.directory)
 
         val request = server.requests.single()
-        assertEquals("DELETE /api/integration/anthropic/connect/oauth/att_1", request.substringBefore('?'))
+        assertEquals(
+            "DELETE /api/integration/placeholder-integration/connect/oauth/att_1",
+            request.substringBefore('?'),
+        )
         assertSentDirectory(request)
     }
 
     @Test
     fun `a command login posts the method id and its status carries the output`() = runTest {
-        server.answer("POST /api/integration/anthropic/connect/command", Envelopes.one(Fixtures.commandAttempt))
+        server.answer(
+            "POST /api/integration/placeholder-integration/connect/command",
+            Envelopes.one(Fixtures.commandAttempt),
+        )
         val attempt = server.api.connectWithCommand(
-            "anthropic",
+            "placeholder-integration",
             ConnectCommandRequest("cli", "laptop"),
             server.directory,
         ).data
@@ -206,10 +224,10 @@ class IntegrationsOperationsTest : IntegrationsServerTest() {
         assertTrue(server.lastBody("connect/command")!!.contains("cli"))
 
         server.answer(
-            "GET /api/integration/anthropic/connect/command/att_3",
+            "GET /api/integration/placeholder-integration/connect/command/att_3",
             Envelopes.one(Fixtures.status("pending", "\"message\":\"Open https://github.com/login/device\"")),
         )
-        val status = server.api.getCommandAttemptStatus("anthropic", "att_3", server.directory).data
+        val status = server.api.getCommandAttemptStatus("placeholder-integration", "att_3", server.directory).data
         assertTrue(status is dev.opencode.android.core.model.CommandAttemptStatus.Pending)
         assertEquals(
             "Open https://github.com/login/device",
@@ -219,10 +237,10 @@ class IntegrationsOperationsTest : IntegrationsServerTest() {
 
     @Test
     fun `a command cancel is a delete on the attempt`() = runTest {
-        server.answer("DELETE /api/integration/anthropic/connect/command/att_3", "", 204)
-        server.api.cancelCommandAttempt("anthropic", "att_3", server.directory)
+        server.answer("DELETE /api/integration/placeholder-integration/connect/command/att_3", "", 204)
+        server.api.cancelCommandAttempt("placeholder-integration", "att_3", server.directory)
         assertEquals(
-            "DELETE /api/integration/anthropic/connect/command/att_3",
+            "DELETE /api/integration/placeholder-integration/connect/command/att_3",
             server.requests.single().substringBefore('?'),
         )
     }
@@ -282,14 +300,14 @@ class IntegrationsOperationsTest : IntegrationsServerTest() {
         val custom = providers[0]
         assertEquals("llama", custom.id)
         assertTrue(custom.isAuto)
-        assertEquals("@ai-sdk/openai-compatible", custom.packageName)
+        assertEquals("@ai-sdk/local", custom.packageName)
         assertEquals("http://127.0.0.1:11434/v1", custom.endpoint)
         assertTrue(custom.settings.hasNoTimeout)
         assertTrue(custom.settings.isCustom)
 
         val cloud = providers[1]
         assertTrue(cloud.isEnabled)
-        assertEquals("anthropic", cloud.integrationID)
+        assertEquals("placeholder-integration", cloud.integrationID)
         assertTrue(cloud.needsIntegration)
         assertNull("a cloud provider has no custom endpoint", cloud.endpoint)
         assertSentDirectory(server.requests.single())
@@ -297,9 +315,9 @@ class IntegrationsOperationsTest : IntegrationsServerTest() {
 
     @Test
     fun `one provider is read by id`() = runTest {
-        server.answer("GET /api/provider/anthropic", Envelopes.one(Fixtures.providerCloud))
-        val provider = server.api.getProvider("anthropic", server.directory).data
-        assertEquals("anthropic", provider.id)
+        server.answer("GET /api/provider/placeholder-integration", Envelopes.one(Fixtures.providerCloud))
+        val provider = server.api.getProvider("placeholder-integration", server.directory).data
+        assertEquals("placeholder-integration", provider.id)
         assertSentDirectory(server.requests.single())
     }
 
@@ -400,7 +418,10 @@ class IntegrationsOperationsTest : IntegrationsServerTest() {
 
     @Test
     fun `plugins decode their source, features and failure state`() = runTest {
-        server.answer("GET /api/plugin", Envelopes.list(Fixtures.pluginOutdated, Fixtures.pluginCurrent, Fixtures.pluginFailed))
+        server.answer(
+            "GET /api/plugin",
+            Envelopes.list(Fixtures.pluginOutdated, Fixtures.pluginCurrent, Fixtures.pluginFailed),
+        )
 
         val plugins = server.api.listPlugins(server.directory).data
 
@@ -408,7 +429,7 @@ class IntegrationsOperationsTest : IntegrationsServerTest() {
         val outdated = plugins[0]
         assertTrue(outdated.isOutdated)
         assertTrue(outdated.isUpdatable)
-        assertEquals("opencode-plugin-hooks", (outdated.source as PluginSource.Package).target)
+        assertEquals("plugin-hooks", (outdated.source as PluginSource.Package).target)
         assertTrue(outdated.features.server)
         assertEquals(PluginState.Active, outdated.state)
 
@@ -453,18 +474,24 @@ class IntegrationsOperationsTest : IntegrationsServerTest() {
 
     @Test
     fun `the web search providers and a test query are read with the location`() = runTest {
-        server.answer("GET /api/websearch/provider", Envelopes.list("""{"id":"exa","name":"Exa"}""", """{"id":"tavily","name":"Tavily"}"""))
+        server.answer(
+            "GET /api/websearch/provider",
+            Envelopes.list(
+                """{"id":"placeholder-search","name":"Exa"}""",
+                """{"id":"placeholder-search-2","name":"Tavily"}""",
+            ),
+        )
         val providers = server.api.listWebSearchProviders(server.directory).data
-        assertEquals(listOf("exa", "tavily"), providers.map { it.id })
+        assertEquals(listOf("placeholder-search", "placeholder-search-2"), providers.map { it.id })
         assertSentDirectory(server.requests.single())
 
         server.answer("POST /api/websearch", Envelopes.one(Fixtures.webSearchResponse))
         val response = server.api.queryWebSearch(
-            WebSearchQueryRequest("kotlin coroutines", "exa"),
+            WebSearchQueryRequest("kotlin coroutines", "placeholder-search"),
             server.directory,
         ).data
         // The answer names the provider that ran, which is what the screen shows.
-        assertEquals("exa", response.providerID)
+        assertEquals("placeholder-search", response.providerID)
         assertEquals(1, response.results.size)
         assertEquals("https://example.com/a", response.results.single().url)
         assertEquals("A result", response.results.single().title)

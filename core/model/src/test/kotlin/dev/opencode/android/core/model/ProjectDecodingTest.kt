@@ -31,7 +31,10 @@ class ProjectDecodingTest {
     fun roundTripsProject() {
         val raw = Fixtures.raw("projects.json")
         val projects = OpenCodeJson.decodeFromString<List<Project>>(raw)
-        val encoded = OpenCodeJson.encodeToString(kotlinx.serialization.builtins.ListSerializer(Project.serializer()), projects)
+        val encoded = OpenCodeJson.encodeToString(
+            kotlinx.serialization.builtins.ListSerializer(Project.serializer()),
+            projects,
+        )
         val decodedAgain = OpenCodeJson.decodeFromString<List<Project>>(encoded)
 
         assertEquals(projects, decodedAgain)

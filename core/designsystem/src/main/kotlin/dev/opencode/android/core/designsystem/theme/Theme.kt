@@ -26,7 +26,9 @@ fun OpenCodeTheme(
             val context = LocalContext.current
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         }
+
         darkTheme -> OpenCodeDarkColors
+
         else -> OpenCodeLightColors
     }
     CompositionLocalProvider(LocalCodeTypography provides CodeTypography()) {
@@ -40,7 +42,7 @@ fun OpenCodeTheme(
 
 /** Accessors for the design system's additions to [MaterialTheme]. */
 object OpenCodeThemeExtras {
-val code: CodeTypography
+    val code: CodeTypography
         @Composable
         @ReadOnlyComposable
         get() = LocalCodeTypography.current

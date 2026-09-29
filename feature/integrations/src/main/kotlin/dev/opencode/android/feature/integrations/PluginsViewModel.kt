@@ -145,7 +145,13 @@ class PluginsViewModel @Inject constructor(
                 selected = if (error == null) emptySet() else _state.value.selected,
                 status = if (error == null) {
                     val count = chosen.count { it.isUpdatable }
-                    if (count == 0) "Nothing needed updating" else "Updating $count plugin${if (count == 1) "" else "s"}"
+                    if (count ==
+                        0
+                    ) {
+                        "Nothing needed updating"
+                    } else {
+                        "Updating $count plugin${if (count == 1) "" else "s"}"
+                    }
                 } else {
                     null
                 },

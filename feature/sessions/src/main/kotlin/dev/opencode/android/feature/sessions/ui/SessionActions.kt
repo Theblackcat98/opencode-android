@@ -90,9 +90,18 @@ fun SessionActionsSheet(
             Text(stringResource(R.string.session_menu), style = MaterialTheme.typography.titleMedium)
             Text(title, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
 
-            SheetAction(R.string.session_rename) { renaming = true; onDismiss() }
-            SheetAction(R.string.session_copy_message) { onCopyMessage(); onDismiss() }
-            SheetAction(R.string.session_copy_transcript) { onCopyTranscript(); onDismiss() }
+            SheetAction(R.string.session_rename) {
+                renaming = true
+                onDismiss()
+            }
+            SheetAction(R.string.session_copy_message) {
+                onCopyMessage()
+                onDismiss()
+            }
+            SheetAction(R.string.session_copy_transcript) {
+                onCopyTranscript()
+                onDismiss()
+            }
             if (onOpenAttention != null) {
                 SheetAction(R.string.session_attention) { onOpenAttention() }
             }
@@ -106,7 +115,10 @@ fun SessionActionsSheet(
     if (renaming) {
         RenameDialog(
             current = title,
-            onConfirm = { onRename(it); onDismiss() },
+            onConfirm = {
+                onRename(it)
+                onDismiss()
+            },
             onDismiss = { renaming = false },
         )
     }

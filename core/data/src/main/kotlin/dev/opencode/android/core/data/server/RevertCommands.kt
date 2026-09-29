@@ -72,7 +72,10 @@ class RevertCommands(
 
                 PreStageStep.Stage -> {
                     _state.value = _state.value.copy(step = StageStep.STAGE)
-                    val result = guardedCall { api.stageRevert(sessionID, SessionRevertStageRequest(messageID, restoreFiles)).data }
+                    val result =
+                        guardedCall {
+                            api.stageRevert(sessionID, SessionRevertStageRequest(messageID, restoreFiles)).data
+                        }
                     if (result.isSuccess) {
                         _state.value = _state.value.copy(staged = result.getOrNull(), restored = prompt)
                     }

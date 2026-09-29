@@ -25,6 +25,10 @@ import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
+import mockwebserver3.Dispatcher
+import mockwebserver3.MockResponse
+import mockwebserver3.MockWebServer
+import mockwebserver3.RecordedRequest
 import okhttp3.OkHttpClient
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -33,10 +37,6 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
-import mockwebserver3.Dispatcher
-import mockwebserver3.MockResponse
-import mockwebserver3.MockWebServer
-import mockwebserver3.RecordedRequest
 
 /**
  * The per-location execution stores, and the eleven events that drive them (features doc §29–§32).
@@ -63,8 +63,8 @@ class ExecutionStoreTest {
         serve(200, DEFAULT)
     }
 
-    /** Replaces the dispatcher, which is how a `404` or a `503` is simulated. */
     /**
+     * Replaces the dispatcher, which is how a `404` or a `503` is simulated.
      * Waits for a condition, with a deadline.
      *
      * **Every wait in this file is bounded.** The stores load over a real socket to a `MockWebServer`
@@ -227,7 +227,9 @@ class ExecutionStoreTest {
     }
 
     @Test
-    fun `a shell completion is recorded in the ledger and the same id is not recorded twice`() = runTest(UnconfinedTestDispatcher()) {
+    fun `a shell completion is recorded in the ledger and the same id is not recorded twice`() = runTest(
+        UnconfinedTestDispatcher(),
+    ) {
         val scope = backgroundScope
         val surface = ExecutionSurface("srv", api, scope)
         // The server's own list holds the command, so a refetch and the event agree — which is the
@@ -273,7 +275,9 @@ class ExecutionStoreTest {
     }
 
     @Test
-    fun `the ledger is bounded so a long-lived process cannot grow it without limit`() = runTest(UnconfinedTestDispatcher()) {
+    fun `the ledger is bounded so a long-lived process cannot grow it without limit`() = runTest(
+        UnconfinedTestDispatcher(),
+    ) {
         val scope = backgroundScope
         val surface = ExecutionSurface("srv", api, scope)
         repeat(ExecutionSurface.MAX_FINISHED + 5) { index ->
@@ -378,7 +382,9 @@ class ExecutionStoreTest {
     }
 
     @Test
-    fun `a call refused for a switched-off feature records nothing about the route`() = runTest(UnconfinedTestDispatcher()) {
+    fun `a call refused for a switched-off feature records nothing about the route`() = runTest(
+        UnconfinedTestDispatcher(),
+    ) {
         val scope = backgroundScope
         val surface = ExecutionSurface("srv", api, scope)
         val requestsBefore = requests.size
@@ -421,7 +427,7 @@ class ExecutionStoreTest {
         payload: dev.opencode.android.core.model.event.EventPayload,
         created: Long? = 1_000L,
     ) = Event(
-        id = "e_${type}_${created}",
+        id = "e_${type}_$created",
         type = type,
         created = created,
         location = directory?.let { LocationRef(it) },

@@ -1,10 +1,10 @@
 package dev.opencode.android.feature.admin
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Row
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -136,7 +136,8 @@ fun TemplateSheetFixture(
             }
 
             ConfigTemplateChoice.MODEL -> {
-                LabelledField(stringResource(R.string.admin_template_provider), draft.provider, {}, tag = "template:provider")
+                LabelledField(stringResource(R.string.admin_template_provider), draft.provider, {
+                }, tag = "template:provider")
                 LabelledField(
                     label = stringResource(R.string.admin_template_model_name),
                     value = draft.model,
@@ -210,7 +211,9 @@ fun TemplateSheetFixture(
             null -> Unit
         }
         Text(
-            text = stringResource(if (outcome is TemplateOutcome.Ready) R.string.admin_template_insert else R.string.admin_template_check),
+            text = stringResource(
+                if (outcome is TemplateOutcome.Ready) R.string.admin_template_insert else R.string.admin_template_check,
+            ),
             modifier = Modifier.padding(16.dp),
         )
     }

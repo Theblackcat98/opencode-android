@@ -105,7 +105,10 @@ class CompletionEngineTest {
 
     @Test
     fun `a reference inserts its path`() {
-        val completion = CompletionEngine.complete("@doc", catalog = catalog).first { it.kind == CompletionKind.REFERENCE }
+        val completion = CompletionEngine.complete("@doc", catalog = catalog).first {
+            it.kind ==
+                CompletionKind.REFERENCE
+        }
         assertEquals("@docs", completion.insertText)
     }
 

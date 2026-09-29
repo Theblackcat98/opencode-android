@@ -209,20 +209,30 @@ object SessionContextInspector {
 
     private fun previewOf(message: SessionMessage): String = when (message) {
         is SessionMessage.User -> message.text.lineSequence().firstOrNull { it.isNotBlank() }?.take(160).orEmpty()
-        is SessionMessage.Assistant -> message.content
-            .filterIsInstance<dev.opencode.android.core.model.AssistantContent.Text>()
-            .firstOrNull()?.text?.lineSequence()?.firstOrNull { it.isNotBlank() }?.take(160).orEmpty()
 
-        is SessionMessage.Compaction -> message.summary?.lineSequence()?.firstOrNull { it.isNotBlank() }?.take(160).orEmpty()
+        is SessionMessage.Assistant ->
+            message.content
+                .filterIsInstance<dev.opencode.android.core.model.AssistantContent.Text>()
+                .firstOrNull()?.text?.lineSequence()?.firstOrNull { it.isNotBlank() }?.take(160).orEmpty()
+
+        is SessionMessage.Compaction -> message.summary?.lineSequence()?.firstOrNull {
+            it.isNotBlank()
+        }?.take(160).orEmpty()
+
         is SessionMessage.Synthetic -> message.text.lineSequence().firstOrNull { it.isNotBlank() }?.take(160).orEmpty()
+
         is SessionMessage.System -> message.text.lineSequence().firstOrNull { it.isNotBlank() }?.take(160).orEmpty()
+
         is SessionMessage.Skill -> message.name
+
         is SessionMessage.Shell -> message.command.take(160)
+
         else -> ""
     }
 
     private fun sizeOf(message: SessionMessage): Int = when (message) {
         is SessionMessage.User -> message.text.length
+
         is SessionMessage.Assistant -> message.content.sumOf { part ->
             when (part) {
                 is dev.opencode.android.core.model.AssistantContent.Text -> part.text.length
@@ -233,8 +243,11 @@ object SessionContextInspector {
         }
 
         is SessionMessage.Compaction -> (message.summary?.length ?: 0)
+
         is SessionMessage.Synthetic -> message.text.length
+
         is SessionMessage.System -> message.text.length
+
         else -> 0
     }
 

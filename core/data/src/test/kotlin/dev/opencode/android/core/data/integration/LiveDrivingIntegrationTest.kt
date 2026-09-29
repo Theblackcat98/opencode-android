@@ -1,6 +1,6 @@
 package dev.opencode.android.core.data.integration
-import dev.opencode.android.core.data.config.VendoredSchema
 import dev.opencode.android.core.data.action.ActionErrorKind
+import dev.opencode.android.core.data.config.VendoredSchema
 import dev.opencode.android.core.data.forms.FormEngine
 import dev.opencode.android.core.data.server.EventDispatcher
 import dev.opencode.android.core.data.server.RequestCenter
@@ -8,23 +8,22 @@ import dev.opencode.android.core.data.server.ServerDataSet
 import dev.opencode.android.core.data.server.SessionCommands
 import dev.opencode.android.core.data.timeline.TimelineConvergence
 import dev.opencode.android.core.database.cache.ReadCacheStore
+import dev.opencode.android.core.model.AssistantContent
 import dev.opencode.android.core.model.Delivery
 import dev.opencode.android.core.model.FormInfo
 import dev.opencode.android.core.model.FormKind
 import dev.opencode.android.core.model.FormState
-import dev.opencode.android.core.model.PermissionEffect
-import dev.opencode.android.core.model.PermissionRule
-import dev.opencode.android.core.model.AssistantContent
-import dev.opencode.android.core.model.QuestionToolRef
-import dev.opencode.android.core.model.questionTool
-import kotlinx.serialization.json.JsonPrimitive
 import dev.opencode.android.core.model.ModelRef
+import dev.opencode.android.core.model.PermissionEffect
 import dev.opencode.android.core.model.PermissionReply
 import dev.opencode.android.core.model.PermissionRequest
+import dev.opencode.android.core.model.PermissionRule
+import dev.opencode.android.core.model.QuestionToolRef
 import dev.opencode.android.core.model.SessionInfo
 import dev.opencode.android.core.model.SessionMessage
 import dev.opencode.android.core.model.event.Event
 import dev.opencode.android.core.model.event.EventPayload
+import dev.opencode.android.core.model.questionTool
 import dev.opencode.android.core.network.EventStreamClient
 import dev.opencode.android.core.network.ServerApi
 import dev.opencode.android.core.network.ServerApiFactory
@@ -38,6 +37,7 @@ import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
+import kotlinx.serialization.json.JsonPrimitive
 import okhttp3.OkHttpClient
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -70,6 +70,7 @@ class LiveDrivingIntegrationTest {
     private lateinit var commands: SessionCommands
     private lateinit var requests: RequestCenter
     private lateinit var stream: EventStreamClient
+
     /**
      * Every frame the stream carried.
      *
@@ -592,7 +593,11 @@ class LiveDrivingIntegrationTest {
         /** The integration test drives the API, so nothing is written to the cache. */
         val NoCache: ReadCacheStore = object : ReadCacheStore {
             override suspend fun readSessions(serverId: String, directory: String?, limit: Int): List<SessionInfo> = emptyList()
-            override suspend fun writeSessions(serverId: String, directory: String?, sessions: List<SessionInfo>) = Unit
+            override suspend fun writeSessions(
+                serverId: String,
+                directory: String?,
+                sessions: List<SessionInfo>,
+            ) = Unit
             override suspend fun readSession(serverId: String, sessionId: String): SessionInfo? = null
             override suspend fun writeSession(serverId: String, sessionId: String, session: SessionInfo) = Unit
             override suspend fun deleteSession(serverId: String, sessionId: String) = Unit

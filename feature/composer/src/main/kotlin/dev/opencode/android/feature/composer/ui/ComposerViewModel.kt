@@ -3,9 +3,9 @@ package dev.opencode.android.feature.composer.ui
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dev.opencode.android.core.data.action.ActionError
+import dev.opencode.android.core.data.action.ActionErrorKind
 import dev.opencode.android.core.data.catalog.AgentCatalog
 import dev.opencode.android.core.data.catalog.ModelCatalog
-import dev.opencode.android.core.data.action.ActionErrorKind
 import dev.opencode.android.core.data.composer.Assembly
 import dev.opencode.android.core.data.composer.AttachmentDraft
 import dev.opencode.android.core.data.composer.AttachmentPolicy
@@ -17,25 +17,23 @@ import dev.opencode.android.core.data.composer.ComposerCatalog
 import dev.opencode.android.core.data.composer.ComposerInput
 import dev.opencode.android.core.data.composer.ComposerMemory
 import dev.opencode.android.core.data.composer.HistoryCursor
+import dev.opencode.android.core.data.composer.LineRange
 import dev.opencode.android.core.data.composer.PromptAssembler
 import dev.opencode.android.core.data.composer.PromptHistory
 import dev.opencode.android.core.data.composer.PromptIntent
 import dev.opencode.android.core.data.composer.PromptProblem
 import dev.opencode.android.core.data.composer.StashEntry
 import dev.opencode.android.core.data.composer.TriggerKind
-import dev.opencode.android.core.data.composer.LineRange
 import dev.opencode.android.core.data.composer.detectTrigger
+import dev.opencode.android.core.data.preferences.ModelPreferences
 import dev.opencode.android.core.data.review.RestoredFile
 import dev.opencode.android.core.data.review.RestoredPrompt
-import dev.opencode.android.core.data.review.ReviewComment
 import dev.opencode.android.core.data.review.RevertPlan
+import dev.opencode.android.core.data.review.ReviewComment
 import dev.opencode.android.core.data.review.SendPreparation
-import dev.opencode.android.core.data.server.RevertCommands
-import dev.opencode.android.core.model.SessionMessage
-import dev.opencode.android.core.model.SessionRevert
-import dev.opencode.android.core.data.preferences.ModelPreferences
 import dev.opencode.android.core.data.server.FileSearchState
 import dev.opencode.android.core.data.server.PendingRequest
+import dev.opencode.android.core.data.server.RevertCommands
 import dev.opencode.android.core.data.server.ServerDataRegistry
 import dev.opencode.android.core.data.server.ServerDataSet
 import dev.opencode.android.core.data.server.SessionActivity
@@ -52,20 +50,22 @@ import dev.opencode.android.core.model.PermissionReply
 import dev.opencode.android.core.model.PermissionRequest
 import dev.opencode.android.core.model.PromptSkillInput
 import dev.opencode.android.core.model.ReferenceInfo
+import dev.opencode.android.core.model.SessionMessage
+import dev.opencode.android.core.model.SessionRevert
 import dev.opencode.android.core.model.SkillInfo
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -300,7 +300,6 @@ class ComposerViewModel @Inject constructor(
             }
         }
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList<String>() to emptyList())
-
 
     /**
      * The state of the open session's composer, or an idle one before a session is opened.
@@ -568,23 +567,26 @@ class ComposerViewModel @Inject constructor(
      * refused because a revert is in flight, or refused because its commit failed, is a message the
      * user has to see rather than a prompt that silently disappears.
      */
-    private suspend fun prepareSend(set: ServerDataSet, id: String): SendPreparation {
-        return when (val preparation = RevertPlan.beforeSend(set.revertCommands.state.value)) {
-            SendPreparation.Send -> SendPreparation.Send
-            SendPreparation.CommitThenSend -> {
-                val error = set.revertCommands.commit(id).actionErrorOrNull
-                if (error != null) {
-                    local.value = local.value.copy(error = error)
-                    SendPreparation.Wait("the revert could not be committed")
-                } else {
-                    SendPreparation.Send
-                }
-            }
+    private suspend fun prepareSend(set: ServerDataSet, id: String): SendPreparation = when (
+        val preparation = RevertPlan.beforeSend(
+            set.revertCommands.state.value,
+        )
+    ) {
+        SendPreparation.Send -> SendPreparation.Send
 
-            is SendPreparation.Wait -> {
-                local.value = local.value.copy(problem = ComposerProblem.REVERT_BLOCKED, problemDetail = preparation.reason)
-                SendPreparation.Wait(preparation.reason)
+        SendPreparation.CommitThenSend -> {
+            val error = set.revertCommands.commit(id).actionErrorOrNull
+            if (error != null) {
+                local.value = local.value.copy(error = error)
+                SendPreparation.Wait("the revert could not be committed")
+            } else {
+                SendPreparation.Send
             }
+        }
+
+        is SendPreparation.Wait -> {
+            local.value = local.value.copy(problem = ComposerProblem.REVERT_BLOCKED, problemDetail = preparation.reason)
+            SendPreparation.Wait(preparation.reason)
         }
     }
 
@@ -673,6 +675,7 @@ class ComposerViewModel @Inject constructor(
             local.value = local.value.copy(reverting = false)
             when (outcome) {
                 is RevertCommands.StageOutcome.Done -> restore(outcome.revert, message)
+
                 is RevertCommands.StageOutcome.Failed -> {
                     local.value = local.value.copy(error = outcome.error)
                 }
@@ -994,7 +997,8 @@ class ComposerViewModel @Inject constructor(
         val text = local.value.text
         if (text.isBlank()) return
         viewModelScope.launch {
-            memory.pushStash(serverId, StashEntry(id = "st${System.currentTimeMillis()}", text = text, created = System.currentTimeMillis()))
+            val now = System.currentTimeMillis()
+            memory.pushStash(serverId, StashEntry(id = "st$now", text = text, created = now))
             clearComposer()
         }
     }

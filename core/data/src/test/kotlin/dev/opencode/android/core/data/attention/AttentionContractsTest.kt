@@ -4,8 +4,8 @@ import dev.opencode.android.core.data.forms.FieldProblem
 import dev.opencode.android.core.data.forms.FormEngine
 import dev.opencode.android.core.model.FormField
 import dev.opencode.android.core.model.FormInfo
-import dev.opencode.android.core.model.LocationPublicRef
 import dev.opencode.android.core.model.FormOption
+import dev.opencode.android.core.model.LocationPublicRef
 import dev.opencode.android.core.model.PermissionReply
 import dev.opencode.android.core.model.SessionInfo
 import dev.opencode.android.core.model.TokenUsage
@@ -293,7 +293,14 @@ class AttentionContractsTest {
             for (session in 0 until 8) {
                 for (target in 0 until 8) {
                     add(AttentionAction.ReplyPermission("srv$server", "ses$session", "tgt$target", PermissionReply.Once))
-                    add(AttentionAction.ReplyPermission("srv$server", "ses$session", "tgt$target", PermissionReply.Always))
+                    add(
+                        AttentionAction.ReplyPermission(
+                            "srv$server",
+                            "ses$session",
+                            "tgt$target",
+                            PermissionReply.Always,
+                        ),
+                    )
                     add(AttentionAction.ReplyPermission("srv$server", "ses$session", "tgt$target", PermissionReply.Reject))
                     add(AttentionAction.AnswerForm("srv$server", "ses$session", "fgt$target", "q0", listOf(field())))
                     add(AttentionAction.CancelForm("srv$server", "ses$session", "cgt$target"))

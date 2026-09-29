@@ -32,7 +32,12 @@ class EventDispatcherTest {
         val ready = CompletableDeferred<Unit>()
         val collector = scope.launch {
             dispatcher.batches.collect { received.addAll(it) }
-        }.also { scope.launch { delay(20); ready.complete(Unit) } }
+        }.also {
+            scope.launch {
+                delay(20)
+                ready.complete(Unit)
+            }
+        }
         awaitBatches(ready)
 
         val expected = (1..50).map { event("ses_a", "evt_$it") }
@@ -52,7 +57,12 @@ class EventDispatcherTest {
         var emissions = 0
         val ready = CompletableDeferred<Unit>()
         val collector = scope.launch { dispatcher.batches.collect { emissions++ } }
-            .also { scope.launch { delay(20); ready.complete(Unit) } }
+            .also {
+                scope.launch {
+                    delay(20)
+                    ready.complete(Unit)
+                }
+            }
         awaitBatches(ready)
 
         dispatcher.submit((1..1_000).map { event("ses_a", "evt_$it") })
@@ -70,7 +80,12 @@ class EventDispatcherTest {
         val received = mutableListOf<String>()
         val ready = CompletableDeferred<Unit>()
         val collector = scope.launch { dispatcher.batches.collect { received.addAll(it.map(Event::id)) } }
-            .also { scope.launch { delay(20); ready.complete(Unit) } }
+            .also {
+                scope.launch {
+                    delay(20)
+                    ready.complete(Unit)
+                }
+            }
         awaitBatches(ready)
 
         val count = 200

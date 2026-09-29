@@ -46,7 +46,9 @@ class ManifestWiringTest {
 
     @Test
     fun `the connection service is declared, unexported, and of the type the spike selected`() {
-        val service = declarations(requests, "service").single { it.getAttribute("android:name").endsWith("ConnectionService") }
+        val service = declarations(requests, "service").single {
+            it.getAttribute("android:name").endsWith("ConnectionService")
+        }
         assertEquals("false", service.getAttribute("android:exported"))
         assertEquals("dataSync", service.getAttribute("android:foregroundServiceType"))
     }
@@ -77,7 +79,7 @@ class ManifestWiringTest {
 
     private fun parse(path: String): Element {
         val file = java.io.File(path)
-        assertTrue("${path} is missing, so the test is asserting nothing", file.exists())
+        assertTrue("$path is missing, so the test is asserting nothing", file.exists())
         val factory = DocumentBuilderFactory.newInstance()
         factory.isNamespaceAware = false
         return factory.newDocumentBuilder().parse(file).documentElement

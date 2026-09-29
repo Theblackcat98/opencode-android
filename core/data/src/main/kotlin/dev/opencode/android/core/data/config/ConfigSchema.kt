@@ -98,9 +98,13 @@ class ConfigSchema(
 
     /** The schema's `$ref` root, resolved, which is where `Config` lives. */
     val configRoot: JsonObject
-        get() = ((json["\$ref"] as? JsonPrimitive)?.contentOrNull?.let { ref ->
-            ref.removePrefix("#/\$defs/").takeIf { ref.startsWith("#/\$defs/") }?.let { name -> json.definitions()[name] }
-        } as? JsonObject) ?: JsonObject(emptyMap())
+        get() = (
+            (json["\$ref"] as? JsonPrimitive)?.contentOrNull?.let { ref ->
+                ref.removePrefix("#/\$defs/").takeIf {
+                    ref.startsWith("#/\$defs/")
+                }?.let { name -> json.definitions()[name] }
+            } as? JsonObject
+            ) ?: JsonObject(emptyMap())
 
     private fun readTopLevelKeys(): List<ConfigKey> {
         val properties = configRoot["properties"] as? JsonObject ?: return emptyList()
