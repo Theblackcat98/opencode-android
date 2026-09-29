@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      The markdown renderer's own punctuation.
+
+      A list marker is not decoration: a screen reader reads it out before every item, and which
+      marker a locale uses is a translator's decision, not a composable's. Kept in one place so the
+      plain and the annotated renderer cannot disagree about what a bullet looks like.
+    -->
+    <string name="md_bullet_marker" translatable="false">•  </string>
+    <string name="md_number_marker" translatable="false">1.  </string>
+</resources>

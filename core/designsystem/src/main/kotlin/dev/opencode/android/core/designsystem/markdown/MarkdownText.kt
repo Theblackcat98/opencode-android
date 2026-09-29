@@ -18,6 +18,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -26,6 +27,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import dev.opencode.android.core.designsystem.R
 import dev.opencode.android.core.designsystem.code.CodeHighlighter
 import dev.opencode.android.core.designsystem.code.CodeLanguage
 import dev.opencode.android.core.designsystem.diff.DiffColors
@@ -67,7 +69,7 @@ fun MarkdownText(
 
                 is MarkdownBlock.BulletList -> block.items.forEach { item ->
                     Row {
-                        Text("•  ", style = style)
+                        Text(stringResource(R.string.md_bullet_marker), style = style)
                         Text(text = annotate(listOf(item), style), style = style)
                     }
                 }
@@ -121,11 +123,21 @@ fun MarkdownText(
 private fun MarkdownBlockView(block: MarkdownBlock, style: androidx.compose.ui.text.TextStyle) {
     when (block) {
         is MarkdownBlock.Paragraph -> Text(text = annotate(parseInline(block.text), style), style = style)
+
         is MarkdownBlock.Heading -> Text(text = annotate(parseInline(block.text), style), style = style)
-        is MarkdownBlock.BulletList -> block.items.forEach { Text("•  " + it.plainText(), style = style) }
-        is MarkdownBlock.NumberedList -> block.items.forEach { Text("1.  " + it.plainText(), style = style) }
+
+        is MarkdownBlock.BulletList -> block.items.forEach {
+            Text(stringResource(R.string.md_bullet_marker) + it.plainText(), style = style)
+        }
+
+        is MarkdownBlock.NumberedList -> block.items.forEach {
+            Text(stringResource(R.string.md_number_marker) + it.plainText(), style = style)
+        }
+
         is MarkdownBlock.Code -> CodeBlock(block.code, block.language, Modifier.fillMaxWidth())
+
         is MarkdownBlock.Table -> Table(block, style)
+
         else -> Text(block.textOrEmpty(), style = style)
     }
 }

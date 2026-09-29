@@ -563,12 +563,13 @@ private fun CommandProgress(state: ConnectUiState, onCopyCode: (String) -> Unit,
 private fun AttemptProgress(state: ConnectUiState, onCancel: () -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         if (state.isPolling) {
+            // Read here rather than inside the `semantics` block, which is not a composable scope,
+            // so the description is the same string the visible label uses and cannot drift from it.
+            val waiting = stringResource(R.string.connect_waiting_for_sign_in)
             Row(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.semantics {
-                    contentDescription = "waiting for the sign-in"
-                },
+                modifier = Modifier.semantics { contentDescription = waiting },
             ) {
                 CircularProgressIndicator(modifier = Modifier.heightIn(max = 20.dp))
                 Text(

@@ -159,4 +159,10 @@
     <string name="websearch_searching">Searching…</string>
     <string name="websearch_served_by">Answered by %1$s</string>
     <string name="websearch_no_results">No results.</string>
+
+    <!--
+      Spoken while a sign-in is being polled, so it is a description of the state rather than a
+      label. Without it a screen reader says nothing and the row looks stuck.
+    -->
+    <string name="connect_waiting_for_sign_in">Waiting for the sign-in</string>
 </resources>

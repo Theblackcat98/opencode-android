@@ -472,7 +472,8 @@ private fun ShellMessageCard(message: SessionMessage.Shell, modifier: Modifier =
                 message.exit?.let {
                     Spacer(Modifier.width(8.dp))
                     Text(
-                        text = "exit $it",
+                        // A code the schema allows to be Infinity or NaN, shown as the server sent it.
+                        text = stringResource(R.string.timeline_tool_exit, it),
                         style = OpenCodeThemeExtras.code.small,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

@@ -188,4 +188,11 @@
     <string name="home_manage_definitions">Commands and skills</string>
     <string name="home_manage_permissions">Permissions</string>
     <string name="home_manage_maintenance">Maintenance</string>
+
+    <!--
+      A shell command's exit code, beside the output. `%1$s` rather than `%1$d`: the schema models
+      the code as a number that may be `Infinity` or `NaN`, so it decodes to a Double and a `%d`
+      throws on the ones the server can actually send.
+    -->
+    <string name="timeline_tool_exit">exit %1$s</string>
 </resources>

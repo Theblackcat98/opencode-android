@@ -35,6 +35,24 @@ jobs:
       - name: Run process-guard test
         run: node .opencode/plugins/process-guard.test.mjs
 
+      - name: Check the coverage matrices
+        run: node tools/audit-coverage.mjs --strict
+
+      - name: Check the generated event corpus is current
+        run: node tools/gen-event-payloads.mjs --check
+
+      - name: Check every UI string is externalized
+        # Plan 5.4: every string externalized from P0 on. A literal in a Text() or a
+        # contentDescription is invisible to every locale, so this fails the build rather than
+        # leaving it to a release checklist.
+        run: |
+          untranslated=$(node tools/audit-strings.mjs --json | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>console.log(JSON.parse(d).findings.length))")
+          if [ "$untranslated" != "0" ]; then
+            echo "::error::$untranslated UI strings are not in strings.xml"
+            node tools/audit-strings.mjs --per-module
+            exit 1
+          fi
+
       - name: Setup Android SDK
         run: ./scripts/setup-android-sdk.sh
 
