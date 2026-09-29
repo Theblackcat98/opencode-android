@@ -5,14 +5,52 @@ network, or any network your phone can reach, and drives the server's full featu
 
 ## Status
 
-Phase 9, *Configuration and administration*, is complete. The app pairs with one or more OpenCode servers,
-keeps a live event stream to each of them, **drives** them from the phone, stays reachable while it works, says
-what a prompt is about to carry before it sends it, shows what the agent changed and lets you take it back, gives
-you a real terminal, a command panel, the subagent tree and parallel worktrees, manages the server's own
-accounts, providers, MCP servers and plugins, and now reads and edits the server's configuration from the
-phone. The phase table is in [`docs/ANDROID_APP_PLAN.md`](docs/ANDROID_APP_PLAN.md#6-phases).
+All eleven phases, P0 to P10, are complete. The app pairs with one or more OpenCode servers, keeps a live event
+stream to each of them, **drives** them from the phone, stays reachable while it works, says what a prompt is
+about to carry before it sends it, shows what the agent changed and lets you take it back, gives you a real
+terminal, a command panel, the subagent tree and parallel worktrees, manages the server's own accounts,
+providers, MCP servers, plugins and configuration, and now shows you what you have been spending and what the
+desktop TUI is doing. The phase table is in
+[`docs/ANDROID_APP_PLAN.md`](docs/ANDROID_APP_PLAN.md#6-phases).
 
-What works today:
+**Every operation and every event type the plan's matrices list is implemented and tested**: 138 of 138
+operations declared, wired and tested, and 94 of 94 event types handled and tested. The audit of what the
+matrices claimed and the code did not back is in [`docs/COVERAGE.md`](docs/COVERAGE.md), and CI fails on a
+regression rather than trusting a document.
+
+**This is not a shipped release.** There is no device, emulator or second device in the build environment,
+so the manual test matrix has not been run, and no signing material exists, so no signed artifact was
+produced. Both are stated plainly in [`docs/RELEASE.md`](docs/RELEASE.md) rather than implied otherwise.
+
+What P10 added:
+
+- **A usage dashboard** over `experimental.session.stats`: an activity heatmap, a streak, cost and token
+  totals, per-model usage and tool reliability, filtered by range, project and time zone. The daily
+  buckets are cut by the server, so the dashboard and `opencode stats` agree about where a day ends.
+- **A plugin RPC console** and a viewer for `rpc.<id>.<event>`.
+- **The TUI is now able to talk to the phone.** A toast becomes a snackbar, and an opt-in "follow desktop"
+  mode mirrors the TUI's session and composer. It is off by default, and a command that would change
+  server state is offered to you rather than performed — interrupting a running turn from a phone
+  nobody is holding is not the app's call to make.
+- **Advanced session tools** for plugins and workflow testing: synthetic notes, wait-until-idle, and
+  programmatic permission and form creation, the last two behind a confirmation because both gate the
+  agent exactly as a tool's own request does.
+- **The durable session log**, as an event-history viewer and as the gap-free resync the live-only
+  stream cannot give you.
+- **Quick ask**, a stateless completion from a home-screen widget, and **pair another device**, a QR
+  code from `POST /api/pair` — capability-gated, because that route is not in the published spec.
+- **An opt-in LAN prober** that looks for the OpenCode signature on your local `/24`. Off by default,
+  cancellable, and it treats a `401` as a fingerprint rather than something to authenticate against.
+- **Adaptive UI**: list-detail panes for tablets, foldables and ChromeOS, keyboard shortcuts mirroring
+  the TUI keybinds with a Ctrl+P command palette, session tabs, a widget, a Quick Settings tile and app
+  shortcuts.
+- **Material You, plus OpenCode themes**, read from `themes/*.json` through the file API and mapped onto
+  a Material colour scheme.
+- **Quality work that was owed.** ktlint and detekt are now applied to every module and fail `check`;
+  they had been in the version catalog and applied to nothing for three phases. Every UI string is in
+  `strings.xml` and CI says so. The vendor identifiers left in the fixtures are gone.
+
+What worked before:
 
 - **The configuration explorer.** Every top-level key of the server's published configuration schema, in the
   schema's own order, with its type, description, source documents and the server's own effective value. The row
@@ -222,6 +260,13 @@ eval "$(./scripts/dev-server.sh start)"
 | --- | --- |
 | [`docs/OPENCODE_V2_FEATURES.md`](docs/OPENCODE_V2_FEATURES.md) | Every OpenCode V2 feature, and how each one can be read or driven through the server API: endpoints, events, auth and pairing, and the feature's limits |
 | [`docs/ANDROID_APP_PLAN.md`](docs/ANDROID_APP_PLAN.md) | Architecture, tech stack, and a phased plan from P0 to P10. Includes coverage matrices that map every API operation and event type to a phase. |
+| [`docs/COVERAGE.md`](docs/COVERAGE.md) | The §7 and §8 coverage audit: what the matrices claimed, what the code actually backed, and how the claim is now checked by the build |
+| [`docs/MANUAL_TEST_MATRIX.md`](docs/MANUAL_TEST_MATRIX.md) | The pre-release manual matrix — devices, servers, features, accessibility — with a *Result* column for a human to fill |
+| [`docs/RELEASE.md`](docs/RELEASE.md) | Signing, the Play track progression, the F-Droid specifics, and what a release still has to do |
+| [`docs/SECURITY_REVIEW.md`](docs/SECURITY_REVIEW.md) | Credentials, cleartext, the WebView, confirmations and the manifest, read against the code rather than the plan |
+| [`docs/PRIVACY_REVIEW.md`](docs/PRIVACY_REVIEW.md) | What leaves the device, what is stored, the notification payloads, and the two owner decisions that are still open |
+| [`docs/ACCESSIBILITY_AUDIT.md`](docs/ACCESSIBILITY_AUDIT.md) | The §5.4 checklist, what is checked mechanically, and what needs a device with a screen reader |
+| [`docs/CHANGELOG.md`](docs/CHANGELOG.md) | What changed, in the order a user would notice it |
 
 ## Connecting to your server
 

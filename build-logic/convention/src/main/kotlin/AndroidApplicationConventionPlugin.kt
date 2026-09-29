@@ -44,6 +44,11 @@ class AndroidApplicationConventionPlugin : Plugin<Project> {
                 create("fdroid") {
                     dimension = DISTRIBUTION
                     buildConfigField("String", "DISTRIBUTION", "\"fdroid\"")
+                    // A different application id, so both can be installed side by side and so a Play
+                    // install is never mistaken for the F-Droid one, which is distributed without
+                    // Google's signing and cannot be updated by it.
+                    applicationIdSuffix = ".fdroid"
+                    versionNameSuffix = "-fdroid"
                 }
             }
 

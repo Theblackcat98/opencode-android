@@ -227,7 +227,7 @@ phases that reuse it get cheaper as a result.
 | P7 | Execution surfaces | WebSocket and terminal component, process panels, worktree flows | P10 | Complete |
 | P8 | Integrations | OAuth, key and command login flows, MCP and plugin management | P9 | Complete |
 | P9 | Configuration | Config explorer and validated file editor | P10 | Complete |
-| P10 | Insights and release | Stats, RPC console, adaptive polish, release pipeline | n/a | Planned |
+| P10 | Insights and release | Stats, RPC console, TUI control, session log, adaptive polish, release pipeline | n/a | Complete |
 
 Relative size: S is small, M is medium, L is large.
 
@@ -1906,8 +1906,43 @@ than quietly.
 
 **Exit criteria.**
 
-- Every row in [§7](#7-api-coverage-matrix) and [§8](#8-event-coverage-matrix) is implemented and tested.
-- The release candidate passes the manual test matrix.
+- Every row in [§7](#7-api-coverage-matrix) and [§8](#8-event-coverage-matrix) is implemented and tested. — **Met.**
+  138 of 138 operations declared, wired and tested; 94 of 94 event types handled and tested. The claim
+  is derived from the code by `tools/audit-coverage.mjs` and asserted by `CoverageMatrixTest`, and the
+  audit of what the matrices claimed and the code did not back is in [`COVERAGE.md`](./COVERAGE.md).
+- The release candidate passes the manual test matrix. — **Not met, and not met honestly.** There is
+  no device, no emulator and no second device in the build environment, so the matrix has not been
+  run. It is written down, with a *Result* column for a human to fill, in
+  [`MANUAL_TEST_MATRIX.md`](./MANUAL_TEST_MATRIX.md). No signed artifact was produced either: the
+  build is ready for signing material and refuses to pretend otherwise. See [`RELEASE.md`](./RELEASE.md).
+
+**Status.**
+
+The first exit criterion is the point of the phase and it is met, but not because the plan said so.
+The matrices were audited against the code before anything was built, and the plan was wrong in five
+ways: twelve operations had no production caller, twenty-four more were called by nothing that
+asserted anything, five event families had payload classes and no handler, forty-six event types had
+a binding and no payload any test had ever decoded, and two of the last two standing defects — a
+linter applied to no module, and vendor identifiers left in pre-existing fixtures — had survived
+three phases of being "already handled". All of it is now closed, and the checks that prove it are in
+CI rather than in a document.
+
+Two things were found by building the phase rather than by auditing it. The `SessionStatsTools` union
+discriminates on `mode` and not on the `type` every other union uses, so every statistics answer
+decoded as `Unknown` and the dashboard would have shown no tool data on a server that sent plenty. And
+a union member arriving as something other than a JSON object threw out of the decoder instead of
+falling back to `Unknown`, which would have taken the event connection down over one malformed frame.
+
+What a release still has to do is in [`RELEASE.md`](./RELEASE.md): run the manual matrix on real
+hardware, produce a signed artifact from real signing material, and walk the Play track. Two open
+questions are named rather than answered, because they are the owner's to decide — whether the
+keystore key should require user authentication, and whether the unencrypted message cache stays as it
+is. Both are in [`SECURITY_REVIEW.md`](./SECURITY_REVIEW.md) and [`PRIVACY_REVIEW.md`](./PRIVACY_REVIEW.md).
+
+The audits are [`SECURITY_REVIEW.md`](./SECURITY_REVIEW.md), [`PRIVACY_REVIEW.md`](./PRIVACY_REVIEW.md)
+and [`ACCESSIBILITY_AUDIT.md`](./ACCESSIBILITY_AUDIT.md). Each states what was checked mechanically and
+what needs a device, because "verified" and "read" are different answers and only the first one is
+worth anything.
 
 ---
 
@@ -2071,7 +2106,7 @@ that delivers it.
 | P7 | 30 | Complete |
 | P8 | 27 | Complete |
 | P9 | 11 | Complete |
-| P10 | 9 | Planned |
+| P10 | 9 | Complete |
 
 Total: 138 (136 spec operations plus the 2 pairing routes).
 
