@@ -175,5 +175,9 @@ object AttentionModule {
         openSession = { serverId, sessionId ->
             NotificationIntents.openSession(context, serverId, sessionId, codes)
         },
+        // A finished command has a location and no session, so its body has to go somewhere else.
+        openLocation = { serverId, directory ->
+            NotificationIntents.openLocation(context, serverId, directory, codes)
+        },
     )
 }

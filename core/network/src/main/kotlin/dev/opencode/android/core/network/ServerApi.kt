@@ -19,7 +19,11 @@ import dev.opencode.android.core.model.PairingSession
 import dev.opencode.android.core.model.PermissionReplyPayload
 import dev.opencode.android.core.model.PermissionRequest
 import dev.opencode.android.core.model.Project
+import dev.opencode.android.core.model.ProjectUpdateRequest
 import dev.opencode.android.core.model.PromptRequest
+import dev.opencode.android.core.model.PtyCreateRequest
+import dev.opencode.android.core.model.PtyTicketToken
+import dev.opencode.android.core.model.PtyUpdateRequest
 import dev.opencode.android.core.model.ReferenceInfo
 import dev.opencode.android.core.model.ServerInfo
 import dev.opencode.android.core.model.SessionCommandRequest
@@ -33,12 +37,22 @@ import dev.opencode.android.core.model.SessionImportRequest
 import dev.opencode.android.core.model.SessionInboxInfo
 import dev.opencode.android.core.model.SessionInfo
 import dev.opencode.android.core.model.SessionMessage
+import dev.opencode.android.core.model.SessionMoveRequest
 import dev.opencode.android.core.model.SessionRevert
 import dev.opencode.android.core.model.SessionRevertStageRequest
 import dev.opencode.android.core.model.SessionShellRequest
+import dev.opencode.android.core.model.SessionTerminalCreateRequest
+import dev.opencode.android.core.model.SessionTerminalHandoff
+import dev.opencode.android.core.model.PersistentPtyScreen
+import dev.opencode.android.core.model.SessionTerminalSnapshot
+import dev.opencode.android.core.model.SessionTerminalUpdateRequest
 import dev.opencode.android.core.model.SessionTransfer
 import dev.opencode.android.core.model.SessionUpdateRequest
 import dev.opencode.android.core.model.SessionViewRequest
+import dev.opencode.android.core.model.ShellCreateRequest
+import dev.opencode.android.core.model.ShellInfo
+import dev.opencode.android.core.model.ShellOption
+import dev.opencode.android.core.model.ShellOutput
 import dev.opencode.android.core.model.SkillActivationRequest
 import dev.opencode.android.core.model.SkillInfo
 import dev.opencode.android.core.model.SwitchAgentRequest
@@ -46,11 +60,18 @@ import dev.opencode.android.core.model.SwitchModelRequest
 import dev.opencode.android.core.model.VcsBase
 import dev.opencode.android.core.model.VcsFileStatus
 import dev.opencode.android.core.model.VcsInfo
+import dev.opencode.android.core.model.WorktreeCreateRequest
+import dev.opencode.android.core.model.WorktreeDirectory
+import dev.opencode.android.core.model.WorktreeRefreshRequest
+import dev.opencode.android.core.model.WorktreeRemoveRequest
+import dev.opencode.android.core.model.event.PersistentPtyInfo
+import dev.opencode.android.core.model.event.PtyInfo
 import okhttp3.RequestBody
 import okhttp3.ResponseBody
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
+import retrofit2.http.HTTP
 import retrofit2.http.Headers
 import retrofit2.http.PATCH
 import retrofit2.http.POST
@@ -664,4 +685,279 @@ interface ServerApi {
     suspend fun getSessionContext(
         @Path("sessionID") sessionID: String,
     ): DataResponse<List<SessionMessage>>
+
+    // ---------------------------------------- Phase 7: subagents, shells, terminals, worktrees
+
+    // ------------------------------------------------------------------ shells (5 operations)
+
+    /** `shell.list`: the commands running in a location, the user's and the agent's alike. */
+    @GET("api/shell")
+    suspend fun listShells(
+        @Query(LocationParam.QUERY_KEY) directory: String? = null,
+    ): LocationScoped<List<ShellInfo>>
+
+    /**
+     * `shell.create`: runs a command and captures its combined output to a file.
+     *
+     * Answers with the [ShellInfo] it started, and `shell.created` carries the same object, so a
+     * caller can show the row without waiting for the event. A retry is *not* idempotent: there is no
+     * client id on this route, so a call that failed in transit may have started a command the user
+     * now has twice, and the panel's list is what tells them.
+     */
+    @POST("api/shell")
+    suspend fun createShell(
+        @Query(LocationParam.QUERY_KEY) directory: String? = null,
+        @Body body: ShellCreateRequest,
+    ): LocationScoped<ShellInfo>
+
+    /** `shell.get`: one command's status and exit code. */
+    @GET("api/shell/{id}")
+    suspend fun getShell(
+        @Path("id") id: String,
+        @Query(LocationParam.QUERY_KEY) directory: String? = null,
+    ): LocationScoped<ShellInfo>
+
+    /** `shell.remove`: kills a running command and drops it. `204`, `shell.deleted` follows. */
+    @DELETE("api/shell/{id}")
+    suspend fun removeShell(
+        @Path("id") id: String,
+        @Query(LocationParam.QUERY_KEY) directory: String? = null,
+    ): Unit
+
+    /**
+     * `shell.output`: one page of a command's combined output, by byte cursor.
+     *
+     * [cursor] is a **string** on the wire even though the schema calls it a number (the same shape
+     * `fs.find`'s `limit` has), and [limit] likewise. The panel polls with the cursor the last page
+     * ended at, which is why the client never sends a cursor it did not get back.
+     */
+    @GET("api/shell/{id}/output")
+    suspend fun getShellOutput(
+        @Path("id") id: String,
+        @Query(LocationParam.QUERY_KEY) directory: String? = null,
+        @Query("cursor") cursor: String? = null,
+        @Query("limit") limit: String? = null,
+    ): LocationScoped<ShellOutput>
+
+    // ------------------------------------------------------------------ terminals (7)
+
+    /** `pty.list`: every terminal of a location, exited ones included until they are removed. */
+    @GET("api/pty")
+    suspend fun listPtys(
+        @Query(LocationParam.QUERY_KEY) directory: String? = null,
+    ): LocationScoped<List<PtyInfo>>
+
+    /** `pty.create`: starts a terminal. `command` omitted runs the location's configured shell. */
+    @POST("api/pty")
+    suspend fun createPty(
+        @Query(LocationParam.QUERY_KEY) directory: String? = null,
+        @Body body: PtyCreateRequest,
+    ): LocationScoped<PtyInfo>
+
+    /** `pty.get`: one terminal, with its exit code once it has one. */
+    @GET("api/pty/{ptyID}")
+    suspend fun getPty(
+        @Path("ptyID") ptyID: String,
+        @Query(LocationParam.QUERY_KEY) directory: String? = null,
+    ): LocationScoped<PtyInfo>
+
+    /**
+     * `pty.update`: renames a terminal, resizes it, or both.
+     *
+     * This is how resizing is delivered (features doc §31): the WebSocket frames are terminal bytes,
+     * so a resize cannot travel on it without the client having to tell a JSON frame from output.
+     */
+    @PUT("api/pty/{ptyID}")
+    suspend fun updatePty(
+        @Path("ptyID") ptyID: String,
+        @Body body: PtyUpdateRequest,
+        @Query(LocationParam.QUERY_KEY) directory: String? = null,
+    ): LocationScoped<PtyInfo>
+
+    /** `pty.remove`: kills the process and drops the terminal. `204`, `pty.deleted` follows. */
+    @DELETE("api/pty/{ptyID}")
+    suspend fun removePty(
+        @Path("ptyID") ptyID: String,
+        @Query(LocationParam.QUERY_KEY) directory: String? = null,
+    ): Unit
+
+    /**
+     * `pty.connect.token`: a single-use ticket for a WebSocket that cannot send an `Authorization`
+     * header — a page in the WebView.
+     *
+     * The [PtyTicketToken.HEADER] request header is required; without it the route answers `403`,
+     * which says "forbidden" about a route that does exist. This client connects from OkHttp with
+     * Basic auth and only calls this for the WebView fallback.
+     */
+    @Headers("${PtyTicketToken.HEADER}: ${PtyTicketToken.HEADER_VALUE}")
+    @POST("api/pty/{ptyID}/connect-token")
+    suspend fun createPtyTicket(
+        @Path("ptyID") ptyID: String,
+        @Query(LocationParam.QUERY_KEY) directory: String? = null,
+    ): LocationScoped<PtyTicketToken>
+
+    /**
+     * `pty.connect`: the WebSocket upgrade endpoint, declared so the route is discoverable.
+     *
+     * It is never called over HTTP — [PtySocket] builds the same URL as a WebSocket request. The
+     * method is here for the path, the query names and the documentation of the `4404` close code,
+     * and it is deliberately `suspend` returning a `Boolean` (the spec's `200` body) so a mistake
+     * that calls it as a plain request is visible in the type rather than in a log.
+     */
+    @GET("api/pty/{ptyID}/connect")
+    suspend fun ptyConnect(
+        @Path("ptyID") ptyID: String,
+        @Query(LocationParam.QUERY_KEY) directory: String? = null,
+        @Query("cursor") cursor: String? = null,
+        @Query("ticket") ticket: String? = null,
+    ): Boolean
+
+    // ------------------------------------------------- persistent terminals (11, experimental)
+
+    /**
+     * `experimental.session.terminal.list`.
+     *
+     * Experimental, so it is only ever called after a capability probe said the route exists. A
+     * `503` is the server's "the persistent-PTY host is not running", which is not an absence: the
+     * route exists and the service does not, and the two are shown differently.
+     */
+    @GET("api/experimental/session/{sessionID}/terminal")
+    suspend fun listSessionTerminals(
+        @Path("sessionID") sessionID: String,
+    ): DataResponse<List<PersistentPtyInfo>>
+
+    @POST("api/experimental/session/{sessionID}/terminal")
+    suspend fun createSessionTerminal(
+        @Path("sessionID") sessionID: String,
+        @Body body: SessionTerminalCreateRequest,
+    ): DataResponse<PersistentPtyInfo>
+
+    /** `experimental.session.terminal.read`: the most recently controlled terminal's screen. */
+    @GET("api/experimental/session/{sessionID}/terminal/read")
+    suspend fun readSessionTerminal(
+        @Path("sessionID") sessionID: String,
+        @Query("lines") lines: String? = null,
+    ): DataResponse<PersistentPtyScreen?>
+
+    @GET("api/experimental/persistent-pty/{ptyID}")
+    suspend fun getSessionTerminal(
+        @Path("ptyID") ptyID: String,
+    ): DataResponse<PersistentPtyInfo>
+
+    /** `experimental.persistent-pty.update`: resize, and claim the terminal with an attachment. */
+    @PUT("api/experimental/persistent-pty/{ptyID}")
+    suspend fun updateSessionTerminal(
+        @Path("ptyID") ptyID: String,
+        @Body body: SessionTerminalUpdateRequest,
+    ): DataResponse<PersistentPtyInfo>
+
+    @DELETE("api/experimental/persistent-pty/{ptyID}")
+    suspend fun removeSessionTerminal(
+        @Path("ptyID") ptyID: String,
+    ): Unit
+
+    @GET("api/experimental/persistent-pty/{ptyID}/snapshot")
+    suspend fun getSessionTerminalSnapshot(
+        @Path("ptyID") ptyID: String,
+    ): DataResponse<SessionTerminalSnapshot>
+
+    @Headers("${PtyTicketToken.HEADER}: ${PtyTicketToken.HEADER_VALUE}")
+    @POST("api/experimental/persistent-pty/{ptyID}/connect-token")
+    suspend fun createSessionTerminalTicket(
+        @Path("ptyID") ptyID: String,
+    ): DataResponse<PtyTicketToken>
+
+    /** The WebSocket upgrade of a persistent terminal; see [ptyConnect] for why it is declared. */
+    @GET("api/experimental/persistent-pty/{ptyID}/connect")
+    suspend fun sessionTerminalConnect(
+        @Path("ptyID") ptyID: String,
+        @Query("cursor") cursor: String? = null,
+        @Query("role") role: String? = null,
+        @Query("attachment_id") attachmentID: String? = null,
+        @Query("takeover") takeover: String? = null,
+        @Query("input_protocol") inputProtocol: String? = null,
+        @Query("ticket") ticket: String? = null,
+    ): Boolean
+
+    /**
+     * `experimental.persistent-pty.shutdown`: stops the host that owns every persistent terminal.
+     *
+     * **Admin only, and an action of the last resort.** It ends the terminals of every session on
+     * the server, so the only place it appears is the server status page behind an explicit
+     * confirmation, and never in a session's own UI.
+     */
+    @POST("api/experimental/persistent-pty/shutdown")
+    suspend fun shutdownPersistentPtyHost(): Unit
+
+    /**
+     * `experimental.persistent-pty.handoff`: prepares a service restart, answering the instance id
+     * and ticket the new host is reattached with. Admin only, like [shutdownPersistentPtyHost].
+     */
+    @POST("api/experimental/persistent-pty/handoff")
+    suspend fun handoffPersistentPtyHost(): SessionTerminalHandoff.Wrapper
+
+    // ------------------------------------------------------------------ worktrees (4)
+
+    /**
+     * `worktree.list`: a project's saved worktree inventory.
+     *
+     * The answer is a bare array, not a `{data}` wrapper, and [projectID] is **required** — the
+     * worktree table is per project, so there is no "all worktrees" call.
+     */
+    @GET("api/worktree")
+    suspend fun listWorktrees(
+        @Query("projectID") projectID: String,
+    ): List<WorktreeDirectory>
+
+    /** `worktree.create`. Runs the project's setup script, so it is confirmed before it is sent. */
+    @POST("api/worktree")
+    suspend fun createWorktree(
+        @Body body: WorktreeCreateRequest,
+    ): WorktreeDirectory
+
+    /**
+     * `worktree.remove`, on a `DELETE` with a body.
+     *
+     * A `400` carries a [WorktreeFailure] whose `forceRequired` is true when the worktree has
+     * uncommitted work; the client asks again with `force` and a confirmation rather than sending it
+     * the first time.
+     */
+    @DELETE("api/worktree")
+    suspend fun removeWorktree(
+        @Body body: WorktreeRemoveRequest,
+    ): Unit
+
+    /** `worktree.refresh`: rediscovers and reconciles a project's worktrees. `204`. */
+    @POST("api/worktree/refresh")
+    suspend fun refreshWorktrees(
+        @Body body: WorktreeRefreshRequest,
+    ): Unit
+
+    // -------------------------------------------------- session move, project settings, shells
+
+    /**
+     * `session.move`: moves a session to another directory, which is how a session is moved into a
+     * worktree. `204`, and `session.moved` carries the new location.
+     */
+    @POST("api/session/{sessionID}/move")
+    suspend fun moveSession(
+        @Path("sessionID") sessionID: String,
+        @Body body: SessionMoveRequest,
+    ): Unit
+
+    /** `project.update`: name, icon, start command and the canonical checkout. */
+    @PATCH("api/project/{projectID}")
+    suspend fun updateProject(
+        @Path("projectID") projectID: String,
+        @Body body: ProjectUpdateRequest,
+    ): Project
+
+    /**
+     * `config.shell`: the shells the server found on the machine.
+     *
+     * Not location-scoped and not wrapped: the answer is a bare array, and it is the same list for
+     * every location, because it describes the server's `PATH` rather than a checkout.
+     */
+    @GET("api/config/shell")
+    suspend fun listShellOptions(): List<ShellOption>
 }

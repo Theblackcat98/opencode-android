@@ -160,6 +160,11 @@
     <string name="session_attention">Notifications and auto-approve</string>
     <string name="session_history">History, export and context</string>
     <string name="session_experimental">Experimental features</string>
+    <string name="session_execution_subagents">Subagents and sessions</string>
+    <string name="session_execution_shells">Commands</string>
+    <string name="session_execution_terminal">Terminal</string>
+    <string name="session_execution_worktrees">Worktrees</string>
+    <string name="session_execution_session_terminals">Session terminals</string>
 
     <string name="timeline_changed_files">Changed %1$d files</string>
     <string name="timeline_fork_here">Fork from here</string>

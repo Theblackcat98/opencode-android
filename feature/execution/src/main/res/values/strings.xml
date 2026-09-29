@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Shared -->
+    <string name="action_close">Close</string>
+
+    <!-- Shells -->
+    <string name="shells_title">Commands</string>
+    <string name="shells_command">Command</string>
+    <string name="shells_run">Run the command</string>
+    <string name="shells_output">Output</string>
+    <string name="shells_no_output">No output yet.</string>
+    <string name="shells_empty">No commands are running</string>
+    <string name="shells_empty_body">Start one above, or wait for the agent to run one. Commands the agent starts appear here too.</string>
+    <string name="shells_running">Running</string>
+    <string name="shells_exited">Exited with code %1$d</string>
+    <string name="shells_exited_unknown">Exited</string>
+    <string name="shells_timed_out">Timed out</string>
+    <string name="shells_killed">Stopped</string>
+    <string name="shells_kill">Stop the command</string>
+    <string name="shells_kill_title">Stop this command?</string>
+    <string name="shells_kill_body">The command is killed and removed. Work it had not written is lost.</string>
+    <string name="shells_kill_confirm">Stop it</string>
+    <string name="shells_stop_following">Stop following</string>
+    <string name="shells_failed">The command could not be handled</string>
+
+    <!-- Subagents -->
+    <string name="subagents_title">Subagents</string>
+    <string name="subagents_root">Top-level session</string>
+    <string name="subagents_child_of">Child of %1$s</string>
+    <string name="subagents_go_to_parent">Go to the parent session</string>
+    <string name="subagents_previous">Previous sibling</string>
+    <string name="subagents_next">Next sibling</string>
+    <string name="subagents_empty">No sessions on this server yet.</string>
+    <string name="subagents_supporting">%1$s · %2$s</string>
+    <string name="subagents_no_agent">no agent</string>
+    <string name="subagents_no_model">no model</string>
+    <string name="subagents_incomplete">%1$d more child sessions are not loaded. Open the list to fetch them.</string>
+    <string name="subagents_strip_title">%1$d subagents running</string>
+    <string name="subagents_interrupt">Interrupt the subagent</string>
+    <string name="subagents_running">Running</string>
+    <string name="subagents_retrying">Retrying</string>
+
+    <!-- Terminals -->
+    <string name="terminal_title">Terminal</string>
+    <string name="terminal_new">New terminal</string>
+    <string name="terminal_none">No terminal open</string>
+    <string name="terminal_reconnect">Reconnect</string>
+    <string name="terminal_run_start">Run the project\'s start command</string>
+    <string name="terminal_empty">No terminals yet</string>
+    <string name="terminal_empty_body">Start one, or run the project\'s start command to begin a dev server here.</string>
+    <string name="terminal_kill">Remove the terminal</string>
+    <string name="terminal_kill_title">Remove this terminal?</string>
+    <string name="terminal_kill_body">The process is killed and the terminal is removed. Anything running in it stops.</string>
+    <string name="terminal_kill_confirm">Remove it</string>
+    <string name="terminal_failed">The terminal could not be opened</string>
+    <string name="terminal_exit">exit %1$d</string>
+    <string name="terminal_extra_keys">Terminal keys</string>
+    <string name="terminal_picker_title">Choose a shell</string>
+    <string name="terminal_picker_empty">The server reported no usable shell. A terminal will use its configured default.</string>
+    <string name="terminal_status_idle">Not connected</string>
+    <string name="terminal_status_connecting">Connecting</string>
+    <string name="terminal_status_live">Live</string>
+    <string name="terminal_status_reconnecting">Reconnecting</string>
+    <string name="terminal_status_closed">Closed</string>
+
+    <!-- Session terminals (experimental) -->
+    <string name="session_terminals_title">Session terminals</string>
+    <string name="session_terminals_create">Create a terminal</string>
+    <string name="session_terminals_remove">Remove the terminal</string>
+    <string name="session_terminals_read">Read</string>
+    <string name="session_terminals_screen">Last screen</string>
+    <string name="session_terminals_no_screen">Nothing read yet.</string>
+    <string name="session_terminals_availability">Host: %1$s</string>
+    <string name="session_terminals_state_present">running</string>
+    <string name="session_terminals_state_host_down">not running</string>
+    <string name="session_terminals_state_absent">not supported</string>
+    <string name="session_terminals_state_unknown">not checked</string>
+    <string name="session_terminals_off_body">Session terminals are an experimental feature and are switched off for this installation. Turn them on in the experimental settings.</string>
+    <string name="session_terminals_absent_body">This server does not have the experimental terminal routes. Nothing was sent.</string>
+    <string name="session_terminals_host_down_body">This server has the terminal routes, but its persistent-terminal host is not running. Start it on the server machine.</string>
+    <string name="session_terminals_empty_body">This session has no persistent terminal. Create one to give the agent a terminal it can read.</string>
+
+    <!-- Worktrees -->
+    <string name="worktrees_title">Worktrees</string>
+    <string name="worktrees_from">Branch from (ref)</string>
+    <string name="worktrees_branch">Branch name</string>
+    <string name="worktrees_name">Name</string>
+    <string name="worktrees_create">Create a worktree</string>
+    <string name="worktrees_create_hint">Creating a worktree runs the project\'s setup script on the server.</string>
+    <string name="worktrees_refresh">Rediscover worktrees</string>
+    <string name="worktrees_remove">Remove the worktree</string>
+    <string name="worktrees_remove_title">Remove this worktree?</string>
+    <string name="worktrees_remove_confirm">Remove it</string>
+    <string name="worktrees_force_remove">Remove with uncommitted work</string>
+    <string name="worktrees_force_warning">The server has uncommitted work here. Removing it anyway deletes those changes.</string>
+    <string name="worktrees_move_session">Move a session here</string>
+    <string name="worktrees_empty">No worktrees for this project.</string>
+    <string name="worktrees_strategy">Strategy: %1$s</string>
+
+    <!-- Project settings -->
+    <string name="project_settings_title">Project settings</string>
+    <string name="project_settings_name">Name</string>
+    <string name="project_settings_emoji">Icon (emoji)</string>
+    <string name="project_settings_color">Icon colour</string>
+    <string name="project_settings_start">Start command</string>
+    <string name="project_settings_canonical">Canonical directory</string>
+    <string name="project_settings_start_hint">The start command is what a new worktree runs, and what a terminal can be launched with.</string>
+    <string name="project_settings_save">Save</string>
+    <string name="project_settings_saving">Saving…</string>
+    <string name="project_settings_saved">Saved.</string>
+    <string name="project_settings_url_set">icon URL set</string>
+</resources>

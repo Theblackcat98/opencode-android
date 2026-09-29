@@ -35,6 +35,12 @@ object NotificationIntents {
     const val EXTRA_SERVER_ID: String = "dev.opencode.android.extra.SERVER_ID"
     const val EXTRA_SESSION_ID: String = "dev.opencode.android.extra.SESSION_ID"
 
+    /** What the activity is asked to do when a *location's* notification body is tapped. */
+    const val ACTION_OPEN_LOCATION: String = "dev.opencode.android.action.OPEN_LOCATION"
+
+    /** The checkout a shell panel notification opens. */
+    const val EXTRA_DIRECTORY: String = "dev.opencode.android.extra.DIRECTORY"
+
     fun encode(action: AttentionAction): String = AttentionActionCodec.encode(action)
 
     /** An encoding this build can read, or `null`; see [AttentionActionCodec.decode]. */
@@ -97,6 +103,34 @@ object NotificationIntents {
         return PendingIntent.getActivity(
             context,
             codes.codeFor(AttentionAction.OpenSession(serverId, sessionId)),
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+    }
+
+    /**
+     * The pending intent that opens a location's shell panel from a notification body.
+     *
+     * **A separate action string rather than a session id that may be blank.** A finished command
+     * belongs to a checkout, and a blank session id routed through [openSession] would navigate to a
+     * session route with no session — a screen that can only show an error.
+     */
+    fun openLocation(
+        context: Context,
+        serverId: String,
+        directory: String,
+        codes: AttentionActionCodes,
+    ): PendingIntent {
+        val intent = (context.packageManager.getLaunchIntentForPackage(context.packageName)
+            ?: Intent(ACTION_OPEN_LOCATION)).apply {
+            action = ACTION_OPEN_LOCATION
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            putExtra(EXTRA_SERVER_ID, serverId)
+            putExtra(EXTRA_DIRECTORY, directory)
+        }
+        return PendingIntent.getActivity(
+            context,
+            codes.codeFor(AttentionAction.OpenLocation(serverId, directory)),
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )

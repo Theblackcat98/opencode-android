@@ -55,6 +55,14 @@ class AttentionNotificationBuilder(
     private val ids: NotificationIds,
     /** The pending intent that opens a session's screen, for the body of a notification. */
     private val openSession: (serverId: String, sessionId: String) -> PendingIntent,
+    /**
+     * The pending intent that opens a location's shell panel.
+     *
+     * Optional so a caller that has no location screen wired still builds notifications; a shell
+     * notification then opens the (empty) session route, which is worse than a shell panel and is
+     * visible as such rather than silently wrong.
+     */
+    private val openLocation: ((serverId: String, directory: String) -> PendingIntent)? = null,
 ) {
     fun build(draft: AttentionDraft): Notification {
         val words = wordsFor(draft)
@@ -74,7 +82,7 @@ class AttentionNotificationBuilder(
             .setAutoCancel(!isSummary)
         words.subText?.let { builder.setSubText(it) }
         if (!isSummary) {
-            builder.setContentIntent(openSession(draft.slot.serverId, draft.content.sessionId))
+            builder.setContentIntent(contentIntentFor(draft))
         }
         draft.remoteInput?.let { builder.addAction(replyAction(draft, it)) }
         draft.actions.forEach { builder.addAction(actionFor(it)) }
@@ -123,6 +131,14 @@ class AttentionNotificationBuilder(
             ),
             body = content.parentTitle?.let { context.getString(R.string.notify_subagent_body, it) }
                 ?: context.getString(R.string.notify_subagent_body_unknown),
+        )
+
+        is NotificationContent.ShellFinished -> NotificationWords(
+            title = context.getString(R.string.notify_shell_title, content.command.take(SHELL_COMMAND_CHARS)),
+            body = content.exitCode
+                ?.let { exit -> context.getString(R.string.notify_shell_body_exit, exit) }
+                ?: context.getString(R.string.notify_shell_body_status, content.status),
+            subText = content.directory.takeIf { it.isNotBlank() },
         )
 
         is NotificationContent.RetryScheduled -> NotificationWords(
@@ -218,6 +234,22 @@ class AttentionNotificationBuilder(
         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
     )
 
+    /**
+     * Where the body of a notification goes.
+     *
+     * A finished command has a location and no session, so the two are kept apart here rather than by
+     * a blank session id: routing a checkout through the session route would open a screen that can
+     * only show an error.
+     */
+    private fun contentIntentFor(draft: AttentionDraft): PendingIntent {
+        val shell = draft.content as? NotificationContent.ShellFinished
+        if (shell != null) {
+            val open = openLocation ?: return openSession(draft.slot.serverId, shell.sessionId)
+            return open(draft.slot.serverId, shell.directory)
+        }
+        return openSession(draft.slot.serverId, draft.content.sessionId)
+    }
+
     private fun labelFor(action: AttentionAction): Int = when (action) {
         is AttentionAction.ReplyPermission -> when (action.decision.value) {
             "reject" -> R.string.action_reject
@@ -228,6 +260,7 @@ class AttentionNotificationBuilder(
         is AttentionAction.AnswerForm -> R.string.action_answer
         is AttentionAction.CancelForm -> R.string.action_cancel
         is AttentionAction.OpenSession -> R.string.action_open
+        is AttentionAction.OpenLocation -> R.string.action_open
         is AttentionAction.Interrupt -> R.string.action_interrupt
     }
 
@@ -239,7 +272,7 @@ class AttentionNotificationBuilder(
 
         is AttentionAction.AnswerForm -> R.drawable.ic_notification_reply
         is AttentionAction.CancelForm -> R.drawable.ic_notification_reject
-        is AttentionAction.OpenSession -> R.drawable.ic_notification_open
+        is AttentionAction.OpenSession, is AttentionAction.OpenLocation -> R.drawable.ic_notification_open
         is AttentionAction.Interrupt -> R.drawable.ic_notification_interrupt
     }
 
@@ -260,5 +293,13 @@ class AttentionNotificationBuilder(
     private companion object {
         /** A shade notification is not a list; three resources is what fits. */
         const val MAX_RESOURCES = 3
+
+        /**
+         * How much of a command line fits on one line of a notification.
+         *
+         * A build command can be a paragraph, and a notification that has to be scrolled to be read
+         * is not a notification; the panel shows the whole command and the shade shows its beginning.
+         */
+        const val SHELL_COMMAND_CHARS = 80
     }
 }

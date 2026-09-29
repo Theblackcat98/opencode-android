@@ -41,6 +41,9 @@ class MainActivity : ComponentActivity() {
     /** Where a tapped notification should land; the graph consumes it and it stays set. */
     private var openSession by mutableStateOf<OpenSessionTarget?>(null)
 
+    /** A tapped shell completion, which opens a checkout's command panel rather than a session. */
+    private var openLocation by mutableStateOf<OpenLocationTarget?>(null)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         enableEdgeToEdge()
@@ -54,10 +57,15 @@ class MainActivity : ComponentActivity() {
 
         sharedPayload = sharedPayloadOf(intent)
         openSession = openSessionOf(intent)
+        openLocation = openLocationOf(intent)
 
         setContent {
             OpenCodeTheme {
-                OpenCodeApp(sharedPayload = sharedPayload, openSession = openSession)
+                OpenCodeApp(
+                    sharedPayload = sharedPayload,
+                    openSession = openSession,
+                    openLocation = openLocation,
+                )
             }
         }
     }
@@ -67,6 +75,7 @@ class MainActivity : ComponentActivity() {
         setIntent(intent)
         sharedPayload = sharedPayloadOf(intent)
         openSession = openSessionOf(intent)
+        openLocation = openLocationOf(intent)
     }
 
     private fun sharedPayloadOf(intent: Intent?): String? = when (intent?.action) {
@@ -85,7 +94,30 @@ class MainActivity : ComponentActivity() {
             sessionId = sessionId,
         )
     }
+
+    /**
+     * A shell completion, which names a checkout rather than a conversation.
+     *
+     * A finished command has no session, so it gets its own target and its own route; routing it
+     * through [OpenSessionTarget] with an empty session id would navigate to a session screen with no
+     * session in it.
+     */
+    private fun openLocationOf(intent: Intent?): OpenLocationTarget? {
+        if (intent?.action != NotificationIntents.ACTION_OPEN_LOCATION) return null
+        val directory = intent.getStringExtra(NotificationIntents.EXTRA_DIRECTORY)?.takeIf(String::isNotBlank)
+            ?: return null
+        return OpenLocationTarget(
+            serverId = intent.getStringExtra(NotificationIntents.EXTRA_SERVER_ID),
+            directory = directory,
+        )
+    }
 }
+
+/** What a tapped shell-completion notification asks the navigation graph to show. */
+data class OpenLocationTarget(
+    val serverId: String?,
+    val directory: String,
+)
 
 /** What a tapped notification asks the navigation graph to show. */
 data class OpenSessionTarget(

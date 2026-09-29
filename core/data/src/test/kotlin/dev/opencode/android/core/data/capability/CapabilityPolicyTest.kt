@@ -96,6 +96,12 @@ class CapabilityPolicyTest {
         val ids = ExperimentalRoute.entries.map { it.id }
 
         assertEquals(ids.size, ids.toSet().size)
-        assertEquals(listOf("fs_write", "session_export", "session_import"), ids)
+        // Phase 7 added the session-terminal routes as one value, because the eleven persistent-PTY
+        // routes are one feature that lives or dies together and a client that probed them separately
+        // would show a terminal picker for a feature whose host it had not established.
+        assertEquals(
+            listOf("fs_write", "session_export", "session_import", "persistent_pty"),
+            ids,
+        )
     }
 }

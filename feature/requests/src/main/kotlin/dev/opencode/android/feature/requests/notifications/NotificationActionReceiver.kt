@@ -107,8 +107,9 @@ class NotificationActionReceiver : BroadcastReceiver() {
             is AttentionAction.AnswerForm -> answerForm(context, set, action, intent)
             is AttentionAction.CancelForm -> cancelForm(context, set, action)
             is AttentionAction.Interrupt -> interrupt(context, set, action)
-            // Opening a session is the activity's job; the receiver has nothing to do but finish.
-            is AttentionAction.OpenSession -> Unit
+            // Opening a session or a location is the activity's job; the receiver has nothing to do
+            // but finish.
+            is AttentionAction.OpenSession, is AttentionAction.OpenLocation -> Unit
         }
     }
 
@@ -267,6 +268,7 @@ class NotificationActionReceiver : BroadcastReceiver() {
             is AttentionAction.CancelForm -> R.string.action_cancel
             is AttentionAction.Interrupt -> R.string.action_interrupt
             is AttentionAction.OpenSession -> R.string.action_open
+            is AttentionAction.OpenLocation -> R.string.action_open
         },
     )
 

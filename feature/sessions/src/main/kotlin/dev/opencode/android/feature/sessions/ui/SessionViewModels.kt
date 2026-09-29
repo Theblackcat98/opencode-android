@@ -64,6 +64,14 @@ data class SessionUiState(
     val following: Boolean = true,
     val serverId: String? = null,
     val directory: String? = null,
+    /**
+     * The project this session belongs to, which is what a worktree panel is keyed by.
+     *
+     * `worktree.list` takes a required `projectID` and carries no location at all, so the session
+     * screen cannot answer it from the directory it already has — it needs the project the server
+     * resolved, and that is a field of the session's own projection.
+     */
+    val projectId: String? = null,
     val offline: Boolean = false,
     /**
      * The message this session was forked at, or `null`.
@@ -306,6 +314,7 @@ class SessionViewModel @Inject constructor(
             following = following,
             serverId = set.serverId,
             directory = directory,
+            projectId = info?.projectID,
             forkedAt = (info?.fork as? ForkBoundary.Before)?.messageID
                 ?: (info?.fork as? ForkBoundary.Through)?.messageID,
         )

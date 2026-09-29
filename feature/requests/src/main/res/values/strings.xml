@@ -83,6 +83,8 @@
     <string name="channel_turn_description">A session turn ended, whatever the outcome.</string>
     <string name="channel_subagent_name">Finished subagents</string>
     <string name="channel_subagent_description">A subagent finished, so you can come back to its parent.</string>
+    <string name="channel_shell_name">Finished commands</string>
+    <string name="channel_shell_description">A shell command finished, so you can read its output.</string>
     <string name="channel_retry_name">Retries and limits</string>
     <string name="channel_retry_description">A provider is retrying, or a usage limit was reached.</string>
     <string name="channel_update_name">Server updates</string>
@@ -114,6 +116,9 @@
     <string name="notify_subagent_subject">Subagent %1$s</string>
     <string name="notify_subagent_body">Running in %1$s.</string>
     <string name="notify_subagent_body_unknown">Running in a background session.</string>
+    <string name="notify_shell_title">%1$s finished</string>
+    <string name="notify_shell_body_exit">Exited with code %1$d.</string>
+    <string name="notify_shell_body_status">Status: %1$s.</string>
     <string name="notify_retry_title">Retrying %1$s</string>
     <string name="notify_retry_body">Attempt %1$d, next at %2$s.</string>
     <string name="notify_update_title">OpenCode %1$s is available</string>

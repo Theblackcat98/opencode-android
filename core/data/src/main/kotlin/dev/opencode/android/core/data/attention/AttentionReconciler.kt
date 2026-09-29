@@ -99,6 +99,7 @@ object AttentionReconciler {
             turnDraft(state, session)?.let(::add)
             retryDraft(state, session)?.let(::add)
         }
+        state.finishedShells.forEach { shell -> shellDraft(state, shell)?.let(::add) }
         updateDraft(state)?.let(::add)
     }
 
@@ -198,8 +199,41 @@ object AttentionReconciler {
         }
     }
 
-    private fun retryDraft(state: AttentionState, session: AttentionSession): AttentionDraft? {
-        val activity = session.activity
+    /**
+     * A command the user is not watching finished.
+     *
+     * **Three filters, and the third is the whole reason this is here.** Quiet hours apply (a shell
+     * notification is information, not a request the agent is blocked on), the channel can be muted
+     * like any other, and a completion in the location whose shell panel is on screen produces
+     * nothing — because the user is looking at the output arriving.
+     *
+     * The action opens the shell panel rather than a session, since a command belongs to a location
+     * and not to a conversation.
+     */
+    private fun shellDraft(state: AttentionState, shell: AttentionShell): AttentionDraft? {
+        if (state.suppresses(shell.id, AttentionChannel.SHELL_FINISHED)) return null
+        if (state.openDirectory != null && state.openDirectory == shell.directory) return null
+        return AttentionDraft(
+            slot = NotificationSlot.ShellFinished(
+                serverId = state.serverId,
+                shellId = shell.id,
+                directory = shell.directory,
+                completedAtMillis = shell.completedAtMillis,
+            ),
+            channel = AttentionChannel.SHELL_FINISHED,
+            content = NotificationContent.ShellFinished(
+                sessionId = "",
+                command = shell.command,
+                status = shell.status,
+                exitCode = shell.exitCode,
+                directory = shell.directory,
+            ),
+            actions = listOf(AttentionAction.OpenLocation(state.serverId, shell.directory)),
+            timestampMillis = state.nowMillis,
+        )
+    }
+
+    private fun retryDraft(state: AttentionState, session: AttentionSession): AttentionDraft? {        val activity = session.activity
         if (activity !is SessionActivity.Retrying) return null
         if (state.suppresses(session.id, AttentionChannel.RETRY)) return null
         return AttentionDraft(

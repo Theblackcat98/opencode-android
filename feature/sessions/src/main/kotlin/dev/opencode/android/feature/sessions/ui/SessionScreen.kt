@@ -80,6 +80,14 @@ fun SessionScreen(
     onOpenChangedFile: ((String) -> Unit)? = null,
     /** The per-message actions, which is where "revert to here" and "fork from here" live. */
     messageActions: (@Composable (String) -> Unit)? = null,
+    /**
+     * Drawn between the request dock and the transcript, and above the composer.
+     *
+     * A slot rather than a dependency because the strip is Phase 7's and the session screen is
+     * Phase 2's: a feature may not import another feature, so the app module — which composes both —
+     * supplies it, and `{}` draws nothing on a build that does not offer it.
+     */
+    subagentSlot: @Composable () -> Unit = {},
 ) {
     val listState = rememberLazyListState()
     val atBottom by remember {
@@ -136,6 +144,7 @@ fun SessionScreen(
                 RetryBanner(retry = retry, now = state.now, onOpenLink = onOpenLink)
             }
             requestSlot()
+            subagentSlot()
             Box(Modifier.weight(1f).fillMaxWidth()) {
                 TimelineList(
                     messages = state.messages,

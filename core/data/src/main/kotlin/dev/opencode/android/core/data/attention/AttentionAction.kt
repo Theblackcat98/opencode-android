@@ -77,6 +77,23 @@ sealed interface AttentionAction {
         override val sessionId: String,
     ) : AttentionAction
 
+    /**
+     * Opens a location's shell panel, which is what a finished command leads to.
+     *
+     * A command belongs to a checkout, not to a conversation, so there is no session to open — and
+     * [sessionId] is the empty string rather than `null` because the interface declares it
+     * non-nullable for the permission and form actions that have to name one. The graph treats an
+     * empty session id as "no session", which is the same thing said once.
+     */
+    @Serializable
+    @SerialName("openLocation")
+    data class OpenLocation(
+        override val serverId: String,
+        val directory: String,
+    ) : AttentionAction {
+        override val sessionId: String = ""
+    }
+
     /** `session.interrupt` from the ongoing notification. */
     @Serializable
     @SerialName("interrupt")
@@ -193,6 +210,7 @@ class AttentionActionCodes {
         is AttentionAction.AnswerForm -> "answer:$serverId:$sessionId:$formId:${fieldKey.orEmpty()}"
         is AttentionAction.CancelForm -> "cancel:$serverId:$sessionId:$formId"
         is AttentionAction.OpenSession -> "open:$serverId:$sessionId"
+        is AttentionAction.OpenLocation -> "openLocation:$serverId:$directory"
         is AttentionAction.Interrupt -> "interrupt:$serverId:$sessionId"
     }
 }

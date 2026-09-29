@@ -41,9 +41,12 @@ import dev.opencode.android.feature.requests.ui.AttentionSettingsSheet
 import dev.opencode.android.feature.requests.ui.RequestActions
 import dev.opencode.android.feature.requests.ui.messageRes
 import dev.opencode.android.feature.requests.ui.takesArgument
+import dev.opencode.android.feature.execution.SubagentStrip
+import dev.opencode.android.feature.execution.SubagentsViewModel
 import dev.opencode.android.feature.requests.ui.RequestDock
 import dev.opencode.android.feature.sessions.R
 import dev.opencode.android.feature.sessions.ui.SessionActionsSheet
+import dev.opencode.android.feature.sessions.ui.SessionMenuRow
 import dev.opencode.android.feature.sessions.ui.SessionManagementViewModel
 import dev.opencode.android.feature.sessions.ui.SessionScreen
 import dev.opencode.android.feature.sessions.ui.SessionViewModel
@@ -72,20 +75,28 @@ fun SessionHost(
     sessionId: String,
     onNavigateBack: () -> Unit,
     onSessionDeleted: () -> Unit,
+    onOpenChild: (String) -> Unit = {},
     onOpenSessionList: () -> Unit = {},
     onNewSession: () -> Unit = {},
     onOpenReview: (String?) -> Unit = {},
+    onOpenShells: (String) -> Unit = {},
+    onOpenTerminal: (String, String?) -> Unit = { _, _ -> },
+    onOpenSubagents: () -> Unit = {},
+    onOpenWorktrees: (String) -> Unit = {},
+    onOpenSessionTerminals: () -> Unit = {},
     onUndoConfirmed: (String) -> Unit = {},
     onForked: (String) -> Unit = {},
     modifier: Modifier = Modifier,
     timeline: SessionViewModel = hiltViewModel(),
     composer: ComposerViewModel = hiltViewModel(),
     management: SessionManagementViewModel = hiltViewModel(),
+    subagents: SubagentsViewModel = hiltViewModel(),
 ) {
     val state by timeline.state.collectAsStateWithLifecycle()
     val composerState by composer.state.collectAsStateWithLifecycle()
     val childCount by management.childCount.collectAsStateWithLifecycle()
     val forked by management.forked.collectAsStateWithLifecycle()
+    val strip by subagents.strip.collectAsStateWithLifecycle()
     val favorites by composer.modelFavorites.collectAsStateWithLifecycle()
     val recents by composer.modelRecents.collectAsStateWithLifecycle()
     val clipboard = LocalClipboardManager.current
@@ -123,6 +134,10 @@ fun SessionHost(
         timeline.open(sessionId)
         composer.open(sessionId)
         management.openSession(sessionId)
+        // The strip is derived from the same session rows the timeline shows, so it is bound here
+        // rather than when its own screen opens: a subagent that starts mid-turn has to appear in the
+        // composer without the user going anywhere.
+        subagents.open(sessionId)
     }
 
     // The composer's one-shot actions. A `LaunchedEffect` with the effect flow as the key collects
@@ -185,6 +200,13 @@ fun SessionHost(
         modifier = modifier,
         requestSlot = { RequestDock(requests = composerState.requests, actions = requestActions) },
         onOpenChangedFile = { path -> onOpenReview(path) },
+        subagentSlot = {
+            SubagentStrip(
+                state = strip,
+                onOpen = { childId -> onOpenChild(childId) },
+                onInterrupt = subagents::interrupt,
+            )
+        },
         messageActions = { messageId ->
             // Only a user message is a boundary the server accepts, so only a user message gets the
             // rows; the timeline asks for them and this answers.
@@ -260,6 +282,17 @@ fun SessionHost(
             onOpenAttention = { actionsOpen = false; attentionOpen = true },
             onOpenHistory = { actionsOpen = false; historyOpen = true },
             onOpenExperimental = { actionsOpen = false; experimentalOpen = true },
+            executionSlot = {
+                ExecutionMenuRows(
+                    directory = state.directory.orEmpty(),
+                    projectId = state.projectId,
+                    onOpenShells = onOpenShells,
+                    onOpenTerminal = onOpenTerminal,
+                    onOpenSubagents = onOpenSubagents,
+                    onOpenWorktrees = onOpenWorktrees,
+                    onOpenSessionTerminals = onOpenSessionTerminals,
+                )
+            },
         )
     }
 
@@ -396,5 +429,56 @@ private fun RevertConfirmationDialog(
                 Text(stringResource(SessionsR.string.action_dismiss))
             }
         },
+    )
+}
+
+/**
+ * Phase 7's rows in the session's overflow menu (plan §6, "Subagents, shells, terminals and
+ * worktrees").
+ *
+ * **They are here, in the app module, because the sessions feature may not import the execution
+ * feature.** The menu is the session screen's own sheet and the panels are another feature's, so the
+ * composition root is the only place that can hold both — the same arrangement Phase 5 used for the
+ * composer's client commands and Phase 6 for the review.
+ *
+ * **The location rows are disabled without a location.** Shells and terminals are location-scoped and a
+ * session that has not loaded its projection yet has no directory; offering the row and answering with
+ * an empty one would open a panel for the server's working directory, which is a different checkout
+ * and therefore a different set of commands.
+ */
+@Composable
+private fun ExecutionMenuRows(
+    directory: String,
+    projectId: String?,
+    onOpenShells: (String) -> Unit,
+    onOpenTerminal: (String, String?) -> Unit,
+    onOpenSubagents: () -> Unit,
+    onOpenWorktrees: (String) -> Unit,
+    onOpenSessionTerminals: () -> Unit,
+) {
+    SessionMenuRow(
+        label = stringResource(SessionsR.string.session_execution_subagents),
+        onClick = onOpenSubagents,
+    )
+    SessionMenuRow(
+        label = stringResource(SessionsR.string.session_execution_shells),
+        enabled = directory.isNotBlank(),
+        onClick = { onOpenShells(directory) },
+    )
+    SessionMenuRow(
+        label = stringResource(SessionsR.string.session_execution_terminal),
+        enabled = directory.isNotBlank(),
+        onClick = { onOpenTerminal(directory, null) },
+    )
+    // A worktree panel is keyed by a project and the route requires one, so the row is off until the
+    // session's projection has said which project it belongs to.
+    SessionMenuRow(
+        label = stringResource(SessionsR.string.session_execution_worktrees),
+        enabled = projectId != null,
+        onClick = { projectId?.let(onOpenWorktrees) },
+    )
+    SessionMenuRow(
+        label = stringResource(SessionsR.string.session_execution_session_terminals),
+        onClick = onOpenSessionTerminals,
     )
 }

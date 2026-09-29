@@ -30,6 +30,17 @@ enum class AttentionChannel(
     /** A subagent finished. Its own channel so it can be silenced separately. */
     SUBAGENT_FINISHED("attention.subagent", AttentionPriority.DEFAULT),
 
+    /**
+     * A shell command finished.
+     *
+     * **Its own channel, and not the turn channel.** A build the user started from the phone finishing
+     * is the thing they are waiting for, and they may well have muted that session's turns because
+     * they do not want a notification every time the agent finishes a sentence. A long build can also
+     * be a terminal the user is watching, which is why [NotificationSlot.ShellFinished] is about the
+     * command and not about a session.
+     */
+    SHELL_FINISHED("attention.shell", AttentionPriority.DEFAULT),
+
     /** A provider retry is scheduled, or a usage limit was hit. */
     RETRY("attention.retry", AttentionPriority.DEFAULT),
 

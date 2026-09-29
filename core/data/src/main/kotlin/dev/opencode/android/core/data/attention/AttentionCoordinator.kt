@@ -1,6 +1,7 @@
 package dev.opencode.android.core.data.attention
 
 import dev.opencode.android.core.data.connection.ServerConnectionManager
+import dev.opencode.android.core.data.execution.FinishedShell
 import dev.opencode.android.core.data.server.InstallationState
 import dev.opencode.android.core.data.server.PendingRequest
 import dev.opencode.android.core.data.server.ServerDataRegistry
@@ -45,6 +46,28 @@ class OpenSessionTracker @Inject constructor() {
 }
 
 /**
+ * Which location's shell panel is in front (Phase 7).
+ *
+ * **The same idea as [OpenSessionTracker], and for the same reason.** A finished command belongs to a
+ * checkout, so "the user is watching this one" is a statement about a directory rather than a
+ * session, and it cannot be derived from the session the app happens to have open: a shell panel is
+ * reached from the home, not from a conversation. Publishing it once is what stops the notification
+ * from arriving for output the user is reading.
+ */
+@Singleton
+class OpenLocationTracker @Inject constructor() {
+    private val _open = MutableStateFlow<String?>(null)
+
+    /** The directory whose shell panel is resumed, or `null` on every other screen. */
+    val open: StateFlow<String?> = _open.asStateFlow()
+
+    /** Called by the shell panel when it resumes, and again when it is left. */
+    fun set(directory: String?) {
+        _open.value = directory
+    }
+}
+
+/**
  * Drives the attention layer from the stores (plan §6, Phase 4).
  *
  * **All the decisions are elsewhere.** What should be on screen is [AttentionReconciler]'s, which
@@ -69,6 +92,7 @@ class AttentionCoordinator @Inject constructor(
     private val connections: ServerConnectionManager,
     private val preferences: AttentionPreferences,
     private val openSessions: OpenSessionTracker,
+    private val openLocations: OpenLocationTracker,
     private val sink: AttentionSink,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -139,14 +163,25 @@ class AttentionCoordinator @Inject constructor(
             set.requests.permissionsById,
             set.requests.formsById,
         ) { permissions, forms -> pendingRequestsOf(permissions, forms) }
+        // Seven inputs, so the combination is nested. `combine` has typed overloads up to five and an
+        // `Array` overload beyond that, and the array one would hand the transform an `Array<Any?>` —
+        // which is how a `pending` parameter quietly becomes `Any?` and a `null` reaches a state
+        // field that is not nullable. Two typed combines keep every parameter a real type.
+        val focus = combine(
+            settings,
+            openSessions.open,
+            openLocations.open,
+            set.execution.finishedShells,
+        ) { all, open, openDirectory, finished ->
+            Focus(all, open, openDirectory, finished)
+        }
         combine(
             set.sessions.rows,
             requests,
             set.installation.state,
-            settings,
-            openSessions.open,
-        ) { rows, pending, installation, all, open ->
-            buildState(set, rows, pending, installation, all, open)
+            focus,
+        ) { rows, pending, installation, f ->
+            buildState(set, rows, pending, installation, f)
         }.collect { state ->
             reconcile(state)
             autoApprove(set, state.nowMillis)
@@ -158,8 +193,7 @@ class AttentionCoordinator @Inject constructor(
         rows: List<SessionRow>,
         pending: List<PendingRequest>,
         installation: InstallationState.Installation,
-        all: AttentionSettings,
-        open: String?,
+        focus: Focus,
     ): AttentionState {
         val clock = now()
         return AttentionState(
@@ -167,12 +201,14 @@ class AttentionCoordinator @Inject constructor(
             serverName = connections.activeConnection.value?.serverProfile?.name.orEmpty(),
             sessions = rows.associate { row -> row.id to row.toAttentionSession(rows) },
             pending = pending,
+            finishedShells = focus.finished.map(FinishedShell::toAttentionShell),
             updateVersion = installation.updateAvailable,
-            openSessionId = open,
-            mutedSessions = all.mutedSessions,
-            quietHours = all.quietHoursFor(set.serverId),
+            openSessionId = focus.openSession,
+            openDirectory = focus.openDirectory,
+            mutedSessions = focus.settings.mutedSessions,
+            quietHours = focus.settings.quietHoursFor(set.serverId),
             autoApprovedSessions = AutoApprovePolicy.autoApprovedSessions(
-                settings = all,
+                settings = focus.settings,
                 sessionIds = pending.map(PendingRequest::sessionID),
                 now = clock,
             ),
@@ -180,6 +216,19 @@ class AttentionCoordinator @Inject constructor(
             utcOffsetMillis = utcOffsetMillis(clock),
         )
     }
+
+    /**
+     * The four inputs that answer "what is the user looking at, and what are they allowed to be told".
+     *
+     * A private value type rather than seven parameters, so the nested `combine` has one typed
+     * transform to return and the compiler checks the whole bundle.
+     */
+    private data class Focus(
+        val settings: AttentionSettings,
+        val openSession: String?,
+        val openDirectory: String?,
+        val finished: List<FinishedShell>,
+    )
 
     private fun reconcile(state: AttentionState) {
         // The badge comes from the same pass as the notifications, so the two cannot disagree about
@@ -253,6 +302,16 @@ private fun SessionRow.toAttentionSession(rows: List<SessionRow>): AttentionSess
 
 /** The device's own offset from UTC, which is the frame a quiet-hours window is measured in. */
 private fun utcOffsetMillis(clock: Long): Long = TimeZone.getDefault().getOffset(clock).toLong()
+
+/** A ledger entry as the reconciler reads it; the two types are the same facts in two layers. */
+private fun FinishedShell.toAttentionShell(): AttentionShell = AttentionShell(
+    id = id,
+    command = command,
+    status = status,
+    exitCode = exitCode,
+    directory = directory,
+    completedAtMillis = completedAtMillis,
+)
 
 /**
  * The clock.

@@ -19,6 +19,14 @@ data class ExperimentalSettings(
     val fileWrites: Boolean = false,
     /** Whether this app may export and import transcripts. Off by default. */
     val sessionTransfer: Boolean = false,
+    /**
+     * Whether this app may use the session's persistent terminals.
+     *
+     * Off by default for the same reason as the other two and one more: eleven routes, two of which
+     * (`shutdown`, `handoff`) end the terminals of every session on the server. The switch is what
+     * says the app may call them; the first `404` says whether it can.
+     */
+    val persistentPty: Boolean = false,
 )
 
 /**
@@ -41,6 +49,8 @@ interface ExperimentalPreferences {
     suspend fun setFileWrites(enabled: Boolean)
 
     suspend fun setSessionTransfer(enabled: Boolean)
+
+    suspend fun setPersistentPty(enabled: Boolean)
 }
 
 /** The DataStore-backed store the app uses. */
@@ -53,6 +63,7 @@ class DataStoreExperimentalPreferences @Inject constructor(
         ExperimentalSettings(
             fileWrites = preferences[FILE_WRITES] ?: false,
             sessionTransfer = preferences[SESSION_TRANSFER] ?: false,
+            persistentPty = preferences[PERSISTENT_PTY] ?: false,
         )
     }
 
@@ -64,8 +75,13 @@ class DataStoreExperimentalPreferences @Inject constructor(
         context.experimentalPreferences.edit { it[SESSION_TRANSFER] = enabled }
     }
 
+    override suspend fun setPersistentPty(enabled: Boolean) {
+        context.experimentalPreferences.edit { it[PERSISTENT_PTY] = enabled }
+    }
+
     private companion object {
         val FILE_WRITES = booleanPreferencesKey("fs_write")
         val SESSION_TRANSFER = booleanPreferencesKey("session_transfer")
+        val PERSISTENT_PTY = booleanPreferencesKey("persistent_pty")
     }
 }

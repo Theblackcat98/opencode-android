@@ -48,6 +48,24 @@ sealed interface NotificationSlot {
         val idleAtMillis: Long,
     ) : NotificationSlot
 
+    /**
+     * A shell command finished.
+     *
+     * **No session, and that is the point.** A command started from the shell panel, or by the agent
+     * in a session the user is not looking at, has no session to open — the thing to open is the
+     * shell panel for its location. [directory] is therefore part of the slot, and the action is the
+     * one that takes the user there.
+     */
+    data class ShellFinished(
+        override val serverId: String,
+        val shellId: String,
+        val directory: String,
+        /** The instant the command completed, which is what makes a second run a second slot. */
+        val completedAtMillis: Long,
+    ) : NotificationSlot {
+        override val sessionId: String? = null
+    }
+
     data class Retry(
         override val serverId: String,
         override val sessionId: String,
@@ -143,6 +161,16 @@ sealed interface NotificationContent {
         val outcome: Outcome,
     ) : NotificationContent
 
+    /** A command finished: what it was, how it ended, and which location's panel shows it. */
+    data class ShellFinished(
+        override val sessionId: String,
+        val command: String,
+        /** `exited`, `killed` or `timeout`, the server's own word. */
+        val status: String,
+        val exitCode: Int?,
+        val directory: String,
+    ) : NotificationContent
+
     data class RetryScheduled(
         override val sessionId: String,
         val sessionTitle: String,
@@ -208,6 +236,24 @@ data class AttentionSession(
 }
 
 /**
+ * One finished shell command as the attention layer needs it.
+ *
+ * **A projection of a transition, and the transition is the client's.** A shell command has no
+ * `viewed` field and no unread rule, so "the user has been told" is not something the server can
+ * answer; the only honest record is the client's own, which is why the reconciler is fed a *list of
+ * completions the client observed* rather than the running list. [directory] is what the notification
+ * opens, and it is also what "the user was already looking at it" is measured against.
+ */
+data class AttentionShell(
+    val id: String,
+    val command: String,
+    val status: String,
+    val exitCode: Int?,
+    val directory: String,
+    val completedAtMillis: Long,
+)
+
+/**
  * Everything the reconciler reads.
  *
  * Held as one value so the diff is a single comparison and so "the same state twice produces no
@@ -218,6 +264,21 @@ data class AttentionState(
     val serverName: String = "",
     val sessions: Map<String, AttentionSession> = emptyMap(),
     val pending: List<PendingRequest> = emptyList(),
+    /**
+     * The commands this client watched finish, newest last.
+     *
+     * Bounded and dropped as the user reads them, because the alternative — deriving completions from
+     * the *running* list — would need a per-shell "notified" flag the server does not keep and the
+     * client would have to invent.
+     */
+    val finishedShells: List<AttentionShell> = emptyList(),
+    /**
+     * The location whose shell panel is on screen, which produces no shell notification.
+     *
+     * The same idea as [openSessionId] and for the same reason: "the user is looking at it" is a fact
+     * about which screen is in front, and it is published once rather than re-derived by each caller.
+     */
+    val openDirectory: String? = null,
     /** The version `installation.update-available` announced, or `null` once it is dismissed. */
     val updateVersion: String? = null,
     /** The session the user is looking at, which produces no notification. */

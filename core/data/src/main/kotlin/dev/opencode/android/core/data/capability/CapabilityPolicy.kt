@@ -21,6 +21,17 @@ enum class ExperimentalRoute {
 
     /** `POST /api/experimental/session/import` — importing a transcript. */
     SESSION_IMPORT,
+
+    /**
+     * The eleven `api/experimental/…/persistent-pty/…` routes — session terminals.
+     *
+     * **One switch for eleven routes, deliberately.** They are one feature that lives or dies
+     * together: the host lifecycle routes answer `503` when the persistent-PTY host is not running,
+     * and a client that probed them separately would show a terminal picker for a feature whose
+     * *host* it had not established. Probing the list route is what tells the client the service is
+     * there, and the answer is kept as one value so the eleven cannot disagree.
+     */
+    PERSISTENT_PTY,
     ;
 
     /** The label the settings switch shows, which `strings.xml` supplies. */

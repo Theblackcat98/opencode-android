@@ -1,6 +1,7 @@
 package dev.opencode.android.core.data.server
 
 import dev.opencode.android.core.data.timeline.TimelineDivergence
+import dev.opencode.android.core.data.execution.ExecutionSurface
 import dev.opencode.android.core.database.cache.ReadCacheStore
 import dev.opencode.android.core.model.AgentInfo
 import dev.opencode.android.core.model.LocationInfo
@@ -12,6 +13,17 @@ import dev.opencode.android.core.model.event.InstallationUpdateAvailable
 import dev.opencode.android.core.model.event.FilesystemChanged
 import dev.opencode.android.core.model.event.InstallationUpdated
 import dev.opencode.android.core.model.event.ProjectUpdated
+import dev.opencode.android.core.model.event.PersistentPtyAdded
+import dev.opencode.android.core.model.event.PersistentPtyRemoved
+import dev.opencode.android.core.model.event.PtyCreated
+import dev.opencode.android.core.model.event.PtyDeleted
+import dev.opencode.android.core.model.event.PtyExited
+import dev.opencode.android.core.model.event.PtyUpdated
+import dev.opencode.android.core.model.event.ShellCreated
+import dev.opencode.android.core.model.event.ShellDeleted
+import dev.opencode.android.core.model.event.ShellExited
+import dev.opencode.android.core.model.event.WorktreeResolved
+import dev.opencode.android.core.model.event.WorktreeUpdated
 import dev.opencode.android.core.model.event.SessionRevertCleared
 import dev.opencode.android.core.model.event.SessionRevertCommitted
 import dev.opencode.android.core.model.event.SessionRevertStaged
@@ -48,8 +60,7 @@ class ServerDataSet(
     private val scope: CoroutineScope,
     private val cache: ReadCacheStore,
     private val selfCheck: TimelineSelfCheck = TimelineSelfCheck.Noop,
-) {
-    /** `project.list`. Not location-scoped: one list for the whole server. */
+) {    /** `project.list`. Not location-scoped: one list for the whole server. */
     val projects: SyncedResource<List<Project>> = SyncedResource(
         key = ResourceKey(serverId),
         name = "project.list",
@@ -84,6 +95,17 @@ class ServerDataSet(
      * names one.
      */
     val review: ReviewStore = ReviewStore(serverId, api)
+
+    /**
+     * The Phase 7 execution surface: shells and terminals per location, worktrees per project, and a
+     * session's persistent terminals.
+     *
+     * The stores are created per location rather than held as one list, because the server scopes
+     * `shell.list` and `pty.list` by `location[directory]` and `worktree.list` by a *required*
+     * `projectID`; a store that was not keyed the same way as the route would answer a screen with
+     * the wrong checkout's commands, and killing one of those kills the wrong process.
+     */
+    val execution: ExecutionSurface = ExecutionSurface(serverId, api, scope)
 
     /** `session.revert.*`, `session.fork` and `session.diff`: the undo/redo/history operations. */
     val revertCommands: RevertCommands = RevertCommands(api, timeline = { timelines[it] })
@@ -209,6 +231,7 @@ class ServerDataSet(
         defaultModels.values.forEach { it.invalidate() }
         timelines.values.forEach { it.resync() }
         composerCatalogs.resync()
+        execution.resync()
         val directories = (locations.keys + requests.knownDirectories).toSet()
         if (directories.isEmpty()) {
             scope.launch { requests.resync(null) }
@@ -243,8 +266,19 @@ class ServerDataSet(
                 defaultModels.remove(directory)?.clear()
                 requests.dropLocation(directory)
                 composerCatalogs.dropLocation(directory)
+                execution.dropLocation(directory)
                 scope.launch { runCatching { cache.dropLocation(serverId, directory) } }
             }
+
+            // The Phase 7 execution surface: the per-location shell and terminal lists, the per-project
+            // worktrees, and a session's persistent terminals. Every one of them is applied by the
+            // surface, which knows which store a location-scoped event belongs to — a shell of one
+            // checkout must not appear in another checkout's panel.
+            is ShellCreated, is ShellExited, is ShellDeleted,
+            is PtyCreated, is PtyUpdated, is PtyExited, is PtyDeleted,
+            is PersistentPtyAdded, is PersistentPtyRemoved,
+            is WorktreeUpdated, is WorktreeResolved,
+            -> execution.apply(event)
 
             is InstallationUpdated, is InstallationUpdateAvailable -> installation.apply(event)
 
@@ -320,5 +354,6 @@ class ServerDataSet(
         vcsStores.clear()
         files.clear()
         browser.clear()
+        execution.clear()
     }
 }

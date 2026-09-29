@@ -17,6 +17,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
+import dev.opencode.android.OpenLocationTarget
 import dev.opencode.android.OpenSessionTarget
 import dev.opencode.android.core.model.PermissionReply
 import dev.opencode.android.feature.composer.ui.ComposerViewModel
@@ -120,6 +121,50 @@ data class ReviewRoute(
 )
 
 /**
+ * The shell panel of one checkout (features doc §30).
+ *
+ * The directory is the whole identity: shells are location-scoped, so a panel without one could not
+ * say which checkout's commands it is listing.
+ */
+@Serializable
+data class ShellsRoute(val serverId: String? = null, val directory: String)
+
+/** The terminal list and the live surface of one checkout (features doc §31). */
+@Serializable
+data class TerminalRoute(
+    val serverId: String? = null,
+    val directory: String,
+    /**
+     * The project's `commands.start`, offered as the screen's quick action.
+     *
+     * It is passed rather than read from the store so the route is the only place that knows which
+     * project a session belongs to, and the terminal does not have to.
+     */
+    val startCommand: String? = null,
+)
+
+/** The session family tree of one session, with parent, child and sibling navigation. */
+@Serializable
+data class SubagentsRoute(val serverId: String? = null, val sessionId: String)
+
+/**
+ * The worktrees of one project, and the way to move a session into one (features doc §29).
+ *
+ * [sessionId] is the session the "move here" rows act on, or `null` when the panel was opened from a
+ * project rather than from a session.
+ */
+@Serializable
+data class WorktreesRoute(
+    val serverId: String? = null,
+    val projectId: String,
+    val sessionId: String? = null,
+)
+
+/** A session's persistent terminals, which are experimental and capability-gated (features doc §32). */
+@Serializable
+data class SessionTerminalsRoute(val serverId: String? = null, val sessionId: String)
+
+/**
  * The navigation graph.
  *
  * Phase 1's information architecture is the server registry, so it is the start destination
@@ -135,6 +180,7 @@ data class ReviewRoute(
 fun OpenCodeApp(
     sharedPayload: String? = null,
     openSession: OpenSessionTarget? = null,
+    openLocation: OpenLocationTarget? = null,
     modifier: Modifier = Modifier,
     navController: NavHostController = rememberNavController(),
     composer: ComposerViewModel = hiltViewModel(),
@@ -151,6 +197,14 @@ fun OpenCodeApp(
         val target = openSession ?: return@LaunchedEffect
         target.serverId?.let { navController.navigate(HomeRoute(it)) { launchSingleTop = true } }
         navController.navigate(SessionRoute(target.serverId, target.sessionId)) { launchSingleTop = true }
+    }
+
+    // A finished shell command names a checkout rather than a session, so it lands on that checkout's
+    // command panel. Switching server first is the same reason as above.
+    LaunchedEffect(openLocation) {
+        val target = openLocation ?: return@LaunchedEffect
+        target.serverId?.let { navController.navigate(HomeRoute(it)) { launchSingleTop = true } }
+        navController.navigate(ShellsRoute(target.serverId, target.directory)) { launchSingleTop = true }
     }
 
     NavHost(
@@ -267,6 +321,26 @@ fun OpenCodeApp(
                         ),
                     )
                 },
+                // The subagent strip opens the child session in place, which is the only place a
+                // subagent's transcript is read from.
+                onOpenChild = { childId ->
+                    navController.navigate(SessionRoute(route.serverId, childId)) { launchSingleTop = true }
+                },
+                onOpenShells = { directory ->
+                    navController.navigate(ShellsRoute(route.serverId, directory))
+                },
+                onOpenTerminal = { directory, startCommand ->
+                    navController.navigate(TerminalRoute(route.serverId, directory, startCommand))
+                },
+                onOpenSubagents = {
+                    navController.navigate(SubagentsRoute(route.serverId, route.sessionId))
+                },
+                onOpenWorktrees = { projectId ->
+                    navController.navigate(WorktreesRoute(route.serverId, projectId, route.sessionId))
+                },
+                onOpenSessionTerminals = {
+                    navController.navigate(SessionTerminalsRoute(route.serverId, route.sessionId))
+                },
                 onUndoConfirmed = { messageId -> composer.stageUndo(messageId) },
                 // A fork is a new session id, so the graph navigates to it rather than the screen
                 // re-rendering the one it is on. The view model publishes the id once.
@@ -298,6 +372,51 @@ fun OpenCodeApp(
                 onOpenSession = { sessionId ->
                     navController.navigate(SessionRoute(route.serverId, sessionId))
                 },
+            )
+        }
+
+        composable<ShellsRoute> { entry ->
+            val route = entry.toRoute<ShellsRoute>()
+            ShellsHost(
+                directory = route.directory,
+                onNavigateBack = { navController.popBackStack() },
+            )
+        }
+
+        composable<TerminalRoute> { entry ->
+            val route = entry.toRoute<TerminalRoute>()
+            TerminalHost(
+                directory = route.directory,
+                startCommand = route.startCommand,
+                onNavigateBack = { navController.popBackStack() },
+            )
+        }
+
+        composable<SubagentsRoute> { entry ->
+            val route = entry.toRoute<SubagentsRoute>()
+            SubagentsHost(
+                sessionId = route.sessionId,
+                onOpenSession = { sessionId ->
+                    navController.navigate(SessionRoute(route.serverId, sessionId))
+                },
+                onNavigateBack = { navController.popBackStack() },
+            )
+        }
+
+        composable<WorktreesRoute> { entry ->
+            val route = entry.toRoute<WorktreesRoute>()
+            WorktreesHost(
+                projectId = route.projectId,
+                sessionId = route.sessionId,
+                onNavigateBack = { navController.popBackStack() },
+            )
+        }
+
+        composable<SessionTerminalsRoute> { entry ->
+            val route = entry.toRoute<SessionTerminalsRoute>()
+            SessionTerminalsHost(
+                sessionId = route.sessionId,
+                onNavigateBack = { navController.popBackStack() },
             )
         }
     }

@@ -49,6 +49,12 @@ enum class AttentionChannelSpec(
         R.string.channel_subagent_description,
         NotificationManager.IMPORTANCE_DEFAULT,
     ),
+    SHELL_FINISHED(
+        AttentionChannel.SHELL_FINISHED,
+        R.string.channel_shell_name,
+        R.string.channel_shell_description,
+        NotificationManager.IMPORTANCE_DEFAULT,
+    ),
     RETRY(
         AttentionChannel.RETRY,
         R.string.channel_retry_name,

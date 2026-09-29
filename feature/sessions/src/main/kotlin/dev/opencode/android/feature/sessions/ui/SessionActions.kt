@@ -69,6 +69,14 @@ fun SessionActionsSheet(
      * settings page of switches that do nothing is worse than no page.
      */
     onOpenExperimental: (() -> Unit)? = null,
+    /**
+     * Phase 7's rows, drawn after this feature's own.
+     *
+     * A slot for the same reason [onOpenHistory] is a callback: the terminals, shells, worktrees and
+     * subagent tree belong to the execution feature, which the session screen may not import. The app
+     * module supplies the rows and the default draws nothing.
+     */
+    executionSlot: @Composable () -> Unit = {},
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var renaming by remember { mutableStateOf(false) }
@@ -90,6 +98,7 @@ fun SessionActionsSheet(
             }
             onOpenHistory?.let { open -> SheetAction(R.string.session_history) { open() } }
             onOpenExperimental?.let { open -> SheetAction(R.string.session_experimental) { open() } }
+            executionSlot()
             SheetAction(R.string.session_delete) { confirmingDelete = true }
         }
     }
@@ -170,6 +179,23 @@ fun RenameDialog(
 private fun SheetAction(labelRes: Int, onClick: () -> Unit) {
     TextButton(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
         Text(stringResource(labelRes), modifier = Modifier.fillMaxWidth())
+    }
+}
+
+/**
+ * One row of a session's overflow sheet, with an enabled flag.
+ *
+ * Public because the app module composes Phase 7's rows into this sheet, and a row the composition
+ * root cannot draw is a row the composition root cannot add.
+ */
+@Composable
+fun SessionMenuRow(
+    label: String,
+    onClick: () -> Unit,
+    enabled: Boolean = true,
+) {
+    TextButton(onClick = onClick, enabled = enabled, modifier = Modifier.fillMaxWidth()) {
+        Text(label, modifier = Modifier.fillMaxWidth())
     }
 }
 
