@@ -171,7 +171,7 @@ Run on A1 (smallest) and A3, with TalkBack on and the font size at the platform 
 | K1 | Every control is announced with a name | ✗ fail in part (TalkBack is installed on the emulator but its speech cannot be heard or captured here, so this was checked from the accessibility tree: the static audit `tools/audit-accessibility.mjs` reports 0 findings and nearly every control dumped carried a name, but the Home screen's floating "New session" button has none and could only be tapped by coordinate) |
 | K2 | The timeline is navigable, and a finished turn is announced | n/a (TalkBack was not run: no way to hear or capture its output here) |
 | K3 | A permission request is announced when it arrives while the app is open | n/a (TalkBack was not run) |
-| K4 | Every screen is usable at the largest font size with nothing clipped | |
+| K4 | Every screen is usable at the largest font size with nothing clipped | n/a (partial, not a pass: `font_scale` 2.0 on the emulator; checked the Servers list, the Dev home, a session and the New session sheet, which all stay readable with wrapped text and no truncated controls. The session header (a three-line title, the model line and the context line) takes about 40% of the screen and, with the completion popup open, the timeline is left with about a quarter; the sheet's "Browse the server's files" wraps to three lines. Roughly thirty other screens were not opened at that size) |
 | K5 | Focus order follows visual order on every screen | n/a (TalkBack was not run) |
 | K6 | Contrast of every text pair meets 4.5:1, including the code palette | n/a (no contrast ratio was computed; `docs/ACCESSIBILITY_AUDIT.md` §3 says none is computed anywhere and that it needs a colour tool) |
 
