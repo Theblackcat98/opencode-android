@@ -261,6 +261,20 @@ Found by driving the app against a live server on an emulator, which no test had
   headings and table cells were parsed.
 - "Changed 1 files" is now "Changed 1 file".
 - With a model search typed and no match, the list said "Connect a provider on the server first".
+- **The config editor said nothing when a write failed.** With `.opencode/opencode.jsonc` read-only on the host,
+  confirming the write made the server answer `500` and the editor showed no error at all (manual test G8):
+  `ConfigEditorScreen` took the state's `error`, its `outcome` and an `onDismissError` and drew none of them, so the
+  failure was in the view model and nowhere on the display. It now draws an error row above Save with the server's
+  own reason, or the status it answered with when it gave none ("It answered HTTP 500 and gave no reason."), the
+  `err_…` reference the server logged when it sent one, and Dismiss; the row stays until the text is edited or Save
+  is tried again, and the document stays in the box. The same screen never drew a write that went through, or a file
+  that could not be read; both are shown now, and Save is off while the file is unreadable, because the empty box
+  was not the file. `writesUsable` follows the route's own state instead of reading it when the switch changed, and
+  the Save hint names "Edit files on the server" in Experimental features rather than "settings".
+  `ConfigEditorWriteFailureTest` (the real view model, surface and screen over MockWebServer) fails five of its six
+  cases on the old screen; the sixth, that the view model keeps the error and the draft, always held.
+  `ActionError.serverMessage` separates what the server said from the client's `HTTP 500` placeholder. Not yet seen
+  on a device.
 
 Also added while testing:
 

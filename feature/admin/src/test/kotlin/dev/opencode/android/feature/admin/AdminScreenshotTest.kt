@@ -157,6 +157,21 @@ class AdminScreenshotTest {
     }
 
     @Test
+    fun configEditorWriteFailed() = capture("config-editor-write-failed") {
+        // The document the user typed is still in the box, and the row above Save says the server answered
+        // 500 and gave no reason (manual test G8).
+        ConfigEditorScreenFixture(
+            editorState().copy(
+                error = dev.opencode.android.core.data.action.ActionError(
+                    kind = dev.opencode.android.core.data.action.ActionErrorKind.SERVER,
+                    message = "HTTP 500",
+                    httpStatus = 500,
+                ),
+            ),
+        )
+    }
+
+    @Test
     fun configEditorSyntaxError() = capture("config-editor-syntax") {
         ConfigEditorScreenFixture(
             editorState().copy(

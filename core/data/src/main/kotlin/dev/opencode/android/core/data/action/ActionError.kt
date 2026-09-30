@@ -68,6 +68,32 @@ data class ActionError(
 ) {
     /** True when re-pairing is the fix, which is the one case a retry cannot solve. */
     val needsRepair: Boolean get() = kind == ActionErrorKind.UNAUTHORIZED
+
+    /**
+     * What the server itself said went wrong, or `null` when all it gave was a status line.
+     *
+     * **[message] is never empty, which is right for a log line and wrong for a sentence shown to a
+     * person.** [toActionError] writes `HTTP 500` there when the body carries no text, and the parsed
+     * `UnknownError` of a body with no `message` is the tag's own name. Showing either as "the server
+     * said" would put the client's placeholder in the server's mouth, so a screen asks this first and
+     * says what it does know — the status — when the answer is `null`.
+     */
+    val serverMessage: String?
+        get() = message.trim().takeUnless { it.isEmpty() || STATUS_ONLY.matches(it) || it.lowercase() in PLACEHOLDERS }
+
+    /**
+     * The reference the server logged this failure under, when it sent one.
+     *
+     * A `500` from a route the server could not classify carries `err_xxxxxxxx`, and the same string is
+     * in the server's own log, which is the one way to find out *why* from a phone that cannot see it.
+     */
+    val serverReference: String?
+        get() = (apiError as? ApiError.ServerUnknown)?.ref?.takeIf { it.isNotBlank() }
+
+    private companion object {
+        val STATUS_ONLY = Regex("HTTP \\d{3}")
+        val PLACEHOLDERS = setOf("unknown error", "unknownerror", "internal server error")
+    }
 }
 
 /**

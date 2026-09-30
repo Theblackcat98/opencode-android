@@ -65,7 +65,14 @@
     <string name="admin_config_existing">Editing the file the server has.</string>
     <string name="admin_config_text">Contents</string>
     <string name="admin_config_valid">This document is valid.</string>
-    <string name="admin_writes_off">Turn on the file-write experiment in settings to save.</string>
+    <string name="admin_writes_off">Turn on \"Edit files on the server\" in Experimental features to save.</string>
+    <string name="admin_write_failed_title">The server did not save this file</string>
+    <string name="admin_write_failed_hint">What you typed is still in the box. Check that the file and its folder can be written on the server, then edit it or save again to retry.</string>
+    <string name="admin_read_failed_title">This file could not be read</string>
+    <string name="admin_read_failed_hint">Saving is off until it can be read, so nothing typed here can replace it.</string>
+    <string name="admin_failure_status_only">It answered HTTP %1$d and gave no reason.</string>
+    <string name="admin_failure_no_reason">It gave no reason.</string>
+    <string name="admin_failure_reference">Reference %1$s. The server logged the cause under it.</string>
     <string name="admin_templates_title">Guided templates</string>
 
     <!-- Guided templates. -->

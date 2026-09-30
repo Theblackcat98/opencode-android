@@ -34,6 +34,15 @@ object AdminTags {
     /** The configuration text field. */
     const val CONFIG_EDITOR: String = "config:editor"
 
+    /** The row that says the server refused the editor's write, and why. */
+    const val WRITE_FAILURE: String = "config:write-failure"
+
+    /** The row that says the file could not be read, so the box is not its contents. */
+    const val READ_FAILURE: String = "config:read-failure"
+
+    /** Dismisses the editor's write-failure row. */
+    const val DISMISS_FAILURE: String = "config:dismiss-failure"
+
     /** One guided template's trigger. */
     fun template(choice: ConfigTemplateChoice): String = "config:template:${choice.id}"
 

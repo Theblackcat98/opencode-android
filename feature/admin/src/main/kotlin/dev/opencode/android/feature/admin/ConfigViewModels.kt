@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.opencode.android.core.data.action.ActionError
+import dev.opencode.android.core.data.action.toActionError
 import dev.opencode.android.core.data.config.AgentTemplate
 import dev.opencode.android.core.data.config.ConfigDocument
 import dev.opencode.android.core.data.config.ConfigDocuments
@@ -27,6 +28,7 @@ import dev.opencode.android.core.data.integrations.ActionFailure
 import dev.opencode.android.core.data.integrations.McpConfigForm
 import dev.opencode.android.core.data.preferences.ExperimentalPreferences
 import dev.opencode.android.core.data.server.ServerDataRegistry
+import dev.opencode.android.core.data.server.ServerDataSet
 import dev.opencode.android.core.model.ConfigEntry
 import dev.opencode.android.core.model.McpServerConfig
 import dev.opencode.android.core.model.PermissionEffect
@@ -36,6 +38,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonObject
@@ -245,7 +248,15 @@ data class ConfigEditorUiState(
     val error: ActionError? = null,
 ) {
     val isValid: Boolean get() = parseFailure == null && diagnostics.isEmpty()
-    val canSave: Boolean get() = writesUsable && isValid && !saving && draft.isNotBlank()
+
+    /**
+     * Whether Save is offered.
+     *
+     * **Never while the file could not be read.** An unreadable file that exists leaves the box empty, and
+     * saving whatever is typed into it would replace a document the editor never showed — the one outcome
+     * a configuration editor must not have. `writesUsable` and a valid draft are the rest of the answer.
+     */
+    val canSave: Boolean get() = writesUsable && readError == null && isValid && !saving && draft.isNotBlank()
     val hasChanges: Boolean get() = draft != text
 }
 
@@ -342,10 +353,17 @@ data class ConfigTemplateDraft(
  * asserts on the plan a screen would render.
  */
 @HiltViewModel
-class ConfigEditorViewModel @Inject constructor(
-    private val dataSets: ServerDataRegistry,
+class ConfigEditorViewModel(
+    private val active: StateFlow<ServerDataSet?>,
     private val experimental: ExperimentalPreferences,
 ) : ViewModel() {
+
+    /** Hilt's constructor: which server's read model is active is all this reads from the registry. */
+    @Inject
+    constructor(
+        dataSets: ServerDataRegistry,
+        experimental: ExperimentalPreferences,
+    ) : this(dataSets.active, experimental)
 
     private val _state = MutableStateFlow(ConfigEditorUiState())
     val state: StateFlow<ConfigEditorUiState> = _state.asStateFlow()
@@ -355,13 +373,16 @@ class ConfigEditorViewModel @Inject constructor(
     private var validationRequest = 0
 
     fun open(directory: String, path: String? = null) {
-        val set = dataSets.active.value ?: return
+        val set = active.value ?: return
         _state.value = _state.value.copy(directory = directory, path = path ?: LOCATION_CONFIG)
         settingsJob?.cancel()
         settingsJob = viewModelScope.launch {
-            experimental.settings.collect { settings ->
-                _state.value = _state.value.copy(writesUsable = set.configuration.fsUsable(settings.fileWrites))
-            }
+            // The route's own answer is a flow for a reason: a `404` from a write marks the route absent,
+            // and a read of `.value` here at the moment the *switch* changed would go on offering Save
+            // against a server that has just said it has no such route.
+            combine(experimental.settings, set.configuration.fsWrite) { settings, _ ->
+                set.configuration.fsUsable(settings.fileWrites)
+            }.collect { usable -> _state.value = _state.value.copy(writesUsable = usable) }
         }
         read()
     }
@@ -369,7 +390,7 @@ class ConfigEditorViewModel @Inject constructor(
     fun resume() = read()
 
     private fun read() {
-        val set = dataSets.active.value ?: return
+        val set = active.value ?: return
         _state.value = _state.value.copy(reading = true, readError = null)
         viewModelScope.launch {
             when (val read = set.configuration.readFile(_state.value.directory, _state.value.path)) {
@@ -418,7 +439,7 @@ class ConfigEditorViewModel @Inject constructor(
     }
 
     private fun validate(text: String) {
-        val set = dataSets.active.value ?: return
+        val set = active.value ?: return
         val request = ++validationRequest
         _state.value = _state.value.copy(validating = true)
         validationJob?.cancel()
@@ -475,7 +496,7 @@ class ConfigEditorViewModel @Inject constructor(
      * unconfirmed write to the server's own filesystem, which is what plan §5.2 forbids.
      */
     fun applyTemplate() {
-        val set = dataSets.active.value ?: return
+        val set = active.value ?: return
         val draft = _state.value.template ?: return
         val template = draft.toTemplate()
         _state.value = _state.value.copy(
@@ -494,7 +515,7 @@ class ConfigEditorViewModel @Inject constructor(
 
     /** Puts the template's value into the text field, where the user can edit it. */
     fun insertTemplate() {
-        val set = dataSets.active.value ?: return
+        val set = active.value ?: return
         val outcome = _state.value.templateOutcome as? TemplateOutcome.Ready ?: return
         val template = _state.value.template?.toTemplate() ?: return
         val value = (outcome.document as? JsonObject)?.get(template.key) ?: return
@@ -514,7 +535,7 @@ class ConfigEditorViewModel @Inject constructor(
      * that before the bytes move (plan §5.2).
      */
     fun requestSave() {
-        val set = dataSets.active.value ?: return
+        val set = active.value ?: return
         val text = _state.value.draft
         val schema = set.configuration.schema()
         val keys = ConfigDocument.topLevelKeys(text)
@@ -542,13 +563,16 @@ class ConfigEditorViewModel @Inject constructor(
 
     /** `experimental.fs.write`, then `location.reload`, then `config.get` again. */
     fun confirmSave() {
-        val set = dataSets.active.value ?: return
+        val set = active.value ?: return
         val plan = _state.value.plan ?: return
         val directory = _state.value.directory
         val keys = ConfigDocument.topLevelKeys(plan.text)
         _state.value = _state.value.copy(plan = null, saving = true, error = null)
         viewModelScope.launch {
             set.configuration.commit(plan, directory, keys).fold(
+                // The outcome is shown as its own card, with the server's diagnostics on it. They are not
+                // copied into `diagnostics`: that list is the *document's* problems, and a file the server
+                // wrote and did not reload is not an invalid document — it would also have disabled Save.
                 onSuccess = { outcome ->
                     _state.value = _state.value.copy(
                         saving = false,
@@ -556,9 +580,9 @@ class ConfigEditorViewModel @Inject constructor(
                         draft = plan.text,
                         isNewFile = false,
                         outcome = outcome,
-                        diagnostics = outcome.diagnostics,
                     )
                 },
+                // The draft is left exactly as it is: a failed write changes nothing on screen but the error.
                 onFailure = { _state.value = _state.value.copy(saving = false, error = it.asActionError()) },
             )
         }
@@ -604,8 +628,13 @@ internal fun SchemaDiagnostic.withLine(text: String): SchemaDiagnostic {
     return copy(line = position.line, column = position.column)
 }
 
-/** The failure of a call this phase made, as the classification a screen renders. */
-internal fun Throwable.asActionError(): ActionError? = (this as? ActionFailure)?.error
+/**
+ * The failure of a call this phase made, as the classification a screen renders.
+ *
+ * **Never `null`.** It was, for any throwable that was not an [ActionFailure], and a failure that comes
+ * out as no error is a failure the screen has nothing to show for.
+ */
+internal fun Throwable.asActionError(): ActionError = (this as? ActionFailure)?.error ?: toActionError()
 
 /**
  * How a value is shown in a row, with a secret never rendered.

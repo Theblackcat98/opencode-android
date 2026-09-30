@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
@@ -26,7 +28,8 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
-import dev.opencode.android.core.data.config.WritePlan
+import dev.opencode.android.core.data.action.ActionError
+import dev.opencode.android.core.data.config.WriteOutcome
 import dev.opencode.android.core.designsystem.text.SyncedTextField
 
 /**
@@ -44,6 +47,12 @@ import dev.opencode.android.core.designsystem.text.SyncedTextField
  *
  * **The save button is disabled until the document validates *and* the switch and the route say a write
  * may be made**, and its reason is on the row. The write itself is behind [WriteConfirmationDialog].
+ *
+ * **What the server answered is on this screen, every time.** A refused write is a row above the Save
+ * button with the server's own reason, a read that failed is a row under the path, and a write that went
+ * through is a card saying what the server did with it. This screen took a state with an `error` and an
+ * `outcome` and an `onDismissError` and drew none of them, so a write the host refused looked exactly like
+ * one that was still thinking (manual test G8).
  */
 @Composable
 fun ConfigEditorScreen(
@@ -77,15 +86,26 @@ fun ConfigEditorScreen(
                 supporting = stringResource(R.string.admin_config_path_help),
                 tag = "config:path",
             )
-            Text(
-                text = if (state.isNewFile) {
-                    stringResource(R.string.admin_config_new)
-                } else {
-                    stringResource(R.string.admin_config_existing)
-                },
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            val readError = state.readError
+            if (readError != null) {
+                FailureCard(
+                    title = stringResource(R.string.admin_read_failed_title),
+                    error = readError,
+                    hint = stringResource(R.string.admin_read_failed_hint),
+                    onDismiss = null,
+                    modifier = Modifier.testTag(AdminTags.READ_FAILURE),
+                )
+            } else {
+                Text(
+                    text = if (state.isNewFile) {
+                        stringResource(R.string.admin_config_new)
+                    } else {
+                        stringResource(R.string.admin_config_existing)
+                    },
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
             Text(
                 text = stringResource(R.string.admin_templates_title),
@@ -120,6 +140,31 @@ fun ConfigEditorScreen(
                 .testTag(AdminTags.CONFIG_EDITOR),
         )
         Diagnostics(state = state)
+        val writeError = state.error
+        val outcome = state.outcome
+        if (writeError != null || outcome != null) {
+            // Bounded and scrolling, for the reason the diagnostics list is: a server with a long reason
+            // or a dozen diagnostics must not push the text field and the Save button off the screen.
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 240.dp)
+                    .verticalScroll(rememberScrollState()),
+            ) {
+                if (writeError != null) {
+                    FailureCard(
+                        title = stringResource(R.string.admin_write_failed_title),
+                        error = writeError,
+                        hint = stringResource(R.string.admin_write_failed_hint),
+                        onDismiss = onDismissError,
+                        modifier = Modifier.padding(horizontal = 16.dp).testTag(AdminTags.WRITE_FAILURE),
+                    )
+                }
+                if (outcome != null) {
+                    WriteOutcomeCard(outcome = outcome, onDismiss = onDismissOutcome)
+                }
+            }
+        }
         HorizontalDivider()
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
@@ -189,9 +234,69 @@ private fun Diagnostics(state: ConfigEditorUiState) {
     }
 }
 
+/**
+ * A read or a write the server did not do, in the server's own words when it had any.
+ *
+ * **Three lines, in the order a person needs them: what happened, why, and what to do.** The reason is
+ * [ActionError.serverMessage] — what the server said — and when it said nothing the row says *that*, with
+ * the status it did answer, rather than showing the client's own `HTTP 500` placeholder as though the
+ * server had written it. The reference, when the server sent one, is the string its own log has, which is
+ * the only way to learn the cause from a phone. The request is never shown: an `HttpException` carries the
+ * URL, and for an editor that is a path into the user's home directory.
+ */
+@Composable
+internal fun FailureCard(
+    title: String,
+    error: ActionError,
+    hint: String,
+    onDismiss: (() -> Unit)?,
+    modifier: Modifier = Modifier,
+) {
+    Card(
+        modifier = modifier.fillMaxWidth().padding(vertical = 4.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.errorContainer,
+            contentColor = MaterialTheme.colorScheme.onErrorContainer,
+        ),
+    ) {
+        Row(
+            modifier = Modifier.padding(start = 12.dp, top = 8.dp, bottom = 8.dp, end = 4.dp),
+            verticalAlignment = Alignment.Top,
+        ) {
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.labelLarge,
+                    modifier = Modifier.semantics { heading() },
+                )
+                Text(text = failureReason(error), style = MaterialTheme.typography.bodySmall)
+                error.serverReference?.let { reference ->
+                    Text(
+                        text = stringResource(R.string.admin_failure_reference, reference),
+                        style = MaterialTheme.typography.bodySmall,
+                        fontFamily = FontFamily.Monospace,
+                    )
+                }
+                Text(text = hint, style = MaterialTheme.typography.bodySmall)
+            }
+            if (onDismiss != null) {
+                TextButton(onClick = onDismiss, modifier = Modifier.testTag(AdminTags.DISMISS_FAILURE)) {
+                    Text(stringResource(R.string.admin_dismiss))
+                }
+            }
+        }
+    }
+}
+
+/** What the server said, or what is known when it said nothing: the status, then nothing at all. */
+@Composable
+private fun failureReason(error: ActionError): String = error.serverMessage
+    ?: error.httpStatus?.let { stringResource(R.string.admin_failure_status_only, it) }
+    ?: stringResource(R.string.admin_failure_no_reason)
+
 /** What a write reported, in the server's own terms. */
 @Composable
-fun WriteOutcomeCard(outcome: dev.opencode.android.core.data.config.WriteOutcome, onDismiss: () -> Unit) {
+fun WriteOutcomeCard(outcome: WriteOutcome, onDismiss: () -> Unit) {
     Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
         Text(text = outcome.summary, style = MaterialTheme.typography.bodyMedium)
         outcome.diagnostics.forEach { DiagnosticRow(diagnostic = it) }
