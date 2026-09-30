@@ -149,7 +149,8 @@ write_config() {
         "question": { "name": "Fake question", "tool_call": true, "reasoning": true, "attachment": true, "temperature": true, "limit": { "context": 200000, "output": 4096 }, "modalities": { "input": ["text"], "output": ["text"] }, "cost": { "input": 0, "output": 0 } },
         "subagent": { "name": "Fake subagent", "tool_call": true, "reasoning": true, "attachment": true, "temperature": true, "limit": { "context": 200000, "output": 4096 }, "modalities": { "input": ["text"], "output": ["text"] }, "cost": { "input": 0, "output": 0 } },
         "error": { "name": "Fake error", "tool_call": true, "reasoning": true, "attachment": true, "temperature": true, "limit": { "context": 200000, "output": 4096 }, "modalities": { "input": ["text"], "output": ["text"] }, "cost": { "input": 0, "output": 0 } },
-        "long": { "name": "Fake long", "tool_call": true, "reasoning": true, "attachment": true, "temperature": true, "limit": { "context": 200000, "output": 4096 }, "modalities": { "input": ["text"], "output": ["text"] }, "cost": { "input": 0, "output": 0 } }
+        "long": { "name": "Fake long", "tool_call": true, "reasoning": true, "attachment": true, "temperature": true, "limit": { "context": 200000, "output": 4096 }, "modalities": { "input": ["text"], "output": ["text"] }, "cost": { "input": 0, "output": 0 } },
+        "slow": { "name": "Fake slow", "tool_call": true, "reasoning": true, "attachment": true, "temperature": true, "limit": { "context": 200000, "output": 4096 }, "modalities": { "input": ["text"], "output": ["text"] }, "cost": { "input": 0, "output": 0 } }
       }
     }
   }

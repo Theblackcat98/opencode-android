@@ -65,7 +65,7 @@ eval "$(./scripts/dev-server.sh start)"
 ```
 
 - **They skip, not fail, when no server is configured** — a broken run looks green. Pass Gradle properties rather than relying on the environment, because a long-lived daemon does not reliably see a client's env: `-Popencode.it.url=… -Popencode.it.password=… -Popencode.it.directory=… -Popencode.it.fakeProviderUrl=…`.
-- `dev-server.sh start` prints `export` lines for stdout and all logs to stderr, so `eval "$(…)"` works. It pins `@opencode/cli@2.0.18`, uses an isolated `HOME`, and starts a fake OpenAI-compatible provider on 4097 (`tools/fake-provider`) that serves scripted turns: models `text`, `reasoning`, `shell`, `edit`, `question`, `subagent`, `error`, `long`, `probe`. State lives in the gitignored `.dev-server/`.
+- `dev-server.sh start` prints `export` lines for stdout and all logs to stderr, so `eval "$(…)"` works. It pins `@opencode/cli@2.0.18`, uses an isolated `HOME`, and starts a fake OpenAI-compatible provider on 4097 (`tools/fake-provider`) that serves scripted turns: models `text`, `reasoning`, `shell`, `edit`, `question`, `subagent`, `error`, `long`, `slow` (a forty-second turn, for steering, queueing, interrupting and network drops), `probe`. State lives in the gitignored `.dev-server/`.
 - `scripts/p8-gradle.sh <tasks…>` detaches a long build and prints its log path; tail that instead of blocking.
 - `scripts/setup-android-sdk.sh` installs the SDK and writes `local.properties` if absent.
 

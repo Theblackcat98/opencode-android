@@ -65,6 +65,7 @@ async function handleCompletion(response, body) {
   const scenario = SCENARIOS[scenarioId]
   const index = Math.min(stepIndex(body?.messages), scenario.steps.length - 1)
   const step = scenario.steps[index]
+  const pace = step.delayMs ?? chunkDelayMs
   const id = `chatcmpl-fake-${(completions += 1)}`
   const created = 0
 
@@ -108,11 +109,11 @@ async function handleCompletion(response, body) {
   }
   send({ role: "assistant", content: "" })
   for (const chunk of step.reasoning ?? []) {
-    await delay()
+    await delay(pace)
     send({ reasoning_content: chunk })
   }
   for (const chunk of step.text ?? []) {
-    await delay()
+    await delay(pace)
     send({ content: chunk })
   }
   if (step.tool) {
@@ -120,18 +121,18 @@ async function handleCompletion(response, body) {
     // The reference implementations stream tool arguments in pieces; the halves below keep that
     // shape, so a client that assembles arguments is exercised.
     const cut = Math.max(1, Math.floor(argsJson.length / 2))
-    await delay()
+    await delay(pace)
     send({
       tool_calls: [
         { index: 0, id: step.tool.id, type: "function", function: { name: step.tool.name, arguments: "" } },
       ],
     })
-    await delay()
+    await delay(pace)
     send({ tool_calls: [{ index: 0, function: { arguments: argsJson.slice(0, cut) } }] })
-    await delay()
+    await delay(pace)
     send({ tool_calls: [{ index: 0, function: { arguments: argsJson.slice(cut) } }] })
   }
-  await delay()
+  await delay(pace)
   send({}, finishReason(step))
   response.write("data: [DONE]\n\n")
   response.end()
@@ -188,8 +189,8 @@ function readJson(request) {
   })
 }
 
-function delay() {
-  return chunkDelayMs > 0 ? new Promise((resolve) => setTimeout(resolve, chunkDelayMs)) : Promise.resolve()
+function delay(ms = chunkDelayMs) {
+  return ms > 0 ? new Promise((resolve) => setTimeout(resolve, ms)) : Promise.resolve()
 }
 
 function log(message) {

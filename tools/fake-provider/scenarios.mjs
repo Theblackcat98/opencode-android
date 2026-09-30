@@ -22,6 +22,10 @@
  *   { tool: { id, name, args } }                       one tool call, streamed as arguments
  *   { finish: "tool-calls" }                           finish reason override
  *   { error: { status, message, type } }               an HTTP error instead of a completion
+ *
+ * Any step may add `delayMs`, the pause before each of its streamed chunks (the server's own
+ * default is a few milliseconds). It is what makes a turn last long enough to steer, queue,
+ * interrupt or cut the network under.
  */
 
 /** @type {Record<string, { description: string, steps: Step[] }>} */
@@ -136,6 +140,15 @@ export const SCENARIOS = {
           "Inline `code`, a [link](https://opencode.ai) and a fenced block:\n\n",
           "```kotlin\nval answer = 42\n```\n",
         ],
+      },
+    ],
+  },
+  slow: {
+    description: "A forty-second answer, one chunk a second, for steering, queueing, interrupting and network drops.",
+    steps: [
+      {
+        delayMs: 1000,
+        text: Array.from({ length: 40 }, (_, index) => `Slow chunk ${index + 1} of 40. `),
       },
     ],
   },
