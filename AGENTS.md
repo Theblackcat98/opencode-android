@@ -12,13 +12,13 @@ Native Android client for [OpenCode](https://opencode.ai) **V2** (`@opencode/cli
 node tools/audit-coverage.mjs --strict     # §7/§8 plan matrices vs the code
 node tools/gen-event-payloads.mjs --check  # event corpus is current
 node tools/check-api-drift.test.mjs        # drift tool's own tests
-node tools/audit-viewmodels.test.mjs && node tools/audit-viewmodels.mjs  # every ViewModel is @HiltViewModel
+node tools/audit-viewmodels.test.mjs && node tools/audit-viewmodels.mjs  # every ViewModel is @HiltViewModel, and gets the right instance
 node .opencode/plugins/process-guard.test.mjs
 node tools/audit-strings.mjs              # UI strings externalized
 node tools/audit-accessibility.mjs
 ```
 
-`audit-viewmodels` exists because `hiltViewModel()` compiles for any `ViewModel` and fails only when the screen opens; seven screens crashed that way. Only `--strict`, `--check` and `audit-viewmodels` fail on their own. **`audit-strings` and `audit-accessibility` always exit 0** — read the output. CI gates strings through a shell pipeline over `audit-strings --json` in `.github/workflows/ci.yml`, not through the tool.
+`audit-viewmodels` exists because `hiltViewModel()` compiles for any `ViewModel` and fails only when the screen opens; seven screens crashed that way. It also fails on the two shapes that gave a screen a `ComposerViewModel` no session was opened in ("Undo to here" and the file browser's attachments did nothing): a `hiltViewModel()` default on the function that builds the `NavHost`, and a second `ComposerViewModel` default outside `SessionHost` without a `// audit-viewmodels: own-instance` claim. `:app` has no Hilt or Robolectric test wiring, so this is a source check, not a navigation test. Only `--strict`, `--check` and `audit-viewmodels` fail on their own. **`audit-strings` and `audit-accessibility` always exit 0** — read the output. CI gates strings through a shell pipeline over `audit-strings --json` in `.github/workflows/ci.yml`, not through the tool.
 
 **Gradle gates** (this is what CI runs, in this order):
 

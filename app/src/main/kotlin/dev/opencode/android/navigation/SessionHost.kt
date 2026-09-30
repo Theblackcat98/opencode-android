@@ -96,10 +96,16 @@ fun SessionHost(
      */
     onOpenSessionPermissions: (String?, String) -> Unit = { _, _ -> },
     onOpenSessionInstructions: () -> Unit = {},
-    onUndoConfirmed: (String) -> Unit = {},
     onForked: (String) -> Unit = {},
     modifier: Modifier = Modifier,
     timeline: SessionViewModel = hiltViewModel(),
+    /**
+     * The composer of this session, which `open(sessionId)` below binds to it.
+     *
+     * Everything that has to reach the session's composer from outside this screen (the review's comments
+     * and attachments) is given *this* instance by the graph, so a caller that took another one would be
+     * talking to a composer with no session; the undo below does not go through a callback for that reason.
+     */
     composer: ComposerViewModel = hiltViewModel(),
     management: SessionManagementViewModel = hiltViewModel(),
     subagents: SubagentsViewModel = hiltViewModel(),
@@ -422,7 +428,9 @@ fun SessionHost(
         RevertConfirmationDialog(
             preview = revertMessage?.text.orEmpty(),
             onConfirm = {
-                onUndoConfirmed(undoTarget.orEmpty())
+                // This screen's composer, the one that has this session open: `stageUndo` returns without a
+                // session, and a callback into the graph is how it once reached one that had none.
+                composer.stageUndo(undoTarget.orEmpty())
                 undoTarget = null
             },
             onDismiss = { undoTarget = null },

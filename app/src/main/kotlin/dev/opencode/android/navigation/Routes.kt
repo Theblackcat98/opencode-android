@@ -13,6 +13,7 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -127,6 +128,10 @@ data class PendingRequestsRoute(val serverId: String? = null)
  * session for the "last turn" scope, which is a `session.diff` between two messages. [initialPath]
  * is how a changed-files link in the transcript opens one file of the review, so the link and the
  * destination are the same screen with one field apart.
+ *
+ * **Only a review with a session is offered today**, because the review hands its comments and attached
+ * files to that session's composer and a review without one would have nowhere to put them. The graph
+ * closes a review whose session is not on the back stack rather than showing one that drops them.
  */
 @Serializable
 data class ReviewRoute(
@@ -203,6 +208,13 @@ data class ProjectSettingsRoute(
  * core modules only, so the session screen, the composer and the request dock cannot import one
  * another; the app module is where they meet. See [SessionHost] for the session screen's composition
  * and [NewSessionHost] for the new-session sheet's.
+ *
+ * **This function takes no `ViewModel`, and must not.** A default such as `= hiltViewModel()` is evaluated
+ * here, outside every `composable<…>`, so it resolves in the activity's `ViewModelStoreOwner` and not in
+ * the route's back-stack entry: the instance is real, injected and never opened. A `ComposerViewModel`
+ * declared here received `/undo`'s confirmation and the file browser's attachments for a session it had
+ * never been told about, and each returned without a word. A ViewModel a route needs is taken *inside*
+ * that route's lambda, with the entry as its owner; `tools/audit-viewmodels.mjs` fails on the other shape.
  */
 @Composable
 fun OpenCodeApp(
@@ -211,7 +223,6 @@ fun OpenCodeApp(
     openLocation: OpenLocationTarget? = null,
     modifier: Modifier = Modifier,
     navController: NavHostController = rememberNavController(),
-    composer: ComposerViewModel = hiltViewModel(),
     /**
      * The registry, for the catalog browsers.
      *
@@ -369,8 +380,13 @@ fun OpenCodeApp(
 
         composable<SessionRoute> { entry ->
             val route = entry.toRoute<SessionRoute>()
+            // This entry's composer, taken with the entry as its owner. It is the instance `SessionHost`
+            // opens the session in, and the one the review below this session hands its comments and
+            // attachments to (see `ReviewRoute`), so nothing in the graph holds a second, unopened one.
+            val composer = hiltViewModel<ComposerViewModel>(entry)
             SessionHost(
                 sessionId = route.sessionId,
+                composer = composer,
                 onNavigateBack = { navController.popBackStack() },
                 onSessionDeleted = { navController.popBackStack() },
                 // The composer's client commands: `/sessions` and `/new` navigate, and the
@@ -440,7 +456,6 @@ fun OpenCodeApp(
                         ),
                     )
                 },
-                onUndoConfirmed = { messageId -> composer.stageUndo(messageId) },
                 // A fork is a new session id, so the graph navigates to it rather than the screen
                 // re-rendering the one it is on. The view model publishes the id once.
                 onForked = { sessionId -> navController.navigate(SessionRoute(route.serverId, sessionId)) },
@@ -449,19 +464,24 @@ fun OpenCodeApp(
 
         composable<ReviewRoute> { entry ->
             val route = entry.toRoute<ReviewRoute>()
-            ReviewHost(
-                sessionId = route.sessionId,
-                initialPath = route.initialPath,
-                onNavigateBack = { navController.popBackStack() },
-                onAttachFile = { path, name, type ->
-                    composer.attachServerFile(path, name, type)
-                    navController.popBackStack()
-                },
-                onAttachLines = { path, name, type, range ->
-                    composer.attachServerFileWithRange(path, name, type, range)
-                    navController.popBackStack()
-                },
-            )
+            // The review is opened from a session, and what it produces (comments, attached files) is that
+            // session's composer's to hold: so the composer is the one in the session's back-stack entry,
+            // which is still on the stack under this one. Asking for a composer here would build a third,
+            // whose session nobody opened.
+            val sessionEntry = remember(entry) { navController.sessionEntryOf(route) }
+            if (sessionEntry == null) {
+                // Nothing to hand a comment or a file to, so there is nothing to show: a review that
+                // accepted them into a composer nobody sees would be the silent failure this avoids.
+                LaunchedEffect(entry) { navController.popBackStack() }
+            } else {
+                ReviewHost(
+                    sessionId = route.sessionId,
+                    composer = hiltViewModel<ComposerViewModel>(sessionEntry),
+                    initialPath = route.initialPath,
+                    onNavigateBack = { navController.popBackStack() },
+                    onAttached = { navController.popBackStack() },
+                )
+            }
         }
 
         composable<PendingRequestsRoute> { entry ->
@@ -701,6 +721,9 @@ private fun PendingRequestsHost(
     onNavigateBack: () -> Unit,
     onOpenSession: (String) -> Unit,
     requests: PendingRequestsViewModel = hiltViewModel(),
+    // audit-viewmodels: own-instance
+    // The inbox has no session open and needs none: a request names the session that asked, and the composer
+    // only answers it (`replyPermission`, `submitForm`, `cancelForm`), so this instance is never `open`ed.
     composer: ComposerViewModel = hiltViewModel(),
 ) {
     val pending by requests.pending.collectAsStateWithLifecycle()
@@ -768,6 +791,18 @@ private fun NewSessionHost(
             onDismiss()
         },
     )
+}
+
+/**
+ * The back-stack entry of the session [route]'s review was opened from, or `null` when there is none.
+ *
+ * `getBackStackEntry` throws for a route that is not on the stack, and here that is an answer: a review
+ * with no session (`sessionId` is null) or whose session is gone has no composer to give its comments and
+ * attachments to.
+ */
+private fun NavHostController.sessionEntryOf(route: ReviewRoute): NavBackStackEntry? {
+    val sessionId = route.sessionId ?: return null
+    return runCatching { getBackStackEntry(SessionRoute(route.serverId, sessionId)) }.getOrNull()
 }
 
 /**

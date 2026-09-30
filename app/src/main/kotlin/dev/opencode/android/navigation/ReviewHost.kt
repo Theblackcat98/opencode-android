@@ -14,7 +14,6 @@ import androidx.core.content.FileProvider
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.opencode.android.core.data.composer.FileReadResult
-import dev.opencode.android.core.data.composer.LineRange
 import dev.opencode.android.feature.composer.ui.ComposerViewModel
 import dev.opencode.android.feature.review.FileBrowserScreen
 import dev.opencode.android.feature.review.ReviewCommentDialog
@@ -49,14 +48,21 @@ import dev.opencode.android.feature.review.R as ReviewR
 @Composable
 fun ReviewHost(
     sessionId: String?,
+    /**
+     * The composer of the session this review was opened from: the one instance whose box the user sees.
+     *
+     * **Required, with no `hiltViewModel()` default.** A default here would resolve in this destination's
+     * own back-stack entry and build a second composer, one no session was ever opened in: the review's
+     * comments and the attached files would be handed to it and shown to nobody.
+     */
+    composer: ComposerViewModel,
     initialPath: String? = null,
     onNavigateBack: () -> Unit,
-    onAttachFile: (String, String, String) -> Unit = { _, _, _ -> },
-    onAttachLines: (String, String, String, LineRange) -> Unit = { _, _, _, _ -> },
+    /** After a file or a line range has been attached, which is where the destination is left. */
+    onAttached: () -> Unit = {},
     onShareFile: (FileReadResult) -> Unit = {},
     modifier: Modifier = Modifier,
     review: ReviewViewModel = hiltViewModel(),
-    composer: ComposerViewModel = hiltViewModel(),
 ) {
     val state by review.state.collectAsStateWithLifecycle()
     val files by review.files.collectAsStateWithLifecycle()
@@ -135,12 +141,14 @@ fun ReviewHost(
             onUp = review::goUp,
             onRead = review::readFile,
             onAttach = { file ->
-                onAttachFile(file.path, file.label, file.mime.orEmpty())
+                composer.attachServerFile(file.path, file.label, file.mime.orEmpty())
                 review.toggleFiles()
+                onAttached()
             },
             onAttachLines = { file, range ->
-                onAttachLines(file.path, file.label, file.mime.orEmpty(), range)
+                composer.attachServerFileWithRange(file.path, file.label, file.mime.orEmpty(), range)
                 review.toggleFiles()
+                onAttached()
             },
             // A binary cannot be previewed, so the two offers are different: one hands the bytes to
             // another app, the other puts them somewhere the user chose. Both need a real file, and

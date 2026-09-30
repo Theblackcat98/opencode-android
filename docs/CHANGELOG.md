@@ -147,6 +147,19 @@ Found by driving the app against a live server on an emulator, which no test had
   asked. They no longer need one. `ComposerRequestAnswerTest` (MockWebServer) fails on the old code; not yet
   seen on a device. A failed answer from the inbox still shows nothing, because that screen does not display
   the composer's error.
+- **"Undo to here" confirmed and did nothing, and files attached from the file browser went nowhere.**
+  `OpenCodeApp` took `composer: ComposerViewModel = hiltViewModel()`, which is evaluated in the activity's
+  `ViewModelStoreOwner`, not in a route, so the confirmation's `stageUndo` ran on a composer that had never
+  been given a session (it returns without a request or an error), the file browser's "Attach file" and
+  "Attach lines" went to the same one, and the review's comments were pushed to a third, in the review's own
+  entry. The session's back-stack entry now supplies the one composer: `SessionHost` calls `stageUndo` on its
+  own, and the review takes the session's instance from the back stack (a review whose session is not there
+  closes). `tools/audit-viewmodels.mjs` now fails on a `hiltViewModel()` default on the `NavHost` function and
+  on a second `ComposerViewModel` beside `SessionHost`'s; it reports four findings on the previous
+  `Routes.kt` and `ReviewHost.kt`. `:app` cannot host a navigation test (no Hilt or Robolectric wiring), so
+  that is a source check and nothing here has run the wiring; not yet seen on a device. One thing this makes
+  reachable and no test covers: opening the review replaces the composer's review comments with the review's
+  (`setReviewComments`), so comments an undo restored are dropped if the review is opened before the next send.
 - Markdown inside list items (`**bold**`, `` `code` ``, links) was drawn as typed; only paragraphs,
   headings and table cells were parsed.
 - "Changed 1 files" is now "Changed 1 file".
