@@ -81,6 +81,15 @@ enum class FileContentKind {
  * that knows whether a body is text it can show with line numbers, a picture it can decode, or a
  * binary it can only offer to share. Deciding that is a rule and not a guess, so it is a value with
  * a name, computed once off the main thread by [dev.opencode.android.core.data.server.FileReader].
+ *
+ * **[bytes] is what the phone holds, which is not always the file.** A file can be larger than
+ * memory, so the reader keeps at most a prefix and says so: [truncated] is `true` when the server had
+ * more than [bytes], and [totalBytes] is the whole file's size when the server said. Anything that
+ * treats [bytes] as *the file* — an edit that writes it back, a share that hands it to another app —
+ * must check [truncated] first, because a truncated file written back is a file destroyed.
+ * A truncated file that is not text keeps no bytes at all ([bytes] is empty): half a picture is not a
+ * preview, half a binary can be neither shown nor shared, and holding either would cost memory for
+ * nothing. A truncated *text* file keeps the start of it, cut on a character boundary.
  */
 class FileReadResult(
     val path: String,
@@ -89,12 +98,32 @@ class FileReadResult(
     val mime: String?,
     /** Decoded as UTF-8, when [kind] is [FileContentKind.TEXT]. */
     val text: String? = null,
+    /** Whether the file is larger than [bytes], so this is only the start of it. */
+    val truncated: Boolean = false,
+    /**
+     * The whole file's size in bytes, or `null` when it was cut short and the server did not say.
+     *
+     * The server says with `Content-Length`. A body that was read to its end has a known size
+     * whether or not the header was there, so this is `null` only for a truncated read of a response
+     * that had no length — a chunked or compressed one.
+     */
+    val totalBytes: Long? = null,
 ) {
     /** The name a list row, a chip and a share sheet all use. */
     val label: String get() = path.trimEnd('/').substringAfterLast('/').ifEmpty { path }
 
-    /** The size, which a viewer shows and an attachment policy compares against. */
-    val sizeBytes: Long get() = bytes.size.toLong()
+    /**
+     * The size of the file, which a viewer shows and an attachment policy compares against.
+     *
+     * It is the *file's* size and not the size of [bytes]: a 572 MB file that was read as 2 MiB is a
+     * 572 MB attachment. It is `0` when the file was truncated and the server did not say how large it
+     * is, which is the same "unknown" [AttachmentDraft.sizeBytes] already uses — inventing the size of
+     * the prefix would claim a file is small that the phone could not open.
+     */
+    val sizeBytes: Long get() = totalBytes ?: if (truncated) 0L else bytes.size.toLong()
+
+    /** Whether [sizeBytes] is the file's size, which is not the case for a cut read with no length. */
+    val sizeKnown: Boolean get() = totalBytes != null || !truncated
 
     /**
      * The lines, for a text viewer with line numbers. Empty for anything else.
@@ -102,6 +131,9 @@ class FileReadResult(
      * A trailing newline **terminates** the last line rather than beginning an empty one, which is
      * what a person counts: a three-line file ends in a newline and has three lines, not four. An
      * empty file has no lines at all, and a file of one empty line has one.
+     *
+     * **This materialises every line.** A viewer that draws a window of a large file should use
+     * [firstLines], which stops after the window and does not build the rest.
      */
     val lines: List<String>
         get() {
@@ -111,6 +143,41 @@ class FileReadResult(
             if (parts.isNotEmpty() && parts.last().isEmpty()) parts.removeAt(parts.lastIndex)
             return parts
         }
+
+    /**
+     * The first [limit] lines, each at most [maxLineChars] long, and how many lines there are in all.
+     *
+     * **This exists because a preview is bounded twice.** A file of two million empty lines is only
+     * two megabytes, and a minified script is one line of two megabytes; splitting the first into a
+     * list would build two million strings to show two thousand, and putting the second in one `Text`
+     * would lay out a paragraph the phone cannot. So the window stops after [limit] lines, counts the
+     * rest without building them, and cuts a longer line at [maxLineChars] and ends it with
+     * [LineWindow.CUT_MARK] so the cut is visible on the line rather than silent.
+     *
+     * The rules for what a line is are [lines]': `\n` ends one, a `\r` before it is dropped, a
+     * trailing newline does not begin another, and non-text has no lines.
+     */
+    fun firstLines(limit: Int, maxLineChars: Int): LineWindow {
+        val body = text ?: return LineWindow(emptyList(), 0)
+        if (body.isEmpty()) return LineWindow(emptyList(), 0)
+        val shown = ArrayList<String>(minOf(limit, 256))
+        var start = 0
+        var total = 0
+        while (start < body.length) {
+            val newline = body.indexOf('\n', start)
+            val end = if (newline < 0) body.length else newline
+            if (shown.size < limit) {
+                var lineEnd = end
+                if (lineEnd > start && body[lineEnd - 1] == '\r') lineEnd--
+                val cut = lineEnd - start > maxLineChars
+                val line = body.substring(start, if (cut) start + maxLineChars else lineEnd)
+                shown += if (cut) line + LineWindow.CUT_MARK else line
+            }
+            total++
+            start = end + 1
+        }
+        return LineWindow(shown, total)
+    }
 
     /**
      * The attachment this file becomes when the user attaches it whole.
@@ -136,12 +203,35 @@ class FileReadResult(
     fun toAttachment(location: String?, id: String, range: LineRange): AttachmentDraft = toAttachment(location, id)
         .copy(uri = ServerPath.toUri(path, location, range), range = range)
 
-    override fun equals(other: Any?): Boolean =
-        this === other || (other is FileReadResult && path == other.path && bytes.contentEquals(other.bytes))
+    override fun equals(other: Any?): Boolean = this === other ||
+        (
+            other is FileReadResult &&
+                path == other.path &&
+                bytes.contentEquals(other.bytes) &&
+                truncated == other.truncated &&
+                totalBytes == other.totalBytes
+            )
 
-    override fun hashCode(): Int = 31 * path.hashCode() + bytes.contentHashCode()
+    override fun hashCode(): Int = 31 * (31 * path.hashCode() + bytes.contentHashCode()) + truncated.hashCode()
 
-    override fun toString(): String = "FileReadResult(path=$path, kind=$kind, bytes=${bytes.size})"
+    override fun toString(): String =
+        "FileReadResult(path=$path, kind=$kind, bytes=${bytes.size}, truncated=$truncated, totalBytes=$totalBytes)"
+}
+
+/**
+ * A window onto the start of a text file: the lines to draw and how many the file has.
+ *
+ * [total] counts every line of the text the phone holds, including the ones that were not built, so
+ * "and N more lines" is a fact about the text and not an estimate.
+ */
+data class LineWindow(val lines: List<String>, val total: Int) {
+    /** How many lines of the text are not in [lines]. */
+    val hidden: Int get() = total - lines.size
+
+    companion object {
+        /** What ends a line that was cut at the width cap: a horizontal ellipsis. */
+        const val CUT_MARK: String = "\u2026"
+    }
 }
 
 /** Why an attachment cannot be sent, or can only be sent after the user says so. */

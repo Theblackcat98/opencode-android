@@ -1,6 +1,7 @@
 package dev.opencode.android.feature.review
 
 import android.graphics.BitmapFactory
+import android.text.format.Formatter
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -41,6 +42,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -330,6 +332,10 @@ data class LineSelection(val anchor: Int? = null, val end: Int? = null) {
  * classifier in `FileReader` can give, and each one has a different affordance: a text file can be
  * commented on line by line, an image can be looked at, and a binary can only be shared. A viewer
  * that drew all three the same way would be lying about two of them.
+ *
+ * **A file larger than the phone will open says so in each of the three.** The reader holds only the
+ * start of such a file ([FileReadResult.truncated]): the text is the start with a notice above it,
+ * and a picture or a binary — of which half is no use — is a sentence with the file's size in it.
  */
 @Composable
 private fun FileContent(
@@ -349,7 +355,7 @@ private fun FileContent(
         FileContentKind.IMAGE -> ImageFileView(file = file, modifier = modifier)
 
         FileContentKind.BINARY -> Text(
-            text = stringResource(R.string.files_binary),
+            text = if (file.truncated) tooLargeSentence(file) else stringResource(R.string.files_binary),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = modifier.padding(16.dp),
@@ -358,11 +364,56 @@ private fun FileContent(
 }
 
 /**
+ * The sentence for a picture or a binary that is larger than the phone will open.
+ *
+ * The size is the server's `Content-Length`, so it is a fact; when the server did not send one the
+ * sentence says the file is larger than the phone will open and stops, because a size made up from
+ * the bytes that were read would be the cap.
+ */
+@Composable
+private fun tooLargeSentence(file: FileReadResult): String {
+    val size = if (file.sizeKnown) Formatter.formatShortFileSize(LocalContext.current, file.sizeBytes) else null
+    return when {
+        file.kind == FileContentKind.IMAGE && size != null -> stringResource(R.string.files_image_too_large, size)
+        file.kind == FileContentKind.IMAGE -> stringResource(R.string.files_image_too_large_unknown)
+        size != null -> stringResource(R.string.files_binary_too_large, size)
+        else -> stringResource(R.string.files_binary_too_large_unknown)
+    }
+}
+
+/**
+ * The line that says a text preview is only the start of the file: how much is shown and how much
+ * there is, or how much is shown when the server did not say how large the file is.
+ */
+@Composable
+private fun TruncationNotice(file: FileReadResult, modifier: Modifier = Modifier) {
+    val context = LocalContext.current
+    val shown = Formatter.formatShortFileSize(context, file.bytes.size.toLong())
+    Text(
+        text = if (file.sizeKnown) {
+            stringResource(R.string.files_truncated, shown, Formatter.formatShortFileSize(context, file.sizeBytes))
+        } else {
+            stringResource(R.string.files_truncated_unknown, shown)
+        },
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+    )
+}
+
+/**
  * A text file: line numbers, highlighting, and a tap per line.
  *
- * **Highlighting is computed once per file, off the main thread** (plan §5.4). [FileReadResult.lines]
- * and [dev.opencode.android.core.designsystem.code.CodeHighlighter.highlightAll] are pure, so the
- * result is `remember`ed on the content and a re-composition of the browser does not re-lex it.
+ * **A window of the file, drawn lazily.** The reader already bounds what is held (2 MiB), but 2 MiB
+ * can still be two million lines or one line two megabytes long, and neither can be a column of
+ * `Text`s. [FileReadResult.firstLines] therefore builds only the first [VIEWER_MAX_LINES] lines, cut
+ * at [VIEWER_MAX_LINE_CHARS] characters each with the cut marked on the line, and counts the rest; the
+ * rows are a `LazyColumn`, so a window of two thousand lines is composed a screenful at a time
+ * rather than all at once on the first frame.
+ *
+ * **Highlighting is computed once per file** (plan §5.4). [CodeHighlighter.highlightAll] is pure and
+ * linear, and it runs over the window rather than the file, so its cost is bounded by the two caps;
+ * the result is `remember`ed on the content so a re-composition does not re-lex it.
  */
 @Composable
 private fun TextFileView(
@@ -372,65 +423,61 @@ private fun TextFileView(
     modifier: Modifier = Modifier,
 ) {
     val language = remember(file.path) { CodeLanguage.ofPath(file.path) }
-    // Highlighting the whole file and then dropping the tail would be two passes over a million
-    // lines to show two thousand, so the cap is applied before the lexer runs. The number left out is
-    // the file's own line count, which is a fact rather than an estimate.
-    val all = remember(file.path, file.sizeBytes) { file.lines }
-    val shown = all.take(VIEWER_MAX_LINES)
-    val lines = remember(file.path, all.size) {
-        CodeHighlighter.highlightAll(shown.joinToString("\n"), language)
-    }
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .heightIn(max = VIEWER_MAX_HEIGHT)
-            .verticalScroll(rememberScrollState()),
-    ) {
-        lines.forEach { line ->
-            val selected = selection.contains(line.number)
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(if (selected) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent)
-                    .clickable { onSelectLine(line.number) }
-                    .semantics {
-                        contentDescription = "${line.number}, ${line.text.take(80)}"
-                    }
-                    .padding(horizontal = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = line.number.toString(),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontFamily = FontFamily.Monospace,
-                    modifier = Modifier.width(GUTTER_WIDTH).padding(end = 8.dp),
-                )
-                Text(
-                    text = line.text.ifEmpty { " " },
-                    style = MaterialTheme.typography.bodySmall,
-                    fontFamily = FontFamily.Monospace,
-                )
+    val window = remember(file) { file.firstLines(VIEWER_MAX_LINES, VIEWER_MAX_LINE_CHARS) }
+    val lines = remember(window) { CodeHighlighter.highlightAll(window.lines.joinToString("\n"), language) }
+    Column(modifier = modifier.fillMaxWidth()) {
+        if (file.truncated) TruncationNotice(file)
+        LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = VIEWER_MAX_HEIGHT)) {
+            items(lines, key = { it.number }) { line ->
+                val selected = selection.contains(line.number)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(if (selected) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent)
+                        .clickable { onSelectLine(line.number) }
+                        .semantics {
+                            contentDescription = "${line.number}, ${line.text.take(80)}"
+                        }
+                        .padding(horizontal = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = line.number.toString(),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontFamily = FontFamily.Monospace,
+                        modifier = Modifier.width(GUTTER_WIDTH).padding(end = 8.dp),
+                    )
+                    Text(
+                        text = line.text.ifEmpty { " " },
+                        style = MaterialTheme.typography.bodySmall,
+                        fontFamily = FontFamily.Monospace,
+                    )
+                }
             }
-        }
-        if (all.size > shown.size) {
-            // Say what was left out. A viewer that simply stops is a viewer whose end looks like the
-            // end of the file, and a reviewer who believes they read all of it is worse off than one
-            // who knows to open the rest.
-            Text(
-                text = stringResource(R.string.files_too_large, (all.size - shown.size).toString()),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-            )
-        }
-        selection.range?.let { range ->
-            Text(
-                text = stringResource(R.string.files_line_range, range.toSuffix()),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-            )
+            if (window.hidden > 0) {
+                item {
+                    // Say what was left out. A viewer that simply stops is a viewer whose end looks like
+                    // the end of the file, and a reviewer who believes they read all of it is worse off
+                    // than one who knows to open the rest.
+                    Text(
+                        text = stringResource(R.string.files_too_large, window.hidden.toString()),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                    )
+                }
+            }
+            selection.range?.let { range ->
+                item {
+                    Text(
+                        text = stringResource(R.string.files_line_range, range.toSuffix()),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                    )
+                }
+            }
         }
     }
 }
@@ -443,13 +490,25 @@ private fun TextFileView(
  * behalf — on the phone, but for a file the user only looked at. `coil-compose` is not used here
  * because there is nothing to fetch; a `BitmapFactory.decodeByteArray` off the main thread is the
  * whole of it, and it fails softly to the same sentence a binary gets.
+ *
+ * **A picture over the reader's cap is not decoded at all.** The reader keeps no bytes for it, so the
+ * state is a sentence with its size in it: too large to preview, not a crash.
  */
 @Composable
 private fun ImageFileView(
     file: FileReadResult,
     modifier: Modifier = Modifier,
 ) {
-    val bitmap = remember(file.path, file.sizeBytes) {
+    if (file.truncated) {
+        Text(
+            text = tooLargeSentence(file),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = modifier.padding(16.dp),
+        )
+        return
+    }
+    val bitmap = remember(file) {
         runCatching { BitmapFactory.decodeByteArray(file.bytes, 0, file.bytes.size) }.getOrNull()
     }
     if (bitmap == null) {
@@ -506,7 +565,15 @@ private fun FileRow(entry: FileSystemEntry, reading: String?, onClick: () -> Uni
     }
 }
 
-/** What the viewer offers for a file it has read. */
+/**
+ * What the viewer offers for a file it has read.
+ *
+ * **A file the phone holds only the start of cannot be edited, shared or downloaded.** Each of those
+ * treats the bytes in memory as *the file*: an edit writes them back over it, and a share or download
+ * hands them to another app. For a truncated file that would replace 572 MB with its first 2 MiB, or
+ * deliver a file that is silently cut short, so the three are not offered and the sentence says why.
+ * Attaching is unaffected — an attachment is the server's own path, not these bytes.
+ */
 @Composable
 private fun FileActions(
     file: FileReadResult,
@@ -520,6 +587,7 @@ private fun FileActions(
     onWrite: (FileReadResult, String) -> Unit,
 ) {
     var editing by remember { mutableStateOf(false) }
+    val whole = !file.truncated
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
         Text(
             text = file.label,
@@ -527,7 +595,7 @@ private fun FileActions(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
-        if (file.kind == FileContentKind.BINARY) {
+        if (file.kind == FileContentKind.BINARY && whole) {
             // A binary has no lines to select, so the range action is not offered at all rather than
             // offered and disabled: a control that cannot work is a control that confuses.
             Text(
@@ -541,10 +609,18 @@ private fun FileActions(
             if (file.kind == FileContentKind.TEXT) {
                 TextButton(onClick = onAttachLines) { Text(stringResource(R.string.files_attach_lines)) }
             }
-            TextButton(onClick = onShare) { Text(stringResource(R.string.files_share)) }
-            TextButton(onClick = onDownload) { Text(stringResource(R.string.files_download)) }
+            if (whole) {
+                TextButton(onClick = onShare) { Text(stringResource(R.string.files_share)) }
+                TextButton(onClick = onDownload) { Text(stringResource(R.string.files_download)) }
+            }
         }
-        if (canEdit) {
+        if (!whole) {
+            Text(
+                text = stringResource(R.string.files_truncated_actions),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        } else if (canEdit) {
             TextButton(onClick = { editing = !editing }, enabled = !writing) {
                 Text(stringResource(R.string.files_edit))
             }

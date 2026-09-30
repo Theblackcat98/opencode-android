@@ -107,6 +107,7 @@ import dev.opencode.android.core.model.event.PtyInfo
 import kotlinx.serialization.json.JsonObject
 import okhttp3.RequestBody
 import okhttp3.ResponseBody
+import retrofit2.Call
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
@@ -677,12 +678,27 @@ interface ServerApi {
      *
      * [directory] stays a query parameter because that is how the location is addressed everywhere
      * else.
+     *
+     * **This is a streaming [Call], not a `suspend` function returning the body, and both halves
+     * are what make it safe on a file the phone cannot hold.** Without `@Streaming` Retrofit copies
+     * the *entire* body into memory on an OkHttp thread before the call returns, so a 572 MB file was
+     * 572 MB of heap before any caller could decide to stop — and the `OutOfMemoryError` was thrown
+     * on that thread, where nothing could catch it, and killed the app. Streaming hands back the live
+     * body instead: the caller reads what it wants from `source()` and closes it.
+     *
+     * The [Call] is returned rather than awaited because **closing a body does not stop a
+     * download, cancelling the call does.** OkHttp answers `close()` on an unfinished body by trying
+     * to drain the rest for up to 100 ms so it can reuse the connection, which on a fast link is
+     * megabytes the phone never wanted; `Call.cancel()` drops the connection at once. A `suspend`
+     * signature would hide the call, and with it the only way to stop reading a file at the cap.
+     * `FileReader.read` is the one caller, and it owns both rules.
      */
+    @Streaming
     @GET
-    suspend fun readFile(
+    fun readFile(
         @Url url: String,
         @Query(LocationParam.QUERY_KEY) directory: String? = null,
-    ): ResponseBody
+    ): Call<ResponseBody>
 
     /**
      * `experimental.fs.write`: writes a file and creates its parents.

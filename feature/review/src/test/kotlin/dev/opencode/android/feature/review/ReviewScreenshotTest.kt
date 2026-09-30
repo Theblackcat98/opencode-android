@@ -252,6 +252,70 @@ class ReviewScreenshotTest {
         )
     }
 
+    /**
+     * A text file the reader held only the start of. The viewer says how much it shows and how much
+     * there is, and offers no edit, share or download: those would treat the start as the file.
+     */
+    @Test
+    fun fileViewerTruncated() = capture("review-file-viewer-truncated") {
+        FileBrowserContent(
+            directory = "/home/dev/project",
+            path = "/home/dev/project",
+            entries = listOf(
+                dev.opencode.android.core.model.FileSystemEntry(
+                    path = "/home/dev/project/huge.txt",
+                    type = dev.opencode.android.core.model.FileSystemEntry.EntryType.FILE,
+                ),
+            ),
+            reading = null,
+            content = truncatedTextFile(),
+            loading = false,
+            error = null,
+            canEdit = true,
+            onEnter = {},
+            onUp = {},
+            onRead = {},
+            onAttach = {},
+            onAttachLines = { _, _ -> },
+            onShare = {},
+            onDownload = {},
+        )
+    }
+
+    /** A picture over the reader's cap: a sentence with its size, not a decode and not a crash. */
+    @Test
+    fun fileViewerPictureTooLarge() = capture("review-file-viewer-image-too-large") {
+        FileBrowserContent(
+            directory = "/home/dev/project",
+            path = "/home/dev/project",
+            entries = listOf(
+                dev.opencode.android.core.model.FileSystemEntry(
+                    path = "/home/dev/project/photo.png",
+                    type = dev.opencode.android.core.model.FileSystemEntry.EntryType.FILE,
+                ),
+            ),
+            reading = null,
+            content = dev.opencode.android.core.data.composer.FileReadResult(
+                path = "/home/dev/project/photo.png",
+                bytes = ByteArray(0),
+                kind = dev.opencode.android.core.data.composer.FileContentKind.IMAGE,
+                mime = "image/png",
+                truncated = true,
+                totalBytes = 48_000_000L,
+            ),
+            loading = false,
+            error = null,
+            canEdit = true,
+            onEnter = {},
+            onUp = {},
+            onRead = {},
+            onAttach = {},
+            onAttachLines = { _, _ -> },
+            onShare = {},
+            onDownload = {},
+        )
+    }
+
     @Test
     fun fileBrowserSearching() = capture("review-file-search") {
         FileBrowserContent(
@@ -627,6 +691,20 @@ class ReviewScreenshotTest {
             kind = dev.opencode.android.core.data.composer.FileContentKind.TEXT,
             mime = "text/plain",
             text = body,
+        )
+    }
+
+    /** The start of a file far larger than the phone will open: the bytes are the prefix, the total is not. */
+    private fun truncatedTextFile(): dev.opencode.android.core.data.composer.FileReadResult {
+        val body = (1..12).joinToString("\n") { "line $it of a log that goes on for a good while longer" } + "\n"
+        return dev.opencode.android.core.data.composer.FileReadResult(
+            path = "/home/dev/project/huge.txt",
+            bytes = body.toByteArray(),
+            kind = dev.opencode.android.core.data.composer.FileContentKind.TEXT,
+            mime = "application/octet-stream",
+            text = body,
+            truncated = true,
+            totalBytes = 600_000_000L,
         )
     }
 

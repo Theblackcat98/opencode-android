@@ -212,11 +212,28 @@ class ConfigSurface(
      * exist, and the editor's job is to offer to create it; [ConfigEditorState.missing] is that
      * answer. Every other failure is reported, because a file that exists and cannot be read is a
      * different situation the user needs to know about.
+     *
+     * **A file too large to be read whole is a failure, not a partial document.** [FileReader] holds
+     * only a prefix of a large file, and an editor handed a prefix would show half a document as the
+     * whole and write it back over the file — which is the one outcome a configuration editor must
+     * never have. No real configuration file is anywhere near the preview cap, so this is a file that
+     * is not what the editor thinks it is, and the honest answer is that it will not be opened here.
      */
     suspend fun readFile(directory: String?, path: String): ConfigFileRead {
         val result = files.read(directory, path)
         val failure = result.exceptionOrNull()
-        if (failure == null) return ConfigFileRead.Found(result.getOrThrow())
+        if (failure == null) {
+            val file = result.getOrThrow()
+            if (file.truncated) {
+                return ConfigFileRead.Failed(
+                    ActionError(
+                        ActionErrorKind.INVALID_REQUEST,
+                        "$path is larger than the app will open for editing",
+                    ),
+                )
+            }
+            return ConfigFileRead.Found(file)
+        }
         val error = failure.classified().error
         return if (error.kind == ActionErrorKind.NOT_FOUND) {
             ConfigFileRead.Missing(error)
@@ -446,8 +463,12 @@ class ConfigSurface(
                     !expectInConfig ->
                         "${plan.target} was written and read back; the server serves this kind of file through its own catalog"
 
-                    readBack.bytes.size != bytes ->
-                        "${plan.target} was written, and the server returned ${readBack.bytes.size} of $bytes bytes"
+                    // `sizeBytes` is the size the *server* holds, which is what a write is compared
+                    // with: a read-back is bounded, so `bytes.size` of a large write is the cap. When
+                    // the read-back was cut and the server did not say how large the file is, there
+                    // is nothing to compare, and nothing is claimed.
+                    readBack.sizeKnown && readBack.sizeBytes != bytes.toLong() ->
+                        "${plan.target} was written, and the server returned ${readBack.sizeBytes} of $bytes bytes"
 
                     else -> "${plan.target} was written and the server is using it"
                 },

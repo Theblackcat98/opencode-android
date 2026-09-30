@@ -233,17 +233,19 @@ class ReviewViewModel @Inject constructor(
     }
 
     /**
-     * `fs.read`: the bytes of one file, for the viewer.
+     * `fs.read`: the start of one file, for the viewer.
      *
-     * **The route answers the whole body**, so the size is known only after the read — and the
-     * server's `FileSystem.Entry` carries no size to check against, which is why the cap is a cap on
-     * what is *drawn* ([VIEWER_MAX_LINES]) rather than one on what is fetched. Guessing a size from a
-     * file name is the kind of estimate that is wrong on exactly the file a user wanted to open.
+     * **The server's `FileSystem.Entry` carries no size, so the phone cannot refuse a file it thinks
+     * is too large** — it can only stop reading one. [FileReader.open] takes at most its preview cap
+     * from the body, drops the connection, and publishes what it holds with [FileReadResult.truncated]
+     * and the size the server reported, which is what the viewer says when a file is larger than the
+     * phone will open. What the viewer *draws* is capped separately ([VIEWER_MAX_LINES],
+     * [VIEWER_MAX_LINE_CHARS]), because two megabytes can still be two million lines.
      */
     fun readFile(entry: FileSystemEntry) {
         val directory = _state.value.directory ?: return
         viewModelScope.launch {
-            val result = set?.files?.read(directory, entry.path)
+            val result = set?.files?.open(directory, entry.path)
             // A read that failed tells the screen why there is nothing to show; a `404` on a file the
             // server listed is a real answer, not a bug, so it is surfaced rather than swallowed.
             val failure = result?.exceptionOrNull()
@@ -292,6 +294,9 @@ class ReviewViewModel @Inject constructor(
         _state.value = _state.value.copy(writing = true, writeNotice = null)
         viewModelScope.launch {
             val result = set?.files?.write(directory, file.path, text)
+            // What the server holds now replaces what the viewer was showing, so the screen never
+            // keeps the old text under a write that succeeded.
+            result?.getOrNull()?.let { set?.files?.showReadBack(it) }
             val error = result?.exceptionOrNull()?.toActionError()
             recordCapability(ExperimentalRoute.FS_WRITE, error)
             _state.value = _state.value.copy(
@@ -599,10 +604,19 @@ class ReviewViewModel @Inject constructor(
 /**
  * How many lines of a file the viewer draws.
  *
- * The route answers the whole body, so a file of a million lines arrives whole; this is the cap on
+ * The reader holds at most 2 MiB of a file, which can still be two million lines; this is the cap on
  * what is *composed*, and the viewer says how many lines it left out rather than stopping silently.
- * A cap on what is fetched would need a size the server does not report (`FileSystem.Entry` carries
- * a path and a type and nothing else), and an estimate from a file name is wrong on exactly the file
- * a user opened to look at.
+ * It was once the only bound, on a design that read the whole body first; it is now the second of two,
+ * and the bound on what is fetched is `FileReader.TEXT_PREVIEW_MAX_BYTES`.
  */
 const val VIEWER_MAX_LINES: Int = 2_000
+
+/**
+ * How many characters of one line the viewer draws.
+ *
+ * A minified script is one line of two megabytes, and a `Text` laid out over that is a frozen screen.
+ * Two thousand characters is several screen widths of code, and a line cut here ends in an ellipsis so
+ * the cut is visible on the line. It also bounds the highlighter: at most [VIEWER_MAX_LINES] lines of
+ * this many characters are ever lexed.
+ */
+const val VIEWER_MAX_LINE_CHARS: Int = 2_000

@@ -176,6 +176,10 @@ internal val SPLIT_MIN_WIDTH = 840.dp
  * the grant is scoped to it and expires with the cache.
  */
 private fun shareFile(context: Context, file: FileReadResult, download: Boolean) {
+    // A file the reader only held the start of is not a file to hand over: what is in memory is a
+    // prefix, and sharing it would deliver a silently cut copy. The viewer does not offer the action
+    // for one; this is the second lock on the same door.
+    if (file.truncated) return
     val target = File(context.cacheDir, "shares").apply { mkdirs() }.resolve(file.label)
     runCatching { target.writeBytes(file.bytes) }.onFailure { return }
     val uri = FileProvider.getUriForFile(context, "${context.packageName}.captures", target)

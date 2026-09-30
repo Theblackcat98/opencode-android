@@ -210,6 +210,40 @@ class ConfirmedWriteTest : AdminServerTest() {
     }
 
     @Test
+    fun `a write larger than the read-back cap is not reported as a size mismatch`() = runTest {
+        // The read-back is bounded, so for a document over the cap the bytes the reader holds are the
+        // cap, not the file. The comparison that says "the server returned N of M bytes" has to use the
+        // size the server reports, or every large write would be called a partial one.
+        val written = "x".repeat((FileReader.TEXT_PREVIEW_MAX_BYTES + 1_000).toInt())
+        server.answer(
+            "POST /api/experimental/fs/write",
+            """{"location":{"directory":"/work/app"},"data":{"path":".opencode/opencode.jsonc"}}""",
+        )
+        server.answerPrefix("GET", "/api/fs/read/", written)
+        server.answer("POST /api/location/reload", "", 204)
+        server.answer(
+            "GET /api/config",
+            """[{"type":"document","path":"/work/app/.opencode/opencode.jsonc","info":{}}]""",
+        )
+
+        val plan = surface.planFileWrite(
+            path = ".opencode/opencode.jsonc",
+            text = written,
+            consequence = "This replaces the file",
+            isPrivilegeChange = false,
+            existing = null,
+            validate = null,
+        )!!
+        val outcome = surface.commit(plan, "/work/app")
+
+        assertTrue("the write should succeed: ${outcome.exceptionOrNull()}", outcome.isSuccess)
+        assertTrue(
+            "a large write must be called what it is: ${outcome.getOrThrow().summary}",
+            outcome.getOrThrow().summary.contains("the server is using it"),
+        )
+    }
+
+    @Test
     fun `a write to a file the server does not read is reported, not called a success`() = runTest {
         // The case that matters: the write succeeds, the server reloads, and the file is invisible to
         // it. Saying "saved" here is how a user ends up with a server that does not behave the way

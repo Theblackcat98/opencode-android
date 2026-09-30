@@ -96,6 +96,15 @@ Found by driving the app against a live server on an emulator, which no test had
   diff and nothing else. Every kind now draws the message under "Why it failed", capped at six lines
   with the rest one tap away, and it is part of the card's accessibility description. Covered by unit
   tests and Roborazzi baselines (`tool-failed-edit`, `tool-failed-shell-dark`); not yet seen on a device.
+- **Opening a file larger than memory killed the app.** `fs.read` was a buffering Retrofit call, so a 572 MB
+  file was copied whole into the heap on an OkHttp thread (`OutOfMemoryError`, seen as `IllegalStateException:
+  Check failed` in `TaskRunner`), then copied again to be classified. `FileReader.read` now streams the body,
+  keeps at most 2 MiB of text or binary (8 MiB of a picture, none of one whose `Content-Length` is over that),
+  cancels the call so the rest is never downloaded, and returns `truncated` and the size the server reported;
+  the viewer says "Showing the first … of …" or "too large to preview" and does not offer edit, share or
+  download on a file it holds only the start of. The viewer's content was also never published (nothing set
+  `FileBrowserState.content`), so a file that did read was never shown; `FileReader.open` does. A wire test over a streamed
+  256 MiB body fails on the old code; not yet seen on a device.
 - Markdown inside list items (`**bold**`, `` `code` ``, links) was drawn as typed; only paragraphs,
   headings and table cells were parsed.
 - "Changed 1 files" is now "Changed 1 file".

@@ -1007,8 +1007,11 @@ experimental switches that govern it. Phase 7 reuses the diff rows, the code hig
 
 - **A `FileSystem.Entry` carries a path and a type and nothing else** (the spec's `FileSystem.Entry` has
   `additionalProperties: false`). So a file viewer cannot refuse to fetch a file it thinks is too large, and an
-  estimate from the name is wrong on exactly the file a user opened. The cap is therefore on what is *drawn*
-  (`VIEWER_MAX_LINES`, 2,000) and the viewer says how many lines it left out.
+  estimate from the name is wrong on exactly the file a user opened. The cap was first on what is *drawn*
+  (`VIEWER_MAX_LINES`, 2,000) with the whole body read first, and a 572 MB file killed the app (manual test E5).
+  The read is now bounded too: `FileReader.read` streams `fs.read`, takes at most 2 MiB of a text or binary file
+  (8 MiB of a picture, and none of one whose `Content-Length` is already over that), drops the connection, and says
+  the file was cut and how large it is when the server said. The viewer states both.
 - **`fs.read` is `application/octet-stream`, and the bytes decide what a file is** — except when the server has
   already said it is an image. `FileReader.classify` tested the bytes first, which classified every picture as a
   binary and made the image branch unreachable; the content type decides first, now.

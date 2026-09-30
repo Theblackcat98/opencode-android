@@ -86,6 +86,13 @@
     <string name="files_download">Download</string>
     <string name="files_binary">This file cannot be shown. Share or download it instead.</string>
     <string name="files_too_large">%1$s more lines. Open the file on the server to read them.</string>
+    <string name="files_truncated">Showing the first %1$s of %2$s. The file is larger than the phone will open.</string>
+    <string name="files_truncated_unknown">Showing the first %1$s. The file is larger than the phone will open, and the server did not say how large it is.</string>
+    <string name="files_truncated_actions">The phone holds only the start of this file, so it cannot edit, share or download it from here.</string>
+    <string name="files_image_too_large">This picture is %1$s, which is larger than the phone will preview.</string>
+    <string name="files_image_too_large_unknown">This picture is larger than the phone will preview.</string>
+    <string name="files_binary_too_large">This file cannot be shown, and at %1$s it is larger than the phone will open.</string>
+    <string name="files_binary_too_large_unknown">This file cannot be shown, and it is larger than the phone will open.</string>
     <string name="files_line_range">Selected %1$s. Tap a line to change it.</string>
     <string name="files_edit">Edit on the server</string>
     <string name="files_edit_body">This replaces the whole file on the machine the agent is working on. It is an experimental route, and it is off unless you turn it on.</string>
