@@ -29,15 +29,15 @@ the layout rows in J and K need real hardware.
 
 | # | Device | Form factor | Android | Build | Result |
 | --- | --- | --- | --- | --- | --- |
-| A1 | Smallest supported phone | Phone | 8.0 (API 26) | play | |
-| A2 | Mid-range phone | Phone | 11 | play | |
-| A3 | Current flagship | Phone | latest | play | |
-| A4 | Small tablet | Tablet, portrait | 10 | play | |
-| A5 | Tablet | Tablet, landscape | 13 | play | |
-| A6 | Foldable, folded | Foldable | 13 | play | |
-| A7 | Foldable, unfolded | Foldable, wide | 13 | play | |
-| A8 | ChromeOS, resizable window | Desktop | 14+ | play | |
-| A9 | Any one of A1–A3 | Phone | 11 | fdroid | |
+| A1 | Smallest supported phone | Phone | 8.0 (API 26) | play | n/a (only one device was available: an API 36 phone emulator, so this form factor and Android version were not run) |
+| A2 | Mid-range phone | Phone | 11 | play | n/a (only one device was available: an API 36 phone emulator, so this form factor and Android version were not run) |
+| A3 | Current flagship | Phone | latest | play | ✓ pass in part (an API 36 phone emulator, not a flagship device: the `play` debug build installs, launches to the empty Servers list and opens Add server with no crash. Nothing beyond that was run on this build) |
+| A4 | Small tablet | Tablet, portrait | 10 | play | n/a (only one device was available: an API 36 phone emulator, so this form factor and Android version were not run) |
+| A5 | Tablet | Tablet, landscape | 13 | play | n/a (only one device was available: an API 36 phone emulator, so this form factor and Android version were not run) |
+| A6 | Foldable, folded | Foldable | 13 | play | n/a (only one device was available: an API 36 phone emulator, so this form factor and Android version were not run) |
+| A7 | Foldable, unfolded | Foldable, wide | 13 | play | n/a (only one device was available: an API 36 phone emulator, so this form factor and Android version were not run) |
+| A8 | ChromeOS, resizable window | Desktop | 14+ | play | n/a (only one device was available: an API 36 phone emulator, so this form factor and Android version were not run) |
+| A9 | Any one of A1–A3 | Phone | 11 | fdroid | n/a (the `fdroid` debug build ran throughout on an Android 16 phone emulator, not on Android 11; nothing about Android 11 was run) |
 
 A1 is the one that finds real problems: Android 8 has no notification channels beyond the basics,
 no `POST_NOTIFICATIONS` permission, and the smallest screens.
@@ -46,14 +46,14 @@ no `POST_NOTIFICATIONS` permission, and the smallest screens.
 
 | # | Check | Result |
 | --- | --- | --- |
-| B1 | Add a server by scanning the QR from `opencode pair` | |
+| B1 | Add a server by scanning the QR from `opencode pair` | n/a (the emulator has no camera feed to scan a QR with. The Scan tab asks for camera access ("Camera access is needed to scan the pairing code" / Allow camera), and the Paste link and Manual tabs are beside it) |
 | B2 | Add a server by typing the URL and the password | ✓ pass (added http://192.168.1.199:4096 on Manual tab). A later run found that a 32-character password typed in one burst (as paste or autofill would) came out with its first two characters swapped in the Edit form and was rejected; fixed in `97c1fac`, and four bursts on the fixed build were identical and saved and connected |
 | B3 | A plain `http://` server shows the **Unencrypted** badge on the list and the status page | ✓ pass (badge shown on server card and Server Details screen) |
 | B4 | A wrong password reports "re-pair" and does not crash or hang | ✓ pass (401 shows 'Could not connect' dialog with 'Pair again' option) |
 | B5 | An `https://` server with a self-signed certificate, with the CA installed, connects | |
 | B6 | An `https://` server with a self-signed certificate, **without** the CA, refuses and says why | |
-| B7 | The LAN prober is **off by default** and finds the server when switched on | |
-| B8 | The LAN prober can be cancelled mid-scan and stops immediately | |
+| B7 | The LAN prober is **off by default** and finds the server when switched on | ✗ fail (not built: there is no LAN prober in the code and no setting for one) |
+| B8 | The LAN prober can be cancelled mid-scan and stops immediately | ✗ fail (not built: no LAN prober to cancel) |
 | B9 | "Pair another device" shows a QR, and the second device redeems it | |
 | B10 | "Pair another device" is **hidden** on a server that answers 404 to `POST /api/pair` | |
 | B11 | Removing a server removes its token from the keystore | ✓ pass (server deleted via menu with confirmation) |
@@ -64,7 +64,7 @@ no `POST_NOTIFICATIONS` permission, and the smallest screens.
 | --- | --- | --- |
 | C1 | Projects, sessions and the timeline open cold and from cache | ✓ pass (real server: projects, `testproject` sessions and a timeline with Edit diff, command output, "Turn finished" on a cold start; the same offline in airplane mode) |
 | C2 | Kill the app, reopen: the timeline is there immediately, then fills in | ✓ pass (force-stopped, airplane mode on, reopened: cached timeline shown at once; network back: context bar filled in. Note: the composer's "No model available" banner stays stale until the session is re-entered — see D8) |
-| C3 | Text, reasoning and tool output stream and are ordered | |
+| C3 | Text, reasoning and tool output stream and are ordered | ✓ pass in part (text streamed live on the dev server, chunk by chunk, in order (`fake/slow`); reasoning then answer, and an Edit card, a Run command card with output and the closing text, appeared in that order in completed turns on both servers. Reasoning and tool output were not watched arriving live: the fake provider answers them in a few milliseconds) |
 | C4 | A long session scrolls without dropping a frame on a mid-range phone (A2) | n/a (no A2 device; not a pass. Emulator proxy, 768-message real session, 50 fling swipes: 393 frames, 5.85% janky, p50/p90 16 ms, p95 21 ms, p99 26 ms; the same swipes on the 122-row project list: 3.34% janky, p99 16 ms) |
 | C5 | A session with an image attachment shows the image | ✗ fail (emulator, real server: the message shows a "1 attachment / clipway-mockup.webp" chip only; no image is drawn and tapping the chip does nothing) |
 | C6 | An unknown message type renders as a generic fallback and does not crash | |
@@ -106,9 +106,9 @@ no `POST_NOTIFICATIONS` permission, and the smallest screens.
 
 | # | Check | Result |
 | --- | --- | --- |
-| G1 | An OAuth login completes in a browser and the credential appears | |
-| G2 | A command-based login completes and the credential appears | |
-| G3 | A cancelled or expired login says so rather than appearing to hang | |
+| G1 | An OAuth login completes in a browser and the credential appears | n/a (no provider with a browser login was available on the dev server; the Accounts and Providers screens were not exercised) |
+| G2 | A command-based login completes and the credential appears | n/a (no provider with a command-based login was available) |
+| G3 | A cancelled or expired login says so rather than appearing to hang | n/a (no login flow was run) |
 | G4 | An MCP server is added, connected and disconnected | |
 | G5 | A plugin is listed, updated, and its RPC console calls a method | |
 | G6 | The config explorer shows a document, and editing it validates before saving | |
@@ -119,16 +119,16 @@ no `POST_NOTIFICATIONS` permission, and the smallest screens.
 
 | # | Check | Result |
 | --- | --- | --- |
-| H1 | The usage dashboard loads and the heatmap, streak, totals and per-model usage render | |
-| H2 | Changing the date range or the project re-queries and the numbers change | |
-| H3 | Tool reliability shows successes, failures and a p50 duration | |
-| H4 | **The dashboard is hidden** on a server with no `/api/experimental/session/stats` | |
-| H5 | The quick-ask widget generates and shows the text | |
-| H6 | The RPC console sends JSON and renders the answer, including an error | |
-| H7 | The RPC console **refuses** an rpc id or method that would break the URL | |
-| H8 | The session log viewer replays and stops at `log.synced` | |
-| H9 | A synthetic note appears in the transcript labelled as synthetic, not as a user message | |
-| H10 | "Wait until idle" blocks until the turn ends, and can be stopped | |
+| H1 | The usage dashboard loads and the heatmap, streak, totals and per-model usage render | ✗ fail (not built: `feature:insights` has a screen and a ViewModel but `:app` has no route to them, so the usage dashboard cannot be opened; `docs/CHANGELOG.md` lists it under "Not built") |
+| H2 | Changing the date range or the project re-queries and the numbers change | ✗ fail (not built: `feature:insights` has a screen and a ViewModel but `:app` has no route to them, so the usage dashboard cannot be opened; `docs/CHANGELOG.md` lists it under "Not built") |
+| H3 | Tool reliability shows successes, failures and a p50 duration | ✗ fail (not built: `feature:insights` has a screen and a ViewModel but `:app` has no route to them, so the usage dashboard cannot be opened; `docs/CHANGELOG.md` lists it under "Not built") |
+| H4 | **The dashboard is hidden** on a server with no `/api/experimental/session/stats` | n/a (the dashboard is unreachable, so "hidden" and "shown" cannot be told apart in the app; the route gating exists in `core:data`, and neither the 2.0.18 dev server nor the 2.0.20 real server was asked) |
+| H5 | The quick-ask widget generates and shows the text | ✗ fail (not built: `generateText` exists in `core:data` and nothing in the app calls it; no quick-ask widget or screen) |
+| H6 | The RPC console sends JSON and renders the answer, including an error | ✗ fail (not built: there is no RPC console screen; `callRpc` has no UI caller) |
+| H7 | The RPC console **refuses** an rpc id or method that would break the URL | ✗ fail (not built: there is no RPC console screen to refuse anything in; the refusal exists in `core:data` and is covered by its tests) |
+| H8 | The session log viewer replays and stops at `log.synced` | ✗ fail (not built: there is no session-log viewer; the log `Flow` in `core:data` has no UI caller) |
+| H9 | A synthetic note appears in the transcript labelled as synthetic, not as a user message | ✓ pass (dev server: `POST …/synthetic {text, description, delivery: queue}` showed up in the open session as a grey card headed "Injected", then "CI note", then the text; it is not drawn as a blue "You" bubble and has no Fork or Undo buttons) |
+| H10 | "Wait until idle" blocks until the turn ends, and can be stopped | ✗ fail (not built: `waitForSession` is only called from `InsightsSurface` in `core:data`; nothing in the app offers "Wait until idle") |
 | H11 | A plugin-created permission request **blocks the agent** and is labelled as plugin-created | ✗ fail (dev server: a request raised with `session.permission.create` appears in the inbox exactly like a tool's ("Allow external_directory? It would touch /etc/hosts"), with no label saying it was not created by a tool call, and the request's `metadata.title` was not shown; there is no "plugin-created" string anywhere in the code. Whether it blocks the agent is the server's behaviour and was not exercised, since no agent turn was waiting) |
 | H12 | A plugin-created form renders through the normal form engine | ✓ pass (the D6 form was created with `session.form.create`, not by the agent, and rendered and answered through the same dock and form engine) |
 
@@ -138,29 +138,29 @@ Run these with a TUI connected to the same server as a second client.
 
 | # | Check | Result |
 | --- | --- | --- |
-| I1 | A toast in the TUI appears as a snackbar in the app | |
-| I2 | **Follow-desktop is off by default**: selecting a session in the TUI does not move the phone | |
-| I3 | With follow-desktop on, selecting a session in the TUI moves the phone | |
-| I4 | With follow-desktop on, TUI prompt text appears in the app's composer | |
-| I5 | Turning follow-desktop back off stops both immediately | |
-| I6 | A TUI command that would change server state is **offered, not performed** | |
-| I7 | A command this build does not know is shown verbatim rather than dropped | |
-| I8 | A plugin's `rpc.*` event appears in the event viewer | |
+| I1 | A toast in the TUI appears as a snackbar in the app | ✗ fail (not built: `TuiControl` is created by `ServerDataSet` in `core:data`, but no screen or ViewModel in `:app` or any `feature:*` reads it, so there is no snackbar, no follow-desktop switch and no composer hand-off; it cannot be exercised from the app) |
+| I2 | **Follow-desktop is off by default**: selecting a session in the TUI does not move the phone | n/a (follow-desktop is off in `TuiControl`, but the app has no switch for it and no TUI event reaches a screen, so "does not move the phone" holds only because nothing consumes the events. No TUI was connected) |
+| I3 | With follow-desktop on, selecting a session in the TUI moves the phone | ✗ fail (not built: `TuiControl` is created by `ServerDataSet` in `core:data`, but no screen or ViewModel in `:app` or any `feature:*` reads it, so there is no snackbar, no follow-desktop switch and no composer hand-off; it cannot be exercised from the app) |
+| I4 | With follow-desktop on, TUI prompt text appears in the app's composer | ✗ fail (not built: `TuiControl` is created by `ServerDataSet` in `core:data`, but no screen or ViewModel in `:app` or any `feature:*` reads it, so there is no snackbar, no follow-desktop switch and no composer hand-off; it cannot be exercised from the app) |
+| I5 | Turning follow-desktop back off stops both immediately | ✗ fail (not built: `TuiControl` is created by `ServerDataSet` in `core:data`, but no screen or ViewModel in `:app` or any `feature:*` reads it, so there is no snackbar, no follow-desktop switch and no composer hand-off; it cannot be exercised from the app) |
+| I6 | A TUI command that would change server state is **offered, not performed** | ✗ fail (not built: `TuiControl` is created by `ServerDataSet` in `core:data`, but no screen or ViewModel in `:app` or any `feature:*` reads it, so there is no snackbar, no follow-desktop switch and no composer hand-off; it cannot be exercised from the app) |
+| I7 | A command this build does not know is shown verbatim rather than dropped | ✗ fail (not built: `TuiControl` is created by `ServerDataSet` in `core:data`, but no screen or ViewModel in `:app` or any `feature:*` reads it, so there is no snackbar, no follow-desktop switch and no composer hand-off; it cannot be exercised from the app) |
+| I8 | A plugin's `rpc.*` event appears in the event viewer | n/a (no plugin was available to emit an `rpc.*` event. The Event inspector on the Servers list does list every event the app receives, unknown types included) |
 
 ## J. Adaptive layout and input
 
 | # | Check | Result |
 | --- | --- | --- |
-| J1 | On A5 and A7 the list-detail panes show side by side, not stacked | |
-| J2 | Rotating a tablet swaps between the two pane arrangements without losing scroll | |
-| J3 | On A8, resizing the window across the list-detail breakpoint reflows | |
-| J4 | Ctrl+P opens the command palette on a device with a keyboard (A8) | |
-| J5 | A leader-key combination runs the same action | |
-| J6 | The command palette is reachable **without** a keyboard, by touch | |
-| J7 | Session tabs open, switch and close | |
-| J8 | The widget shows running sessions and pending approvals | |
-| J9 | The Quick Settings tile starts and stops the connection | |
-| J10 | App shortcuts from the launcher land on the right screen | |
+| J1 | On A5 and A7 the list-detail panes show side by side, not stacked | ✗ fail (not built: nothing in the app uses window size classes or a list-detail scaffold; also no tablet or unfolded foldable was available) |
+| J2 | Rotating a tablet swaps between the two pane arrangements without losing scroll | ✗ fail (not built: there is no two-pane arrangement to swap; no tablet was available) |
+| J3 | On A8, resizing the window across the list-detail breakpoint reflows | ✗ fail (not built: no list-detail breakpoint exists; no resizable-window device was available) |
+| J4 | Ctrl+P opens the command palette on a device with a keyboard (A8) | ✗ fail (not built: the app has no hardware-key handling (`onPreviewKeyEvent`, key shortcuts) and no command palette) |
+| J5 | A leader-key combination runs the same action | ✗ fail (not built: no leader keys or palette) |
+| J6 | The command palette is reachable **without** a keyboard, by touch | ✗ fail (not built: there is no command palette; the composer's slash-command completion list is the nearest thing and it is not a palette) |
+| J7 | Session tabs open, switch and close | ✗ fail (not built: no session tabs) |
+| J8 | The widget shows running sessions and pending approvals | ✗ fail (not built: no home-screen widget) |
+| J9 | The Quick Settings tile starts and stops the connection | ✗ fail (not built: no Quick Settings tile) |
+| J10 | App shortcuts from the launcher land on the right screen | ✗ fail (not built as specified: the only launcher shortcut is a dynamic "N unread" one from `LauncherBadges`; no static or dynamic New session / Servers / Inbox shortcuts exist) |
 
 ## K. Accessibility
 
@@ -168,34 +168,34 @@ Run on A1 (smallest) and A3, with TalkBack on and the font size at the platform 
 
 | # | Check | Result |
 | --- | --- | --- |
-| K1 | Every control is announced with a name | |
-| K2 | The timeline is navigable, and a finished turn is announced | |
-| K3 | A permission request is announced when it arrives while the app is open | |
+| K1 | Every control is announced with a name | ✗ fail in part (TalkBack is installed on the emulator but its speech cannot be heard or captured here, so this was checked from the accessibility tree: the static audit `tools/audit-accessibility.mjs` reports 0 findings and nearly every control dumped carried a name, but the Home screen's floating "New session" button has none and could only be tapped by coordinate) |
+| K2 | The timeline is navigable, and a finished turn is announced | n/a (TalkBack was not run: no way to hear or capture its output here) |
+| K3 | A permission request is announced when it arrives while the app is open | n/a (TalkBack was not run) |
 | K4 | Every screen is usable at the largest font size with nothing clipped | |
-| K5 | Focus order follows visual order on every screen | |
-| K6 | Contrast of every text pair meets 4.5:1, including the code palette | |
+| K5 | Focus order follows visual order on every screen | n/a (TalkBack was not run) |
+| K6 | Contrast of every text pair meets 4.5:1, including the code palette | n/a (no contrast ratio was computed; `docs/ACCESSIBILITY_AUDIT.md` §3 says none is computed anywhere and that it needs a colour tool) |
 
 ## L. Compatibility
 
 | # | Check | Result |
 | --- | --- | --- |
-| L1 | Oldest supported server version: every screen in this matrix | |
-| L2 | Latest server version: every screen in this matrix | |
+| L1 | Oldest supported server version: every screen in this matrix | n/a (no older server was available; the dev server is 2.0.18 and the real one 2.0.20) |
+| L2 | Latest server version: every screen in this matrix | n/a (2.0.20, the real server, is newer than the tested 2.0.18, which is what L3 covers; no separate "latest" run of every screen was made) |
 | L3 | A server **newer** than tested shows "untested server version" and still works | ✓ pass (v2.0.20 server connected with warning note) |
-| L4 | A server missing an experimental route hides that feature everywhere | |
+| L4 | A server missing an experimental route hides that feature everywhere | n/a (no server missing an experimental route was available, and the screens that use those routes are mostly not built) |
 | L5 | The F-Droid build scans a QR and needs no Play Services (verify with `adb shell pm list packages \| grep gms`) | n/a (partial, not a pass: the emulator image ships Play Services, so the `pm list` check proves nothing here, and there is no camera feed to scan with. Static check of `app-fdroid-debug.apk`: zero `com/google/mlkit` and zero `com/google/android/gms` strings in all 26 dex files and none in the manifest; ZXing classes present) |
 
 ## M. Release mechanics
 
 | # | Check | Result |
 | --- | --- | --- |
-| M1 | The Play APK is signed and installs over the previous version | |
-| M2 | The F-Droid APK is signed and installs | |
-| M3 | Both flavors have a distinct application id and can be installed side by side | |
-| M4 | The in-app changelog shows this release | |
-| M5 | The published compatibility matrix matches what was tested | |
-| M6 | The internal Play track accepts the bundle, then closed, then production | |
-| M7 | GitHub Releases carries both APKs and the mapping files | |
+| M1 | The Play APK is signed and installs over the previous version | n/a (there is no signing material in the tree; `assemblePlayRelease` produces `app-play-release-unsigned.apk`, per `docs/RELEASE.md`) |
+| M2 | The F-Droid APK is signed and installs | n/a (no signing material; see M1) |
+| M3 | Both flavors have a distinct application id and can be installed side by side | ✓ pass for the debug builds (emulator: `dev.opencode.android.debug` (play) and `dev.opencode.android.fdroid.debug` (fdroid) installed together, each with its own data; the release ids were not built or installed, and the play build was removed again afterwards) |
+| M4 | The in-app changelog shows this release | ✗ fail (not built: there is no in-app changelog screen in `app` or any `feature:*`; `docs/CHANGELOG.md` is a repository file) |
+| M5 | The published compatibility matrix matches what was tested | n/a (no compatibility matrix has been published) |
+| M6 | The internal Play track accepts the bundle, then closed, then production | n/a (needs Play Console; outside this environment) |
+| M7 | GitHub Releases carries both APKs and the mapping files | n/a (needs a GitHub Release; outside this environment) |
 
 ## Recording a result
 
