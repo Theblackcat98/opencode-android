@@ -6,8 +6,11 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.opencode.android.core.data.catalog.AgentCatalog
 import dev.opencode.android.core.data.catalog.ModelCatalog
 import dev.opencode.android.core.data.preferences.ModelPreferences
+import dev.opencode.android.core.data.server.BrowserState
 import dev.opencode.android.core.data.server.ServerDataRegistry
+import dev.opencode.android.core.data.server.ServerDataSet
 import dev.opencode.android.core.data.server.actionErrorOrNull
+import dev.opencode.android.core.data.sync.SyncedState
 import dev.opencode.android.core.model.AgentInfo
 import dev.opencode.android.core.model.FileSystemEntry
 import dev.opencode.android.core.model.ModelInfo
@@ -112,10 +115,16 @@ data class NewSessionUiState(
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
-class NewSessionViewModel @Inject constructor(
-    private val dataSets: ServerDataRegistry,
+class NewSessionViewModel(
+    private val active: StateFlow<ServerDataSet?>,
     private val modelPreferences: ModelPreferences,
 ) : ViewModel() {
+    /** Hilt's constructor: what this view model reads from the registry is which read model is active. */
+    @Inject
+    constructor(
+        dataSets: ServerDataRegistry,
+        modelPreferences: ModelPreferences,
+    ) : this(dataSets.active, modelPreferences)
 
     private val local = MutableStateFlow(LocalState())
     private val choice = MutableStateFlow<LocationChoice?>(null)
@@ -133,7 +142,7 @@ class NewSessionViewModel @Inject constructor(
     )
 
     /** The catalogs of the chosen location, or empty ones before a location is chosen. */
-    private val catalog: Flow<Catalog> = combine(dataSets.active, choice) { set, location -> set to location }
+    private val catalog: Flow<Catalog> = combine(active, choice) { set, location -> set to location }
         .flatMapLatest { (set, location) ->
             val directory = location?.directoryOrNull()
             if (set == null || directory == null) {
@@ -156,13 +165,23 @@ class NewSessionViewModel @Inject constructor(
             }
         }
 
+    // These two follow their stores rather than reading them. The state is built by a `combine` whose own
+    // inputs are the user's choices, so a `.value` read of either one showed what the store held when the
+    // last choice was made: a project list that loaded a moment later, or a directory listing that
+    // answered after the browser opened, never reached the sheet.
+    private val browser: Flow<BrowserState> =
+        active.flatMapLatest { set -> set?.browser?.state ?: flowOf(BrowserState()) }
+
+    private val projects: Flow<SyncedState<List<Project>>> =
+        active.flatMapLatest { set -> set?.projects?.state ?: flowOf(SyncedState()) }
+
     val state: StateFlow<NewSessionUiState> = combine(
-        dataSets.active,
         choice,
         local,
         catalog,
-    ) { set, location, mine, catalogs ->
-        val browser = set?.browser?.state?.value
+        browser,
+        projects,
+    ) { location, mine, catalogs, listing, known ->
         NewSessionUiState(
             title = mine.title,
             location = location,
@@ -170,12 +189,12 @@ class NewSessionViewModel @Inject constructor(
             model = mine.model,
             models = catalogs.models,
             agents = catalogs.agents,
-            projects = set?.projects?.value.orEmpty(),
+            projects = known.value.orEmpty(),
             recentDirectories = catalogs.recentDirectories,
             browsing = mine.browsing,
-            entries = browser?.sorted.orEmpty(),
-            browserPath = browser?.path,
-            browserLoading = browser?.loading == true,
+            entries = listing.sorted,
+            browserPath = listing.path,
+            browserLoading = listing.loading,
             pathDraft = mine.pathDraft,
             creating = mine.creating,
             error = mine.error,
@@ -191,14 +210,14 @@ class NewSessionViewModel @Inject constructor(
      * The client owns these (features doc §8), so they are read from the store rather than from the
      * server, and they follow the active server the way the session's picker does.
      */
-    val modelFavorites: StateFlow<List<ModelRef>> = dataSets.active
+    val modelFavorites: StateFlow<List<ModelRef>> = active
         .map { it?.serverId }
         .distinctUntilChanged()
         .flatMapLatest { serverId -> serverId?.let(modelPreferences::favorites) ?: flowOf(emptyList()) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT), emptyList())
 
     /** The models used most recently on this server, newest first. */
-    val modelRecents: StateFlow<List<ModelRef>> = dataSets.active
+    val modelRecents: StateFlow<List<ModelRef>> = active
         .map { it?.serverId }
         .distinctUntilChanged()
         .flatMapLatest { serverId -> serverId?.let(modelPreferences::recents) ?: flowOf(emptyList()) }
@@ -206,7 +225,7 @@ class NewSessionViewModel @Inject constructor(
 
     /** Pins or unpins a model, which the new-session sheet's picker offers too. */
     fun toggleFavorite(model: ModelRef) {
-        val serverId = dataSets.active.value?.serverId ?: return
+        val serverId = active.value?.serverId ?: return
         viewModelScope.launch { modelPreferences.toggleFavorite(serverId, model) }
     }
 
@@ -262,19 +281,19 @@ class NewSessionViewModel @Inject constructor(
     fun openBrowser() {
         val directory = choice.value?.directoryOrNull() ?: return
         local.value = local.value.copy(browsing = true, browserPath = null)
-        dataSets.active.value?.browser?.list(directory, null)
+        active.value?.browser?.list(directory, null)
     }
 
     fun closeBrowser() {
         local.value = local.value.copy(browsing = false)
-        dataSets.active.value?.browser?.clear()
+        active.value?.browser?.clear()
     }
 
     /** Walks into a directory the server listed, using the server's own spelling of the path. */
     fun enterDirectory(path: String) {
         val directory = choice.value?.directoryOrNull() ?: return
         local.value = local.value.copy(browserPath = path)
-        dataSets.active.value?.browser?.list(directory, path)
+        active.value?.browser?.list(directory, path)
     }
 
     /**
@@ -291,7 +310,7 @@ class NewSessionViewModel @Inject constructor(
             else -> current.trimEnd('/').substringBeforeLast('/', "").ifEmpty { "/" }
         }
         local.value = local.value.copy(browserPath = parent)
-        dataSets.active.value?.browser?.list(directory, parent)
+        active.value?.browser?.list(directory, parent)
     }
 
     /** Accepts the directory the browser is currently in. */
@@ -309,7 +328,7 @@ class NewSessionViewModel @Inject constructor(
      * home, from a project and from a notification without knowing where it was opened.
      */
     fun create() {
-        val set = dataSets.active.value ?: return
+        val set = active.value ?: return
         val location = choice.value ?: return
         val directory = location.directoryOrNull() ?: return
         if (local.value.creating) return
@@ -336,7 +355,7 @@ class NewSessionViewModel @Inject constructor(
         local.value = LocalState()
         choice.value = null
         createdSession.value = null
-        dataSets.active.value?.browser?.clear()
+        active.value?.browser?.clear()
     }
 
     fun dismissError() {
@@ -350,7 +369,7 @@ class NewSessionViewModel @Inject constructor(
      * catalogs after a pick must not overwrite the pick.
      */
     private fun loadCatalogs(location: LocationChoice) {
-        val set = dataSets.active.value ?: return
+        val set = active.value ?: return
         val directory = location.directoryOrNull() ?: return
         viewModelScope.launch {
             set.agents(directory).sync()

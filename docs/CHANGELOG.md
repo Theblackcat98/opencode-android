@@ -78,6 +78,15 @@ Found by driving the app against a live server on an emulator, which no test had
   inside a `map` on the active dataset, so it showed whatever had loaded by then: "No sessions yet" on a
   server still connecting, and a new or renamed session absent until the screen was recreated. It now
   follows the stores, and Home waits for the server to answer before claiming it is empty.
+- **The composer showed what its stores held once.** `ComposerViewModel` read the model, agent, command,
+  activity, pending-input, request and revert stores with `.value` inside a `combine` whose own inputs
+  were typing and the session id, so a model list that loaded after the screen opened left "No model
+  available" up over a server that had models, a resync after a reconnect never reached the screen, and
+  Stop did not appear when the session started running. It now follows each store, and so do the
+  new-session sheet's project list and directory browser, the home badge and the global inbox, and the
+  delete confirmation's subagent count, which had the same read. View-model tests over a real data set
+  fail on the old code; not yet seen on a device. `hasAnyModel` is still false between opening a session
+  and its model list arriving, so the banner can flash for that request.
 - **Seven screens crashed on open.** `ConfigViewModel`, `ConfigEditorViewModel`, `DefinitionViewModel`,
   `PermissionsViewModel`, `MaintenanceViewModel`, `InstructionsViewModel` and `InsightsViewModel` were not
   `@HiltViewModel`, so `hiltViewModel()` failed with `NoSuchMethodException: <init> []`. The app died on

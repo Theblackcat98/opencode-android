@@ -6,16 +6,19 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.opencode.android.core.data.action.ActionError
 import dev.opencode.android.core.data.action.toActionError
 import dev.opencode.android.core.data.server.ServerDataRegistry
+import dev.opencode.android.core.data.server.ServerDataSet
 import dev.opencode.android.core.data.server.actionErrorOrNull
 import dev.opencode.android.core.data.transcript.TranscriptFormatter
 import dev.opencode.android.core.model.SessionMessage
 import dev.opencode.android.core.model.SessionStatus
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -32,10 +35,14 @@ import javax.inject.Inject
  * **Copy produces text through [TranscriptFormatter]**, not through the composables, so what the
  * clipboard receives is a pure function of the message list and is unit tested.
  */
+@OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
-class SessionManagementViewModel @Inject constructor(
-    private val dataSets: ServerDataRegistry,
+class SessionManagementViewModel(
+    private val active: StateFlow<ServerDataSet?>,
 ) : ViewModel() {
+    /** Hilt's constructor: what this view model reads from the registry is which read model is active. */
+    @Inject
+    constructor(dataSets: ServerDataRegistry) : this(dataSets.active)
 
     private val open = MutableStateFlow<String?>(null)
     private val _error = MutableStateFlow<ActionError?>(null)
@@ -53,9 +60,15 @@ class SessionManagementViewModel @Inject constructor(
      */
     val forked: StateFlow<String?> = _forked.asStateFlow()
 
-    /** Direct children of the open session, which the delete confirmation has to name. */
-    val childCount: StateFlow<Int> = dataSets.active
-        .map { set -> set?.sessions?.childCounts?.value.orEmpty() }
+    /**
+     * Direct children of the open session, which the delete confirmation has to name.
+     *
+     * Followed, not read: a count read inside a `map` on `active` is the count when the server became
+     * active, so a sheet that said "no subagents" would warn about nothing while `session.remove` took
+     * the session's children with it.
+     */
+    val childCount: StateFlow<Int> = active
+        .flatMapLatest { set -> set?.sessions?.childCounts ?: flowOf(emptyMap()) }
         .combine(open) { counts, id -> if (id == null) 0 else counts[id] ?: 0 }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT), 0)
 
@@ -80,7 +93,7 @@ class SessionManagementViewModel @Inject constructor(
 
     /** The text "copy the whole conversation" puts on the clipboard. */
     fun copyTranscript(sessionID: String, title: String?): String? {
-        val set = dataSets.active.value ?: return null
+        val set = active.value ?: return null
         val messages = set.timeline(sessionID).state.value.messages
         if (messages.isEmpty()) return null
         return TranscriptFormatter.transcript(messages, title)
@@ -112,7 +125,7 @@ class SessionManagementViewModel @Inject constructor(
 
     private fun withSession(block: suspend (dev.opencode.android.core.data.server.ServerDataSet, String) -> Unit) {
         val id = open.value ?: return
-        val set = dataSets.active.value ?: return
+        val set = active.value ?: return
         viewModelScope.launch { block(set, id) }
     }
 

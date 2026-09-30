@@ -51,6 +51,7 @@ import dev.opencode.android.core.model.PermissionReply
 import dev.opencode.android.core.model.PermissionRequest
 import dev.opencode.android.core.model.PromptSkillInput
 import dev.opencode.android.core.model.ReferenceInfo
+import dev.opencode.android.core.model.SessionInfo
 import dev.opencode.android.core.model.SessionMessage
 import dev.opencode.android.core.model.SessionRevert
 import dev.opencode.android.core.model.SkillInfo
@@ -154,7 +155,7 @@ data class ComposerUiState(
     val agent: String? = null,
     val models: List<ModelInfo> = emptyList(),
     val model: ModelRef? = null,
-    /** True when the location offers no usable model, which is what the empty state turns on. */
+    /** False when the location offers no usable model, which is what the empty state turns on. */
     val hasAnyModel: Boolean = false,
     /** The session has a live execution, which is what enables Stop and steering input. */
     val busy: Boolean = false,
@@ -255,12 +256,23 @@ data class ComposerUiState(
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
-class ComposerViewModel @Inject constructor(
-    private val dataSets: ServerDataRegistry,
+class ComposerViewModel(
+    private val active: StateFlow<ServerDataSet?>,
     private val modelPreferences: ModelPreferences,
     private val memory: ComposerMemory,
     private val attachmentReader: AttachmentReader,
 ) : ViewModel() {
+    /**
+     * Hilt's constructor: the registry cannot be built off a device, so what the view model reads from
+     * it — which read model is being followed — is the one thing it takes, and a test hands it a flow.
+     */
+    @Inject
+    constructor(
+        dataSets: ServerDataRegistry,
+        modelPreferences: ModelPreferences,
+        memory: ComposerMemory,
+        attachmentReader: AttachmentReader,
+    ) : this(dataSets.active, modelPreferences, memory, attachmentReader)
 
     private val local = MutableStateFlow(LocalState())
     private val sessionID = MutableStateFlow<String?>(null)
@@ -291,7 +303,7 @@ class ComposerViewModel @Inject constructor(
     )
 
     /** The prompt history of the active server, newest first, and the stash beside it. */
-    private val memoryState: StateFlow<Pair<List<String>, List<StashEntry>>> = dataSets.active
+    private val memoryState: StateFlow<Pair<List<String>, List<StashEntry>>> = active
         .map { it?.serverId }
         .distinctUntilChanged()
         .flatMapLatest { serverId ->
@@ -304,16 +316,111 @@ class ComposerViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList<String>() to emptyList())
 
     /**
+     * Everything the stores hold for the open session, which is all of [ComposerUiState] that is not the
+     * client's own.
+     *
+     * A store is followed and never read. Each field below is a flow that emits when its store changes, and
+     * the state is rebuilt from them, so a catalog that finishes loading after the screen opened, a session
+     * that starts running, a permission that arrives or a resync after a reconnect reaches the composer
+     * without the user typing anything.
+     */
+    private data class Projection(
+        val sessionID: String,
+        val info: SessionInfo?,
+        val catalogs: Catalogs,
+        val live: Live,
+    )
+
+    /** The location-scoped catalogs of the session's directory. Empty until the server has answered. */
+    private data class Catalogs(
+        val agents: List<AgentInfo> = emptyList(),
+        val models: List<ModelInfo> = emptyList(),
+        val commands: List<CommandInfo> = emptyList(),
+        val skills: List<SkillInfo> = emptyList(),
+        val references: List<ReferenceInfo> = emptyList(),
+    )
+
+    /** What the session is doing right now, as the events say. */
+    private data class Live(
+        val busy: Boolean,
+        val pending: List<PendingInboxItem>,
+        val requests: List<PendingRequest>,
+        val staged: SessionRevert?,
+        val searching: Boolean,
+    )
+
+    /** What [refresh] completes from, so a catalog arriving after the user typed `/` or `@` recomputes it. */
+    private data class CompletionSources(
+        val directory: String?,
+        val agents: List<AgentInfo>,
+        val commands: List<CommandInfo>,
+        val references: List<ReferenceInfo>,
+    )
+
+    /**
+     * The open session's stores, or `null` while no session is open or no server is active.
+     *
+     * `flatMapLatest` on the session and the active set is what moves the subscriptions when either changes,
+     * and again on the session's directory inside [projectionOf]: a session reached from another project has
+     * no directory until `session.get` answers, and its catalogs are followed from that moment.
+     */
+    private val projection: Flow<Projection?> = combine(sessionID, active) { id, set -> id to set }
+        .flatMapLatest { (id, set) -> if (id == null || set == null) flowOf(null) else projectionOf(set, id) }
+
+    private fun projectionOf(set: ServerDataSet, id: String): Flow<Projection> {
+        val info = set.sessions.info.map { it[id] }.distinctUntilChanged()
+        val catalogs = info
+            .map { it?.location?.directory }
+            .distinctUntilChanged()
+            .flatMapLatest { directory -> catalogsOf(set, directory) }
+        val live = combine(
+            set.sessions.activity.map { it[id] == SessionActivity.Running }.distinctUntilChanged(),
+            set.timeline(id).state.map { it.pending }.distinctUntilChanged(),
+            set.requests.forSession(id),
+            set.revertCommands.state.map { it.staged }.distinctUntilChanged(),
+            set.composerCatalogs.files.state.map { it.loading }.distinctUntilChanged(),
+        ) { busy, pending, requests, staged, searching -> Live(busy, pending, requests, staged, searching) }
+        return combine(info, catalogs, live) { session, loaded, running -> Projection(id, session, loaded, running) }
+    }
+
+    /**
+     * The five catalogs of [directory], each followed through the state of its own store.
+     *
+     * Looking a catalog up does not load it — the accessors only create the resource — so this can run
+     * whenever the directory changes without a request going out. The loads are [open]'s to start.
+     */
+    private fun catalogsOf(set: ServerDataSet, directory: String?): Flow<Catalogs> {
+        if (directory == null) return flowOf(Catalogs())
+        return combine(
+            set.agents(directory).state,
+            set.models(directory).state,
+            set.composerCatalogs.commands(directory).state,
+            set.composerCatalogs.skills(directory).state,
+            set.composerCatalogs.references(directory).state,
+        ) { agents, models, commands, skills, references ->
+            Catalogs(
+                agents = agents.value.orEmpty(),
+                models = models.value.orEmpty(),
+                commands = commands.value.orEmpty(),
+                skills = skills.value.orEmpty(),
+                references = references.value.orEmpty(),
+            )
+        }
+    }
+
+    /**
      * The state of the open session's composer, or an idle one before a session is opened.
+     *
+     * The client's own state ([local]) is laid over what the stores hold ([projection]), and both are
+     * inputs, so the state is recomputed when either moves.
      *
      * `Eagerly` and not `WhileSubscribed`, because the view model also reads this while no screen is
      * collecting: a completion list is computed from the current catalogs, and a derived `StateFlow`
      * that is not running would answer with its initial value and offer a stale catalog. The cost is
      * one collector for the composer's lifetime, which is the screen's lifetime.
      */
-    val state: StateFlow<ComposerUiState> = combine(sessionID, local, dataSets.active, memoryState) { id, mine, set, memory ->
-        val (history, stash) = memory
-        if (id == null || set == null) {
+    val state: StateFlow<ComposerUiState> = combine(local, projection, memoryState) { mine, stores, memory ->
+        if (stores == null) {
             return@combine ComposerUiState(
                 text = mine.text,
                 delivery = mine.delivery,
@@ -330,38 +437,34 @@ class ComposerViewModel @Inject constructor(
                 compacting = mine.compacting,
             )
         }
-        val info = set.sessions.info.value[id]
-        val directory = info?.location?.directory
-        val models = directory?.let { set.models(it).value }.orEmpty()
-        val commands = directory?.let { set.composerCatalogs.commands(it).value }.orEmpty()
-        val skills = directory?.let { set.composerCatalogs.skills(it).value }.orEmpty()
-        val references = directory?.let { set.composerCatalogs.references(it).value }.orEmpty()
-        val search = set.composerCatalogs.files.state.value
+        val (history, stash) = memory
+        val info = stores.info
+        val catalogs = stores.catalogs
         ComposerUiState(
-            sessionID = id,
+            sessionID = stores.sessionID,
             text = mine.text,
             delivery = mine.delivery,
             resume = mine.resume,
             sending = mine.sending,
             error = mine.error,
-            agents = directory?.let { set.agents(it).value }.orEmpty(),
+            agents = catalogs.agents,
             agent = info?.agent,
-            models = models,
+            models = catalogs.models,
             model = info?.model,
-            hasAnyModel = models.any { it.enabled },
-            busy = set.sessions.activity.value[id] == SessionActivity.Running,
-            pending = set.timeline(id).state.value.pending,
-            requests = set.requests.forSession(id).value,
-            directory = directory,
+            hasAnyModel = catalogs.models.any { it.enabled },
+            busy = stores.live.busy,
+            pending = stores.live.pending,
+            requests = stores.live.requests,
+            directory = info?.location?.directory,
             attachments = mine.attachments,
             skills = mine.skills,
-            availableSkills = skills,
-            serverCommands = commands,
-            references = references,
+            availableSkills = catalogs.skills,
+            serverCommands = catalogs.commands,
+            references = catalogs.references,
             completions = mine.completions,
             trigger = mine.trigger,
-            intent = PromptAssembler.intentOf(mine.text, commands),
-            searchingFiles = search.loading,
+            intent = PromptAssembler.intentOf(mine.text, catalogs.commands),
+            searchingFiles = stores.live.searching,
             history = history,
             stash = stash,
             problem = mine.problem,
@@ -370,14 +473,13 @@ class ComposerViewModel @Inject constructor(
             compacting = mine.compacting,
             reviewComments = mine.reviewComments,
             reverting = mine.reverting,
-            stagedRevert = set?.revertCommands?.state?.value?.staged,
-            restoredFiles = set?.revertCommands?.state?.value?.staged
-                ?.let(RevertPlan::restoredFiles).orEmpty(),
+            stagedRevert = stores.live.staged,
+            restoredFiles = stores.live.staged?.let(RevertPlan::restoredFiles).orEmpty(),
         )
     }.stateIn(viewModelScope, SharingStarted.Eagerly, ComposerUiState())
 
     /** The requests waiting anywhere on this server, for the global inbox badge. */
-    val allRequests: StateFlow<List<PendingRequest>> = dataSets.active
+    val allRequests: StateFlow<List<PendingRequest>> = active
         .flatMapLatest { set -> set?.requests?.pending ?: flowOf(emptyList()) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT), emptyList())
 
@@ -387,7 +489,7 @@ class ComposerViewModel @Inject constructor(
      * Read from the store rather than kept in state, because they change from another screen (the
      * new-session sheet pins a model) and a picker showing a stale pin would be wrong.
      */
-    val modelFavorites: StateFlow<List<ModelRef>> = dataSets.active
+    val modelFavorites: StateFlow<List<ModelRef>> = active
         .map { set -> set?.serverId }
         .distinctUntilChanged()
         .flatMapLatest { serverId ->
@@ -396,7 +498,7 @@ class ComposerViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT), emptyList())
 
     /** The models this client used most recently on this server, newest first. */
-    val modelRecents: StateFlow<List<ModelRef>> = dataSets.active
+    val modelRecents: StateFlow<List<ModelRef>> = active
         .map { set -> set?.serverId }
         .distinctUntilChanged()
         .flatMapLatest { serverId ->
@@ -409,7 +511,15 @@ class ComposerViewModel @Inject constructor(
         // recompute the completions. `refresh` only asks for a search when the query actually moved,
         // which is what stops this from feeding itself.
         viewModelScope.launch {
-            dataSets.active.flatMapLatest { set -> set?.composerCatalogs?.files?.state ?: flowOf(FileSearchState()) }
+            active.flatMapLatest { set -> set?.composerCatalogs?.files?.state ?: flowOf(FileSearchState()) }
+                .collect { refresh() }
+        }
+        // The same goes for the catalogs the `/` and `@` lists are completed from: a `/` typed before
+        // `command.list` answered is an empty palette, and it has to fill in when the answer arrives
+        // rather than at the next keystroke. Completions do not feed back into what is compared here.
+        viewModelScope.launch {
+            state.map { CompletionSources(it.directory, it.agents, it.serverCommands, it.references) }
+                .distinctUntilChanged()
                 .collect { refresh() }
         }
     }
@@ -429,7 +539,7 @@ class ComposerViewModel @Inject constructor(
      * useless.
      */
     fun open(sessionID: String) {
-        val set = dataSets.active.value ?: return
+        val set = active.value ?: return
         this.sessionID.value = sessionID
         set.timeline(sessionID).start()
         viewModelScope.launch {
@@ -480,7 +590,7 @@ class ComposerViewModel @Inject constructor(
      */
     fun send(delivery: Delivery = local.value.delivery, confirmed: Boolean = false) {
         val id = sessionID.value ?: return
-        val set = dataSets.active.value ?: return
+        val set = active.value ?: return
         if (local.value.sending) return
         val snapshot = state.value
         val assembly = PromptAssembler.assemble(
@@ -526,7 +636,7 @@ class ComposerViewModel @Inject constructor(
                         metadata = assembly.request.metadata,
                     )
                     if (result.isSuccess) {
-                        dataSets.active.value?.review?.takeComments()
+                        active.value?.review?.takeComments()
                     }
                     onSent(result.actionErrorOrNull, assembly.request.text)
                 }
@@ -644,7 +754,7 @@ class ComposerViewModel @Inject constructor(
      */
     private fun undo() {
         val id = sessionID.value ?: return
-        val set = dataSets.active.value ?: return
+        val set = active.value ?: return
         val target = newestUserMessage(set, id)
         if (target == null) {
             local.value = local.value.copy(error = null)
@@ -662,7 +772,7 @@ class ComposerViewModel @Inject constructor(
      */
     fun stageUndo(messageID: String, restoreFiles: Boolean = true) {
         val id = sessionID.value ?: return
-        val set = dataSets.active.value ?: return
+        val set = active.value ?: return
         val message = messageById(set, id, messageID)
         local.value = local.value.copy(reverting = true, error = null)
         viewModelScope.launch {
@@ -693,7 +803,7 @@ class ComposerViewModel @Inject constructor(
      */
     fun redo() {
         val id = sessionID.value ?: return
-        val set = dataSets.active.value ?: return
+        val set = active.value ?: return
         local.value = local.value.copy(reverting = true, error = null)
         viewModelScope.launch {
             val result = set.revertCommands.clear(id)
@@ -762,7 +872,7 @@ class ComposerViewModel @Inject constructor(
             problem = null,
             problemDetail = null,
         )
-        dataSets.active.value?.revertCommands?.applyStaged(revert, prompt)
+        active.value?.revertCommands?.applyStaged(revert, prompt)
         refresh()
         persistDraft()
     }
@@ -770,7 +880,7 @@ class ComposerViewModel @Inject constructor(
     /** `session.compact`. A busy session is a conflict the composer reports rather than retries. */
     fun compact() {
         val id = sessionID.value ?: return
-        val set = dataSets.active.value ?: return
+        val set = active.value ?: return
         local.value = local.value.copy(compacting = true, error = null)
         viewModelScope.launch {
             val error = set.commands.compact(id, local.value.delivery).actionErrorOrNull
@@ -791,7 +901,7 @@ class ComposerViewModel @Inject constructor(
      */
     fun ask(question: String) {
         val id = sessionID.value ?: return
-        val set = dataSets.active.value ?: return
+        val set = active.value ?: return
         if (question.isBlank()) return
         local.value = local.value.copy(sideQuestion = SideQuestion(question), text = "", error = null)
         viewModelScope.launch {
@@ -942,7 +1052,7 @@ class ComposerViewModel @Inject constructor(
     fun dismissCompletions() {
         if (local.value.completions.isEmpty()) return
         local.value = local.value.copy(completions = emptyList(), trigger = null)
-        dataSets.active.value?.composerCatalogs?.files?.clear()
+        active.value?.composerCatalogs?.files?.clear()
     }
 
     /** Attaches or detaches a skill, which travels on the next prompt as `skills[]`. */
@@ -962,7 +1072,7 @@ class ComposerViewModel @Inject constructor(
      */
     fun activateSkill(id: String) {
         val session = sessionID.value ?: return
-        val set = dataSets.active.value ?: return
+        val set = active.value ?: return
         viewModelScope.launch {
             val error = set.commands.activateSkill(session, id, resume = null).actionErrorOrNull
             if (error != null && error.kind == ActionErrorKind.NOT_FOUND) {
@@ -995,7 +1105,7 @@ class ComposerViewModel @Inject constructor(
 
     /** Puts the box away. The text is the stash; the attachments stay, because a chip is not text. */
     fun stashCurrent() {
-        val serverId = dataSets.active.value?.serverId ?: return
+        val serverId = active.value?.serverId ?: return
         val text = local.value.text
         if (text.isBlank()) return
         viewModelScope.launch {
@@ -1007,7 +1117,7 @@ class ComposerViewModel @Inject constructor(
 
     /** Takes the most recent stashed prompt back into the box. */
     fun popStash() {
-        val serverId = dataSets.active.value?.serverId ?: return
+        val serverId = active.value?.serverId ?: return
         viewModelScope.launch {
             val entry = memory.popStash(serverId) ?: return@launch
             restore(entry)
@@ -1021,7 +1131,7 @@ class ComposerViewModel @Inject constructor(
      * control in the composer, so the row carries the id and the pop is a separate action.
      */
     fun restoreStash(entry: StashEntry) {
-        val serverId = dataSets.active.value?.serverId ?: return
+        val serverId = active.value?.serverId ?: return
         viewModelScope.launch {
             memory.dropStash(serverId, entry.id)
             restore(entry)
@@ -1042,7 +1152,7 @@ class ComposerViewModel @Inject constructor(
     /** `session.interrupt`, optionally resuming pending steering input. */
     fun interrupt(resumeSteering: Boolean) {
         val id = sessionID.value ?: return
-        val set = dataSets.active.value ?: return
+        val set = active.value ?: return
         viewModelScope.launch {
             val error = set.commands.interrupt(id, resumeSteering).actionErrorOrNull
             if (error != null) local.value = local.value.copy(error = error)
@@ -1052,7 +1162,7 @@ class ComposerViewModel @Inject constructor(
     /** `session.background`: moves blocking tools out of the way. */
     fun background() {
         val id = sessionID.value ?: return
-        val set = dataSets.active.value ?: return
+        val set = active.value ?: return
         viewModelScope.launch {
             val error = set.commands.background(id).actionErrorOrNull
             if (error != null) local.value = local.value.copy(error = error)
@@ -1069,7 +1179,7 @@ class ComposerViewModel @Inject constructor(
 
     fun selectModel(model: ModelRef) {
         val id = sessionID.value ?: return
-        val set = dataSets.active.value ?: return
+        val set = active.value ?: return
         val serverId = set.serverId
         viewModelScope.launch {
             val error = set.commands.switchModel(id, model).actionErrorOrNull
@@ -1092,7 +1202,7 @@ class ComposerViewModel @Inject constructor(
     }
 
     fun toggleFavorite(model: ModelRef) {
-        val serverId = dataSets.active.value?.serverId ?: return
+        val serverId = active.value?.serverId ?: return
         viewModelScope.launch { modelPreferences.toggleFavorite(serverId, model) }
     }
 
@@ -1141,7 +1251,7 @@ class ComposerViewModel @Inject constructor(
      * response cannot trigger the request that produced it.
      */
     private fun refresh() {
-        val set = dataSets.active.value
+        val set = active.value
         val current = local.value
         val span = detectTrigger(current.text, current.cursor)
         val snapshot = state.value
@@ -1188,14 +1298,14 @@ class ComposerViewModel @Inject constructor(
             local.value = local.value.copy(sending = false, error = error)
             return
         }
-        val serverId = dataSets.active.value?.serverId
+        val serverId = active.value?.serverId
         if (serverId != null) viewModelScope.launch { memory.record(serverId, text) }
         clearComposer()
         effects.trySend(ComposerEffect.FocusComposer)
     }
 
     private fun clearComposer() {
-        val serverId = dataSets.active.value?.serverId
+        val serverId = active.value?.serverId
         val session = sessionID.value
         local.value = local.value.copy(
             text = "",
@@ -1223,7 +1333,7 @@ class ComposerViewModel @Inject constructor(
      * written off the UI thread by the store.
      */
     private fun persistDraft() {
-        val serverId = dataSets.active.value?.serverId ?: return
+        val serverId = active.value?.serverId ?: return
         val session = sessionID.value ?: return
         val text = local.value.text
         viewModelScope.launch {
@@ -1234,7 +1344,7 @@ class ComposerViewModel @Inject constructor(
 
     private fun restoreDraft(directory: String, session: String) {
         if (local.value.loadedDraft) return
-        val serverId = dataSets.active.value?.serverId ?: return
+        val serverId = active.value?.serverId ?: return
         viewModelScope.launch {
             val draft = memory.draft(serverId, session).first()
             local.value = local.value.copy(text = draft, cursor = draft.length, loadedDraft = true)
@@ -1244,7 +1354,7 @@ class ComposerViewModel @Inject constructor(
 
     private fun withSession(block: suspend (ServerDataSet, String) -> Unit) {
         val id = sessionID.value ?: return
-        val set = dataSets.active.value ?: return
+        val set = active.value ?: return
         viewModelScope.launch { block(set, id) }
     }
 

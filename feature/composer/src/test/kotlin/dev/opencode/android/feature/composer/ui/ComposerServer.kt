@@ -1,0 +1,213 @@
+package dev.opencode.android.feature.composer.ui
+
+import dev.opencode.android.core.data.config.ConfigSchema
+import dev.opencode.android.core.data.server.ServerDataSet
+import dev.opencode.android.core.database.cache.ReadCacheStore
+import dev.opencode.android.core.model.AgentInfo
+import dev.opencode.android.core.model.CommandInfo
+import dev.opencode.android.core.model.DataResponse
+import dev.opencode.android.core.model.FileSystemEntry
+import dev.opencode.android.core.model.LocationPublicRef
+import dev.opencode.android.core.model.LocationScoped
+import dev.opencode.android.core.model.ModelInfo
+import dev.opencode.android.core.model.ModelRef
+import dev.opencode.android.core.model.Project
+import dev.opencode.android.core.model.ReferenceInfo
+import dev.opencode.android.core.model.SessionInfo
+import dev.opencode.android.core.model.SessionMessage
+import dev.opencode.android.core.model.SkillInfo
+import dev.opencode.android.core.model.TokenUsage
+import dev.opencode.android.core.model.event.Event
+import dev.opencode.android.core.model.json.OpenCodeJson
+import dev.opencode.android.core.network.ServerApiFactory
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.json.JsonObject
+import mockwebserver3.Dispatcher
+import mockwebserver3.MockResponse
+import mockwebserver3.MockWebServer
+import mockwebserver3.RecordedRequest
+import okhttp3.OkHttpClient
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicInteger
+
+/**
+ * A real [ServerDataSet] over a real [dev.opencode.android.core.network.ServerApi] over a
+ * [MockWebServer], with the routes a session screen reads answering.
+ *
+ * **A fake server, not a fake interface.** The claim these tests make is about *when* a view model
+ * follows a store, and the stores have to be the real ones for that to mean anything: a mocked
+ * `models(directory)` would return whatever the test told it to at whatever moment the test asked, which
+ * is exactly the thing being tested. Here a catalog is `Idle`, then `Loading`, then `Ready` the way it is
+ * on a device, and a test moves it by answering the route and asking the set to load.
+ *
+ * Every route answers `200` with an empty list until a test says otherwise, so a session opens with
+ * nothing in it, and [failing] makes one route answer `500`, which is what the app sees while the
+ * server is unreachable or has not booted the directory yet.
+ */
+class ComposerServer(
+    val directory: String = "/work",
+    val sessionID: String = "ses_1",
+) {
+    private val server: MockWebServer = MockWebServer().apply { start() }
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
+    private val answers = ConcurrentHashMap<String, Answer>()
+    private val sequence = AtomicInteger()
+
+    private data class Answer(val status: Int, val body: String)
+
+    /** The read model of the server, wired to the routes below. */
+    val set: ServerDataSet = ServerDataSet(
+        serverId = SERVER_ID,
+        api = ServerApiFactory(OkHttpClient()).createForReads(server.url("/").toString().trimEnd('/')),
+        scope = scope,
+        cache = NoCache,
+        schema = ConfigSchema(JsonObject(emptyMap())),
+    )
+
+    init {
+        server.dispatcher = object : Dispatcher() {
+            override fun dispatch(request: RecordedRequest): MockResponse {
+                val answer = answers[request.url.encodedPath] ?: Answer(404, "{}")
+                return MockResponse.Builder()
+                    .code(answer.status)
+                    .addHeader("Content-Type", "application/json")
+                    .body(answer.body)
+                    .build()
+            }
+        }
+        session()
+        answer("/api/session/$sessionID/message", """{"data":[],"cursor":{}}""")
+        models(emptyList())
+        agents(emptyList())
+        commands(emptyList())
+        answerScoped("/api/skill", emptyList(), ListSerializer(SkillInfo.serializer()))
+        answerScoped("/api/reference", emptyList(), ListSerializer(ReferenceInfo.serializer()))
+        answer("/api/model/default", """{"location":{"directory":"$directory"},"data":null}""")
+        projects(emptyList())
+        listing(emptyList())
+    }
+
+    /** The session `session.get` returns, which is what tells the composer where the session lives. */
+    fun session(model: ModelRef? = ModelRef("text", "fake")) {
+        val info = SessionInfo(
+            id = sessionID,
+            projectID = "project-1",
+            agent = "build",
+            model = model,
+            cost = 0.0,
+            tokens = TokenUsage.Zero,
+            time = SessionInfo.Time(created = 1L, updated = 2L),
+            title = "A session",
+            location = LocationPublicRef(directory),
+        )
+        answer(
+            "/api/session/$sessionID",
+            OpenCodeJson.encodeToString(DataResponse.serializer(SessionInfo.serializer()), DataResponse(info)),
+        )
+    }
+
+    fun models(models: List<ModelInfo>) =
+        answerScoped("/api/model", models, ListSerializer(ModelInfo.serializer()))
+
+    fun agents(agents: List<AgentInfo>) =
+        answerScoped("/api/agent", agents, ListSerializer(AgentInfo.serializer()))
+
+    fun commands(commands: List<CommandInfo>) =
+        answerScoped("/api/command", commands, ListSerializer(CommandInfo.serializer()))
+
+    /** `fs.list`, which is what the new-session sheet's directory browser reads. */
+    fun listing(entries: List<FileSystemEntry>) =
+        answerScoped("/api/fs/list", entries, ListSerializer(FileSystemEntry.serializer()))
+
+    fun projects(projects: List<Project>) = answer(
+        "/api/project",
+        OpenCodeJson.encodeToString(ListSerializer(Project.serializer()), projects),
+    )
+
+    /** Makes [path] answer `500`, the way a server that is unreachable or not yet ready does. */
+    fun failing(path: String) = answer(path, """{"_tag":"unavailable","message":"not ready"}""", status = 500)
+
+    /**
+     * An event as the stream delivers it, for [ServerDataSet.apply].
+     *
+     * [data] defaults to the session-scoped payload most events carry, and the durable envelope is the one
+     * the recorded corpus has, so the event decodes the way a server's would.
+     */
+    fun event(type: String, data: String = """{"sessionID":"$sessionID"}"""): Event {
+        val number = sequence.incrementAndGet()
+        return Event.decode(
+            """{"id":"evt_$number","type":"$type","created":$number,""" +
+                """"durable":{"aggregateID":"$sessionID","seq":$number,"version":1},""" +
+                """"location":{"directory":"$directory"},"data":$data}""",
+        )
+    }
+
+    /** Stops answering, and stops everything the set has running. */
+    fun close() {
+        scope.cancel()
+        server.close()
+    }
+
+    private fun answer(path: String, body: String, status: Int = 200) {
+        answers[path] = Answer(status, body)
+    }
+
+    private fun <T> answerScoped(path: String, value: T, serializer: KSerializer<T>) = answer(
+        path,
+        OpenCodeJson.encodeToString(
+            LocationScoped.serializer(serializer),
+            LocationScoped(LocationPublicRef(directory), value),
+        ),
+    )
+
+    companion object {
+        const val SERVER_ID = "server-1"
+
+        /** A model a location offers, enabled unless a test says otherwise. */
+        fun model(id: String = "text", enabled: Boolean = true): ModelInfo = ModelInfo(
+            id = id,
+            modelID = id,
+            providerID = "fake",
+            name = "Fake $id",
+            enabled = enabled,
+            limit = ModelInfo.Limit(context = 200_000, output = 4_096),
+        )
+
+        fun agent(id: String = "build"): AgentInfo = AgentInfo(id = id, name = id, mode = AgentInfo.AgentMode.PRIMARY)
+    }
+}
+
+/** A cache that remembers nothing, because these tests are about the network path and not the disk one. */
+object NoCache : ReadCacheStore {
+    override suspend fun readSessions(serverId: String, directory: String?, limit: Int): List<SessionInfo> =
+        emptyList()
+
+    override suspend fun writeSessions(serverId: String, directory: String?, sessions: List<SessionInfo>) = Unit
+
+    override suspend fun readSession(serverId: String, sessionId: String): SessionInfo? = null
+
+    override suspend fun writeSession(serverId: String, sessionId: String, session: SessionInfo) = Unit
+
+    override suspend fun deleteSession(serverId: String, sessionId: String) = Unit
+
+    override suspend fun readMessages(serverId: String, sessionId: String, limit: Int): List<SessionMessage> =
+        emptyList()
+
+    override suspend fun writeMessages(
+        serverId: String,
+        sessionId: String,
+        messages: List<SessionMessage>,
+        keep: Int,
+    ) = Unit
+
+    override suspend fun deleteMessages(serverId: String, sessionId: String) = Unit
+
+    override suspend fun dropLocation(serverId: String, directory: String?) = Unit
+
+    override suspend fun dropServer(serverId: String) = Unit
+}
