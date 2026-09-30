@@ -123,12 +123,19 @@ object TimelineFixtures {
         ),
         tool(
             "edit",
-            input = mapOf("filePath" to "src/main/kotlin/Foo.kt"),
+            input = mapOf(
+                "filePath" to "src/main/kotlin/Foo.kt",
+                "oldString" to "val limit = 10\nval name = \"foo\"",
+                "newString" to "val limit = 25",
+            ),
             metadata = mapOf("files" to "src/main/kotlin/Foo.kt"),
         ),
         tool(
             "write",
-            input = mapOf("filePath" to "src/main/kotlin/Bar.kt"),
+            input = mapOf(
+                "filePath" to "src/main/kotlin/Bar.kt",
+                "content" to "package dev\n\nobject Bar {\n    const val ID = 1\n}",
+            ),
             metadata = mapOf("files" to "src/main/kotlin/Bar.kt"),
         ),
         tool(

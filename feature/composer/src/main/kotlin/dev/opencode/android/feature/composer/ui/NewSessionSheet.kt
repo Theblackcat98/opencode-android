@@ -5,8 +5,10 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -34,9 +36,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.opencode.android.core.designsystem.format.Formatters
+import dev.opencode.android.core.designsystem.text.SyncedTextField
 import dev.opencode.android.core.model.FileSystemEntry
 import dev.opencode.android.core.model.ModelRef
 import dev.opencode.android.feature.composer.R
@@ -70,6 +74,8 @@ fun NewSessionSheet(
     onCreate: () -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
+    onModelSearchChange: (String) -> Unit = {},
+    onPathCommit: () -> Unit = {},
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState, modifier = modifier) {
@@ -86,6 +92,8 @@ fun NewSessionSheet(
             onSelectAgent = onSelectAgent,
             onSelectModel = onSelectModel,
             onCreate = onCreate,
+            onModelSearchChange = onModelSearchChange,
+            onPathCommit = onPathCommit,
         )
     }
     if (state.browsing) {
@@ -121,27 +129,28 @@ fun NewSessionContent(
     onSelectModel: (ModelRef) -> Unit,
     onCreate: () -> Unit,
     modifier: Modifier = Modifier,
+    onModelSearchChange: (String) -> Unit = {},
+    onPathCommit: () -> Unit = {},
 ) {
+    // The form scrolls and the action does not. With the button inside the scroll, "Start" sat below a
+    // list of every model on the server, and a keyboard opened for the title or the path covered it.
     Column(
         modifier
             .fillMaxWidth()
-            .verticalScroll(rememberScrollState())
+            .imePadding()
             .padding(horizontal = 16.dp)
-            .padding(bottom = 24.dp),
+            .padding(bottom = 16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Text(stringResource(R.string.new_session_title), style = MaterialTheme.typography.titleMedium)
-        OutlinedTextField(
-            value = state.title,
-            onValueChange = onTitleChange,
-            label = { Text(stringResource(R.string.new_session_title_hint)) },
-            singleLine = true,
-            keyboardOptions = KeyboardOptions.Default,
-            modifier = Modifier.fillMaxWidth(),
-        )
-        LocationSection(state, onSelectProject, onSelectDirectory, onOpenBrowser, onPathDraftChange)
-        AgentSection(state, onSelectAgent)
-        ModelSection(state, favorites, recents, modelSearch, onSelectModel)
+        Column(
+            Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            NewSessionForm(
+                state, favorites, recents, modelSearch, onTitleChange, onSelectProject, onSelectDirectory,
+                onOpenBrowser, onPathDraftChange, onPathCommit, onSelectAgent, onSelectModel, onModelSearchChange,
+            )
+        }
         state.error?.let {
             Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
         }
@@ -159,6 +168,39 @@ fun NewSessionContent(
     }
 }
 
+/** The scrolling part of the form: everything except the action. */
+@Composable
+private fun NewSessionForm(
+    state: NewSessionUiState,
+    favorites: List<ModelRef>,
+    recents: List<ModelRef>,
+    modelSearch: String,
+    onTitleChange: (String) -> Unit,
+    onSelectProject: (LocationChoice) -> Unit,
+    onSelectDirectory: (String) -> Unit,
+    onOpenBrowser: () -> Unit,
+    onPathDraftChange: (String) -> Unit,
+    onPathCommit: () -> Unit,
+    onSelectAgent: (String) -> Unit,
+    onSelectModel: (ModelRef) -> Unit,
+    onModelSearchChange: (String) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(stringResource(R.string.new_session_title), style = MaterialTheme.typography.titleMedium)
+        SyncedTextField(
+            value = state.title,
+            onValueChange = onTitleChange,
+            label = { Text(stringResource(R.string.new_session_title_hint)) },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions.Default,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        LocationSection(state, onSelectProject, onSelectDirectory, onOpenBrowser, onPathDraftChange, onPathCommit)
+        AgentSection(state, onSelectAgent)
+        ModelSection(state, favorites, recents, modelSearch, onModelSearchChange, onSelectModel)
+    }
+}
+
 /** Where the session will run: the projects, the recent directories, or the browser. */
 @Composable
 private fun LocationSection(
@@ -167,7 +209,10 @@ private fun LocationSection(
     onSelectDirectory: (String) -> Unit,
     onOpenBrowser: () -> Unit,
     onPathDraftChange: (String) -> Unit,
+    onPathCommit: () -> Unit,
 ) {
+    val draft = state.pathDraft.trim()
+    val draftValid = isAbsoluteServerPath(draft)
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(
             text = stringResource(R.string.new_session_where),
@@ -209,15 +254,16 @@ private fun LocationSection(
         // sessions leaves the two lists above it empty, and this is the one input that needs nothing
         // from the server before it can be used. It goes first because on such a server it is the
         // only thing here that can be acted on.
-        OutlinedTextField(
+        SyncedTextField(
             value = state.pathDraft,
             onValueChange = onPathDraftChange,
             label = { Text(stringResource(R.string.new_session_path_hint)) },
             placeholder = { Text(stringResource(R.string.new_session_path_example)) },
             singleLine = true,
-            keyboardOptions = KeyboardOptions.Default,
-            isError = state.pathDraft.isNotBlank() && state.directory == null,
-            supportingText = if (state.pathDraft.isNotBlank() && state.directory == null) {
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = { onPathCommit() }),
+            isError = draft.isNotEmpty() && !draftValid,
+            supportingText = if (draft.isNotEmpty() && !draftValid) {
                 { Text(stringResource(R.string.new_session_path_invalid)) }
             } else {
                 null
@@ -231,8 +277,16 @@ private fun LocationSection(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        TextButton(onClick = onOpenBrowser, enabled = state.directory != null) {
-            Text(stringResource(R.string.new_session_browse))
+        // Typing a path chooses nothing: choosing a location asks the server about that directory, and the
+        // server registers every directory it is asked about. The path is committed here or with Done.
+        val committed = state.location == LocationChoice.Typed(draft)
+        Row {
+            TextButton(onClick = onPathCommit, enabled = draftValid && !committed) {
+                Text(stringResource(R.string.new_session_path_use))
+            }
+            TextButton(onClick = onOpenBrowser, enabled = state.directory != null) {
+                Text(stringResource(R.string.new_session_browse))
+            }
         }
     }
 }
@@ -290,11 +344,21 @@ private fun ModelSection(
     favorites: List<ModelRef>,
     recents: List<ModelRef>,
     search: String,
+    onSearchChange: (String) -> Unit,
     onSelectModel: (ModelRef) -> Unit,
 ) {
     val groups = state.modelGroups(favorites, recents, search)
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         ModelSectionHeader(stringResource(R.string.new_session_model))
+        // A server can list a hundred models across a dozen providers, so finding one by scrolling is the
+        // slow way; the filter is the same one the model picker applies.
+        OutlinedTextField(
+            value = search,
+            onValueChange = onSearchChange,
+            label = { Text(stringResource(R.string.new_session_model_search)) },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
         if (state.model == null) {
             Text(
                 text = stringResource(R.string.new_session_model_default),
@@ -303,7 +367,7 @@ private fun ModelSection(
             )
         }
         if (groups.isEmpty()) {
-            ModelEmptyState()
+            ModelEmptyState(query = search)
             return@Column
         }
         groups.forEach { group ->

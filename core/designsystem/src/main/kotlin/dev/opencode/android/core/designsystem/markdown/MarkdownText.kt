@@ -67,17 +67,28 @@ fun MarkdownText(
                     },
                 )
 
+                // A list item is a whole line of running text, so it is parsed for emphasis, code and links
+                // like a paragraph is. Drawing it as one literal `Text` left `**bold**` and backticks
+                // showing as typed.
                 is MarkdownBlock.BulletList -> block.items.forEach { item ->
                     Row {
                         Text(stringResource(R.string.md_bullet_marker), style = style)
-                        Text(text = annotate(listOf(item), style), style = style)
+                        Text(
+                            text = annotate(parseInline(item.plainText()), style),
+                            style = style,
+                            modifier = Modifier.weight(1f),
+                        )
                     }
                 }
 
                 is MarkdownBlock.NumberedList -> block.items.forEachIndexed { position, item ->
                     Row {
                         Text("${block.start + position}.  ", style = style)
-                        Text(text = annotate(listOf(item), style), style = style)
+                        Text(
+                            text = annotate(parseInline(item.plainText()), style),
+                            style = style,
+                            modifier = Modifier.weight(1f),
+                        )
                     }
                 }
 
@@ -127,11 +138,17 @@ private fun MarkdownBlockView(block: MarkdownBlock, style: androidx.compose.ui.t
         is MarkdownBlock.Heading -> Text(text = annotate(parseInline(block.text), style), style = style)
 
         is MarkdownBlock.BulletList -> block.items.forEach {
-            Text(stringResource(R.string.md_bullet_marker) + it.plainText(), style = style)
+            Text(
+                text = annotate(parseInline(stringResource(R.string.md_bullet_marker) + it.plainText()), style),
+                style = style,
+            )
         }
 
         is MarkdownBlock.NumberedList -> block.items.forEach {
-            Text(stringResource(R.string.md_number_marker) + it.plainText(), style = style)
+            Text(
+                text = annotate(parseInline(stringResource(R.string.md_number_marker) + it.plainText()), style),
+                style = style,
+            )
         }
 
         is MarkdownBlock.Code -> CodeBlock(block.code, block.language, Modifier.fillMaxWidth())

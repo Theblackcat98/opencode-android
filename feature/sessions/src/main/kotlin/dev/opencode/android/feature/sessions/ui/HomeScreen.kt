@@ -1,5 +1,6 @@
 package dev.opencode.android.feature.sessions.ui
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -17,21 +18,30 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -82,7 +92,16 @@ fun HomeScreen(
      */
     onManageClick: ((ManageDestination) -> Unit)? = null,
     manageDirectory: String? = null,
+    /**
+     * Back to the server list.
+     *
+     * The home is where a server's screens start, so it needs a way out that is visible: the system back
+     * gesture is not discoverable, and without an arrow the top bar looked like a root screen that had
+     * nowhere to go.
+     */
+    onBackClick: (() -> Unit)? = null,
 ) {
+    var menuOpen by remember { mutableStateOf(false) }
     val running = rows.filter { it.activity is SessionActivity.Running || it.isRetrying }
     val recent = rows.take(RECENT_LIMIT)
 
@@ -102,6 +121,16 @@ fun HomeScreen(
                         }
                     }
                 },
+                navigationIcon = {
+                    onBackClick?.let { back ->
+                        IconButton(onClick = back) {
+                            Icon(
+                                Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = stringResource(R.string.home_back),
+                            )
+                        }
+                    }
+                },
                 actions = {
                     // The inbox is only there when something is waiting: an always-visible empty
                     // inbox is a dead end, and a badge is the whole signal the user needs.
@@ -112,6 +141,31 @@ fun HomeScreen(
                             modifier = Modifier.semantics { contentDescription = label },
                         ) {
                             Text(label, color = MaterialTheme.colorScheme.error)
+                        }
+                    }
+                    // The Manage chips sit below every session, so on a busy server they are a long scroll
+                    // away. The same destinations are one tap from here.
+                    if (onManageClick != null && manageDirectory != null) {
+                        IconButton(onClick = { menuOpen = true }) {
+                            Icon(Icons.Filled.MoreVert, contentDescription = stringResource(R.string.home_more))
+                        }
+                        DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.home_all_sessions)) },
+                                onClick = {
+                                    menuOpen = false
+                                    onAllSessionsClick()
+                                },
+                            )
+                            ManageDestination.entries.forEach { destination ->
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(destination.labelRes)) },
+                                    onClick = {
+                                        menuOpen = false
+                                        onManageClick(destination)
+                                    },
+                                )
+                            }
                         }
                     }
                 },
@@ -198,17 +252,17 @@ fun HomeScreen(
  * a `FlowRow` that wraps — which is why the chips are named for their destination rather than grouped
  * into sub-screens, and why a user on a small phone sees all ten without a second level.
  */
-enum class ManageDestination {
-    ACCOUNTS,
-    PROVIDERS,
-    MCP,
-    PLUGINS,
-    WEB_SEARCH,
-    CONFIGURATION,
-    AGENTS,
-    DEFINITIONS,
-    PERMISSIONS,
-    MAINTENANCE,
+enum class ManageDestination(@StringRes val labelRes: Int) {
+    ACCOUNTS(R.string.home_manage_accounts),
+    PROVIDERS(R.string.home_manage_providers),
+    MCP(R.string.home_manage_mcp),
+    PLUGINS(R.string.home_manage_plugins),
+    WEB_SEARCH(R.string.home_manage_web_search),
+    CONFIGURATION(R.string.home_manage_configuration),
+    AGENTS(R.string.home_manage_agents),
+    DEFINITIONS(R.string.home_manage_definitions),
+    PERMISSIONS(R.string.home_manage_permissions),
+    MAINTENANCE(R.string.home_manage_maintenance),
 }
 
 /**

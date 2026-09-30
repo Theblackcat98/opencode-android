@@ -229,28 +229,27 @@ class NewSessionViewModel @Inject constructor(
     }
 
     /**
-     * The directory as it is being typed, and the location it implies once it looks like a path.
+     * The directory as it is being typed. It changes the field and nothing else.
      *
-     * **The draft is echoed, but the location only follows a syntactically valid absolute path.** The
-     * field is a text field, so every keystroke is a state change; making the location track the raw
-     * text would fire a catalog load per character against a directory that may not exist. An
-     * absolute path is the point at which the string is unambiguously a location, and a relative one
-     * is never accepted because the server resolves it against a directory this client cannot know.
+     * **Typing never chooses a location.** Choosing one loads that directory's agents and models, and the
+     * server answers a request scoped to a directory by *registering* it: a project appears for every path
+     * asked about, whether or not it exists. A location that followed the field would therefore ask about
+     * `/`, `/h`, `/ho` and every other prefix on the way to a path, and leave a project behind for each.
+     * The location changes when the user commits the path with [commitPath], and not before.
      */
     fun setPathDraft(path: String) {
-        val trimmed = path.trim()
         local.value = local.value.copy(pathDraft = path)
-        if (looksLikeAbsolutePath(trimmed)) {
-            val current = choice.value
-            if (current !is LocationChoice.Typed || current.directory != trimmed) {
-                selectLocation(LocationChoice.Typed(trimmed))
-            }
-        }
     }
 
-    /** A path the server can resolve: absolute, no scheme, no whitespace-only segments. */
-    private fun looksLikeAbsolutePath(path: String): Boolean =
-        path.startsWith('/') && !path.contains(Regex("""\s""")) && !path.contains("//")
+    /** Chooses the typed path as the location, if it is one the server can resolve. */
+    fun commitPath() {
+        val trimmed = local.value.pathDraft.trim()
+        if (!isAbsoluteServerPath(trimmed)) return
+        val current = choice.value
+        if (current !is LocationChoice.Typed || current.directory != trimmed) {
+            selectLocation(LocationChoice.Typed(trimmed))
+        }
+    }
 
     fun selectAgent(agent: String) {
         local.value = local.value.copy(agent = agent)
@@ -379,3 +378,7 @@ class NewSessionViewModel @Inject constructor(
         const val RECENT_LIMIT = 8
     }
 }
+
+/** A path the server can resolve: absolute, no scheme, no whitespace, no empty segments. */
+fun isAbsoluteServerPath(path: String): Boolean =
+    path.startsWith('/') && !path.contains(Regex("""\s""")) && !path.contains("//")

@@ -50,6 +50,7 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.opencode.android.core.data.composer.Completion
+import dev.opencode.android.core.designsystem.text.TextSync
 import dev.opencode.android.core.model.Delivery
 import dev.opencode.android.feature.composer.R
 
@@ -126,9 +127,12 @@ fun ComposerBar(
     // step, a restored draft, a cleared box — which is the only way the caret survives a recomposition
     // without being reset on every keystroke.
     var field by remember { mutableStateOf(TextFieldValue(state.text, TextRange(state.text.length))) }
+    // `state.text` echoes each keystroke late, so "differs from the field" cannot mean "changed from
+    // outside": that reading rewinds the field to a stale echo and eats fast typing.
+    val sync = remember { TextSync() }
     LaunchedEffect(state.text) {
-        if (field.text != state.text) {
-            field = TextFieldValue(state.text, TextRange(state.text.length))
+        sync.onState(state.text, field.text)?.let { adopted ->
+            field = TextFieldValue(adopted, TextRange(adopted.length))
         }
     }
     Surface(modifier = modifier.fillMaxWidth(), tonalElevation = 3.dp) {
@@ -144,6 +148,7 @@ fun ComposerBar(
             OutlinedTextField(
                 value = field,
                 onValueChange = { edited: TextFieldValue ->
+                    if (edited.text != field.text) sync.onEdited(edited.text)
                     field = edited
                     onTextChange(edited.text, edited.selection.end)
                 },

@@ -81,6 +81,8 @@ data class ToolCard(
      * JSON cannot do either.
      */
     val changedFiles: List<String> = emptyList(),
+    /** What an edit, write or patch changed, drawn from the tool's own arguments; `null` for other tools. */
+    val diff: ToolDiff? = null,
 )
 
 /** Where a tool call is in its lifecycle, as a card shows it. */
@@ -127,6 +129,7 @@ fun AssistantContent.Tool.toCard(): ToolCard {
         unknown = !ToolCardKind.isKnown(name),
         changedFiles = dev.opencode.android.core.data.review.ChangedFiles
             .fromToolMetadata(completed?.metadata ?: error?.metadata),
+        diff = toolDiffOf(kind, input),
     )
 }
 

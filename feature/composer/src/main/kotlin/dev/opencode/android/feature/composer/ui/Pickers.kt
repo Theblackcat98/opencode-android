@@ -198,9 +198,15 @@ fun ModelSectionHeader(text: String, modifier: Modifier = Modifier) {
 
 /** The picker's empty state, which is also how a server with no provider is explained. */
 @Composable
-fun ModelEmptyState(modifier: Modifier = Modifier) {
+fun ModelEmptyState(modifier: Modifier = Modifier, query: String = "") {
     Text(
-        text = stringResource(R.string.model_empty),
+        // With a search typed, the list is empty because of the filter, not because the server has no
+        // provider, and "connect a provider" sends the user to fix something that is not broken.
+        text = if (query.isBlank()) {
+            stringResource(R.string.model_empty)
+        } else {
+            stringResource(R.string.model_no_match, query.trim())
+        },
         modifier = modifier.padding(16.dp),
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,

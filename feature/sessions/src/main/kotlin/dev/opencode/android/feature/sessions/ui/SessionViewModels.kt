@@ -16,6 +16,8 @@ import dev.opencode.android.core.data.server.SessionRow
 import dev.opencode.android.core.data.server.SessionStore
 import dev.opencode.android.core.data.server.TimelinePaging
 import dev.opencode.android.core.data.server.TimelineStore
+import dev.opencode.android.core.data.sync.SyncStatus
+import dev.opencode.android.core.data.sync.SyncedState
 import dev.opencode.android.core.model.ForkBoundary
 import dev.opencode.android.core.model.ModelInfo
 import dev.opencode.android.core.model.Project
@@ -42,6 +44,8 @@ data class SessionListUiState(
     val search: String = "",
     val filter: SessionFilter = SessionFilter.Roots,
     val paging: PagingState = PagingState(),
+    /** The server has not yet said what it has, so an empty list is not yet a fact. */
+    val syncing: Boolean = false,
     /** The clock the relative timestamps are computed against, so rows do not re-render per second. */
     val now: Long = 0L,
 )
@@ -171,20 +175,30 @@ class SessionListViewModel(
      * `combine` has typed overloads up to five sources, and a list view needs more than that, so
      * the store's parts are folded first.
      */
+    // Each of these follows the store, not the store's value at the moment the dataset became active.
+    // Reading `.value` inside a `map` on `active` froze the list at whatever had loaded by then: the home
+    // said "No sessions yet" on a server that was still connecting, and a new or renamed session never
+    // appeared until the screen was recreated.
     private val rows: Flow<List<SessionRow>> =
-        dataSets.active.map { set -> set?.sessions?.visibleRows?.value ?: emptyList<SessionRow>() }
+        dataSets.active.flatMapLatest { set -> set?.sessions?.visibleRows ?: flowOf(emptyList()) }
 
-    private val projects: Flow<List<Project>> =
-        dataSets.active.map { set -> set?.projects?.state?.value?.value ?: emptyList<Project>() }
+    private val projects: Flow<SyncedState<List<Project>>> =
+        dataSets.active.flatMapLatest { set -> set?.projects?.state ?: flowOf(SyncedState()) }
 
     private val filter: Flow<SessionFilter> =
-        dataSets.active.map { set -> set?.sessions?.filter?.value ?: SessionFilter.Roots }
+        dataSets.active.flatMapLatest { set -> set?.sessions?.filter ?: flowOf(SessionFilter.Roots) }
 
     private val paging: Flow<PagingState> =
-        dataSets.active.map { set -> set?.sessions?.paging?.value ?: PagingState() }
+        dataSets.active.flatMapLatest { set -> set?.sessions?.paging ?: flowOf(PagingState()) }
 
     private val content: Flow<ListSnapshot> = combine(rows, projects) { list, all ->
-        ListSnapshot(rows = list, projects = all)
+        ListSnapshot(
+            rows = list,
+            projects = all.value.orEmpty(),
+            // Nothing is known yet: the projects have neither arrived nor failed. An empty home is a
+            // claim about the server, so it may only be made once the server has answered.
+            syncing = all.value == null && all.status !is SyncStatus.Failed,
+        )
     }
 
     private val fromStore: Flow<ListSnapshot> = combine(content, filter, paging) { snapshot, active, progress ->
@@ -202,6 +216,7 @@ class SessionListViewModel(
             search = search,
             filter = snapshot.filter,
             paging = snapshot.paging,
+            syncing = snapshot.syncing,
             now = now,
         )
     }.stateIn(
@@ -244,6 +259,7 @@ private data class ListSnapshot(
     val projects: List<Project> = emptyList(),
     val filter: SessionFilter = SessionFilter.Roots,
     val paging: PagingState = PagingState(),
+    val syncing: Boolean = false,
 )
 
 /**

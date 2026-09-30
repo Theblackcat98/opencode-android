@@ -19,6 +19,8 @@
     <string name="home_requests_waiting">%1$d permissions and questions need an answer</string>
     <string name="home_requests_waiting_short">%1$d</string>
     <string name="home_new_session">New session</string>
+    <string name="home_back">Servers</string>
+    <string name="home_more">More</string>
 
     <!-- Session list -->
     <string name="sessions_title">Sessions</string>
@@ -115,6 +117,7 @@
     <string name="tool_answers">Answer: %1$s</string>
     <string name="tool_child_session">Subagent session %1$s</string>
     <string name="tool_lines">%1$d lines</string>
+    <string name="tool_diff_more">… %1$d more lines</string>
     <string name="tool_status_description">%1$s, %2$s</string>
 
     <!-- Timeline: dividers and markers -->
@@ -167,7 +170,10 @@
     <string name="session_execution_session_terminals">Session terminals</string>
     <string name="session_execution_project_settings">Project settings</string>
 
-    <string name="timeline_changed_files">Changed %1$d files</string>
+    <plurals name="timeline_changed_files">
+        <item quantity="one">Changed %1$d file</item>
+        <item quantity="other">Changed %1$d files</item>
+    </plurals>
     <string name="timeline_fork_here">Fork from here</string>
     <string name="timeline_revert_here">Undo to here</string>
     <string name="session_forked_from">Forked from %1$s</string>

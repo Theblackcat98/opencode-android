@@ -62,6 +62,43 @@ of them; this changelog does not claim them.
 
 ### Fixed
 
+Found by driving the app against a live server on an emulator, which no test had done:
+
+- **Typing lost characters.** The composer, the new-session fields, and the two search boxes copied the
+  view model's text back into the field whenever it differed, but that state echoes each keystroke late
+  (it is a `combine(…).stateIn(…)`), so fast typing, a paste or autofill was rewound to a stale echo.
+  `TextSync` remembers what the field itself reported and ignores the echo of it; `SyncedTextField`
+  applies that to a field.
+- **Typing a directory registered a project for every prefix.** `NewSessionViewModel.setPathDraft`
+  chose a location on every keystroke of anything that looked like an absolute path, which loads that
+  directory's agents and models, and the server registers every directory it is asked about. Typing
+  `/home/me/app` asked about `/`, `/h`, `/ho` and the rest. The location now changes only on "Use this
+  directory" or the keyboard's Done key. The old docstring claimed this was already so.
+- **Home and the session list were frozen snapshots.** `SessionListViewModel` read `.value` of each store
+  inside a `map` on the active dataset, so it showed whatever had loaded by then: "No sessions yet" on a
+  server still connecting, and a new or renamed session absent until the screen was recreated. It now
+  follows the stores, and Home waits for the server to answer before claiming it is empty.
+- **Seven screens crashed on open.** `ConfigViewModel`, `ConfigEditorViewModel`, `DefinitionViewModel`,
+  `PermissionsViewModel`, `MaintenanceViewModel`, `InstructionsViewModel` and `InsightsViewModel` were not
+  `@HiltViewModel`, so `hiltViewModel()` failed with `NoSuchMethodException: <init> []`. The app died on
+  tapping Configuration.
+- Markdown inside list items (`**bold**`, `` `code` ``, links) was drawn as typed; only paragraphs,
+  headings and table cells were parsed.
+- "Changed 1 files" is now "Changed 1 file".
+- With a model search typed and no match, the list said "Connect a provider on the server first".
+
+Also added while testing:
+
+- An edit, write or patch card shows what changed, drawn from the tool's own arguments (`oldString` and
+  `newString`, `content`, or the patch) rather than from `metadata`, which the spec leaves open. Added
+  lines are green; the diff palette used the theme's violet, which read as a second red.
+- The new-session sheet keeps "Start" pinned above the form and the keyboard, and the model list has a
+  search field (the parameter existed and was hard-coded to empty).
+- Home has a back arrow to the server list and a top-bar menu for the Manage destinations, which sat
+  below every session.
+
+Earlier fixes:
+
 - A union member arriving as something other than a JSON object — `SessionStatus` as a bare string,
   for instance — threw out of the decoder instead of falling back to `Unknown`, which would have
   taken the event connection down over one malformed frame.

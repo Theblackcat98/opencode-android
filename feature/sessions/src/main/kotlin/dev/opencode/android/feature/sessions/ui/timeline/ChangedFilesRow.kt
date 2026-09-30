@@ -10,7 +10,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.opencode.android.feature.sessions.R
@@ -37,7 +37,7 @@ fun ChangedFilesRow(
     if (files.isEmpty()) return
     Column(modifier = modifier.fillMaxWidth().padding(top = 4.dp)) {
         Text(
-            text = stringResource(R.string.timeline_changed_files, files.size),
+            text = pluralStringResource(R.plurals.timeline_changed_files, files.size, files.size),
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

@@ -127,6 +127,7 @@
     <string name="model_context">%1$s context</string>
     <string name="model_cost">%1$s in, %2$s out per million tokens</string>
     <string name="model_variant">Variant %1$s</string>
+    <string name="model_no_match">No model matches \"%1$s\". Clear the search to see them all.</string>
     <string name="model_empty">No model matches. Connect a provider on the server first.</string>
     <string name="model_none_available">No model available</string>
     <string name="model_none_available_body">This server has no model configured, so a new session cannot start a turn. Connect a provider on the computer, or run `opencode auth login`, then pull to refresh.</string>
@@ -138,6 +139,7 @@
     <string name="new_session_agent">Agent</string>
     <string name="new_session_model">Model</string>
     <string name="new_session_model_default">Server default</string>
+    <string name="new_session_model_search">Search models</string>
     <string name="new_session_title_hint">Title (optional)</string>
     <string name="new_session_create">Start</string>
     <string name="new_session_creating">Starting</string>
@@ -150,6 +152,7 @@
     -->
     <string name="new_session_path_hint">Directory path</string>
     <string name="new_session_path_example">/home/you/project</string>
+    <string name="new_session_path_use">Use this directory</string>
     <string name="new_session_path_invalid">Enter an absolute path, with no spaces.</string>
     <string name="new_session_no_places">This server has no projects or recent directories yet. Type a path to choose where the session runs.</string>
     <string name="new_session_browse">Browse the server\'s files</string>

@@ -33,6 +33,7 @@ fun HomeRoute(
      * which is what every one of those screens is scoped by.
      */
     onManageClick: ((String, ManageDestination) -> Unit)? = null,
+    onBackClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
     viewModel: HomeViewModel = hiltViewModel(),
     listViewModel: SessionListViewModel = hiltViewModel(),
@@ -49,7 +50,7 @@ fun HomeRoute(
         projects = state.projects,
         rows = state.rows,
         serverName = serverName,
-        loading = state.paging.loading,
+        loading = state.paging.loading || state.syncing,
         onProjectClick = { onAllSessionsClick(it) },
         onSessionClick = onSessionClick,
         onAllSessionsClick = { serverId?.let(onAllSessionsClick) },
@@ -64,6 +65,7 @@ fun HomeRoute(
             { destination: ManageDestination -> handler(manageDirectory.orEmpty(), destination) }
         },
         manageDirectory = manageDirectory,
+        onBackClick = onBackClick,
     )
 }
 

@@ -27,6 +27,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import dev.opencode.android.core.designsystem.diff.DiffTable
 import dev.opencode.android.core.designsystem.format.Formatters
 import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
 import dev.opencode.android.feature.sessions.R
@@ -115,7 +116,33 @@ fun ToolCardView(card: ToolCard, modifier: Modifier = Modifier) {
                         .horizontalScroll(rememberScrollState()),
                 )
             }
-            card.detail?.takeIf { it.isNotBlank() }?.let { detail ->
+            card.diff?.let { diff ->
+                Surface(
+                    color = MaterialTheme.colorScheme.surface,
+                    shape = RoundedCornerShape(6.dp),
+                    modifier = Modifier.padding(top = 6.dp).fillMaxWidth(),
+                ) {
+                    DiffTable(
+                        rows = diff.rows,
+                        // Wrapped, because a row's text is weighted and an unwrapped table sits in a horizontal
+                        // scroll with unbounded width, where a weighted child is given none.
+                        wrap = true,
+                        showGutter = false,
+                        language = diff.language,
+                        modifier = Modifier.padding(vertical = 4.dp),
+                    )
+                }
+                if (diff.hiddenRows > 0) {
+                    Text(
+                        text = stringResource(R.string.tool_diff_more, diff.hiddenRows),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 4.dp),
+                    )
+                }
+            }
+            // The diff replaces the raw `files` text an edit used to show: the same information, drawn.
+            card.detail?.takeIf { it.isNotBlank() && card.diff == null }?.let { detail ->
                 Text(
                     text = stringResource(R.string.tool_output),
                     style = MaterialTheme.typography.labelSmall,

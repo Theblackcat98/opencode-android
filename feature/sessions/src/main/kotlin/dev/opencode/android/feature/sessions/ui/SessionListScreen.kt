@@ -30,7 +30,6 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -50,6 +49,7 @@ import dev.opencode.android.core.data.server.SessionFilter
 import dev.opencode.android.core.data.server.SessionRow
 import dev.opencode.android.core.designsystem.format.Formatters
 import dev.opencode.android.core.designsystem.format.relativeTimeDescription
+import dev.opencode.android.core.designsystem.text.SyncedTextField
 import dev.opencode.android.core.model.Project
 import dev.opencode.android.feature.sessions.R
 
@@ -88,7 +88,7 @@ fun SessionListScreen(
         topBar = { TopAppBar(title = { Text(stringResource(R.string.sessions_title)) }) },
     ) { padding ->
         Column(modifier = Modifier.padding(padding).fillMaxSize()) {
-            OutlinedTextField(
+            SyncedTextField(
                 value = state.search,
                 onValueChange = onSearchChange,
                 label = { Text(stringResource(R.string.sessions_search)) },

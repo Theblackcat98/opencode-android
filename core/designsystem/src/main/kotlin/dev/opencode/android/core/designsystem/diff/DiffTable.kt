@@ -18,6 +18,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
@@ -69,10 +70,13 @@ data class DiffColors(
          */
         @Composable
         fun of(scheme: androidx.compose.material3.ColorScheme = MaterialTheme.colorScheme): DiffColors = DiffColors(
-            added = scheme.tertiaryContainer,
+            // Green against red is what every diff a reader has seen looks like, and it is what the CLI
+            // draws. The theme's tertiary is violet, which sat next to the error container as two pinks and
+            // made the two sides of a replacement hard to tell apart.
+            added = if (scheme.surface.luminance() < DARK_SURFACE) ADDED_DARK else ADDED_LIGHT,
             removed = scheme.errorContainer,
             context = Color.Transparent,
-            addedStrong = scheme.onTertiaryContainer,
+            addedStrong = if (scheme.surface.luminance() < DARK_SURFACE) ON_ADDED_DARK else ON_ADDED_LIGHT,
             removedStrong = scheme.onErrorContainer,
             hunkHeader = scheme.surfaceVariant,
             keyword = scheme.primary,
@@ -88,6 +92,12 @@ data class DiffColors(
         )
     }
 }
+
+private const val DARK_SURFACE = 0.5f
+private val ADDED_LIGHT = Color(0xFFD3F2DA)
+private val ON_ADDED_LIGHT = Color(0xFF0A3A18)
+private val ADDED_DARK = Color(0xFF1E4A2A)
+private val ON_ADDED_DARK = Color(0xFFC6EFD0)
 
 /** One line of a diff, as the renderer receives it. */
 data class DiffRow(

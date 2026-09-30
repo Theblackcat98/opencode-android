@@ -6,6 +6,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
@@ -304,6 +305,7 @@ fun OpenCodeApp(
                 onPendingRequestsClick = { serverId ->
                     navController.navigate(PendingRequestsRoute(serverId))
                 },
+                onBackClick = { navController.popBackStack() },
                 // The plan's "Manage" section (§4.3). The app module owns the graph, so the feature
                 // hands the destination over and this is where it becomes a route.
                 onManageClick = { directory, destination ->
@@ -741,16 +743,19 @@ private fun NewSessionHost(
         onCreated(sessionId)
     }
 
+    var modelSearch by rememberSaveable { mutableStateOf("") }
     NewSessionSheet(
         state = state,
         favorites = favorites,
         recents = recents,
-        modelSearch = "",
+        modelSearch = modelSearch,
+        onModelSearchChange = { modelSearch = it },
         onTitleChange = viewModel::setTitle,
         onSelectProject = viewModel::selectLocation,
         onSelectDirectory = { directory -> viewModel.selectLocation(LocationChoice.Browsed(directory, null)) },
         onOpenBrowser = viewModel::openBrowser,
         onPathDraftChange = viewModel::setPathDraft,
+        onPathCommit = viewModel::commitPath,
         onSelectAgent = viewModel::selectAgent,
         onSelectModel = viewModel::selectModel,
         onBrowseUp = viewModel::goUp,
