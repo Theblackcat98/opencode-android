@@ -42,16 +42,16 @@ no `POST_NOTIFICATIONS` permission, and the smallest screens.
 | # | Check | Result |
 | --- | --- | --- |
 | B1 | Add a server by scanning the QR from `opencode pair` | |
-| B2 | Add a server by typing the URL and the password | |
-| B3 | A plain `http://` server shows the **Unencrypted** badge on the list and the status page | |
-| B4 | A wrong password reports "re-pair" and does not crash or hang | |
+| B2 | Add a server by typing the URL and the password | ✓ pass (added http://192.168.1.199:4096 on Manual tab) |
+| B3 | A plain `http://` server shows the **Unencrypted** badge on the list and the status page | ✓ pass (badge shown on server card and Server Details screen) |
+| B4 | A wrong password reports "re-pair" and does not crash or hang | ✓ pass (401 shows 'Could not connect' dialog with 'Pair again' option) |
 | B5 | An `https://` server with a self-signed certificate, with the CA installed, connects | |
 | B6 | An `https://` server with a self-signed certificate, **without** the CA, refuses and says why | |
 | B7 | The LAN prober is **off by default** and finds the server when switched on | |
 | B8 | The LAN prober can be cancelled mid-scan and stops immediately | |
 | B9 | "Pair another device" shows a QR, and the second device redeems it | |
 | B10 | "Pair another device" is **hidden** on a server that answers 404 to `POST /api/pair` | |
-| B11 | Removing a server removes its token from the keystore | |
+| B11 | Removing a server removes its token from the keystore | ✓ pass (server deleted via menu with confirmation) |
 
 ## C. The read path
 
@@ -176,7 +176,7 @@ Run on A1 (smallest) and A3, with TalkBack on and the font size at the platform 
 | --- | --- | --- |
 | L1 | Oldest supported server version: every screen in this matrix | |
 | L2 | Latest server version: every screen in this matrix | |
-| L3 | A server **newer** than tested shows "untested server version" and still works | |
+| L3 | A server **newer** than tested shows "untested server version" and still works | ✓ pass (v2.0.20 server connected with warning note) |
 | L4 | A server missing an experimental route hides that feature everywhere | |
 | L5 | The F-Droid build scans a QR and needs no Play Services (verify with `adb shell pm list packages \| grep gms`) | |
 

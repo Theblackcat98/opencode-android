@@ -750,6 +750,7 @@ private fun NewSessionHost(
         onSelectProject = viewModel::selectLocation,
         onSelectDirectory = { directory -> viewModel.selectLocation(LocationChoice.Browsed(directory, null)) },
         onOpenBrowser = viewModel::openBrowser,
+        onPathDraftChange = viewModel::setPathDraft,
         onSelectAgent = viewModel::selectAgent,
         onSelectModel = viewModel::selectModel,
         onBrowseUp = viewModel::goUp,

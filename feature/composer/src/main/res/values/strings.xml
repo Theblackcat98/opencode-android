@@ -143,6 +143,15 @@
     <string name="new_session_creating">Starting</string>
     <string name="new_session_recent_directories">Recent directories</string>
     <string name="new_session_projects">Projects</string>
+    <!--
+      The typed path is the only way to name a location on a server that lists no projects and has
+      no sessions. The three strings below are the field and the two states it can be in, so the
+      field explains itself rather than leaving a rejected path looking like a dead end.
+    -->
+    <string name="new_session_path_hint">Directory path</string>
+    <string name="new_session_path_example">/home/you/project</string>
+    <string name="new_session_path_invalid">Enter an absolute path, with no spaces.</string>
+    <string name="new_session_no_places">This server has no projects or recent directories yet. Type a path to choose where the session runs.</string>
     <string name="new_session_browse">Browse the server\'s files</string>
     <string name="new_session_browse_title">Choose a directory</string>
     <string name="new_session_browse_up">Up one level</string>

@@ -36,10 +36,25 @@ sealed interface LocationChoice {
     /** A directory reached with the `fs.list` browser. */
     data class Browsed(val directory: String, val path: String?) : LocationChoice
 
+    /**
+     * A directory the user typed by hand.
+     *
+     * **This is the way in when the server names no places of its own.** A server with no projects
+     * and no sessions lists nothing to pick, and the browser that would otherwise supply a choice
+     * needs a location to start from — so on such a server the form had no first move available and
+     * `canCreate` could never become true. Typing a path is the one input that needs nothing from the
+     * server first.
+     *
+     * It resolves like any other choice, so the catalogs and the browser pick it up unchanged, and a
+     * server that names the same directory as a project shows the two as agreeing.
+     */
+    data class Typed(val directory: String) : LocationChoice
+
     /** The directory this choice resolves to, which is what the catalogs and the browser need. */
     fun directoryOrNull(): String? = when (this) {
         is ProjectChoice -> directory
         is Browsed -> directory
+        is Typed -> directory
     }
 }
 
@@ -58,6 +73,8 @@ data class NewSessionUiState(
     val entries: List<FileSystemEntry> = emptyList(),
     val browserPath: String? = null,
     val browserLoading: Boolean = false,
+    /** What the user has typed into the directory field, which is not a location until applied. */
+    val pathDraft: String = "",
     val creating: Boolean = false,
     val error: String? = null,
 ) {
@@ -110,6 +127,7 @@ class NewSessionViewModel @Inject constructor(
         val model: ModelRef? = null,
         val browsing: Boolean = false,
         val browserPath: String? = null,
+        val pathDraft: String = "",
         val creating: Boolean = false,
         val error: String? = null,
     )
@@ -158,6 +176,7 @@ class NewSessionViewModel @Inject constructor(
             entries = browser?.sorted.orEmpty(),
             browserPath = browser?.path,
             browserLoading = browser?.loading == true,
+            pathDraft = mine.pathDraft,
             creating = mine.creating,
             error = mine.error,
         )
@@ -198,9 +217,40 @@ class NewSessionViewModel @Inject constructor(
     /** Picks a location, clearing the scoped choices and re-reading the catalogs for it. */
     fun selectLocation(location: LocationChoice) {
         choice.value = location
-        local.value = local.value.copy(agent = null, model = null, browserPath = null)
+        local.value = local.value.copy(
+            agent = null,
+            model = null,
+            browserPath = null,
+            // A typed path that lands on the same place a project named is the same choice, so the
+            // field follows the selection rather than contradicting it.
+            pathDraft = if (location is LocationChoice.Typed) location.directory else "",
+        )
         loadCatalogs(location)
     }
+
+    /**
+     * The directory as it is being typed, and the location it implies once it looks like a path.
+     *
+     * **The draft is echoed, but the location only follows a syntactically valid absolute path.** The
+     * field is a text field, so every keystroke is a state change; making the location track the raw
+     * text would fire a catalog load per character against a directory that may not exist. An
+     * absolute path is the point at which the string is unambiguously a location, and a relative one
+     * is never accepted because the server resolves it against a directory this client cannot know.
+     */
+    fun setPathDraft(path: String) {
+        val trimmed = path.trim()
+        local.value = local.value.copy(pathDraft = path)
+        if (looksLikeAbsolutePath(trimmed)) {
+            val current = choice.value
+            if (current !is LocationChoice.Typed || current.directory != trimmed) {
+                selectLocation(LocationChoice.Typed(trimmed))
+            }
+        }
+    }
+
+    /** A path the server can resolve: absolute, no scheme, no whitespace-only segments. */
+    private fun looksLikeAbsolutePath(path: String): Boolean =
+        path.startsWith('/') && !path.contains(Regex("""\s""")) && !path.contains("//")
 
     fun selectAgent(agent: String) {
         local.value = local.value.copy(agent = agent)

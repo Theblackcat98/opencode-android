@@ -171,6 +171,7 @@ class DrivingScreenshotTest {
             onSelectProject = {},
             onSelectDirectory = {},
             onOpenBrowser = {},
+            onPathDraftChange = {},
             onSelectAgent = {},
             onSelectModel = {},
             onCreate = {},

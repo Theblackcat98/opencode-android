@@ -60,6 +60,7 @@ fun NewSessionSheet(
     onSelectProject: (LocationChoice) -> Unit,
     onSelectDirectory: (String) -> Unit,
     onOpenBrowser: () -> Unit,
+    onPathDraftChange: (String) -> Unit,
     onSelectAgent: (String) -> Unit,
     onSelectModel: (ModelRef) -> Unit,
     onBrowseUp: () -> Unit,
@@ -81,6 +82,7 @@ fun NewSessionSheet(
             onSelectProject = onSelectProject,
             onSelectDirectory = onSelectDirectory,
             onOpenBrowser = onOpenBrowser,
+            onPathDraftChange = onPathDraftChange,
             onSelectAgent = onSelectAgent,
             onSelectModel = onSelectModel,
             onCreate = onCreate,
@@ -114,6 +116,7 @@ fun NewSessionContent(
     onSelectProject: (LocationChoice) -> Unit,
     onSelectDirectory: (String) -> Unit,
     onOpenBrowser: () -> Unit,
+    onPathDraftChange: (String) -> Unit,
     onSelectAgent: (String) -> Unit,
     onSelectModel: (ModelRef) -> Unit,
     onCreate: () -> Unit,
@@ -136,7 +139,7 @@ fun NewSessionContent(
             keyboardOptions = KeyboardOptions.Default,
             modifier = Modifier.fillMaxWidth(),
         )
-        LocationSection(state, onSelectProject, onSelectDirectory, onOpenBrowser)
+        LocationSection(state, onSelectProject, onSelectDirectory, onOpenBrowser, onPathDraftChange)
         AgentSection(state, onSelectAgent)
         ModelSection(state, favorites, recents, modelSearch, onSelectModel)
         state.error?.let {
@@ -163,6 +166,7 @@ private fun LocationSection(
     onSelectProject: (LocationChoice) -> Unit,
     onSelectDirectory: (String) -> Unit,
     onOpenBrowser: () -> Unit,
+    onPathDraftChange: (String) -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(
@@ -200,6 +204,32 @@ private fun LocationSection(
                     onClick = { onSelectDirectory(directory) },
                 )
             }
+        }
+        // The field is the section's floor, not an extra: a server that names no projects and has no
+        // sessions leaves the two lists above it empty, and this is the one input that needs nothing
+        // from the server before it can be used. It goes first because on such a server it is the
+        // only thing here that can be acted on.
+        OutlinedTextField(
+            value = state.pathDraft,
+            onValueChange = onPathDraftChange,
+            label = { Text(stringResource(R.string.new_session_path_hint)) },
+            placeholder = { Text(stringResource(R.string.new_session_path_example)) },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions.Default,
+            isError = state.pathDraft.isNotBlank() && state.directory == null,
+            supportingText = if (state.pathDraft.isNotBlank() && state.directory == null) {
+                { Text(stringResource(R.string.new_session_path_invalid)) }
+            } else {
+                null
+            },
+            modifier = Modifier.fillMaxWidth(),
+        )
+        if (state.projects.isEmpty() && state.recentDirectories.isEmpty()) {
+            Text(
+                text = stringResource(R.string.new_session_no_places),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
         TextButton(onClick = onOpenBrowser, enabled = state.directory != null) {
             Text(stringResource(R.string.new_session_browse))

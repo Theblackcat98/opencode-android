@@ -56,14 +56,19 @@ import dev.opencode.android.feature.servers.R
  * health (plan §6, Phase 1).
  *
  * The list is driven by the repository's Flow, and the health dots by the live connection state, so
- * nothing here has to be refreshed by hand.
+ * nothing here has to refresh by hand.
+ *
+ * **Tapping a row opens the server's home, not its status.** The row is the way into a working
+ * server, so it leads to the home and the sessions behind it; the status and settings screen is
+ * reached from the row's overflow menu instead. [onHomeClick] therefore has no default and every
+ * caller must supply it, so that a new call site cannot silently fall back to the status screen.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ServersScreen(
     onAddServerClick: () -> Unit,
     onServerClick: (String) -> Unit,
-    onHomeClick: (String) -> Unit = onServerClick,
+    onHomeClick: (String) -> Unit,
     onEditServerClick: (String) -> Unit,
     onPairAgainClick: (String) -> Unit,
     onInspectorClick: () -> Unit,
@@ -122,7 +127,7 @@ fun ServersScreen(
                 items(servers, key = { it.id }) { server ->
                     ServerListItem(
                         server = server,
-                        onClick = { onServerClick(server.id) },
+                        onStatus = { onServerClick(server.id) },
                         onHome = { onHomeClick(server.id) },
                         onEdit = { onEditServerClick(server.id) },
                         onSetDefault = { viewModel.setDefaultServer(server.id) },
@@ -174,7 +179,7 @@ object ServersTags {
 @Composable
 private fun ServerListItem(
     server: ServerProfile,
-    onClick: () -> Unit,
+    onStatus: () -> Unit,
     onHome: () -> Unit,
     onEdit: () -> Unit,
     onSetDefault: () -> Unit,
@@ -190,7 +195,7 @@ private fun ServerListItem(
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .clickable(onClick = onHome)
             .semantics(mergeDescendants = true) { contentDescription = itemDescription }
             .testTag(ServersTags.item(server.id)),
         shape = RoundedCornerShape(12.dp),
@@ -239,7 +244,7 @@ private fun ServerListItem(
                         text = { Text(stringResource(R.string.servers_status)) },
                         onClick = {
                             menuExpanded = false
-                            onClick()
+                            onStatus()
                         },
                     )
                     DropdownMenuItem(
