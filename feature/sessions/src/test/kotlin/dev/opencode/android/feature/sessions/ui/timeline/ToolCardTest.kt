@@ -8,6 +8,7 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -97,6 +98,86 @@ class ToolCardTest {
         val question = tool("question", mapOf("question" to "which database?")).toCard()
         assertEquals("which database?", question.subject)
     }
+
+    @Test
+    fun `a failed shell call carries the reason and keeps its output`() {
+        val card = failed(
+            "bash",
+            mapOf("command" to "cat missing.txt"),
+            message = "Command exited with code 1",
+            content = listOf(ToolContent.Text("cat: missing.txt: No such file or directory")),
+        )
+        assertEquals("Command exited with code 1", card.failure)
+        assertEquals("Command exited with code 1", (card.status as ToolStatus.Failed).error.message)
+        // The output is a separate thing the card already drew: the reason is added to it, not swapped for it.
+        assertEquals("cat: missing.txt: No such file or directory", card.detail)
+        assertEquals("cat missing.txt", card.subject)
+    }
+
+    @Test
+    fun `a failed edit carries the reason and still has the diff of what it attempted`() {
+        val message = "Invalid arguments for tool \"edit\":\n- path: Missing key\n\n" +
+            "Update the arguments and call the tool again."
+        val card = failed(
+            "edit",
+            mapOf("oldString" to "val limit = 10", "newString" to "val limit = 25"),
+            message = message,
+        )
+        // Multi-line, and not trimmed or reflowed: the card draws exactly what the server recorded.
+        assertEquals(message, card.failure)
+        val diff = card.diff
+        assertEquals(listOf('-', '+'), diff?.rows?.map { it.marker })
+    }
+
+    @Test
+    fun `a failed generic call carries the reason once`() {
+        val card = failed("quantum_anneal", mapOf("input" to "qubits=8"), message = "decoherence")
+        assertEquals(ToolCardKind.GENERIC, card.kind)
+        assertEquals("decoherence", card.failure)
+        // It used to be the detail, which drew it as unlabelled "Output"; now it is only the reason.
+        assertNull(card.detail)
+    }
+
+    @Test
+    fun `every kind carries the reason of a failure`() {
+        val names = listOf(
+            "read", "glob", "grep", "edit", "write", "patch",
+            "bash", "webfetch", "websearch", "skill", "task", "question", "execute", "quantum_anneal",
+        )
+        val kinds = names.map { ToolCardKind.of(it) }.toSet()
+        assertEquals("the list should cover every kind", ToolCardKind.entries.toSet(), kinds)
+        for (name in names) {
+            assertEquals("$name should say why it failed", "boom", failed(name, emptyMap(), message = "boom").failure)
+        }
+    }
+
+    @Test
+    fun `a call that did not fail has no reason, and a blank message is not one`() {
+        assertNull(tool("read", mapOf("filePath" to "a"), output = "body").toCard().failure)
+        assertNull(tool("read", emptyMap(), state = ToolState.Streaming("{")).toCard().failure)
+        assertNull(failed("read", emptyMap(), message = "  \n ").failure)
+    }
+
+    @Test
+    fun `a screen reader is given the reason on one line and not all of a long one`() {
+        assertEquals(
+            "Invalid arguments: - path: Missing key Arguments provided: {}",
+            spokenFailure("Invalid arguments:\n- path: Missing key\n\nArguments provided:\n{}\n"),
+        )
+        val long = "x".repeat(SPOKEN_FAILURE_LIMIT * 3)
+        assertEquals(SPOKEN_FAILURE_LIMIT, spokenFailure(long).length)
+    }
+
+    private fun failed(
+        name: String,
+        input: Map<String, String>,
+        message: String,
+        content: List<ToolContent>? = null,
+    ): ToolCard = tool(
+        name,
+        input,
+        state = ToolState.Error(json(input), StructuredError("tool.execution", message), content),
+    ).toCard()
 
     private fun tool(
         name: String,

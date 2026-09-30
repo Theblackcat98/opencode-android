@@ -83,7 +83,19 @@ data class ToolCard(
     val changedFiles: List<String> = emptyList(),
     /** What an edit, write or patch changed, drawn from the tool's own arguments; `null` for other tools. */
     val diff: ToolDiff? = null,
-)
+) {
+    /**
+     * Why the call failed, straight from the server's `state.error.message`, or `null` when it did not fail.
+     *
+     * Derived from [status] rather than stored next to it, so a card cannot say "Failed" with one reason and
+     * carry another. It is independent of [kind] and [detail]: an edit still draws its diff and a shell call
+     * still draws its output, and this is drawn in addition, because the diff says what was attempted and
+     * only this says why it did not happen. A blank message is `null`, since drawing an empty block would
+     * be worse than drawing nothing.
+     */
+    val failure: String?
+        get() = (status as? ToolStatus.Failed)?.error?.message?.takeIf { it.isNotBlank() }
+}
 
 /** Where a tool call is in its lifecycle, as a card shows it. */
 sealed interface ToolStatus {
@@ -182,8 +194,23 @@ private fun detailOf(
 
     ToolCardKind.SKILL -> null
 
-    ToolCardKind.GENERIC -> completed?.textOutput ?: error?.error?.message
+    // A failure's message is [ToolCard.failure], drawn for every kind, so it is not repeated here as output.
+    ToolCardKind.GENERIC -> completed?.textOutput
 }
+
+/**
+ * A failure reason as a screen reader is given it: one line, and no longer than [limit] characters.
+ *
+ * A description is read whole every time the card takes focus, and a server's message can carry the
+ * rejected arguments across many lines. The card still draws the full text as its own node, so nothing is
+ * lost by shortening this one; it only has to say enough to know whether that node is worth reaching.
+ */
+internal fun spokenFailure(reason: String, limit: Int = SPOKEN_FAILURE_LIMIT): String =
+    reason.trim().replace(WHITESPACE_RUN, " ").take(limit).trimEnd()
+
+internal const val SPOKEN_FAILURE_LIMIT = 200
+
+private val WHITESPACE_RUN = Regex("\\s+")
 
 private fun List<dev.opencode.android.core.model.ToolContent>?.textOrNull(): String? = this
     ?.filterIsInstance<dev.opencode.android.core.model.ToolContent.Text>()

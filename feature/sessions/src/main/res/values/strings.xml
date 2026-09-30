@@ -119,6 +119,9 @@
     <string name="tool_lines">%1$d lines</string>
     <string name="tool_diff_more">… %1$d more lines</string>
     <string name="tool_status_description">%1$s, %2$s</string>
+    <string name="tool_failure_reason">Why it failed</string>
+    <string name="tool_failure_show_all">Show all</string>
+    <string name="tool_failure_show_less">Show less</string>
 
     <!-- Timeline: dividers and markers -->
     <string name="divider_turn_succeeded">Turn finished</string>

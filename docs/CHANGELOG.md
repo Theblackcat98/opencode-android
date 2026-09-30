@@ -82,6 +82,11 @@ Found by driving the app against a live server on an emulator, which no test had
   `PermissionsViewModel`, `MaintenanceViewModel`, `InstructionsViewModel` and `InsightsViewModel` were not
   `@HiltViewModel`, so `hiltViewModel()` failed with `NoSuchMethodException: <init> []`. The app died on
   tapping Configuration.
+- **A failed tool card said "Failed" and not why.** `ToolStatus.Failed` carried the server's
+  `state.error`, but only the generic card drew its message, so a rejected `edit` showed the attempted
+  diff and nothing else. Every kind now draws the message under "Why it failed", capped at six lines
+  with the rest one tap away, and it is part of the card's accessibility description. Covered by unit
+  tests and Roborazzi baselines (`tool-failed-edit`, `tool-failed-shell-dark`); not yet seen on a device.
 - Markdown inside list items (`**bold**`, `` `code` ``, links) was drawn as typed; only paragraphs,
   headings and table cells were parsed.
 - "Changed 1 files" is now "Changed 1 file".

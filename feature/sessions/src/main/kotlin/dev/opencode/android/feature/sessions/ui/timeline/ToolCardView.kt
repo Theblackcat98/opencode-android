@@ -1,5 +1,7 @@
 package dev.opencode.android.feature.sessions.ui.timeline
 
+import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -20,12 +22,18 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.opencode.android.core.designsystem.diff.DiffTable
 import dev.opencode.android.core.designsystem.format.Formatters
@@ -50,7 +58,7 @@ fun ToolCardView(card: ToolCard, modifier: Modifier = Modifier) {
         stringResource(card.kind.labelRes)
     }
     val duration = card.durationMillis?.let { Formatters.duration(it) }
-    val description = if (duration == null) {
+    val statusDescription = if (duration == null) {
         stringResource(R.string.tool_status_description, title, statusLabel)
     } else {
         stringResource(
@@ -59,6 +67,10 @@ fun ToolCardView(card: ToolCard, modifier: Modifier = Modifier) {
             stringResource(R.string.tool_status_description, statusLabel, duration),
         )
     }
+    // "Failed" alone tells a screen-reader user nothing they can act on, so the reason is part of the description.
+    val description = card.failure?.let { reason ->
+        stringResource(R.string.tool_status_description, statusDescription, spokenFailure(reason))
+    } ?: statusDescription
 
     Card(
         modifier = modifier
@@ -141,6 +153,8 @@ fun ToolCardView(card: ToolCard, modifier: Modifier = Modifier) {
                     )
                 }
             }
+            // After the diff and before the output: the diff is what was attempted, this is why it was not done.
+            card.failure?.let { reason -> FailureReason(reason, Modifier.padding(top = 6.dp)) }
             // The diff replaces the raw `files` text an edit used to show: the same information, drawn.
             card.detail?.takeIf { it.isNotBlank() && card.diff == null }?.let { detail ->
                 Text(
@@ -162,6 +176,62 @@ fun ToolCardView(card: ToolCard, modifier: Modifier = Modifier) {
                     )
                 }
             }
+        }
+    }
+}
+
+/** How many lines of a failure reason a card shows before it folds the rest behind a tap. */
+internal const val MAX_FAILURE_LINES = 6
+
+/**
+ * Why a tool call failed, in the words the server recorded.
+ *
+ * A message can run to many lines (a rejected call quotes the arguments it was given), and a card in a
+ * transcript is read in passing, so it is capped at [MAX_FAILURE_LINES] and the rest is one tap away rather than
+ * pushing the transcript around. The tap target exists only once the text has actually been cut, so a short
+ * reason is not dressed up as something that can be expanded. It wraps instead of scrolling sideways: this is
+ * prose with the odd JSON fragment, and a reason that has to be panned to be read is not visible at all.
+ */
+@Composable
+private fun FailureReason(reason: String, modifier: Modifier = Modifier) {
+    var expanded by remember(reason) { mutableStateOf(false) }
+    // Sticky: once expanded nothing overflows, but the control has to stay to collapse it again.
+    var foldable by remember(reason) { mutableStateOf(false) }
+    val toggle = stringResource(if (expanded) R.string.tool_failure_show_less else R.string.tool_failure_show_all)
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .animateContentSize()
+            .then(
+                if (foldable) {
+                    Modifier.clickable(role = Role.Button, onClickLabel = toggle) { expanded = !expanded }
+                } else {
+                    Modifier
+                },
+            ),
+    ) {
+        Text(
+            text = stringResource(R.string.tool_failure_reason),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onErrorContainer,
+        )
+        Text(
+            text = reason,
+            style = OpenCodeThemeExtras.code.small,
+            color = MaterialTheme.colorScheme.onErrorContainer,
+            maxLines = if (expanded) Int.MAX_VALUE else MAX_FAILURE_LINES,
+            overflow = TextOverflow.Ellipsis,
+            onTextLayout = { layout -> if (layout.hasVisualOverflow) foldable = true },
+            modifier = Modifier.padding(top = 2.dp),
+        )
+        if (foldable) {
+            Text(
+                text = toggle,
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onErrorContainer,
+                modifier = Modifier.padding(top = 4.dp),
+            )
         }
     }
 }

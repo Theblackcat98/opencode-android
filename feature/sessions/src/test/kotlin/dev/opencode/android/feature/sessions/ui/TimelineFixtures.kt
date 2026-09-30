@@ -161,6 +161,62 @@ object TimelineFixtures {
         tool("custom_tool", input = mapOf("input" to "anything"), output = "done"),
     )
 
+    /**
+     * The edit an emulator run recorded: the server rejected its arguments (the model left out `path`), so the
+     * card has a diff of what was attempted and, in `state.error`, the only place that says why it was not done.
+     */
+    fun failedEdit(): SessionMessage.Assistant = failedTool(
+        name = "edit",
+        input = mapOf("oldString" to "val limit = 10\nval name = \"foo\"", "newString" to "val limit = 25"),
+        error = StructuredError("tool.execution", EDIT_REJECTED),
+    )
+
+    /** A shell call that ran and exited non-zero: its stderr is the output, the error is the exit status. */
+    fun failedShell(): SessionMessage.Assistant = failedTool(
+        name = "bash",
+        input = mapOf("command" to "cat missing.txt"),
+        error = StructuredError("tool.execution", "Command exited with code 1"),
+        output = "cat: missing.txt: No such file or directory\n",
+    )
+
+    /** A tool this client has no card for, failing with a short message. */
+    fun failedUnknownTool(): SessionMessage.Assistant = failedTool(
+        name = "custom_tool",
+        input = mapOf("input" to "anything"),
+        error = StructuredError("tool.execution", "The custom tool refused the request"),
+    )
+
+    /** The message the server recorded for [failedEdit], multi-line and quoting the arguments it rejected. */
+    const val EDIT_REJECTED = "Invalid arguments for tool \"edit\":\n- path: Missing key\n\n" +
+        "Arguments provided:\n{\"oldString\":\"val limit = 10\",\"newString\":\"val limit = 25\"}\n\n" +
+        "Update the arguments and call the tool again."
+
+    private fun failedTool(
+        name: String,
+        input: Map<String, String>,
+        error: StructuredError,
+        output: String? = null,
+    ): SessionMessage.Assistant = assistant(
+        id = "msg_failed_tool_$name",
+        agent = "build",
+        content = listOf(
+            AssistantContent.Tool(
+                id = "tool_failed_$name",
+                name = name,
+                executed = true,
+                state = ToolState.Error(
+                    input = input.mapValues { (_, value) ->
+                        JsonPrimitive(value) as kotlinx.serialization.json.JsonElement
+                    },
+                    error = error,
+                    content = output?.let { listOf(ToolContent.Text(it)) },
+                ),
+                time = AssistantContent.Tool.Time(created = 6_000, ran = 6_010, completed = 6_120),
+            ),
+        ),
+        finished = true,
+    )
+
     private fun tool(
         name: String,
         input: Map<String, String>,
