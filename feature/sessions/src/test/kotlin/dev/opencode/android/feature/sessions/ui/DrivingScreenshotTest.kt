@@ -14,6 +14,7 @@ import androidx.compose.ui.unit.dp
 import com.github.takahirom.roborazzi.captureRoboImage
 import dev.opencode.android.core.data.catalog.ModelCatalog
 import dev.opencode.android.core.data.forms.FormEngine
+import dev.opencode.android.core.data.server.PendingRequest
 import dev.opencode.android.core.designsystem.theme.OpenCodeTheme
 import dev.opencode.android.core.model.StructuredError
 import dev.opencode.android.feature.composer.ui.AgentPicker
@@ -86,6 +87,46 @@ class DrivingScreenshotTest {
         PermissionCard(
             request = DrivingFixtures.permissionRequest(),
             actions = RequestActions(),
+        )
+    }
+
+    @Test
+    fun pluginPermissionCard() = capture("permission-card-plugin") {
+        PermissionCard(
+            request = DrivingFixtures.pluginPermissionRequest(),
+            actions = RequestActions(),
+        )
+    }
+
+    @Test
+    fun pluginPermissionCardAtLargeFontScale() = capture("permission-card-plugin-large-font", fontScale = 2f) {
+        PermissionCard(
+            request = DrivingFixtures.pluginPermissionRequest(),
+            actions = RequestActions(),
+        )
+    }
+
+    @Test
+    fun requestDockWithAPluginRequest() = capture("request-dock-plugin") {
+        RequestDock(
+            requests = listOf(
+                PendingRequest.Permission(DrivingFixtures.pluginPermissionRequest()),
+                PendingRequest.Permission(DrivingFixtures.permissionRequest()),
+            ),
+            actions = RequestActions(),
+        )
+    }
+
+    @Test
+    fun pendingRequestsScreenWithAPluginRequest() = capture("requests-inbox-plugin") {
+        PendingRequestsScreen(
+            requests = listOf(
+                PendingRequest.Permission(DrivingFixtures.pluginPermissionRequest()),
+                PendingRequest.Permission(DrivingFixtures.permissionRequest()),
+            ),
+            sessionTitles = mapOf("ses_1" to "Fix the timeline convergence check"),
+            actions = RequestActions(),
+            onNavigateBack = {},
         )
     }
 

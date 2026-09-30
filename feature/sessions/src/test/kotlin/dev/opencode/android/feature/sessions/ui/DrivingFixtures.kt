@@ -96,6 +96,19 @@ object DrivingFixtures {
         message = "The agent wants to push a branch to the remote.",
     )
 
+    /**
+     * A permission request raised through `session.permission.create` by a plugin: no `source`, and the title
+     * the caller gave it. This is what the dev server answered in manual test H11.
+     */
+    fun pluginPermissionRequest(): PermissionRequest = PermissionRequest(
+        id = "per_2",
+        sessionID = "ses_1",
+        action = "external_directory",
+        resources = listOf("/etc/hosts"),
+        save = listOf("/etc/*"),
+        metadata = JsonObject(mapOf("title" to JsonPrimitive("Read the hosts file for a network check"))),
+    )
+
     /** A `question` form exactly as the server sends it: one field per question, custom allowed. */
     fun questionForm(): FormInfo = FormInfo(
         id = "frm_1",

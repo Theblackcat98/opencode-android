@@ -2,6 +2,7 @@ package dev.opencode.android.core.model
 
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 
 /**
  * A permission request awaiting an answer (schema `Permission.Request`, features doc §14).
@@ -30,6 +31,25 @@ data class PermissionRequest(
 ) {
     /** The patterns an `always` reply stores, or an empty list when the request names none. */
     val savedPatterns: List<String> get() = save.orEmpty()
+
+    /**
+     * Whether a tool call raised this request.
+     *
+     * A tool's request names the tool part that is waiting ([source]). One created through
+     * `POST /api/session/{id}/permission` by a plugin, a workflow or another client has no source, and it
+     * gates the agent exactly as a tool's does, so a screen that shows the request has to say who is asking:
+     * "Allow external_directory?" reads the same either way and the answer is not the same decision.
+     */
+    val raisedByToolCall: Boolean get() = source != null
+
+    /**
+     * The title whoever raised the request gave it (`metadata.title`), or `null` when there is none.
+     *
+     * `metadata` is free-form (the schema says only `object`), so a title that is not a string, or is blank,
+     * is treated as no title instead of being drawn as its JSON.
+     */
+    val title: String?
+        get() = (metadata?.get("title") as? JsonPrimitive)?.takeIf { it.isString }?.content?.takeIf { it.isNotBlank() }
 }
 
 /**

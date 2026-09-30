@@ -9,6 +9,7 @@
 
     <!-- Permission card -->
     <string name="permission_title">Allow %1$s?</string>
+    <string name="permission_not_from_tool">Raised by a plugin or client, not by a tool call</string>
     <string name="permission_resources">It would touch</string>
     <string name="permission_resource_one">%1$s</string>
     <string name="permission_message">%1$s</string>

@@ -1,5 +1,6 @@
 package dev.opencode.android.feature.requests.ui
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -35,10 +36,12 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import dev.opencode.android.core.data.forms.FormEngine
 import dev.opencode.android.core.data.server.PendingRequest
@@ -143,6 +146,11 @@ fun RequestDock(
  * cannot answer "may I?" from the action name alone. The tool the request came from is linked in the
  * timeline through [PermissionRequest.source], which is what lets the dock sit next to the tool card
  * that asked.
+ *
+ * **A request no tool call raised says so.** `POST /api/session/{id}/permission` lets a plugin or a client
+ * raise one, it has no [PermissionRequest.source], and it blocks the agent like any other; without a line
+ * saying who is asking it reads exactly like a tool's, and the user cannot tell an agent's own ask from a
+ * plugin's. The title it may carry (`metadata.title`) is drawn under that line, for a tool's request too.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -160,6 +168,14 @@ fun PermissionCard(
             text = stringResource(R.string.permission_title, request.action),
             style = MaterialTheme.typography.titleSmall,
         )
+        if (!request.raisedByToolCall) NotFromToolLabel(modifier = Modifier.padding(top = 4.dp))
+        request.title?.let {
+            Text(
+                text = it,
+                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+                modifier = Modifier.padding(top = 4.dp),
+            )
+        }
         request.message?.let {
             Text(it, style = MaterialTheme.typography.bodyMedium)
         }
@@ -244,6 +260,28 @@ fun PermissionCard(
                     Text(stringResource(R.string.action_dismiss))
                 }
             },
+        )
+    }
+}
+
+/**
+ * The line that says a permission request was not raised by a tool call.
+ *
+ * Outlined and on the card's own colour rather than filled, so it reads as a fact about the request beside
+ * its title and not as a second button, and it is one merged text node for a screen reader.
+ */
+@Composable
+private fun NotFromToolLabel(modifier: Modifier = Modifier) {
+    Surface(
+        modifier = modifier,
+        shape = MaterialTheme.shapes.small,
+        color = Color.Transparent,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+    ) {
+        Text(
+            text = stringResource(R.string.permission_not_from_tool),
+            style = MaterialTheme.typography.labelMedium,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
         )
     }
 }

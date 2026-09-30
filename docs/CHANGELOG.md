@@ -200,6 +200,17 @@ Found by driving the app against a live server on an emulator, which no test had
   `ComposerRevertTest` (MockWebServer) fails on the mirror and on an immediate `/redo`. Four baselines are new
   (`composer-staged-360`, `composer-staged-320-font2`, `composer-staged-none-360`, `composer-redo-confirm-360-font2`)
   and `review-staged-revert` changed with the banner's layout. Not yet seen on a device.
+- **A permission request no tool raised looked exactly like a tool's.** `POST /api/session/{id}/permission` lets a
+  plugin or another client raise a request; it has no `source`, it blocks the agent like any other, and the dock and
+  the global inbox drew it as "Allow external_directory? It would touch /etc/hosts" with nothing saying who was asking
+  and its `metadata.title` dropped. `PermissionCard`, which both use, now draws "Raised by a plugin or client, not by
+  a tool call" under the title when `source` is null (`PermissionRequest.raisedByToolCall`), and the request's
+  `metadata.title` (`PermissionRequest.title`, a string that is not blank) under that, for a tool's request as well.
+  `PermissionRequestOriginTest` (payloads as the server sends them) and `PermissionOriginTest` (dock, inbox, 320 dp at
+  2.0x font) fail without the label and when it is drawn for every request; four baselines are new
+  (`permission-card-plugin`, `permission-card-plugin-large-font`, `request-dock-plugin`, `requests-inbox-plugin`) and the
+  existing ones are unchanged. Not done: the notification for such a request (`AttentionNotificationBuilder`) still
+  reads "Allow external_directory? … is waiting for you" with no mention of who asked. Not yet seen on a device.
 - Markdown inside list items (`**bold**`, `` `code` ``, links) was drawn as typed; only paragraphs,
   headings and table cells were parsed.
 - "Changed 1 files" is now "Changed 1 file".
