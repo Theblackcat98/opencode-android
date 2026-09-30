@@ -5,14 +5,11 @@ import dev.opencode.android.core.model.PermissionReply
 import dev.opencode.android.core.model.PermissionRequest
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
-import kotlinx.coroutines.withContext
-import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.JsonPrimitive
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -94,25 +91,4 @@ class ComposerRequestAnswerTest {
     )
 
     private fun form(id: String, sessionID: String): FormInfo = FormInfo(id = id, sessionID = sessionID, title = "A question")
-
-    /** Waits for a request to reach the server, which is a fact about another thread and not about virtual time. */
-    private suspend fun ComposerServer.awaitCall(
-        what: String,
-        matches: (ComposerServer.Call) -> Boolean,
-    ): ComposerServer.Call =
-        withContext(Dispatchers.Default) {
-            withTimeoutOrNull(WAIT_MILLIS) {
-                var found = calls.firstOrNull(matches)
-                while (found == null) {
-                    delay(POLL_MILLIS)
-                    found = calls.firstOrNull(matches)
-                }
-                found
-            }
-        } ?: throw AssertionError("Timed out waiting for $what; the server saw ${calls.map { "${it.method} ${it.path}" }}")
-
-    private companion object {
-        const val WAIT_MILLIS = 3_000L
-        const val POLL_MILLIS = 20L
-    }
 }

@@ -188,6 +188,8 @@ data class ComposerUiState(
     val restoredFiles: List<RestoredFile> = emptyList(),
     /** A revert operation is in flight, which disables the send. */
     val reverting: Boolean = false,
+    /** Redo was asked for and is waiting for the user's yes, because the working copy is about to change. */
+    val confirmingRedo: Boolean = false,
 ) {
     val canSend: Boolean get() = !sending && !reverting && problem == null && PromptAssembler.isSendable(toInput())
 
@@ -313,6 +315,7 @@ class ComposerViewModel(
         val loadedDraft: Boolean = false,
         val reviewComments: List<ReviewComment> = emptyList(),
         val reverting: Boolean = false,
+        val confirmingRedo: Boolean = false,
     )
 
     /** The prompt history of the active server, newest first, and the stash beside it. */
@@ -390,7 +393,11 @@ class ComposerViewModel(
             set.sessions.activity.map { it[id] == SessionActivity.Running }.distinctUntilChanged(),
             set.timeline(id).state.map { it.pending }.distinctUntilChanged(),
             set.requests.forSession(id),
-            set.revertCommands.state.map { it.staged }.distinctUntilChanged(),
+            // This session's own row, not the server-wide mirror in `revertCommands`: the mirror is filled by
+            // every session's `session.revert.staged`, so an undo in one session showed its banner (and made
+            // a send commit first) in every session opened after it. The row is also what `session.get`
+            // returns, so an undo staged before the app started, or from the desktop, is seen too.
+            info.map { it?.revert }.distinctUntilChanged(),
             set.composerCatalogs.files.state.map { it.loading }.distinctUntilChanged(),
         ) { busy, pending, requests, staged, searching -> Live(busy, pending, requests, staged, searching) }
         return combine(info, catalogs, live) { session, loaded, running -> Projection(id, session, loaded, running) }
@@ -448,6 +455,7 @@ class ComposerViewModel(
                 problemDetail = mine.problemDetail,
                 sideQuestion = mine.sideQuestion,
                 compacting = mine.compacting,
+                confirmingRedo = mine.confirmingRedo,
             )
         }
         val (history, stash) = memory
@@ -486,6 +494,7 @@ class ComposerViewModel(
             compacting = mine.compacting,
             reviewComments = mine.reviewComments,
             reverting = mine.reverting,
+            confirmingRedo = mine.confirmingRedo,
             stagedRevert = stores.live.staged,
             restoredFiles = stores.live.staged?.let(RevertPlan::restoredFiles).orEmpty(),
         )
@@ -685,8 +694,11 @@ class ComposerViewModel(
      * user has to see rather than a prompt that silently disappears.
      */
     private suspend fun prepareSend(set: ServerDataSet, id: String): SendPreparation = when (
+        // The in-flight flags are the server-wide mirror's, but *whether a revert is staged* is this session's:
+        // a commit aimed at a session that has nothing staged is a request the server has to refuse, and the
+        // prompt behind it would never go out.
         val preparation = RevertPlan.beforeSend(
-            set.revertCommands.state.value,
+            set.revertCommands.state.value.copy(staged = set.sessions.info.value[id]?.revert),
         )
     ) {
         SendPreparation.Send -> SendPreparation.Send
@@ -745,7 +757,13 @@ class ComposerViewModel(
 
             ClientAction.UNDO -> undo()
 
-            ClientAction.REDO -> redo()
+            // Redo asks first, exactly as the banner's button does: the command is the same act. The command's
+            // text is spent once it is understood, so it does not sit in the box after the answer; the
+            // attachments and comments an undo restored are not touched.
+            ClientAction.REDO -> {
+                setText("")
+                askRedo()
+            }
         }
     }
 
@@ -801,7 +819,23 @@ class ComposerViewModel(
     }
 
     /**
-     * `/redo`: `session.revert.clear`.
+     * `/redo` and the staged banner's Redo button: ask before taking the undo back.
+     *
+     * Plan §5.2 makes a change to the working copy a confirmed action, and redo puts the files the undo
+     * restored back the way they were. This only opens the question ([ComposerUiState.confirmingRedo]);
+     * [redo] is the yes and [dismissRedo] is the no.
+     */
+    fun askRedo() {
+        local.value = local.value.copy(confirmingRedo = true)
+    }
+
+    /** The user said no to [askRedo]: nothing changes and the banner stays. */
+    fun dismissRedo() {
+        local.value = local.value.copy(confirmingRedo = false)
+    }
+
+    /**
+     * `session.revert.clear`: redo, once the user has confirmed it ([askRedo]).
      *
      * The restored prompt is *not* put back. Redo means "take the rollback back", so the composer
      * keeps whatever the user has typed since, which is the only reading that does not destroy work.
@@ -809,7 +843,7 @@ class ComposerViewModel(
     fun redo() {
         val id = sessionID.value ?: return
         val set = active.value ?: return
-        local.value = local.value.copy(reverting = true, error = null)
+        local.value = local.value.copy(reverting = true, confirmingRedo = false, error = null)
         viewModelScope.launch {
             val result = set.revertCommands.clear(id)
             local.value = local.value.copy(

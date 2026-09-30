@@ -112,6 +112,11 @@ fun ComposerBar(
     onOpenStash: () -> Unit = {},
     onOpenEditor: () -> Unit = {},
     onSendConfirmed: () -> Unit = {},
+    // ------------------------------------------------------------------ undo and redo
+    /** The banner's Redo, or `/redo`: asks; nothing is changed until [onConfirmRedo]. */
+    onAskRedo: () -> Unit = {},
+    onConfirmRedo: () -> Unit = {},
+    onDismissRedo: () -> Unit = {},
     /**
      * The last failed action, already worded.
      *
@@ -146,6 +151,10 @@ fun ComposerBar(
             }
             errorMessage?.let { ErrorRow(message = it, onDismiss = onDismissError) }
             ComposerProblemRow(state = state, onSendAnyway = onSendConfirmed)
+            // An undo that is staged is a state of the session, not of one message: it is why the box holds a
+            // prompt that was already sent, and why the next send commits first. Above the field, so it is read
+            // before the words it explains.
+            StagedRevertBanner(state = state, onRedo = onAskRedo, modifier = Modifier.padding(bottom = 8.dp))
             OutlinedTextField(
                 value = field,
                 onValueChange = { edited: TextFieldValue ->
@@ -306,6 +315,10 @@ fun ComposerBar(
                 )
             }
         }
+    }
+    // A dialog window of its own, so where it is composed does not matter to the layout above.
+    if (state.confirmingRedo) {
+        RedoConfirmationDialog(onConfirm = onConfirmRedo, onDismiss = onDismissRedo)
     }
 }
 

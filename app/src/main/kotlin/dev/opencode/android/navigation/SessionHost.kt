@@ -273,6 +273,11 @@ fun SessionHost(
                 onOpenStash = { stashOpen = true },
                 onOpenEditor = { editorOpen = true },
                 onSendConfirmed = { composer.send(confirmed = true) },
+                // The banner's Redo and `/redo` both ask; the composer holds the question, so it survives a
+                // rotation and the confirmation is the one place `redo()` is reached from.
+                onAskRedo = composer::askRedo,
+                onConfirmRedo = composer::redo,
+                onDismissRedo = composer::dismissRedo,
                 errorMessage = composerError,
                 onDismissError = composer::dismissError,
             )

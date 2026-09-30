@@ -167,10 +167,13 @@
 
     <string name="composer_revert_blocked">An undo is in progress. Wait for it to finish before sending.</string>
     <string name="composer_staged_banner">Undo staged</string>
-    <string name="composer_staged_files">%1$d files will be restored when you send.</string>
+    <string name="composer_staged_files">Files restored to before that prompt: %1$d.</string>
     <string name="composer_staged_none">The transcript is rolled back; the working copy was not snapshotted.</string>
     <string name="composer_redo">Redo</string>
-    <string name="composer_revert_commit_first">The revert is committed before this prompt is sent.</string>
+    <string name="composer_redo_confirm_title">Redo the undo?</string>
+    <string name="composer_redo_confirm_body">This cancels the staged undo. The messages it rolled back return, and the files it restored go back to how they were before the undo. What is in the message box stays.</string>
+    <string name="composer_redo_keep">Keep the undo</string>
+    <string name="composer_revert_commit_first">Sending this prompt makes the undo final. Redo takes it back.</string>
     <string name="composer_comment_count">%1$d comments go with this prompt</string>
     <string name="composer_comment_on">%1$s:%2$s</string>
     <string name="composer_comment_remove">Remove comment</string>

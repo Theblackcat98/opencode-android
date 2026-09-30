@@ -20,6 +20,9 @@ import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isDialog
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -60,6 +63,11 @@ import dev.opencode.android.feature.composer.R as ComposerR
  * row is displayed, lies inside the window, is at least 48 dp square where a finger lands, and overlaps
  * no other control; and Send answers a click and a long click with its own callback and nobody else's.
  *
+ * The staged-undo banner is on the same bar and answers to the same rule. It was written, translated and
+ * screenshotted in the review module and never composed into the screen, so an undo staged on the server said
+ * nothing on the phone and offered no Redo (manual test E2). It is above the field, only while an undo is
+ * staged, its Redo is a 48 dp target that ASKS rather than redoes, and the confirmation is what redoes.
+ *
  * The widths are real window widths (`@Config` qualifiers), because the composer's bar is the app's
  * `bottomBar` and has no outer padding to hide behind. 320 dp is the narrowest supported phone, 360 dp is
  * the plan's smallest reference device, and 427 dp is the emulator the bug was found on. The font scale
@@ -80,6 +88,9 @@ class ComposerLayoutTest {
     private var queued = 0
     private val interrupts = mutableListOf<Boolean>()
     private var backgrounds = 0
+    private var asked = 0
+    private var confirmed = 0
+    private var declined = 0
 
     @Test
     @Config(qualifiers = "w320dp-h1000dp-xhdpi")
@@ -132,6 +143,79 @@ class ComposerLayoutTest {
     }
 
     @Test
+    fun aStagedUndoIsSaidAboveTheFieldAndOnlyWhileItIsStaged() {
+        show()
+        state = ComposerFixtures.stagedUndo()
+        compose.waitForIdle()
+
+        compose.onNodeWithText(string(ComposerR.string.composer_staged_banner)).assertIsDisplayed()
+        compose.onNodeWithText(string(ComposerR.string.composer_staged_files, 3)).assertIsDisplayed()
+        // Each file by its own name, so all three are on screen at once and none is a path cut off mid-word.
+        for (name in listOf("RetryPolicy.kt", "RetryPolicyTest.kt", "CHANGELOG.md")) {
+            compose.onNodeWithText(name).assertIsDisplayed()
+        }
+        compose.onNodeWithText(string(ComposerR.string.composer_redo)).assertIsDisplayed()
+        val banner = bounds(compose.onNodeWithText(string(ComposerR.string.composer_staged_banner)))
+        val field = bounds(compose.onNode(hasText("Rename the retry helper and update its callers.")))
+        assertTrue("the banner is above the field: $banner vs $field", banner.bottom <= field.top)
+
+        state = idle()
+        compose.waitForIdle()
+
+        compose.onNodeWithText(string(ComposerR.string.composer_staged_banner)).assertDoesNotExist()
+        compose.onNodeWithText(string(ComposerR.string.composer_redo)).assertDoesNotExist()
+    }
+
+    @Test
+    fun aStagedUndoThatRestoredNoFilesSaysSoInsteadOfListingNothing() {
+        show()
+        state = ComposerFixtures.stagedUndo(files = false)
+        compose.waitForIdle()
+
+        compose.onNodeWithText(string(ComposerR.string.composer_staged_none)).assertIsDisplayed()
+        compose.onNodeWithText(string(ComposerR.string.composer_redo)).assertIsDisplayed()
+    }
+
+    @Test
+    fun redoAsksAndOnlyTheConfirmationRedoes() {
+        show()
+        state = ComposerFixtures.stagedUndo()
+        compose.waitForIdle()
+
+        compose.onNodeWithText(string(ComposerR.string.composer_redo)).performClick()
+        compose.waitForIdle()
+        // The tap asked. Nothing was redone, and the question is the composer's to hold, so it is not on
+        // screen until the state says it is.
+        assertEquals("the button asks once", 1, asked)
+        assertEquals("the button does not redo", 0, confirmed)
+        compose.onNodeWithText(string(ComposerR.string.composer_redo_confirm_title)).assertDoesNotExist()
+
+        state = state.copy(confirmingRedo = true)
+        compose.waitForIdle()
+        compose.onNodeWithText(string(ComposerR.string.composer_redo_confirm_title)).assertIsDisplayed()
+        compose.onNodeWithText(string(ComposerR.string.composer_redo_confirm_body)).assertIsDisplayed()
+
+        compose.onNode(hasText(string(ComposerR.string.composer_redo)) and hasAnyAncestor(isDialog())).performClick()
+        compose.waitForIdle()
+        assertEquals("the confirmation redoes", 1, confirmed)
+        assertEquals("and does not ask again", 1, asked)
+        assertEquals("and is not a decline", 0, declined)
+    }
+
+    @Test
+    fun decliningTheRedoKeepsTheUndoAndRedoesNothing() {
+        show()
+        state = ComposerFixtures.stagedUndo().copy(confirmingRedo = true)
+        compose.waitForIdle()
+
+        compose.onNodeWithText(string(ComposerR.string.composer_redo_keep)).performClick()
+        compose.waitForIdle()
+
+        assertEquals(1, declined)
+        assertEquals("declining is not a redo", 0, confirmed)
+    }
+
+    @Test
     fun busyComposerAt360dp() = capture("composer-busy-360", scale = 1f)
 
     @Test
@@ -141,6 +225,31 @@ class ComposerLayoutTest {
     @Config(qualifiers = "w320dp-h1000dp-xhdpi")
     fun busyComposerWithAnAttachmentAt320dpAtDoubleFontScale() =
         capture("composer-busy-320-font2-attachment", scale = 2f, withAttachment = true)
+
+    @Test
+    fun stagedUndoAt360dp() = captureState("composer-staged-360", scale = 1f, staged = ComposerFixtures.stagedUndo())
+
+    @Test
+    @Config(qualifiers = "w320dp-h1000dp-xhdpi")
+    fun stagedUndoAt320dpAtDoubleFontScale() =
+        captureState("composer-staged-320-font2", scale = 2f, staged = ComposerFixtures.stagedUndo())
+
+    @Test
+    @Config(qualifiers = "w360dp-h640dp-xhdpi")
+    fun theRedoConfirmationAt360dpAtDoubleFontScale() {
+        // The runtime's font scale, not the composition's: a dialog is a window of its own and takes its density
+        // from the platform, so a scale set only on the composition would leave its text at 1x.
+        RuntimeEnvironment.setFontScale(2f)
+        state = ComposerFixtures.stagedUndo().copy(confirmingRedo = true)
+        show()
+        compose.waitForIdle()
+        // The dialog is captured by itself and not as part of the composer.
+        compose.onNode(isDialog()).captureRoboImage("src/test/screenshots/composer-redo-confirm-360-font2.png")
+    }
+
+    @Test
+    fun stagedUndoWithNoFilesAt360dp() =
+        captureState("composer-staged-none-360", scale = 1f, staged = ComposerFixtures.stagedUndo(files = false))
 
     // ------------------------------------------------------------------------------------------------
 
@@ -152,9 +261,10 @@ class ComposerLayoutTest {
                 fontScale = scale
                 compose.waitForIdle()
                 val where = "${scenario.name} at ${fontScale}x"
-                assertControlsAreWhole(where, busy = scenario.state.busy)
+                assertControlsAreWhole(where, busy = scenario.state.busy, staged = scenario.state.isStaged)
                 if (scenario.state.canSend) assertSendAnswers(where)
                 if (scenario.state.busy) assertStopAndBackgroundAnswer(where)
+                if (scenario.state.isStaged) assertRedoAsks(where)
             }
         }
     }
@@ -173,17 +283,25 @@ class ComposerLayoutTest {
                 ),
             )
             add(Scenario("$turn turn while sending", idle().copy(busy = busy, sending = true)))
+            add(Scenario("$turn turn with a staged undo", ComposerFixtures.stagedUndo().copy(busy = busy)))
+            add(
+                Scenario(
+                    "$turn turn with a staged undo that restored no file",
+                    ComposerFixtures.stagedUndo(files = false).copy(busy = busy),
+                ),
+            )
         }
     }
 
     /** Text in the box, so that Send is enabled; the fixture the driving screenshots use, made idle. */
     private fun idle(): ComposerUiState = DrivingFixtures.composerState().copy(busy = false, pending = emptyList())
 
-    private fun assertControlsAreWhole(where: String, busy: Boolean) {
+    private fun assertControlsAreWhole(where: String, busy: Boolean, staged: Boolean = false) {
         val root = compose.onRoot().fetchSemanticsNode().boundsInRoot
         val controls = buildMap {
             for (id in ICONS) put(string(id), compose.onNodeWithContentDescription(string(id)))
             put("Send", send())
+            if (staged) put("Redo", compose.onNodeWithText(string(ComposerR.string.composer_redo)))
             if (busy) {
                 put("Stop", compose.onNodeWithText(string(ComposerR.string.composer_interrupt)))
                 put("Background", compose.onNodeWithText(string(ComposerR.string.composer_background)))
@@ -214,6 +332,17 @@ class ComposerLayoutTest {
             compose.onNodeWithText(string(ComposerR.string.composer_interrupt)).assertDoesNotExist()
             compose.onNodeWithText(string(ComposerR.string.composer_background)).assertDoesNotExist()
         }
+        if (!staged) compose.onNodeWithText(string(ComposerR.string.composer_redo)).assertDoesNotExist()
+    }
+
+    private fun assertRedoAsks(where: String) {
+        asked = 0
+        confirmed = 0
+        val sendsBefore = sends
+        compose.onNodeWithText(string(ComposerR.string.composer_redo)).performClick()
+        compose.waitForIdle()
+        assertEquals("a tap on Redo asks and does not redo, $where", 1 to 0, asked to confirmed)
+        assertEquals("a tap on Redo sent, $where", sendsBefore, sends)
     }
 
     private fun assertSendAnswers(where: String) {
@@ -261,7 +390,7 @@ class ComposerLayoutTest {
         string(ComposerR.string.composer_send) + ". " + string(ComposerR.string.composer_queue_on_long_press),
     )
 
-    private fun string(id: Int): String = RuntimeEnvironment.getApplication().getString(id)
+    private fun string(id: Int, vararg args: Any): String = RuntimeEnvironment.getApplication().getString(id, *args)
 
     private fun show() {
         compose.setContent {
@@ -288,6 +417,9 @@ class ComposerLayoutTest {
                                     onOpenModelPicker = {},
                                     onCycleAgent = {},
                                     onCycleVariant = {},
+                                    onAskRedo = { asked++ },
+                                    onConfirmRedo = { confirmed++ },
+                                    onDismissRedo = { declined++ },
                                 )
                             }
                         }
@@ -305,6 +437,14 @@ class ComposerLayoutTest {
         } else {
             idle().copy(busy = true)
         }
+        show()
+        compose.onNodeWithTag(COMPOSER).captureRoboImage("src/test/screenshots/$name.png")
+    }
+
+    /** A composer in [staged]'s state, cropped to the composer. */
+    private fun captureState(name: String, scale: Float, staged: ComposerUiState) {
+        fontScale = scale
+        state = staged
         show()
         compose.onNodeWithTag(COMPOSER).captureRoboImage("src/test/screenshots/$name.png")
     }

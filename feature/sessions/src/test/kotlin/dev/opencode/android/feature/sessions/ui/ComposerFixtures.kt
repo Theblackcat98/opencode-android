@@ -8,10 +8,14 @@ import dev.opencode.android.core.data.composer.LineRange
 import dev.opencode.android.core.data.composer.PromptIntent
 import dev.opencode.android.core.data.composer.StashEntry
 import dev.opencode.android.core.data.composer.TriggerKind
+import dev.opencode.android.core.data.review.RestoredFile
 import dev.opencode.android.core.model.Delivery
+import dev.opencode.android.core.model.FileDiff
+import dev.opencode.android.core.model.FileDiffStatus
 import dev.opencode.android.core.model.PromptSkillInput
 import dev.opencode.android.core.model.ReferenceInfo
 import dev.opencode.android.core.model.ReferenceSource
+import dev.opencode.android.core.model.SessionRevert
 import dev.opencode.android.feature.composer.ui.ComposerProblem
 import dev.opencode.android.feature.composer.ui.ComposerUiState
 import dev.opencode.android.feature.composer.ui.SideQuestion
@@ -150,6 +154,29 @@ object ComposerFixtures {
             StashEntry("st2", "And write down why the retry is idempotent.", created = 1L),
         ),
     )
+
+    /**
+     * An undo staged in this session: the prompt it rolled back is in the box, and the banner names the files.
+     *
+     * [files] is false for the server that does not snapshot (`snapshots: false`), whose banner says the
+     * working copy was not touched instead of listing nothing.
+     */
+    fun stagedUndo(files: Boolean = true): ComposerUiState {
+        val diffs = if (files) {
+            listOf(
+                FileDiff("src/main/kotlin/dev/opencode/android/RetryPolicy.kt", "", 4, 1, FileDiffStatus.Modified),
+                FileDiff("src/test/kotlin/dev/opencode/android/RetryPolicyTest.kt", "", 12, 0, FileDiffStatus.Added),
+                FileDiff("docs/CHANGELOG.md", "", 2, 2, FileDiffStatus.Modified),
+            )
+        } else {
+            emptyList()
+        }
+        return base().copy(
+            text = "Rename the retry helper and update its callers.",
+            stagedRevert = SessionRevert(messageID = "msg_7", files = diffs),
+            restoredFiles = diffs.map { RestoredFile(it.file, it.additions, it.deletions) },
+        )
+    }
 
     /** A side question, answered. */
     fun sideQuestionAnswered(): ComposerUiState = base().copy(

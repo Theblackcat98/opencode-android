@@ -187,6 +187,19 @@ Found by driving the app against a live server on an emulator, which no test had
   that is a source check and nothing here has run the wiring; not yet seen on a device. One thing this makes
   reachable and no test covers: opening the review replaces the composer's review comments with the review's
   (`setReviewComments`), so comments an undo restored are dropped if the review is opened before the next send.
+- **A staged undo said nothing and could not be taken back.** After "Undo to here" the server stages the revert, the
+  working copy is restored and the prompt goes back into the box, and nothing on screen said an undo was staged:
+  `StagedRevertBanner` had been written and screenshotted in the review module and never composed into a screen.
+  `ComposerBar` now draws it above the field while `isStaged`, with the count and the file names, and its Redo (a 48 dp
+  target, a live region for a screen reader) asks first: `askRedo` opens a confirmation that says the files return to
+  how they were before the undo and the box keeps its text, and only its Redo calls `redo()`. `/redo` asks the same
+  question instead of redoing at once, which its KDoc had promised. The banner also follows the session's own
+  `SessionInfo.revert` and not the server-wide mirror in `revertCommands`, which every session's
+  `session.revert.staged` filled: an undo in one session showed its banner, and made a send commit first, in every
+  session opened after it. `ComposerLayoutTest` (320, 360 and 427 dp, 2.0x font) fails without the banner;
+  `ComposerRevertTest` (MockWebServer) fails on the mirror and on an immediate `/redo`. Four baselines are new
+  (`composer-staged-360`, `composer-staged-320-font2`, `composer-staged-none-360`, `composer-redo-confirm-360-font2`)
+  and `review-staged-revert` changed with the banner's layout. Not yet seen on a device.
 - Markdown inside list items (`**bold**`, `` `code` ``, links) was drawn as typed; only paragraphs,
   headings and table cells were parsed.
 - "Changed 1 files" is now "Changed 1 file".

@@ -24,6 +24,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.JsonObject
@@ -68,6 +71,23 @@ class ComposerServer(
 
     /** Every request that reached the server so far, oldest first. */
     val calls: List<Call> get() = recorded.toList()
+
+    /**
+     * Waits for a request to reach the server, which is a fact about another thread and not about virtual time.
+     *
+     * The failure names what was awaited and what the server did see, because a timeout on its own says nothing.
+     */
+    suspend fun awaitCall(what: String, matches: (Call) -> Boolean): Call =
+        withContext(Dispatchers.Default) {
+            withTimeoutOrNull(WAIT_MILLIS) {
+                var found = calls.firstOrNull(matches)
+                while (found == null) {
+                    delay(POLL_MILLIS)
+                    found = calls.firstOrNull(matches)
+                }
+                found
+            }
+        } ?: throw AssertionError("Timed out waiting for $what; the server saw ${calls.map { "${it.method} ${it.path}" }}")
 
     /** The read model of the server, wired to the routes below. */
     val set: ServerDataSet = ServerDataSet(
@@ -196,6 +216,8 @@ class ComposerServer(
 
     companion object {
         const val SERVER_ID = "server-1"
+        private const val WAIT_MILLIS = 3_000L
+        private const val POLL_MILLIS = 20L
 
         /** A model a location offers, enabled unless a test says otherwise. */
         fun model(id: String = "text", enabled: Boolean = true): ModelInfo = ModelInfo(
