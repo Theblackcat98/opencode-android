@@ -1,6 +1,10 @@
 package dev.opencode.android.feature.requests.notifications
 
+import android.app.ForegroundServiceStartNotAllowedException
+import android.content.ComponentName
 import android.content.Context
+import android.content.ContextWrapper
+import android.content.Intent
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
@@ -13,6 +17,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -103,6 +108,75 @@ class ConnectionServiceLauncherTest {
         val started = startedService()
         assertEquals(ConnectionService::class.java.name, started?.component?.className)
         assertEquals(ConnectionService.ACTION_START, started?.action)
+    }
+
+    // ------------------------------------------------------------------ refusals
+
+    @Test
+    fun `a start the platform refuses is swallowed, and not asked for again under the same exemption`() {
+        refusal(ForegroundServiceStartNotAllowedException("app is in the background"))
+    }
+
+    @Test
+    fun `a start refused with IllegalStateException, as before Android 12, is swallowed too`() {
+        refusal(IllegalStateException("Not allowed to start service Intent: app is in background"))
+    }
+
+    @Test
+    fun `a start refused with SecurityException is swallowed too`() {
+        refusal(SecurityException("Starting FGS with type dataSync requires FOREGROUND_SERVICE_DATA_SYNC"))
+    }
+
+    private fun refusal(error: Throwable) {
+        val presence = FakePresenceController()
+        val launcher = ConnectionServiceLauncher(RefusingContext(context, error), presence)
+        launcher.start()
+        launcher.onStart(owner())
+        presence.emit(running = 1)
+        assertEquals("the launcher never tried", 1, awaitStarts(launcher, atLeast = 1))
+        settle()
+
+        assertFalse("a refused start still counts as requested, so nothing could ask again", launcher.requested.value)
+        assertEquals(StartExemption.APP_IN_FOREGROUND, launcher.refusedUnder)
+
+        // More work under the same conditions is not a reason to ask again: that is a retry loop.
+        presence.emit(running = 2)
+        presence.emit(running = 3)
+        settle()
+        assertEquals("a refused start was retried under the same exemption", 1, launcher.starts.value)
+
+        // The app leaving and coming back is a different condition, and the one legitimate second try.
+        launcher.onStop(owner())
+        settle()
+        assertNull("the refusal outlived the conditions it was made under", launcher.refusedUnder)
+        launcher.onStart(owner())
+        assertEquals("a changed exemption did not try again", 2, awaitStarts(launcher, atLeast = 2))
+    }
+
+    @Test
+    fun `a refusal reported by the service is not undone by the service stopping`() {
+        val (launcher, signals) = launcher()
+        launcher.start()
+        launcher.onStart(owner())
+        signals.emit(running = 1)
+        assertEquals(1, awaitStarts(launcher, atLeast = 1))
+
+        // What the service does when its startForeground() throws: says so, stops itself, and reports
+        // the stop — which on its own reads as "free to ask again".
+        launcher.serviceRefused()
+        launcher.serviceStopped()
+        signals.emit(running = 2)
+        settle()
+
+        assertEquals("the launcher asked again straight after a refusal", 1, launcher.starts.value)
+        assertEquals(StartExemption.APP_IN_FOREGROUND, launcher.refusedUnder)
+    }
+
+    /** A context whose platform says no, whatever the reason. */
+    private class RefusingContext(base: Context, private val error: Throwable) : ContextWrapper(base) {
+        override fun startForegroundService(service: Intent?): ComponentName? = throw error
+
+        override fun startService(service: Intent?): ComponentName? = throw error
     }
 
     // ------------------------------------------------------------------ waiting

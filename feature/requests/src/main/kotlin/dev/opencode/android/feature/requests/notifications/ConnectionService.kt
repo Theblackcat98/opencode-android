@@ -1,13 +1,15 @@
 package dev.opencode.android.feature.requests.notifications
 
 import android.annotation.SuppressLint
+import android.app.Notification
 import android.app.PendingIntent
 import android.app.Service
 import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.Build
+import android.os.Handler
 import android.os.IBinder
-import android.os.PowerManager
+import android.os.Looper
 import androidx.core.app.ServiceCompat
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
@@ -16,12 +18,11 @@ import dagger.hilt.android.AndroidEntryPoint
 import dev.opencode.android.core.data.attention.AttentionCoordinator
 import dev.opencode.android.core.data.attention.AttentionPreferences
 import dev.opencode.android.core.data.attention.AttentionSettings
-import dev.opencode.android.core.data.connection.ServerConnectionManager
-import dev.opencode.android.core.data.presence.PresenceController
 import dev.opencode.android.core.data.presence.PresenceDecision
 import dev.opencode.android.core.data.presence.PresencePolicy
 import dev.opencode.android.core.data.presence.PresenceReason
 import dev.opencode.android.core.data.presence.PresenceSignals
+import dev.opencode.android.core.data.presence.PresenceSignalsSource
 import dev.opencode.android.core.data.presence.StartExemption
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -51,15 +52,24 @@ import javax.inject.Inject
  * does (fetching the server's state over the network), needs no extra permission, and its one real
  * cost, Android 15's six-hours-per-day cap, is a limit this design stays far below because the
  * service stops within minutes of nothing happening.
+ *
+ * **The platform's start contract comes before every decision, including "stop".** Once the app has
+ * called `startForegroundService()`, this service has a few seconds to call `startForeground()`; if it
+ * returns, stops itself or is still waiting on something first, the platform kills the whole app with
+ * `ForegroundServiceDidNotStartInTimeException`. So [onStartCommand] promotes the service *before it
+ * returns*, from the signals as they are at that moment, and only then lets [PresencePolicy] decide
+ * whether to stay. A start nothing justifies any more posts the notification and takes it straight
+ * down again; a start the platform refuses is reported to the launcher and never escapes as a crash.
+ * The launcher already decided, and the platform already granted, so the service does not ask again.
  */
 @AndroidEntryPoint
 class ConnectionService : Service(), DefaultLifecycleObserver {
 
     @Inject
-    lateinit var presence: PresenceController
+    lateinit var presence: PresenceSignalsSource
 
     @Inject
-    lateinit var connections: ServerConnectionManager
+    lateinit var stream: StreamHold
 
     @Inject
     lateinit var preferences: AttentionPreferences
@@ -78,17 +88,32 @@ class ConnectionService : Service(), DefaultLifecycleObserver {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
+    private val mainHandler = Handler(Looper.getMainLooper())
+
     private var watcher: Job? = null
     private var graceTimer: Job? = null
 
     /** Whether the service has been promoted to the foreground, which is what "running" means. */
+    @Volatile
     private var foreground = false
 
-    /** The app's own lifecycle, which decides whether a start is permitted right now. */
+    /** Set once the service has decided to go, so a signal that arrives on the way out cannot undo it. */
+    @Volatile
+    private var stopping = false
+
+    /** The app's own lifecycle, which decides whether the stream needs this service to stay up. */
+    @Volatile
     private var appForeground = false
+
+    /** Whether this service is what keeps the stream up while the app is away. */
+    @Volatile
+    private var streamHeld = false
 
     /** When nothing was active, which is what the grace period is measured from. */
     private var idleSince: Long? = null
+
+    /** Whether anything has been active since the service started; a start for nothing has no grace to spend. */
+    private var sawWork = false
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -102,7 +127,10 @@ class ConnectionService : Service(), DefaultLifecycleObserver {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        startWatching()
+        // First, and before anything that can wait, return or stop: the platform is timing this call.
+        // Every start command promotes, not only the first, because each `startForegroundService()` is
+        // its own promise to call `startForeground()`, including one made to a service that is running.
+        if (enterForeground(startId)) startWatching()
         // Not sticky: a service the system restarts with no knowledge of what was running would
         // reconnect to a server the user may have left. The next foreground pass starts it again if
         // there is still work, which is the plan's "runs while any session is busy" rather than "runs
@@ -116,14 +144,21 @@ class ConnectionService : Service(), DefaultLifecycleObserver {
 
     override fun onStop(owner: LifecycleOwner) {
         appForeground = false
+        // The connection manager observes this same event and cuts the stream on it, because it only
+        // knows about the app. A downward event reaches observers in reverse order of registration and
+        // the manager registered first, so its cut comes after anything done here; the hold is
+        // re-asserted once the dispatch has finished.
+        if (foreground) mainHandler.post { holdStream() }
     }
 
     override fun onDestroy() {
         watcher?.cancel()
         graceTimer?.cancel()
         watcher = null
+        mainHandler.removeCallbacksAndMessages(null)
         ProcessLifecycleOwner.get().lifecycle.removeObserver(this)
         demote()
+        releaseStream()
         scope.cancel()
         launcher.serviceStopped()
         super<Service>.onDestroy()
@@ -138,8 +173,44 @@ class ConnectionService : Service(), DefaultLifecycleObserver {
      * comes back when the app comes forward, or on the next start the platform permits.
      */
     override fun onTimeout(startId: Int, fgsType: Int) {
-        demote()
-        stopSelf()
+        stop()
+    }
+
+    /**
+     * Puts the service in the foreground, from the signals as they are now, and reports whether it is.
+     *
+     * **Nothing here waits.** The preferences are not read (the notification uses the signals' own copy
+     * of "always connected"), no coroutine is involved, and the policy is not consulted: the launcher
+     * has decided, the platform has granted the start, and what is left is to keep the promise. The
+     * decision to *stay* comes afterwards, from [onSignals].
+     *
+     * Failure is a value, not an exception. `startForeground()` can throw
+     * `ForegroundServiceStartNotAllowedException` (Android 12+, when the platform withdrew the exemption
+     * between the start and this call), `SecurityException` (a declared type whose permission is not
+     * held) or the platform's rejection of the notification. The launcher is told, so it does not ask
+     * again under the same conditions, and the service stops.
+     */
+    private fun enterForeground(startId: Int): Boolean {
+        val signals = presence.signals.value
+        try {
+            ServiceCompat.startForeground(
+                this,
+                ONGOING_NOTIFICATION_ID,
+                ongoingNotification(signals, signals.alwaysConnected, autoApprove = false),
+                foregroundServiceType(),
+            )
+        } catch (error: Throwable) {
+            launcher.serviceRefused()
+            stopping = true
+            stopSelf(startId)
+            return false
+        }
+        foreground = true
+        // The service is what keeps the stream up while the app is in the background; the connection
+        // manager's own lifecycle observer cannot, because it only knows about the app.
+        if (!appForeground) holdStream()
+        graceTimer?.cancel()
+        return true
     }
 
     private fun startWatching() {
@@ -150,61 +221,38 @@ class ConnectionService : Service(), DefaultLifecycleObserver {
     }
 
     private suspend fun onSignals(signals: PresenceSignals) {
+        if (stopping) return
         val settings = preferences.settings.first()
+        val now = System.currentTimeMillis()
         // Anything active means the clock restarts; otherwise the grace period starts now if it has
         // not already. Holding this in the service rather than in the policy is what lets the
         // policy stay a pure function of its inputs.
-        idleSince = if (signals.hasWork || settings.alwaysConnectedFor(signals.serverId)) {
-            null
-        } else {
-            idleSince ?: System.currentTimeMillis()
-        }
-        val autoApprove = settings.autoApproveActive(
-            signals.running.firstOrNull()?.id,
-            System.currentTimeMillis(),
-        )
-        when (
-            val decision = PresencePolicy.decide(
-                signals.toInputs(
-                    serviceRunning = foreground,
-                    idleSinceMillis = idleSince,
-                    nowMillis = System.currentTimeMillis(),
-                    startExemption = startExemption(),
-                ),
-            )
-        ) {
-            is PresenceDecision.Start -> promote(signals, settings, autoApprove)
-            is PresenceDecision.Stop -> stop()
-            is PresenceDecision.Keep -> keep(decision.reason, signals, settings, autoApprove)
-        }
-    }
+        val active = signals.hasWork || settings.alwaysConnectedFor(signals.serverId)
+        if (active) sawWork = true
+        idleSince = when {
+            active -> null
 
-    private fun promote(signals: PresenceSignals, settings: AttentionSettings, autoApprove: Boolean) {
-        val words = notification.wordsFor(
-            running = signals.running,
-            pending = signals.pendingRequests,
-            alwaysConnected = settings.alwaysConnectedFor(signals.serverId),
-            autoApproveUntilMillis = if (autoApprove) System.currentTimeMillis() else null,
-        )
-        ServiceCompat.startForeground(
-            this,
-            ONGOING_NOTIFICATION_ID,
-            notification.build(
-                words = words,
-                serverId = signals.serverId.orEmpty(),
-                // A subagent is interruptible too, but the parent is the one the user is likely to
-                // mean, so the button names the session they opened.
-                interruptSessionId = signals.running.firstOrNull { !it.isSubagent }?.id
-                    ?: signals.running.firstOrNull()?.id,
-                contentIntent = contentIntent(signals),
+            // The grace protects a service that *lost* its work. One that was asked for when there was
+            // none has nothing to protect, and stops on this first look instead of idling for minutes.
+            else -> idleSince ?: if (sawWork) now else now - signals.idleGraceMillis
+        }
+        val autoApprove = settings.autoApproveActive(signals.running.firstOrNull()?.id, now)
+        val decision = PresencePolicy.decide(
+            signals.toInputs(
+                // Always true here: the watcher only runs once the service is in the foreground, so the
+                // policy is asked whether to *stay*, never whether to start. The exemption is only read
+                // for a start, and this start was already granted.
+                serviceRunning = foreground,
+                idleSinceMillis = idleSince,
+                nowMillis = now,
+                startExemption = StartExemption.APP_IN_FOREGROUND,
             ),
-            foregroundServiceType(),
         )
-        foreground = true
-        // The service is what keeps the stream up while the app is in the background; the connection
-        // manager's own lifecycle observer cannot, because it only knows about the app.
-        if (!appForeground) connections.activeConnection.value?.setForeground(true)
-        graceTimer?.cancel()
+        if (stopping) return
+        when (decision) {
+            is PresenceDecision.Stop -> stop()
+            is PresenceDecision.Start, is PresenceDecision.Keep -> keep(decision.reason, signals, settings, autoApprove)
+        }
     }
 
     private fun keep(
@@ -213,28 +261,22 @@ class ConnectionService : Service(), DefaultLifecycleObserver {
         settings: AttentionSettings,
         autoApprove: Boolean,
     ) {
-        if (foreground) updateOngoing(signals, settings, autoApprove)
+        updateOngoing(signals, settings, autoApprove)
         when (reason) {
             PresenceReason.IDLE_GRACE -> scheduleGraceCheck()
-
-            // Nothing to do, and nothing to log: the work is waiting and the platform will not let a
-            // socket event start a service. The next permitted start picks it up.
-            PresenceReason.BACKGROUND_START_REFUSED -> Unit
-
-            PresenceReason.NO_SERVER -> Unit
-
             else -> graceTimer?.cancel()
         }
     }
 
     private fun stop() {
+        stopping = true
         graceTimer?.cancel()
-        if (foreground) demote()
+        demote()
         // Both halves matter: the service going away and the socket going with it are what "no service
         // runs while nothing is active" means to a battery meter. The exception is a foregrounded app,
         // which is showing a live timeline and needs the stream whether or not a service is up — the
         // connection manager keeps it running there.
-        if (!appForeground) connections.activeConnection.value?.setForeground(false)
+        releaseStream()
         idleSince = null
         stopSelf()
     }
@@ -243,6 +285,18 @@ class ConnectionService : Service(), DefaultLifecycleObserver {
         if (!foreground) return
         ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
         foreground = false
+    }
+
+    /** Keeps the event stream up for a backgrounded app, and remembers that this service is why. */
+    private fun holdStream() {
+        if (!foreground || appForeground) return
+        streamHeld = true
+        stream.hold(true)
+    }
+
+    private fun releaseStream() {
+        if (streamHeld && !appForeground) stream.hold(false)
+        streamHeld = false
     }
 
     /**
@@ -254,24 +308,32 @@ class ConnectionService : Service(), DefaultLifecycleObserver {
      */
     @SuppressLint("MissingPermission")
     private fun updateOngoing(signals: PresenceSignals, settings: AttentionSettings, autoApprove: Boolean) {
-        if (!canPostNotifications(this)) return
-        val manager = androidx.core.app.NotificationManagerCompat.from(this)
-        manager.notify(
+        if (!foreground || !canPostNotifications(this)) return
+        androidx.core.app.NotificationManagerCompat.from(this).notify(
             ONGOING_NOTIFICATION_ID,
-            notification.build(
-                words = notification.wordsFor(
-                    running = signals.running,
-                    pending = signals.pendingRequests,
-                    alwaysConnected = settings.alwaysConnectedFor(signals.serverId),
-                    autoApproveUntilMillis = if (autoApprove) System.currentTimeMillis() else null,
-                ),
-                serverId = signals.serverId.orEmpty(),
-                interruptSessionId = signals.running.firstOrNull { !it.isSubagent }?.id
-                    ?: signals.running.firstOrNull()?.id,
-                contentIntent = contentIntent(signals),
-            ),
+            ongoingNotification(signals, settings.alwaysConnectedFor(signals.serverId), autoApprove),
         )
     }
+
+    private fun ongoingNotification(
+        signals: PresenceSignals,
+        alwaysConnected: Boolean,
+        autoApprove: Boolean,
+    ): Notification =
+        notification.build(
+            words = notification.wordsFor(
+                running = signals.running,
+                pending = signals.pendingRequests,
+                alwaysConnected = alwaysConnected,
+                autoApproveUntilMillis = if (autoApprove) System.currentTimeMillis() else null,
+            ),
+            serverId = signals.serverId.orEmpty(),
+            // A subagent is interruptible too, but the parent is the one the user is likely to
+            // mean, so the button names the session they opened.
+            interruptSessionId = signals.running.firstOrNull { !it.isSubagent }?.id
+                ?: signals.running.firstOrNull()?.id,
+            contentIntent = contentIntent(signals),
+        )
 
     /** The grace period needs a clock, because the policy is only re-read when something changes. */
     private fun scheduleGraceCheck() {
@@ -293,23 +355,6 @@ class ConnectionService : Service(), DefaultLifecycleObserver {
         val serverId = signals.serverId.orEmpty()
         val sessionId = signals.running.firstOrNull()?.id.orEmpty()
         return NotificationIntents.openSession(this, serverId, sessionId, codes)
-    }
-
-    /**
-     * Whether, and under which exemption, the platform would allow a start right now.
-     *
-     * Battery optimisation being off is the third documented exemption, and it is the one the plan's
-     * battery guidance asks the user for, so it is read here rather than being left to chance.
-     */
-    private fun startExemption(): StartExemption = when {
-        appForeground -> StartExemption.APP_IN_FOREGROUND
-        batteryOptimisationDisabled() -> StartExemption.BATTERY_OPTIMISATION_DISABLED
-        else -> StartExemption.NONE
-    }
-
-    private fun batteryOptimisationDisabled(): Boolean {
-        val power = getSystemService(PowerManager::class.java) ?: return false
-        return power.isIgnoringBatteryOptimizations(packageName)
     }
 
     /**

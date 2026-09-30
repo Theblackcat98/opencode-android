@@ -54,6 +54,30 @@ class ManifestWiringTest {
     }
 
     @Test
+    fun `the connection service declares a foreground service type, and the app holds the permission for each`() {
+        // Android 14 refuses `startForeground()` for a service with no declared type, and refuses a
+        // declared one whose FOREGROUND_SERVICE_<TYPE> permission is not in the manifest. Both are a
+        // crash on the first start, so the pair is asserted rather than each half on its own.
+        val service = declarations(requests, "service").single {
+            it.getAttribute("android:name").endsWith("ConnectionService")
+        }
+        val types = service.getAttribute("android:foregroundServiceType")
+            .split("|")
+            .map(String::trim)
+            .filter(String::isNotEmpty)
+        assertTrue("the service declares no android:foregroundServiceType", types.isNotEmpty())
+        assertTrue(usesPermission(app, "android.permission.FOREGROUND_SERVICE"))
+        types.forEach { type ->
+            val permission = FOREGROUND_SERVICE_PERMISSIONS[type]
+            assertTrue("'$type' is not a foreground service type this test knows the permission of", permission != null)
+            assertTrue(
+                "the service is of type '$type' but the app does not declare $permission",
+                usesPermission(app, permission!!),
+            )
+        }
+    }
+
+    @Test
     fun `the action receiver is declared, unexported, and filters one action`() {
         val receiver = declarations(requests, "receiver")
             .single { it.getAttribute("android:name").endsWith("NotificationActionReceiver") }
@@ -76,6 +100,26 @@ class ManifestWiringTest {
     }
 
     // ------------------------------------------------------------------ xml
+
+    private companion object {
+        /** Each `android:foregroundServiceType` value and the permission Android 14 wants beside it. */
+        val FOREGROUND_SERVICE_PERMISSIONS = mapOf(
+            "camera" to "android.permission.FOREGROUND_SERVICE_CAMERA",
+            "connectedDevice" to "android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE",
+            "dataSync" to "android.permission.FOREGROUND_SERVICE_DATA_SYNC",
+            "health" to "android.permission.FOREGROUND_SERVICE_HEALTH",
+            "location" to "android.permission.FOREGROUND_SERVICE_LOCATION",
+            "mediaPlayback" to "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",
+            "mediaProcessing" to "android.permission.FOREGROUND_SERVICE_MEDIA_PROCESSING",
+            "mediaProjection" to "android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION",
+            "microphone" to "android.permission.FOREGROUND_SERVICE_MICROPHONE",
+            "phoneCall" to "android.permission.FOREGROUND_SERVICE_PHONE_CALL",
+            "remoteMessaging" to "android.permission.FOREGROUND_SERVICE_REMOTE_MESSAGING",
+            "shortService" to "android.permission.FOREGROUND_SERVICE",
+            "specialUse" to "android.permission.FOREGROUND_SERVICE_SPECIAL_USE",
+            "systemExempted" to "android.permission.FOREGROUND_SERVICE_SYSTEM_EXEMPTED",
+        )
+    }
 
     private fun parse(path: String): Element {
         val file = java.io.File(path)

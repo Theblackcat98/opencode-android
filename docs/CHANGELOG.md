@@ -227,6 +227,21 @@ Found by driving the app against a live server on an emulator, which no test had
   which cannot host a test, so the one line that hands the error to the screen is not exercised by anything. An MCP
   elicitation is a modal sheet over this screen, and whether the row can be seen beside it was not checked. Not yet
   seen on a device.
+- **A pending permission request killed the app ten seconds after every launch.** `ConnectionServiceLauncher` asked
+  for `ConnectionService` with `startForegroundService()`, but `onStartCommand` only started a coroutine, and
+  `startForeground()` was reached only if that coroutine, after a preferences read, decided `Start` again from the
+  service's own view of the process lifecycle. Any other verdict (`Keep(BACKGROUND_START_REFUSED)`, which is what a
+  start granted by a notification tap became, or `Stop` because the work or the server was gone by then) left the
+  service alive or stopped it without ever calling it, and the platform ends the whole app for that
+  (`ForegroundServiceDidNotStartInTimeException`). Every start command now promotes before it returns, then decides
+  whether to stay, and a start nothing justifies posts the notification and takes it down; a refused
+  `startForeground()` is reported and stops the service instead of escaping. The launcher retried a refused start on
+  every signal and now does so only when the exemption changes. The service also holds the event stream when the app
+  goes to the background, which the connection manager cut on that event with the service running, so no request
+  raised in the background could have notified. `ConnectionServiceForegroundTest` (Hilt, Robolectric) fails on the old
+  start logic in every start-command case, `ConnectionServiceLauncherTest` on the old launcher's retries, and
+  `ManifestWiringTest` now pairs the declared service type with its permission; the manifest itself was never
+  wrong. Which of the old paths the emulator took was not established. Not yet seen on a device.
 - Markdown inside list items (`**bold**`, `` `code` ``, links) was drawn as typed; only paragraphs,
   headings and table cells were parsed.
 - "Changed 1 files" is now "Changed 1 file".

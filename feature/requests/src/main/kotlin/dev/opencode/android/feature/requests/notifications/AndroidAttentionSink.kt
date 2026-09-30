@@ -152,13 +152,6 @@ class AndroidAttentionSink @Inject constructor(
 @InstallIn(SingletonComponent::class)
 object AttentionModule {
 
-    /** The launcher needs the presence signals and nothing else; see `PresenceSignalsSource`. */
-    @Provides
-    @Singleton
-    fun providePresenceSignals(
-        presence: dev.opencode.android.core.data.presence.PresenceController,
-    ): dev.opencode.android.core.data.presence.PresenceSignalsSource = presence
-
     @Provides
     @Singleton
     fun provideActionCodes(): AttentionActionCodes = AttentionActionCodes()

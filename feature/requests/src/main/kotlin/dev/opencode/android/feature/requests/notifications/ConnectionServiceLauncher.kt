@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -37,7 +38,16 @@ import javax.inject.Singleton
  *
  * **It asks once.** The platform gives no answer saying the service is up, so the launcher keeps a
  * flag and releases it when the service reports that it has gone; without that, every emission of the
- * signals would call `startForegroundService` again.
+ * signals would call `startForegroundService` again. The flag is taken and read under one lock, because
+ * two callers (the signals collector and a notification action's [offer]) can reach [evaluate] at once
+ * and a start asked for twice is two promises to call `startForeground()`.
+ *
+ * **A refusal is not retried until something changes.** The platform can still say no after the policy
+ * said yes: `startForegroundService` throws `ForegroundServiceStartNotAllowedException` (Android 12+),
+ * `IllegalStateException` (Android 8 to 11, from the background) or `SecurityException`, and the service
+ * itself can be refused when it calls `startForeground()` ([serviceRefused]). None of these may crash the
+ * app, and none may be retried in a loop: the refusal is remembered against the exemption it was made
+ * under, and only a different exemption (the app leaving and returning, a notification tap) tries again.
  */
 @Singleton
 class ConnectionServiceLauncher @Inject constructor(
@@ -57,6 +67,15 @@ class ConnectionServiceLauncher @Inject constructor(
     /** Whether a start has been asked for and not yet released. */
     val requested: StateFlow<Boolean> = _requested.asStateFlow()
 
+    /** The exemption the last start was asked for under, which is what a refusal is recorded against. */
+    @Volatile
+    private var askedUnder = StartExemption.NONE
+
+    /** The exemption under which the platform last refused a start, or `null` if it has not. */
+    @Volatile
+    var refusedUnder: StartExemption? = null
+        private set
+
     private val _starts = MutableStateFlow(0)
 
     /** How many times a start has been asked for. A test asserts on this, not on a service. */
@@ -74,9 +93,11 @@ class ConnectionServiceLauncher @Inject constructor(
                 presence.signals,
                 appForeground,
                 callerExemption,
+                // Not read: a stop is what makes the next piece of work start the service again, so
+                // its change is a reason to look again.
                 _requested,
-            ) { signals, foreground, exemption, requested ->
-                Evaluation(signals, foreground, exemption, requested)
+            ) { signals, foreground, exemption, _ ->
+                Evaluation(signals, foreground, exemption)
             }.collect(::evaluate)
         }
     }
@@ -85,11 +106,13 @@ class ConnectionServiceLauncher @Inject constructor(
         val signals: PresenceSignals,
         val appForeground: Boolean,
         val offered: StartExemption,
-        val alreadyRequested: Boolean,
     )
 
+    @Synchronized
     private fun evaluate(evaluation: Evaluation) {
-        if (evaluation.alreadyRequested) return
+        // The live flag, not the value the combine carried: that one can be older than an ask made by
+        // the other caller a moment ago.
+        if (_requested.value) return
         // Being foregrounded is the exemption that needs nothing else; an offered one only counts
         // while the app is in the background, which is the case it exists for.
         val exemption = if (evaluation.appForeground) {
@@ -97,6 +120,9 @@ class ConnectionServiceLauncher @Inject constructor(
         } else {
             evaluation.offered
         }
+        // A refusal stands for as long as the conditions it was made under do.
+        if (refusedUnder != null && refusedUnder != exemption) refusedUnder = null
+        if (refusedUnder != null) return
         val decision = PresencePolicy.decide(
             evaluation.signals.toInputs(
                 serviceRunning = false,
@@ -105,7 +131,7 @@ class ConnectionServiceLauncher @Inject constructor(
                 startExemption = exemption,
             ),
         )
-        if (decision is PresenceDecision.Start) ask()
+        if (decision is PresenceDecision.Start) ask(exemption)
     }
 
     override fun onStart(owner: LifecycleOwner) {
@@ -126,7 +152,7 @@ class ConnectionServiceLauncher @Inject constructor(
      */
     fun offer(exemption: StartExemption) {
         callerExemption.value = exemption
-        evaluate(Evaluation(presence.signals.value, appForeground.value, exemption, _requested.value))
+        evaluate(Evaluation(presence.signals.value, appForeground.value, exemption))
     }
 
     /** Called by the service when it stops, so the next piece of work can start it again. */
@@ -134,18 +160,30 @@ class ConnectionServiceLauncher @Inject constructor(
         _requested.value = false
     }
 
-    private fun ask() {
+    /**
+     * Called by the service when the platform refused its `startForeground()`.
+     *
+     * The service stops itself straight afterwards and [serviceStopped] follows, which would otherwise
+     * be read as "free to ask again" under the very conditions that were just refused.
+     */
+    fun serviceRefused() {
+        refusedUnder = askedUnder
+    }
+
+    private fun ask(exemption: StartExemption) {
         _requested.value = true
-        _starts.value += 1
-        runCatching {
+        _starts.update { it + 1 }
+        askedUnder = exemption
+        try {
             ContextCompat.startForegroundService(
                 context,
                 Intent(context, ConnectionService::class.java).setAction(ConnectionService.ACTION_START),
             )
-        }.onFailure {
+        } catch (error: Throwable) {
             // The platform refused it after all, which is a possibility rather than an impossibility:
-            // a background start with no exemption throws. The flag is released so the next
-            // legitimate opportunity can try again.
+            // a start with no exemption throws. The flag is released so a different exemption can try
+            // again, and the refusal is remembered so the same one does not.
+            refusedUnder = exemption
             _requested.value = false
         }
     }
