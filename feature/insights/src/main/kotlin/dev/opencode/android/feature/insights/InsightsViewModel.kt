@@ -2,6 +2,7 @@ package dev.opencode.android.feature.insights
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.opencode.android.core.data.action.ActionError
 import dev.opencode.android.core.data.capability.RouteAvailability
 import dev.opencode.android.core.data.server.ServerDataRegistry
@@ -14,6 +15,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.time.ZoneId
+import javax.inject.Inject
 
 /** The range the user picked, in the only units that survive a timezone change: whole days. */
 data class StatsRange(
@@ -75,7 +77,8 @@ data class InsightsUiState(
  * server something, so the column is `summary` while the screen is idle and only becomes `detail`
  * when the user opens it.
  */
-class InsightsViewModel(
+@HiltViewModel
+class InsightsViewModel @Inject constructor(
     private val dataSets: ServerDataRegistry,
 ) : ViewModel() {
 

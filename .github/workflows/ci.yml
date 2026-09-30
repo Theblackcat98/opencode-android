@@ -41,6 +41,11 @@ jobs:
       - name: Check the generated event corpus is current
         run: node tools/gen-event-payloads.mjs --check
 
+      - name: Check every ViewModel can be built by Hilt
+        run: |
+          node tools/audit-viewmodels.test.mjs
+          node tools/audit-viewmodels.mjs
+
       - name: Check every UI string is externalized
         # Plan 5.4: every string externalized from P0 on. A literal in a Text() or a
         # contentDescription is invisible to every locale, so this fails the build rather than

@@ -2,6 +2,7 @@ package dev.opencode.android.feature.admin
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.opencode.android.core.data.action.ActionError
 import dev.opencode.android.core.data.config.AgentTemplate
 import dev.opencode.android.core.data.config.ConfigDocument
@@ -38,6 +39,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonObject
+import javax.inject.Inject
 
 /**
  * The config explorer: one row per top-level key, with its source, its precedence and the server's own
@@ -84,7 +86,8 @@ data class ConfigUiState(
  * expect a field to change the file every project on the box reads, so [requestShell] says so
  * explicitly rather than the row saying "shell" and nothing else.
  */
-class ConfigViewModel(
+@HiltViewModel
+class ConfigViewModel @Inject constructor(
     private val dataSets: ServerDataRegistry,
     private val experimental: ExperimentalPreferences,
 ) : ViewModel() {
@@ -338,7 +341,8 @@ data class ConfigTemplateDraft(
  * change" a property of the code rather than a rule someone could forget, and `ConfirmedWriteTest`
  * asserts on the plan a screen would render.
  */
-class ConfigEditorViewModel(
+@HiltViewModel
+class ConfigEditorViewModel @Inject constructor(
     private val dataSets: ServerDataRegistry,
     private val experimental: ExperimentalPreferences,
 ) : ViewModel() {

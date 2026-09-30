@@ -12,12 +12,13 @@ Native Android client for [OpenCode](https://opencode.ai) **V2** (`@opencode/cli
 node tools/audit-coverage.mjs --strict     # §7/§8 plan matrices vs the code
 node tools/gen-event-payloads.mjs --check  # event corpus is current
 node tools/check-api-drift.test.mjs        # drift tool's own tests
+node tools/audit-viewmodels.test.mjs && node tools/audit-viewmodels.mjs  # every ViewModel is @HiltViewModel
 node .opencode/plugins/process-guard.test.mjs
 node tools/audit-strings.mjs              # UI strings externalized
 node tools/audit-accessibility.mjs
 ```
 
-Only `--strict` and `--check` fail on their own. **`audit-strings` and `audit-accessibility` always exit 0** — read the output. CI gates strings through a shell pipeline over `audit-strings --json` in `.github/workflows/ci.yml`, not through the tool.
+`audit-viewmodels` exists because `hiltViewModel()` compiles for any `ViewModel` and fails only when the screen opens; seven screens crashed that way. Only `--strict`, `--check` and `audit-viewmodels` fail on their own. **`audit-strings` and `audit-accessibility` always exit 0** — read the output. CI gates strings through a shell pipeline over `audit-strings --json` in `.github/workflows/ci.yml`, not through the tool.
 
 **Gradle gates** (this is what CI runs, in this order):
 
@@ -110,7 +111,7 @@ That script hard-asserts exactly **93** named types (94 counting the `rpc.*` fam
 
 Contrary to the usual Compose layout, **no feature module declares a route or a `NavHost`.** Every `@Serializable` destination lives in `:app` under `app/src/main/kotlin/…/navigation/` — `Routes.kt` for the shared graph, then per-phase `SessionHost`, `ReviewHost`, `ExecutionHost`, `AdminHost`, `IntegrationsHost`. A feature contributes a *stateless* screen composable taking a `*UiState` plus lambdas; the matching `*Host` in `:app` wires the ViewModel, state and callbacks.
 
-ViewModels are uniformly `@HiltViewModel` + `@Inject constructor(ServerDataRegistry)`, reading `dataSets.active`. One thing that will waste your time if you go looking: **`feature/insights` is effectively unreachable** — its screen and ViewModel have no route and the ViewModel is not `@HiltViewModel`, which is exactly the unfinished screen half of P10. Only eight of the nine features are destinations.
+ViewModels are uniformly `@HiltViewModel` + `@Inject constructor(ServerDataRegistry)`, reading `dataSets.active`. One thing that will waste your time if you go looking: **`feature/insights` is effectively unreachable** — its screen and ViewModel have no route, which is exactly the unfinished screen half of P10. (Its ViewModel is now `@HiltViewModel`, so adding the route will not crash; `audit-viewmodels` keeps it that way.) Only eight of the nine features are destinations.
 
 ## Tests
 

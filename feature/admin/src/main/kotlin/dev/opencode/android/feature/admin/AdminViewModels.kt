@@ -2,6 +2,7 @@ package dev.opencode.android.feature.admin
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.opencode.android.core.data.action.ActionError
 import dev.opencode.android.core.data.config.ConfigFileRead
 import dev.opencode.android.core.data.config.DefinitionKind
@@ -22,6 +23,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 // ------------------------------------------------------------------------------------ permissions
 
@@ -98,7 +100,8 @@ data class PermissionsUiState(
 }
 
 /** The saved approvals and the session permission rules. */
-class PermissionsViewModel(
+@HiltViewModel
+class PermissionsViewModel @Inject constructor(
     private val dataSets: ServerDataRegistry,
 ) : ViewModel() {
 
@@ -296,7 +299,8 @@ data class DefinitionUiState(
  * not, and a screen that announced every write the same way would be training the user to click
  * through the two that matter.
  */
-class DefinitionViewModel(
+@HiltViewModel
+class DefinitionViewModel @Inject constructor(
     private val dataSets: ServerDataRegistry,
     private val experimental: ExperimentalPreferences,
 ) : ViewModel() {
@@ -490,7 +494,8 @@ data class MaintenanceUiState(
  * undo. The confirmation is therefore explicit, and the panel re-reads the list afterwards so what the
  * user sees is the server's answer rather than an optimistic removal.
  */
-class MaintenanceViewModel(
+@HiltViewModel
+class MaintenanceViewModel @Inject constructor(
     private val dataSets: ServerDataRegistry,
 ) : ViewModel() {
 
@@ -631,7 +636,8 @@ data class InstructionsUiState(
  * **Removal is confirmed by key**, because an entry is announced to the running session at the next step
  * boundary and taking one back is a change to what the agent is being told, not a tidy-up.
  */
-class InstructionsViewModel(
+@HiltViewModel
+class InstructionsViewModel @Inject constructor(
     private val dataSets: ServerDataRegistry,
     private val experimental: ExperimentalPreferences,
 ) : ViewModel() {
