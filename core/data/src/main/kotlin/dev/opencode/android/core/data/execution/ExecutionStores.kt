@@ -182,6 +182,15 @@ class ExecutionStore(
     }
 
     /**
+     * Puts a command the server has described into [shells], unless the list already has it.
+     *
+     * Idempotent, and never a replacement: see [ExecutionCommands.runShell] for why an existing row wins.
+     */
+    fun recordIfAbsent(info: ShellInfo) {
+        if (_shells.value.none { it.id == info.id }) _shells.value = _shells.value + info
+    }
+
+    /**
      * Puts a terminal the server has described into [ptys], in place of any row with the same id.
      *
      * **Idempotent on purpose, because the server says the same thing twice.** `pty.create` answers with the
@@ -227,9 +236,19 @@ class ExecutionCommands(
     /** The last failed call, which a screen shows once and then dismisses. */
     val error: StateFlow<ActionError?> = _error.asStateFlow()
 
-    /** `shell.create`: runs a command in a location. Not idempotent, so the panel re-reads. */
+    /**
+     * `shell.create`: runs a command in a location. Not idempotent, so the panel re-reads.
+     *
+     * **The answer puts the command in the list if the event has not.** `shell.create` answers with the
+     * whole [ShellInfo] and `shell.created` then carries it again on the event stream, in either order
+     * with the answer. A caller that opens the command as soon as it has the answer would otherwise look
+     * for a row that is not there yet. The row is only added when it is *absent*: an event that won the
+     * race may already have moved the command on, and replacing that row with the answer's older
+     * "running" would put a finished command back to work.
+     */
     suspend fun runShell(directory: String, command: String, cwd: String? = null): Result<ShellInfo> =
         call { api.createShell(directory, ShellCreateRequest(command = command, cwd = cwd)).data }
+            .onSuccess { info -> stores()[directory]?.recordIfAbsent(info) }
 
     /** `shell.remove`: kills a running command and drops it. */
     suspend fun killShell(directory: String, id: String): Result<Unit> =
@@ -239,9 +258,11 @@ class ExecutionCommands(
      * `shell.output`, the page after [cursor].
      *
      * **`null` means the command is gone**, which is the ordinary end of a stream rather than a
-     * failure: `shell.list` answers with the commands *running* in a location, so an exited command
-     * leaves the list and its output route goes with it. A `404` is flattened to `null` here so a
-     * poller can treat "no more" and "there was never any" identically, which is what they are.
+     * failure: the server answers `404` for a command it no longer has, and a poller treats "no more"
+     * and "there was never any" identically, which is what they are. Any other failure is thrown as an
+     * [ActionFailure] and is *not* recorded in [error]: a poll runs every second or so, and a dialog
+     * for each one that a phone dropped would say the same thing again before it could be dismissed.
+     * The poller retries, and says so in its own state if it gives up.
      *
      * [cursor] is a string on the wire even though the schema calls it a number, and it is only ever a
      * cursor a previous page returned.
@@ -256,13 +277,13 @@ class ExecutionCommands(
     } catch (cancellation: CancellationException) {
         throw cancellation
     } catch (error: Throwable) {
-        when (val kind = error.toActionError().kind) {
-            ActionErrorKind.NOT_FOUND -> null
-
-            else -> {
-                _error.value = error.toActionError()
-                null
-            }
+        val classified = error.toActionError()
+        // The status decides, not only the kind: a real answer carries `_tag: ShellNotFoundError`, which is a
+        // tag [ActionErrorKind] does not call "not found", so the body alone classifies it as a server fault.
+        if (classified.kind == ActionErrorKind.NOT_FOUND || classified.httpStatus == HTTP_NOT_FOUND) {
+            null
+        } else {
+            throw ActionFailure(classified)
         }
     }
 
@@ -342,6 +363,10 @@ class ExecutionCommands(
 
     fun dismissError() {
         _error.value = null
+    }
+
+    private companion object {
+        const val HTTP_NOT_FOUND = 404
     }
 
     private suspend inline fun <T> call(crossinline block: suspend () -> T): Result<T> = try {
@@ -510,6 +535,10 @@ class WorktreeCommands(
         } else {
             Result.failure(ActionFailure(error.toActionError()))
         }
+    }
+
+    private companion object {
+        const val HTTP_NOT_FOUND = 404
     }
 
     private suspend inline fun <T> call(crossinline block: suspend () -> T): Result<T> = try {

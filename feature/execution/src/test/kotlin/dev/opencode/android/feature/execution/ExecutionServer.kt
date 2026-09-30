@@ -73,6 +73,17 @@ class ExecutionServer(
     val bodies = mutableMapOf<String, String>()
     val statuses = mutableMapOf<String, Int>()
 
+    /** An answer worked out from the request, for a route whose answer depends on its query. */
+    class Reply(val body: String, val status: Int = 200)
+
+    /**
+     * Answers computed per request, keyed like [bodies] and consulted before it.
+     *
+     * A page of a command's output depends on the `cursor` it was asked for, which a fixed body cannot
+     * express, so a test that streams output registers one of these instead of a body.
+     */
+    val handlers = mutableMapOf<String, (RecordedRequest) -> Reply>()
+
     /** Requests the app made, in order, as `METHOD path?query`. */
     val requests: List<String>
         get() = synchronized(recorded) {
@@ -93,8 +104,9 @@ class ExecutionServer(
                     return MockResponse.Builder().webSocketUpgrade(acceptor).build()
                 }
                 (beforeAnswer[key] ?: beforeAnswer[request.url.encodedPath])?.invoke()
-                val body = bodies[key] ?: bodies[request.url.encodedPath] ?: "{}"
-                val status = statuses[key] ?: statuses[request.url.encodedPath] ?: 200
+                val computed = (handlers[key] ?: handlers[request.url.encodedPath])?.invoke(request)
+                val body = computed?.body ?: bodies[key] ?: bodies[request.url.encodedPath] ?: "{}"
+                val status = computed?.status ?: statuses[key] ?: statuses[request.url.encodedPath] ?: 200
                 val builder = MockResponse.Builder().code(status)
                 // A 204 carries no body, and OkHttp refuses one that says otherwise — so a fixture that
                 // answers 204 with `{}` fails at the transport, not at the assertion, and says so.

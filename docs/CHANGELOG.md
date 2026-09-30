@@ -159,6 +159,21 @@ Found by driving the app against a live server on an emulator, which no test had
   `ls ---ccolollor`) through xterm.js's composition diffing, exact when sent one at a time 200 ms apart, and one
   character of a slow run was dropped once and not reproduced; in landscape the list keeps 40% of the height and the
   terminal gets 8 rows; the first prompt is drawn at the server's 80x24 before the first resize arrives.
+- **A shell command's output never reached the pane.** `echo one && sleep 3 && echo two && sleep 3 && echo three`
+  ran, and the pane said "No output yet." before, during and after, although the server had captured all three
+  lines. The poller took a page that had caught up with the server (`cursor == size`) for the end of the stream
+  and stopped, so its first poll, which runs before the command has printed, was also its last; the page was
+  then folded into the open command's row, which did not exist yet because `shell.create`'s answer never put it
+  in the list, so even a page that did carry text was dropped; and nothing polled again after the screen came
+  back from the background. The loop now ends only when the command has ended and a read after that came back
+  caught up (the exit is learned from `shell.exited` or from `shell.get`, and read before the last page so the
+  last lines are not lost), waits out an empty page with a growing pause, retries a failed read and says so if
+  five in a row fail; the output is attached to the open row from the poller instead of being stored in one; the
+  answer to `shell.create` adds the row if the event has not; and a row can be tapped, which it could not
+  (`onOpen` was never used). `truncated` is said in words and no longer starts a progress bar that never ends
+  (2.0.18 never sends it on this route). `ShellsOutputTest` drives the view model over a real data set and a
+  server that answers `shell.output` as 2.0.18 does, and replays the page recorded from a live 2.0.18; all seven
+  fail on the old code. Not yet seen on a device.
 - **App commands with no argument could not be sent.** Typing `/compact`, `/undo`, `/redo`, `/diff`, `/new`,
   `/sessions`, `/models`, `/agents` or `/editor` and picking it from the palette left Send disabled, because
   `ComposerUiState.canSend` required text after the command name and only `/btw <question>` has any. It also

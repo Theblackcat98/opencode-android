@@ -1113,7 +1113,7 @@ components.
   - Background command runs (`subagent: true`).
 - **Shell commands.**
   - A shell panel per location: `shell.list`, `shell.create`, `shell.get`, `shell.output` and `shell.remove`.
-  - Streaming output: poll `shell.output` by cursor while the command runs, until `shell.exited`.
+  - Streaming output: poll `shell.output` by cursor while the command runs, and read the last page after `shell.exited`.
   - Kill. Background shells started by the agent are visible too.
 - **PTY terminals.**
   - `pty.list`, `pty.create`, `pty.get`, `pty.update` and `pty.remove`.
@@ -1163,7 +1163,8 @@ different directions were each broken deliberately to confirm they fail:
 | PTY framing, cursor, replay, reconnect from cursor, `4404` | Real OkHttp WebSocket against `MockWebServer`, with the server driving the protocol | `PtySocketTest` (16) |
 | All 30 operation wire shapes | A real `ServerApi` over `MockWebServer`: paths, query names, bodies, statuses | `ExecutionOperationsTest` (32) |
 | `DELETE` with a body; `name` as a discriminator; nullable `data`; capability states | The same, on the routes a mocked interface would agree with | `ExecutionWireTest` (24) |
-| Shell output cursor paging, truncation, the exited case, the loop stopping | `advanceTimeBy` on a `TestScope`, never an unbounded wait | `ShellOutputPollerTest` (10) |
+| Shell output cursor paging, truncation, the exited case, the loop stopping, an empty page not being the end | `advanceTimeBy` on a `TestScope`, never an unbounded wait | `ShellOutputPollerTest` (22) |
+| The output reaches the pane while it runs, after it exits and after the screen returns; the recorded 2.0.18 page; a `404` is the end and a `500` is retried | The view model over a real data set and a `MockWebServer` that answers `shell.output` as 2.0.18 does | `ShellsOutputTest` (7), `ShellOutputWireTest` (6), `ShellsScreenTest` (8) |
 | Session tree from `parentID`: nesting, orphans, cycles, siblings, the subagent card | A pure function of `SessionRow`s | `SessionTreeTest` (13) |
 | Events land in the right store and the wrong one is untouched | `ExecutionSurface.apply` with recorded events | `ExecutionStoreTest` (19) |
 | The bridge refuses malformed, unknown and out-of-range messages | The codec as a pure function | `TerminalBridgeTest` (21) |

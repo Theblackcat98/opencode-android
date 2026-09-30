@@ -1,6 +1,6 @@
 package dev.opencode.android.feature.execution
 
-import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -27,6 +27,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -37,6 +38,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -212,7 +214,20 @@ private fun ShellRowItem(
                 Icon(Icons.Filled.Close, stringResource(R.string.shells_kill))
             }
         },
-        modifier = Modifier.fillMaxWidth().testTag(TAG_ROW + row.id),
+        // The open row is the one the pane below shows, so it says so: a list of identical-looking rows
+        // over a pane that belongs to one of them is a pane whose command the reader has to guess.
+        colors = ListItemDefaults.colors(
+            containerColor = if (open) {
+                MaterialTheme.colorScheme.secondaryContainer
+            } else {
+                MaterialTheme.colorScheme.surface
+            },
+        ),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClickLabel = stringResource(R.string.shells_show_output), onClick = onOpen)
+            .semantics { selected = open }
+            .testTag(TAG_ROW + row.id),
     )
 }
 
@@ -276,9 +291,26 @@ fun ShellOutputPane(
                 Icon(Icons.Filled.Stop, stringResource(R.string.shells_stop_following))
             }
         }
-        if (!output.caughtUp || output.truncated) {
+        if (!output.caughtUp) {
             LinearProgressIndicator(
                 modifier = Modifier.fillMaxWidth().testTag(TAG_PROGRESS),
+            )
+        }
+        // Said in words, and each on its own line: neither is a state of the command, and both are things
+        // a reader of a build log needs to know before trusting what is below.
+        if (output.truncated) {
+            Text(
+                text = stringResource(R.string.shells_output_truncated),
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(top = 4.dp).testTag(TAG_TRUNCATED),
+            )
+        }
+        output.error?.let { error ->
+            Text(
+                text = stringResource(R.string.shells_output_failed, error),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(top = 4.dp).testTag(TAG_OUTPUT_ERROR),
             )
         }
         Surface(
@@ -329,6 +361,8 @@ object ExecutionTags {
     const val RUNNING: String = "shells-running"
     const val OUTPUT: String = "shells-output"
     const val PROGRESS: String = "shells-progress"
+    const val TRUNCATED: String = "shells-truncated"
+    const val OUTPUT_ERROR: String = "shells-output-error"
 }
 
 private val TAG_LIST = ExecutionTags.LIST
@@ -336,3 +370,5 @@ private val TAG_ROW = ExecutionTags.ROW
 private val TAG_RUNNING = ExecutionTags.RUNNING
 private val TAG_OUTPUT = ExecutionTags.OUTPUT
 private val TAG_PROGRESS = ExecutionTags.PROGRESS
+private val TAG_TRUNCATED = ExecutionTags.TRUNCATED
+private val TAG_OUTPUT_ERROR = ExecutionTags.OUTPUT_ERROR

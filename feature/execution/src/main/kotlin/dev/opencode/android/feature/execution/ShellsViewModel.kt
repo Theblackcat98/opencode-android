@@ -5,9 +5,11 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.opencode.android.core.data.action.toActionError
 import dev.opencode.android.core.data.attention.OpenLocationTracker
+import dev.opencode.android.core.data.execution.ShellExit
 import dev.opencode.android.core.data.execution.ShellOutputPoller
 import dev.opencode.android.core.data.execution.ShellOutputState
 import dev.opencode.android.core.data.server.ServerDataRegistry
+import dev.opencode.android.core.data.server.ServerDataSet
 import dev.opencode.android.core.model.ShellInfo
 import dev.opencode.android.core.model.ShellOutput
 import dev.opencode.android.core.model.ShellStatus
@@ -50,33 +52,49 @@ data class ShellsUiState(
  *
  * **The output is polled, because that is the only way it exists.** `shell.output` is cursor-paged and
  * the features doc has no event that carries output, so [ShellOutputPoller] asks for the part after the
- * last page it saw until the server says there is none. The cursor is never advanced locally: that
- * would skip output on the next poll and produce a panel with a hole in it.
+ * last page it saw until the command has ended and the last page was read. The cursor is never advanced
+ * locally: that would skip output on the next poll and produce a panel with a hole in it.
  *
- * **A command the server has removed is not an error.** The list is "commands running in this
- * location", so an exited command leaves it, and the row the user was watching stays on screen with
- * the output it had. Throwing away the last page on a `404` would be a worse answer than showing a
+ * **The output belongs to the poller, and the rows are decorated from it.** The open command's output is
+ * not stored in a row, because a row can be missing when a page arrives — the list is filled by an event
+ * and a read, and a page can beat both — and a page folded into a row that is not there is a page thrown
+ * away. Every publication of the rows attaches the poller's current state to the open command's row, so
+ * the pane shows the text whenever the row exists, whichever came first.
+ *
+ * **A command's end reaches the poller from the list.** `shell.exited` updates the row in the store, and
+ * this view model tells the poller when the open command's row says it ended; the poller reads the last
+ * page after that and stops. It also asks `shell.get` itself when a page brings nothing, so an event that
+ * was missed does not leave it polling.
+ *
+ * **A command the server has removed is not an error.** The row the user was watching stays on screen
+ * with the output it had. Throwing away the last page on a `404` would be a worse answer than showing a
  * command whose final status this client did not get to read.
  *
  * **Killing is two steps** (plan §5.2: a dangerous action asks). [killTarget] is the row awaiting the
  * confirmation, and no request is sent until the user answers.
  */
 @HiltViewModel
-class ShellsViewModel @Inject constructor(
-    private val dataSets: ServerDataRegistry,
+class ShellsViewModel(
+    private val active: StateFlow<ServerDataSet?>,
     private val openLocations: OpenLocationTracker,
 ) : ViewModel() {
+
+    /** Hilt's constructor: the read model of the server being followed. */
+    @Inject
+    constructor(
+        dataSets: ServerDataRegistry,
+        openLocations: OpenLocationTracker,
+    ) : this(dataSets.active, openLocations)
 
     private val _state = MutableStateFlow(ShellsUiState())
     val state: StateFlow<ShellsUiState> = _state.asStateFlow()
 
     private val poller = ShellOutputPoller()
     private var collector: Job? = null
-    private var followJob: Job? = null
 
     /** Binds the panel to a location and publishes it as the one being watched. */
     fun openPanel(directory: String) {
-        val set = dataSets.active.value ?: return
+        val set = active.value ?: return
         // The open command survives a resume: `openPanel` also runs on `ON_RESUME`, and resetting the
         // pane there would close the output a user backgrounded a build to read. The draft is not kept,
         // because a half-typed command that outlives the screen is worse than one that has to be typed
@@ -92,27 +110,34 @@ class ShellsViewModel @Inject constructor(
         collector?.cancel()
         collector = viewModelScope.launch {
             set.execution.at(directory).shells.collect { shells ->
-                _state.value = _state.value.copy(rows = shells.map(::rowOf))
+                _state.value = _state.value.copy(rows = shells.map { decorate(ShellRow(it)) })
+                shells.firstOrNull { it.id == _state.value.openID }?.let(::noteEnd)
             }
         }
         openID?.let { follow(it) }
     }
 
     /**
-     * Re-reads the panel after the screen comes back.
+     * Re-reads the panel after the screen comes back, and follows the open command again.
      *
      * **The list is re-read, and the open command's status with it.** A `shell.list` answers the commands
      * that are *running*, so anything that finished while the phone was in a pocket is in neither the list
-     * nor the events that were missed, and its exit code is only reachable through `shell.get`. This is
-     * the resume path rather than [openPanel], because resume must not restart the poller's cursor: the
-     * output the user has not read is still the output the next page continues from.
+     * nor the events that were missed, and its exit code is only reachable through `shell.get`.
+     *
+     * **Polling starts again from the cursor it stopped at.** [close] stops it when the screen goes to the
+     * background, so without this a command that kept printing while the phone was in a pocket would show
+     * the output it had at the moment the screen left. It is not [openPanel]'s reset: the output the user
+     * has not read is still the output the next page continues from.
      */
     fun resumePanel() {
-        val set = dataSets.active.value ?: return
+        val set = active.value ?: return
         val directory = _state.value.directory ?: return
         openLocations.set(directory)
         set.execution.open(directory)
-        _state.value.openID?.let(::refreshStatus)
+        val openID = _state.value.openID ?: return
+        val output = poller.state()
+        if (!poller.isPolling && !(output.exited && output.caughtUp)) startPolling(openID)
+        refreshStatus(openID)
     }
 
     /** Called when the panel leaves the screen, so a completion is announced again. */
@@ -129,7 +154,7 @@ class ShellsViewModel @Inject constructor(
     fun run() {
         val state = _state.value
         val directory = state.directory ?: return
-        val set = dataSets.active.value ?: return
+        val set = active.value ?: return
         if (!state.canRun) return
         _state.value = state.copy(running = true, error = null)
         viewModelScope.launch {
@@ -151,7 +176,7 @@ class ShellsViewModel @Inject constructor(
      * output, and the only way to see it is to ask for the part after the last page.
      */
     fun openCommand(shellID: String) {
-        val set = dataSets.active.value ?: return
+        val set = active.value ?: return
         val directory = _state.value.directory ?: return
         _state.value = _state.value.copy(openID = shellID)
         follow(shellID)
@@ -159,30 +184,38 @@ class ShellsViewModel @Inject constructor(
     }
 
     /**
-     * (Re)starts the polling loop for the open command and reads its status once.
+     * Starts the polling loop for the open command from the beginning, and reads its status once.
      *
      * **The status read is on every open, not only the first.** `shell.list` answers with the commands
      * that are *running*, so a command that finished while the panel was away is in neither the list nor
      * the events, and `shell.get` is the only place its exit code exists.
      */
     private fun follow(shellID: String) {
-        val directory = _state.value.directory ?: return
+        if (_state.value.directory == null) return
         stopFollowing()
         poller.reset()
-        followJob = viewModelScope.launch {
-            poller.start(
-                scope = this,
-                page = { cursor -> readPage(directory, shellID, cursor) },
-                onState = { output -> foldOutput(shellID, output) },
-            )
-        }
+        // A command the list already says has ended needs one read, not a wait to find that out.
+        _state.value.rows.firstOrNull { it.id == shellID }?.info?.let(::noteEnd)
+        startPolling(shellID)
         refreshStatus(shellID)
+    }
+
+    /** Runs the poller from wherever it is, which is the beginning after [follow] and later on a resume. */
+    private fun startPolling(shellID: String) {
+        val directory = _state.value.directory ?: return
+        poller.start(
+            scope = viewModelScope,
+            page = { cursor -> readPage(directory, shellID, cursor) },
+            status = { readExit(directory, shellID) },
+            onState = { publishRows() },
+        )
     }
 
     /** Stops following and closes the pane, which is what the pane's own button means. */
     fun closeCommand() {
         stopFollowing()
         _state.value = _state.value.copy(openID = null)
+        publishRows()
     }
 
     /**
@@ -197,13 +230,26 @@ class ShellsViewModel @Inject constructor(
      * to read — so the open row's status is refreshed on resume as well as on open.
      */
     fun refreshStatus(shellID: String) {
-        val set = dataSets.active.value ?: return
+        val set = active.value ?: return
         val directory = _state.value.directory ?: return
         viewModelScope.launch {
             val info = set.execution.commands.shell(directory, shellID).getOrNull() ?: return@launch
-            if (info.status.value != "running") poller.exit(info.status.value, info.exit)
-            foldOutput(shellID, poller.state())
+            if (_state.value.openID == shellID) noteEnd(info)
         }
+    }
+
+    /**
+     * Tells the poller the open command has ended, when [info] says so.
+     *
+     * The poller reads the last page after this and stops. If its loop had already ended — it gave up on
+     * a failing route, or the panel was resumed after it finished — the loop is started once more, because
+     * the bytes written just before the end may not have been read.
+     */
+    private fun noteEnd(info: ShellInfo) {
+        if (info.id != _state.value.openID || info.status.value == "running" || poller.state().exited) return
+        poller.exit(info.status.value, info.exit)
+        publishRows()
+        if (!poller.isPolling && !poller.state().caughtUp) startPolling(info.id)
     }
 
     /**
@@ -211,11 +257,18 @@ class ShellsViewModel @Inject constructor(
      *
      * The route answers `{location, data}` and a `404` is the end of the stream, not a failure, so
      * [dev.opencode.android.core.data.execution.ExecutionCommands.shellOutput] flattens it and the
-     * poller decides what that means.
+     * poller decides what that means. Any other failure is thrown, and the poller retries it.
      */
     private suspend fun readPage(directory: String, shellID: String, cursor: Long): ShellOutput? {
-        val set = dataSets.active.value ?: return null
+        val set = active.value ?: return null
         return set.execution.commands.shellOutput(directory, shellID, cursor.toString())
+    }
+
+    /** How the command ended, or `null` while it is running or `shell.get` could not be read. */
+    private suspend fun readExit(directory: String, shellID: String): ShellExit? {
+        val set = active.value ?: return null
+        val info = set.execution.commands.shell(directory, shellID).getOrNull() ?: return null
+        return if (info.status.value == "running") null else ShellExit(info.status.value, info.exit)
     }
 
     /** Arms the confirmation for a kill, and sends nothing. */
@@ -236,7 +289,7 @@ class ShellsViewModel @Inject constructor(
     fun confirmKill() {
         val state = _state.value
         val directory = state.directory ?: return
-        val set = dataSets.active.value ?: return
+        val set = active.value ?: return
         val target = state.killTarget ?: return
         _state.value = state.copy(killTarget = null, running = true)
         viewModelScope.launch {
@@ -245,6 +298,7 @@ class ShellsViewModel @Inject constructor(
             if (error == null && _state.value.openID == target) {
                 poller.stop()
                 _state.value = _state.value.copy(openID = null)
+                publishRows()
             }
         }
     }
@@ -253,36 +307,31 @@ class ShellsViewModel @Inject constructor(
         _state.value = _state.value.copy(error = null)
     }
 
-    private fun foldOutput(shellID: String, output: ShellOutputState) {
-        _state.value = _state.value.copy(
-            rows = _state.value.rows.map { row ->
-                if (row.id == shellID) {
-                    row.copy(
-                        output = output,
-                        info = row.info.copy(
-                            status = output.status?.let(::ShellStatus) ?: row.info.status,
-                            exit = output.exitCode ?: row.info.exit,
-                        ),
-                    )
-                } else {
-                    row
-                }
-            },
+    /**
+     * Attaches the poller's state to the open command's row, and takes it off every other row.
+     *
+     * **Read from the poller, not passed in**, so there is one copy of the output and a row built later —
+     * from the list, from an event, from the answer to `shell.create` — carries it too. The status and exit
+     * code the poller learned are laid over the row's own, which is how a command whose event was missed
+     * still shows how it ended.
+     */
+    private fun decorate(row: ShellRow): ShellRow {
+        if (row.id != _state.value.openID) return row.copy(output = null)
+        val output = poller.state()
+        return row.copy(
+            output = output,
+            info = row.info.copy(
+                status = output.status?.let(::ShellStatus) ?: row.info.status,
+                exit = output.exitCode ?: row.info.exit,
+            ),
         )
     }
 
-    private fun rowOf(info: ShellInfo): ShellRow {
-        val current = _state.value.rows.firstOrNull { it.id == info.id }
-        return if (current?.output != null) {
-            current.copy(info = info)
-        } else {
-            ShellRow(info = info)
-        }
+    private fun publishRows() {
+        _state.value = _state.value.copy(rows = _state.value.rows.map(::decorate))
     }
 
     private fun stopFollowing() {
-        followJob?.cancel()
-        followJob = null
         poller.stop()
     }
 

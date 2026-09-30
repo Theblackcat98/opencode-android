@@ -104,6 +104,21 @@ class ExecutionScreenshotTest {
         )
     }
 
+    @Test
+    fun shellsOutputTruncated() = capture("shells-output-truncated") {
+        ShellsScreen(
+            state = shellsState(truncated = true),
+            onDraftChange = {},
+            onRun = {},
+            onOpen = {},
+            onClose = {},
+            onRequestKill = {},
+            onConfirmKill = {},
+            onCancelKill = {},
+            onDismissError = {},
+        )
+    }
+
     // ------------------------------------------------------------------ worktrees
 
     @Test
@@ -318,7 +333,7 @@ class ExecutionScreenshotTest {
 
     // ------------------------------------------------------------------ fixtures
 
-    private fun shellsState() = ShellsUiState(
+    private fun shellsState(truncated: Boolean = false) = ShellsUiState(
         directory = "/work/app",
         draft = "npm test -- --watch",
         running = true,
@@ -331,7 +346,7 @@ class ExecutionScreenshotTest {
                     cursor = 44,
                     size = 44,
                     exited = false,
-                    truncated = false,
+                    truncated = truncated,
                 ),
             ),
             ShellRow(info = shell("sh_2", "cargo build --release", running = true)),

@@ -370,11 +370,15 @@ class CoverageGapWireTest {
         answer(
             "GET /api/shell/sh_1/output",
             """{"location":{"directory":"/work"},"data":{"output":"line one\nline two\n",""" +
-                """"cursor":12,"size":24,"truncated":false}}""",
+                """"cursor":18,"size":18,"truncated":false}}""",
         )
         val output = execution.commands.shellOutput("/work", "sh_1", cursor = "0")
         assertEquals("the route was not answered", true, output != null)
         assertTrue(output!!.output.contains("line one"))
+        // `cursor` is the byte after what the page returned and `size` is the whole output, so a page that
+        // reached the end says both are the same number, as a live server's does.
+        assertEquals(18L, output.cursor)
+        assertEquals(18L, output.size)
         assertTrue(lastRequest(), lastRequest().startsWith("GET /api/shell/sh_1/output?"))
     }
 

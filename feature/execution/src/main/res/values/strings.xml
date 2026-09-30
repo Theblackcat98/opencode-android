@@ -9,6 +9,9 @@
     <string name="shells_run">Run the command</string>
     <string name="shells_output">Output</string>
     <string name="shells_no_output">No output yet.</string>
+    <string name="shells_output_truncated">The server cut some of this output.</string>
+    <string name="shells_output_failed">Output stopped updating: %1$s</string>
+    <string name="shells_show_output">Show the output</string>
     <string name="shells_empty">No commands are running</string>
     <string name="shells_empty_body">Start one above, or wait for the agent to run one. Commands the agent starts appear here too.</string>
     <string name="shells_running">Running</string>
