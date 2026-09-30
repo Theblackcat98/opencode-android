@@ -1,5 +1,6 @@
 package dev.opencode.android.qr
 
+import androidx.camera.core.ExperimentalGetImage
 import androidx.camera.core.ImageProxy
 import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.BarcodeScanning
@@ -26,6 +27,9 @@ class MlKitQrCodeDecoder @Inject constructor() : QrCodeDecoder {
             .build(),
     )
 
+    // `ImageProxy.image` is CameraX's opt-in escape hatch to the platform image. ML Kit reads the
+    // frame from it and nothing here keeps a reference past the call, which is what the opt-in asks.
+    @androidx.annotation.OptIn(ExperimentalGetImage::class)
     override fun decode(image: ImageProxy, onResult: (String) -> Unit) {
         val mediaImage = image.image ?: return
         val input = InputImage.fromMediaImage(mediaImage, image.imageInfo.rotationDegrees)
