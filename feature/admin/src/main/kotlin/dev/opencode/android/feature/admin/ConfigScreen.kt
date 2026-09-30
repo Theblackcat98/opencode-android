@@ -213,7 +213,8 @@ private fun SourceSummary(state: ConfigUiState) {
  *
  * **The button is disabled unless the switch and the route both say yes**, and the reason is on the row
  * rather than in a snackbar, because a greyed-out control with no explanation is the dead-control
- * defect P8's screens were written to avoid.
+ * defect P8's screens were written to avoid. The reason names the switch by its title, in Experimental
+ * features, which is where it is: this card used to say "in settings" about a switch nothing could reach.
  */
 @Composable
 private fun ShellCard(
@@ -247,7 +248,12 @@ private fun ShellCard(
             )
             if (!state.shellUsable) {
                 Text(
-                    text = stringResource(R.string.admin_shell_off),
+                    // Two different reasons, and only the first is the user's to fix: a switch that is off is
+                    // turned on in Experimental features, a route the server does not have is not turned on
+                    // anywhere, and telling that user to flip a switch they already flipped is a circle.
+                    text = stringResource(
+                        if (state.shellAllowed) R.string.admin_shell_absent else R.string.admin_shell_off,
+                    ),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

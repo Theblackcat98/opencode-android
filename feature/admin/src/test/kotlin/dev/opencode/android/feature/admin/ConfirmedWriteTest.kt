@@ -159,12 +159,33 @@ class ConfirmedWriteTest : AdminServerTest() {
             isPrivilegeChange = true,
         )
 
-        // A user editing their project file must not be told a field changes that file.
-        assertEquals("~/.config/opencode/opencode.json", plan.target)
+        // A user editing their project file must not be told a field changes that file. The global one is
+        // `opencode.jsonc` because that is the file the route creates when the server has none; a server
+        // that reports its own global file is named by its own path, which `globalConfigFile` picks out.
+        assertEquals("~/.config/opencode/opencode.jsonc", plan.target)
         assertFalse(plan.target.contains(".opencode/opencode.jsonc"))
         assertTrue(plan.isPrivilegeChange)
         assertEquals(0, plan.bytes)
         assertEquals("", plan.text)
+        // The server applies this one, so the confirmation must not quote a size for a file this app
+        // never reads. It said "A new file of 0 bytes" for a configuration the server already had.
+        assertTrue(plan.isServerSide)
+    }
+
+    @Test
+    fun `a file write is not a server-side change and keeps its size`() {
+        val plan = surface.planFileWrite(
+            path = ".opencode/opencode.jsonc",
+            text = """{"logLevel":"INFO"}""",
+            consequence = "This replaces .opencode/opencode.jsonc",
+            isPrivilegeChange = false,
+            existing = """{"logLevel":"WARN"}""",
+            validate = { schema.validator().validate(it) },
+        )!!
+
+        assertFalse("this app sends the bytes, so both sizes are real", plan.isServerSide)
+        assertEquals("""{"logLevel":"WARN"}""".length, plan.previousBytes)
+        assertEquals("""{"logLevel":"INFO"}""".length, plan.bytes)
     }
 
     // ------------------------------------------------------------------------------ the write path

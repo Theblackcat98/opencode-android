@@ -28,6 +28,12 @@ node_modules/
 
 # Roborazzi comparison output (reference images in src/test/screenshots are committed)
 **/build/outputs/roborazzi/
+# ...and the scratch file it writes beside a baseline when one does not match. It reappears on every
+# verify run, so without this `git add -A` commits it.
+**/src/test/screenshots/*.moved
 
 # Vendored xterm.js checkout (build input, not source)
 .vendor-tmp/
+
+# Claude Code project config and local skills (per-developer, not shared)
+.claude/

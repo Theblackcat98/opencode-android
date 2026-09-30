@@ -60,6 +60,14 @@ data class ConfigUiState(
     val loaded: Boolean = false,
     /** Whether the switch and the route both say the shell setting may be changed. */
     val shellUsable: Boolean = false,
+    /**
+     * Whether the user has turned on "Change the server's global configuration", apart from the route.
+     *
+     * **Kept beside [shellUsable] because the card has two different reasons to be off and says which.** A
+     * switch that is off is the user's to turn on; a route the server answered `404` for is not, and a hint
+     * that told the second user to go and flip a switch they had already flipped would send them in a circle.
+     */
+    val shellAllowed: Boolean = false,
     /** Whether a file write may be made, which is what the editor and definition buttons need. */
     val writesUsable: Boolean = false,
     /** The shell the server reported, and the one the field is on. */
@@ -85,30 +93,54 @@ data class ConfigUiState(
  *
  * **The shell is the only key with a setter** (features doc §33.2), and its confirmation names the
  * *global* file rather than the location's, because `experimental.config.update` writes
- * `~/.config/opencode/opencode.json` for the whole server. A user editing their project file would not
+ * `~/.config/opencode/opencode.json(c)` for the whole server. A user editing their project file would not
  * expect a field to change the file every project on the box reads, so [requestShell] says so
  * explicitly rather than the row saying "shell" and nothing else.
  */
 @HiltViewModel
-class ConfigViewModel @Inject constructor(
-    private val dataSets: ServerDataRegistry,
+class ConfigViewModel(
+    private val active: StateFlow<ServerDataSet?>,
     private val experimental: ExperimentalPreferences,
 ) : ViewModel() {
+
+    /** Hilt's constructor: which server's read model is active is all this reads from the registry. */
+    @Inject
+    constructor(
+        dataSets: ServerDataRegistry,
+        experimental: ExperimentalPreferences,
+    ) : this(dataSets.active, experimental)
 
     private val _state = MutableStateFlow(ConfigUiState())
     val state: StateFlow<ConfigUiState> = _state.asStateFlow()
 
     private var settingsJob: Job? = null
 
+    /** The three answers a switch and a route give together. */
+    private data class Gates(val shellAllowed: Boolean, val shellUsable: Boolean, val writesUsable: Boolean)
+
     fun open(directory: String) {
-        val set = dataSets.active.value ?: return
+        val set = active.value ?: return
         _state.value = _state.value.copy(directory = directory)
         settingsJob?.cancel()
         settingsJob = viewModelScope.launch {
-            experimental.settings.collect { settings ->
-                _state.value = _state.value.copy(
+            // Both routes' own answers are flows here for a reason: a `404` from the shell route marks it
+            // absent, and reading `.value` at the moment a *switch* changed would go on offering the button
+            // against a server that has just said it has no such route.
+            combine(
+                experimental.settings,
+                set.configuration.configUpdate,
+                set.configuration.fsWrite,
+            ) { settings, _, _ ->
+                Gates(
+                    shellAllowed = settings.configUpdate,
                     shellUsable = set.configuration.configUpdateUsable(settings.configUpdate),
                     writesUsable = set.configuration.fsUsable(settings.fileWrites),
+                )
+            }.collect { gates ->
+                _state.value = _state.value.copy(
+                    shellAllowed = gates.shellAllowed,
+                    shellUsable = gates.shellUsable,
+                    writesUsable = gates.writesUsable,
                 )
             }
         }
@@ -118,7 +150,7 @@ class ConfigViewModel @Inject constructor(
     fun resume() = load()
 
     private fun load() {
-        val set = dataSets.active.value ?: return
+        val set = active.value ?: return
         _state.value = _state.value.copy(loading = true, error = null)
         viewModelScope.launch {
             val first = set.configuration.documents(_state.value.directory)
@@ -174,14 +206,20 @@ class ConfigViewModel @Inject constructor(
      * dialog leads with it.
      */
     fun requestShell() {
-        val set = dataSets.active.value ?: return
+        val set = active.value ?: return
         val shell = _state.value.shellChoice?.trim().orEmpty()
         if (shell.isEmpty()) return
+        val documents = _state.value.documentsRead
+        val target = globalConfigFile(documents)
         _state.value = _state.value.copy(
             shellPlan = set.configuration.planSetting(
-                target = GLOBAL_CONFIG,
+                target = target,
                 consequence = "The bash tool and every terminal on this server will run $shell",
                 isPrivilegeChange = true,
+                // `config.get` lists the documents the server reads, so the screen knows whether the
+                // file it is about to name is one that exists or one the route will create. Without
+                // this the confirmation called the server's own configuration "a new file".
+                targetExists = documents.any { it.pathOrNull == target } || target != ConfigViewModel.GLOBAL_CONFIG,
             ),
             error = null,
         )
@@ -190,7 +228,7 @@ class ConfigViewModel @Inject constructor(
     /** `experimental.config.update`, after the confirmation. */
     fun confirmShell() {
         val shell = _state.value.shellChoice?.trim().orEmpty()
-        val set = dataSets.active.value ?: return
+        val set = active.value ?: return
         _state.value = _state.value.copy(shellPlan = null, busy = true, error = null)
         viewModelScope.launch {
             set.configuration.setShell(shell).fold(
@@ -209,14 +247,33 @@ class ConfigViewModel @Inject constructor(
 
     companion object {
         /**
-         * The global configuration file, named in the shell confirmation.
+         * The global configuration file, named in the shell confirmation when the server has not said
+         * which one it is.
          *
-         * The path features doc §33.1 gives, written out so the dialog quotes the file rather than
-         * describing it. Nothing writes to it by path: the route owns that.
+         * **`.jsonc`, because that is what the route creates.** `experimental.config.update` writes the last
+         * of `opencode.json` and `opencode.jsonc` that exists in the global directory and, when neither does,
+         * creates `opencode.jsonc` (read from the pinned 2.0.18 CLI; the features doc only says
+         * `opencode.json(c)`). A file that exists is reported by `config.get`, and [globalConfigFile] prefers
+         * that path, so this is what a server with no global file will make.
          */
-        const val GLOBAL_CONFIG: String = "~/.config/opencode/opencode.json"
+        const val GLOBAL_CONFIG: String = "~/.config/opencode/opencode.jsonc"
     }
 }
+
+/**
+ * The file the shell setting will change, as exactly as the server has said.
+ *
+ * **The confirmation quotes a file and the file has to be the right one.** `config.get` lists every
+ * document the server reads, and the global one is the one in `~/.config/opencode/`; when it is there its
+ * path is what the dialog names, so a user whose global file is `opencode.json` is not told `opencode.jsonc`
+ * and the reverse. When the server reports none, [ConfigViewModel.GLOBAL_CONFIG] is the file it will create.
+ * Both names are checked, and the last wins, because that is the one the route writes when both exist.
+ */
+internal fun globalConfigFile(documents: List<ConfigEntry.Document>): String =
+    documents.lastOrNull { document ->
+        val path = document.pathOrNull.orEmpty()
+        path.contains("/.config/opencode/") && (path.endsWith("/opencode.json") || path.endsWith("/opencode.jsonc"))
+    }?.pathOrNull ?: ConfigViewModel.GLOBAL_CONFIG
 
 // ------------------------------------------------------------------------------------------ editor
 

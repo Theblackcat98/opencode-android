@@ -1,12 +1,16 @@
 package dev.opencode.android.feature.composer.ui
 
 import android.net.Uri
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.ViewModelStore
 import dev.opencode.android.core.data.composer.ComposerMemory
 import dev.opencode.android.core.data.composer.StashEntry
 import dev.opencode.android.core.data.preferences.ModelPreferences
 import dev.opencode.android.core.model.ModelRef
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
@@ -56,6 +60,59 @@ object NoImages : ImageSource {
     override fun type(uri: Uri): String? = null
 
     override fun name(uri: Uri): String? = null
+}
+
+/**
+ * The view models a test made, so that tearing the test down stops them.
+ *
+ * **A view model built with `ComposerViewModel(…)` is never cleared, and its `viewModelScope` outlives the
+ * test that made it.** That leaked straight into the next test: a collector still running when the class's
+ * `tearDown` called `Dispatchers.resetMain()` resumed on the next test's `runTest`, and
+ * `UncaughtExceptionsBeforeTest` failed *that* test — so `ComposerSendTest` and
+ * `NewSessionReactivityTest` each failed intermittently, and on a clean tree, over code neither touches.
+ * A real `ViewModelStore` is what clears a view model on a device, so these tests now take them from one:
+ * [clear] runs `onCleared`, which cancels `viewModelScope`, and the collector dies with the test that
+ * started it rather than the next one.
+ *
+ * `feature/execution` does this for its terminal tests; this is the same arrangement for the composer.
+ */
+class ComposerViewModels : AutoCloseable {
+
+    private val store = ViewModelStore()
+
+    /** A composer of this class, held in the store so [clear] cancels it. */
+    fun composer(
+        server: ComposerServer,
+        draft: String = "",
+    ): ComposerViewModel = put("composer-${next++}", ComposerViewModel::class.java) {
+        ComposerViewModel(
+            active = MutableStateFlow(server.set),
+            modelPreferences = FakeModelPreferences,
+            memory = FakeComposerMemory(draft),
+            attachmentReader = AttachmentReader(NoImages),
+        )
+    }
+
+    /** The new-session sheet, held in the store for the same reason. */
+    fun newSession(server: ComposerServer): NewSessionViewModel = put("new-session-${next++}", NewSessionViewModel::class.java) {
+        NewSessionViewModel(MutableStateFlow(server.set), FakeModelPreferences)
+    }
+
+    /** What a test's `tearDown` calls before `Dispatchers.resetMain()`. */
+    fun clear() = store.clear()
+
+    override fun close() = clear()
+
+    private var next = 0
+
+    /** Through a [ViewModelProvider], which is what puts the result in the store a [clear] empties. */
+    private fun <T : ViewModel> put(key: String, type: Class<T>, build: () -> T): T {
+        val factory = object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <VM : ViewModel> create(modelClass: Class<VM>): VM = build() as VM
+        }
+        return ViewModelProvider(store, factory).get(key, type)
+    }
 }
 
 /** How long a test waits for a state that is meant to arrive, so a state that never does fails rather than hangs. */

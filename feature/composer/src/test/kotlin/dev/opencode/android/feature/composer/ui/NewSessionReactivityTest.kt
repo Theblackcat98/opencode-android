@@ -31,6 +31,7 @@ import org.junit.Test
 class NewSessionReactivityTest {
 
     private lateinit var server: ComposerServer
+    private val viewModels = ComposerViewModels()
 
     @Before
     fun setUp() {
@@ -40,6 +41,10 @@ class NewSessionReactivityTest {
 
     @After
     fun tearDown() {
+        // The view models first: clearing them cancels `viewModelScope`, so no collector is left to resume
+        // on a `Dispatchers.Main` that `resetMain()` has already taken away. The browser's listing lands
+        // after the assertion here, which is what used to leak into the next test.
+        viewModels.clear()
         server.close()
         Dispatchers.resetMain()
     }
@@ -74,7 +79,7 @@ class NewSessionReactivityTest {
 
     /** A sheet with a collector on it, because its state is only produced while somebody is looking. */
     private fun TestScope.newSession(): NewSessionViewModel {
-        val sheet = NewSessionViewModel(MutableStateFlow(server.set), FakeModelPreferences)
+        val sheet = viewModels.newSession(server)
         backgroundScope.launch(Dispatchers.Unconfined) { sheet.state.collect { } }
         return sheet
     }

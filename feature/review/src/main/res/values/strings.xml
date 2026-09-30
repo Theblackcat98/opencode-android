@@ -126,14 +126,18 @@
     <string name="experimental_title">Experimental</string>
     <string name="experimental_fs_write">Edit files on the server</string>
     <string name="experimental_fs_write_body">Writes through experimental.fs.write. Off by default because a remote write can break a project.</string>
+    <string name="experimental_config_update">Change the server\'s global configuration</string>
+    <string name="experimental_config_update_body">Writes through experimental.config.update to the global file that every project on this server reads, not just this one. Today that is the shell the bash tool and every terminal run, so a wrong value affects all of them. A server without the route will refuse the change.</string>
     <string name="experimental_export">Export and import sessions</string>
-    <string name="experimental_export_body">Uses the experimental export and import routes. Hidden when this server does not have them.</string>
+    <string name="experimental_export_body">Uses the experimental export and import routes. A server without them says so where they are used.</string>
     <string name="experimental_persistent_pty">Session terminals</string>
-    <string name="experimental_persistent_pty_body">Lets the app open the terminals a session keeps between turns. Two of these routes end every session terminal on the server, and a server that does not have them hides this.</string>
+    <string name="experimental_persistent_pty_body">Lets the app open the terminals a session keeps between turns. Two of these routes end every session terminal on the server. A server without them says so where the terminal is opened.</string>
     <string name="experimental_mcp_runtime">Change MCP servers at runtime</string>
-    <string name="experimental_mcp_runtime_body">Lets the app connect, disconnect, add and remove MCP servers for the current run. The change is gone when the server restarts, and a server without these routes hides this.</string>
+    <string name="experimental_mcp_runtime_body">Lets the app connect, disconnect, add and remove MCP servers for the current run. The change is gone when the server restarts, and a server without these routes says so where they are used.</string>
     <string name="experimental_wellknown">Add integration sources</string>
-    <string name="experimental_wellknown_body">Lets the app give the server an address to fetch an integration catalog from. Only http and https are accepted, and a server without the route hides this. This is separate from the switch above on purpose.</string>
+    <string name="experimental_wellknown_body">Lets the app give the server an address to fetch an integration catalog from. Only http and https are accepted, and a server without the route says so where it is used. This is separate from the switch above on purpose.</string>
+    <string name="experimental_session_instructions">Session instruction entries</string>
+    <string name="experimental_session_instructions_body">Lets the app read and write the durable entries a session tells the agent to follow. They take effect at the next step of a turn that is already running, which is why this is its own switch and not another use of \"Edit files on the server\". A server without the route says so where the entries are.</string>
     <string name="experimental_unavailable">This server does not have that route.</string>
 
     <string name="action_retry">Try again</string>

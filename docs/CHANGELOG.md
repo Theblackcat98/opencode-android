@@ -275,6 +275,56 @@ Found by driving the app against a live server on an emulator, which no test had
   cases on the old screen; the sixth, that the view model keeps the error and the draft, always held.
   `ActionError.serverMessage` separates what the server said from the client's `HTTP 500` placeholder. Not yet seen
   on a device.
+- **A switch the user could not reach, and a second one beside it.** The configuration screen's shell card is
+  enabled only when `ExperimentalPreferences.configUpdate` is on and the server has the route, and nothing in the
+  app could turn the preference on: the Experimental sheet had five switches and none was it, while the card said
+  "Turn on the configuration experiment in settings" (manual test G7). So the write confirmation that names the
+  server's global file could not be reached at all. It is a row of its own now — a switch of its own rather than a
+  sixth use of "Edit files on the server", because a user who will not let the app edit files has not said no to
+  choosing a shell, and the reverse — and the hint names it by its title and the sheet it is in. Asking why that
+  was the only broken row found the same defect one screen over: `sessionInstructions` had a preference, a setter and
+  a screen waiting for it, and no row either, behind a hint naming "the session-instructions experiment in
+  settings". Both are rows now, the instruction screen's hint names the second, and the two screens each say which of
+  two *different* reasons they are off — a switch is the user's to turn on, a route the server answered `404` for is
+  not turned on anywhere, and a hint that sends the second user to flip a switch they already flipped is a circle.
+  Both gated screens read the route's own `StateFlow` instead of its value at the moment the switch changed, so a
+  `404` after the fact turns the screen off rather than leaving a dead button.
+  `ExperimentalSwitchesTest` fails by name if `ExperimentalSettings` gains a preference without a row (verified by
+  removing one); `ShellSettingTest` drives the card end to end over a MockWebServer; `AdminScreenContentTest` holds
+  the two instruction hints. Seen on the emulator against a live server: the switch turns on, the card becomes live,
+  and the confirmation names `/home/nick/.config/opencode/opencode.json` — the file `config.get` reported — rather
+  than the project's. Cancelled at the confirmation, so the user's global shell was not changed.
+- **The shell confirmation called the server's own configuration a new, empty file.** `planSetting` had no way to
+  know whether its target existed and `previousBytes = null` read as "a file that is not there", so the dialog ended
+  with "A new file of 0 bytes" about a working `opencode.json` it had just named three lines above. A `WritePlan` now
+  says whether the server applies the change itself and the dialog says so ("The server applies this change itself.
+  The file above is not sent from here."); the caller passes whether `config.get` reported the file, and a file it did
+  not is still called new. The global file is named by the path the server reported — the confirmation used a
+  hard-coded `~/.config/opencode/opencode.json`, which is the wrong name for a server whose global file is
+  `opencode.jsonc` and for every server that has one at all.
+- **Four switches promised the server would hide them and nothing hid them.** The rows said "A server without the
+  route hides this" for config update, export, terminals and MCP runtime; the sheet takes plain booleans and no
+  capability reaches it, so every row is drawn on every server. The rows now say what actually happens — a server
+  without the route refuses the change, or says so where it is used — which is the truth the gated screens already
+  implemented.
+- **Three test suites failed at random, over code none of them touched.** `ComposerViewModel` and
+  `NewSessionViewModel` were built directly instead of through a `ViewModelStore`, so `viewModelScope` outlived the
+  test that made it: a collector still running when `tearDown` called `Dispatchers.resetMain()` resumed on the *next*
+  test's `runTest` and failed it, which is why `ComposerSendTest` and `NewSessionReactivityTest` each failed
+  intermittently on a clean tree. They take their view models from a store now, as `feature/execution` already did.
+  Three other tests read a `StateFlow` through `.value` straight after writing the state a `combine` derives from it,
+  so they asserted the *previous* state whenever the machine was busy (`ComposerRevertTest`, twice;
+  `ComposerRequestAnswerTest`) — they await now. `EventStreamClientTest` never closed the `OkHttpClient` it built the
+  stream over, so `server.close()` raced the reader thread and gave up with "Gave up waiting for queue to shut
+  down", blaming whichever test ran under load; the pool is shut down and awaited before the server goes.
+  `CoverageGapWireTest` asserted that an OAuth completion was the *last* request, but `completeOauth` re-reads the
+  integrations behind it, so which of the two was last was a race. Finally, `EventStreamClient` logged "Connected"
+  before incrementing the resync count it describes, so a caller that waited for the second connection and then
+  read the count read 1; the count is now the fact and the log lines are what it looks like.
+  Not fixed, and left as it was found: `core:data`'s `ExecutionStoreTest` and `PairingAndReconnectTest` still fail
+  intermittently when all sixteen modules' tests run at once, on a machine with an emulator and a Gradle daemon on it.
+  They are not a regression from this work — they fail the same way on the tree it started from — and chasing them
+  further was the wrong use of the time. See [`MANUAL_TEST_MATRIX.md`](./MANUAL_TEST_MATRIX.md).
 
 Also added while testing:
 
@@ -316,6 +366,12 @@ Earlier fixes:
   [`MANUAL_TEST_MATRIX.md`](./MANUAL_TEST_MATRIX.md).
 - **No signed artifact was produced.** No keystore exists and none was created. The build is ready
   for one and refuses to pretend otherwise; see [`RELEASE.md`](./RELEASE.md).
+- **A handful of tests still fail when every module's tests run at once.** `core:data`'s
+  `ExecutionStoreTest` and `PairingAndReconnectTest` fail intermittently under
+  `./gradlew unitTest --rerun-tasks` on a loaded machine, and the gate sequence CI runs is green.
+  Four real causes were found and fixed on the way (see "Three test suites failed at random" under
+  Fixed); what is left is wall-clock timing in tests that wait on a store's first load, and it was
+  failing the same way before this work. It is not a regression, and it is not fixed.
 - An unrecognised TUI command is shown but not performed. A newer TUI's commands need an app
   action before they can be run from the phone.
 - The terminal is a JavaScript grid with no semantics. The session transcript carries the same output

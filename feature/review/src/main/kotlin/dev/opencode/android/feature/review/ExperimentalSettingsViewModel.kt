@@ -35,6 +35,10 @@ class ExperimentalSettingsViewModel @Inject constructor(
         viewModelScope.launch { preferences.setFileWrites(enabled) }
     }
 
+    fun setConfigUpdate(enabled: Boolean) {
+        viewModelScope.launch { preferences.setConfigUpdate(enabled) }
+    }
+
     fun setSessionTransfer(enabled: Boolean) {
         viewModelScope.launch { preferences.setSessionTransfer(enabled) }
     }
@@ -49,6 +53,10 @@ class ExperimentalSettingsViewModel @Inject constructor(
 
     fun setWellknownIntegrations(enabled: Boolean) {
         viewModelScope.launch { preferences.setWellknownIntegrations(enabled) }
+    }
+
+    fun setSessionInstructions(enabled: Boolean) {
+        viewModelScope.launch { preferences.setSessionInstructions(enabled) }
     }
 
     private companion object {

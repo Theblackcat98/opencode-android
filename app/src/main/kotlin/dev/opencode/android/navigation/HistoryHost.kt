@@ -119,12 +119,16 @@ fun ExperimentalHost(
             sessionTransfer = switches.sessionTransfer,
             onFileWritesChange = experimental::setFileWrites,
             onSessionTransferChange = experimental::setSessionTransfer,
+            configUpdate = switches.configUpdate,
+            onConfigUpdateChange = experimental::setConfigUpdate,
             persistentPty = switches.persistentPty,
             mcpRuntime = switches.mcpRuntime,
             wellknownIntegrations = switches.wellknownIntegrations,
             onPersistentPtyChange = experimental::setPersistentPty,
             onMcpRuntimeChange = experimental::setMcpRuntime,
             onWellknownIntegrationsChange = experimental::setWellknownIntegrations,
+            sessionInstructions = switches.sessionInstructions,
+            onSessionInstructionsChange = experimental::setSessionInstructions,
             onDismiss = onDismiss,
         )
     }

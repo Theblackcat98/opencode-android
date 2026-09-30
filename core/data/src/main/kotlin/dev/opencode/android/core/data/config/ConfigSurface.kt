@@ -328,11 +328,19 @@ class ConfigSurface(
      * built with an explicit [target] and cannot default to the editor's path. The shape is a
      * [WritePlan] so the confirmation dialog is one composable: a target, a consequence and the flag
      * that leads the dialog when the change is a privilege one.
+     *
+     * @param targetExists whether the file is there to be changed. The confirmation ends with a size,
+     *   and with no way to tell an existing file from a new one it called the server's own
+     *   `~/.config/opencode/opencode.json` "a new file of 0 bytes" — a file the user was shown three
+     *   lines above under its own name, and a size of zero for the whole of a working configuration.
+     *   `null` is the honest "this app did not ask" and is what the server-side setting still says when
+     *   the caller cannot know.
      */
     fun planSetting(
         target: String,
         consequence: String,
         isPrivilegeChange: Boolean,
+        targetExists: Boolean? = null,
     ): WritePlan = WritePlan(
         target = target,
         // No document, deliberately. A setting the *server* applies has no bytes for this app to write,
@@ -342,7 +350,10 @@ class ConfigSurface(
         consequence = consequence,
         isPrivilegeChange = isPrivilegeChange,
         bytes = 0,
-        previousBytes = null,
+        // Not the file's length — this app never reads it, and a number here that meant "0 bytes on
+        // disk" would be a different lie. The dialog only asks whether there is a before.
+        previousBytes = targetExists?.let { if (it) 0 else null },
+        isServerSide = true,
     )
 
     /**
@@ -652,6 +663,14 @@ data class WritePlan(
     val isPrivilegeChange: Boolean,
     val bytes: Int,
     val previousBytes: Int?,
+    /**
+     * Whether the change is one the *server* applies rather than one this app writes.
+     *
+     * **The confirmation ends with a size, and a server-side change has none.** The file still exists and
+     * the app still has not read it, so quoting `0` for either the before or the after described a
+     * working configuration as an empty new file. `planSetting` sets this; a file write does not.
+     */
+    val isServerSide: Boolean = false,
     val diagnostics: List<SchemaDiagnostic> = emptyList(),
 ) {
     /** Whether the file did not exist before, which the confirmation says outright. */

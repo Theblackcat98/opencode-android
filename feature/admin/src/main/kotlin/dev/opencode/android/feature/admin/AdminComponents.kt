@@ -79,10 +79,14 @@ fun WriteConfirmationDialog(
                 }
                 val previous = plan.previousBytes
                 Text(
-                    text = if (previous == null) {
-                        stringResource(R.string.admin_write_size_new, plan.bytes)
-                    } else {
-                        stringResource(R.string.admin_write_size, previous, plan.bytes)
+                    // Three cases, because a plan can be for a file this app writes, a file the server
+                    // changes, or a target whose existence nobody asked about. Only the second has no
+                    // length to quote, and calling it "a new file of 0 bytes" named the server's own
+                    // working configuration a file that was about to be created.
+                    text = when {
+                        plan.isServerSide -> stringResource(R.string.admin_write_size_setting)
+                        previous == null -> stringResource(R.string.admin_write_size_new, plan.bytes)
+                        else -> stringResource(R.string.admin_write_size, previous, plan.bytes)
                     },
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,

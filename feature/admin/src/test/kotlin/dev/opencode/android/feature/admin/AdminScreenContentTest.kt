@@ -466,10 +466,26 @@ class AdminScreenContentTest {
     fun `a disabled experiment explains itself rather than showing an empty list`() {
         compose.setContent { InstructionsScreenFixture(instructionsState(usable = false)) }
 
-        compose.onNodeWithText("Turn on the session-instructions experiment", substring = true)
+        // The hint names the switch by its title and the sheet it is in, because the old text — "turn on
+        // the session-instructions experiment in settings" — named neither, and no such switch existed.
+        compose.onNodeWithText("Turn on \"Session instruction entries\" in Experimental features", substring = true)
             .fetchSemanticsNode()
         assertEquals(
             "the screen must not even offer the form while the experiment is off",
+            null,
+            compose.allNodesWithTagOrNull(AdminTags.PUT_INSTRUCTION),
+        )
+    }
+
+    @Test
+    fun `a switch that is on and a route that is not is not sent back to the switch`() {
+        compose.setContent { InstructionsScreenFixture(instructionsState(usable = false, allowed = true)) }
+
+        // Sending a user who has already agreed to go and agree again is a circle, and the route is not
+        // something they can agree to: it is a fact about the server, and this is what says so.
+        compose.onNodeWithText("This server does not have the route that carries instruction entries.")
+            .fetchSemanticsNode()
+        assertEquals(
             null,
             compose.allNodesWithTagOrNull(AdminTags.PUT_INSTRUCTION),
         )
@@ -547,10 +563,11 @@ class AdminScreenContentTest {
             rules = listOf(PermissionRule("bash", "*", PermissionEffect.Ask)),
         )
 
-        fun instructionsState(usable: Boolean = true) = InstructionsUiState(
+        fun instructionsState(usable: Boolean = true, allowed: Boolean = usable) = InstructionsUiState(
             sessionID = "ses_1",
             loaded = true,
             usable = usable,
+            allowed = allowed,
             entries = listOf(
                 dev.opencode.android.core.model.InstructionEntry("tone", parse("\"terse\"")),
             ),

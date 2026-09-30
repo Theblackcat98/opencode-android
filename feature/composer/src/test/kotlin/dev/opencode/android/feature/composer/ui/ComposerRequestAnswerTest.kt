@@ -14,7 +14,7 @@ import kotlinx.coroutines.test.setMain
 import kotlinx.serialization.json.JsonPrimitive
 import org.junit.After
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -32,6 +32,7 @@ import org.junit.Test
 class ComposerRequestAnswerTest {
 
     private lateinit var server: ComposerServer
+    private val viewModels = ComposerViewModels()
 
     @Before
     fun setUp() {
@@ -41,6 +42,10 @@ class ComposerRequestAnswerTest {
 
     @After
     fun tearDown() {
+        // The view models first: clearing them cancels `viewModelScope`, so no collector is left to resume
+        // on a `Dispatchers.Main` that `resetMain()` has already taken away. These tests answer requests
+        // over the wire, which is exactly what leaves one running.
+        viewModels.clear()
         server.close()
         Dispatchers.resetMain()
     }
@@ -160,12 +165,16 @@ class ComposerRequestAnswerTest {
         composer.replyPermission(PermissionRequest("per_2", "ses_other", "bash"), PermissionReply.Once)
 
         server.awaitCall("the second reply") { it.path.endsWith("/permission/per_2/reply") }
-        assertNull("the second answer went through and the old failure is not shown for it", composer.state.value.error)
+        // Awaited, not read: `replyPermission` writes a `MutableStateFlow` that a `combine` turns into
+        // `state`, so `.value` straight afterwards is whatever was there before the answer — which on a
+        // loaded machine was still the first refusal, and failed a test about the second.
+        val answered = composer.state.await("the second answer to carry no failure") { it.error == null }
+        assertTrue("the second answer went through and the old failure is not shown for it", answered.busy.not())
 
         composer.replyPermission(PermissionRequest("per_1", "ses_other", "bash"), PermissionReply.Once)
         composer.state.await("the refusal again") { it.error != null }
         composer.dismissError()
-        assertNull(composer.state.value.error)
+        composer.state.await("the failure to be dismissed") { it.error == null }
     }
 
     private fun permissionAsked(id: String, sessionID: String) = server.event(
@@ -178,12 +187,7 @@ class ComposerRequestAnswerTest {
         """{"form":{"id":"$id","sessionID":"$sessionID","title":"A question","fields":[{"key":"answer","type":"string"}]}}""",
     )
 
-    private fun unopenedComposer(): ComposerViewModel = ComposerViewModel(
-        active = MutableStateFlow(server.set),
-        modelPreferences = FakeModelPreferences,
-        memory = FakeComposerMemory(),
-        attachmentReader = AttachmentReader(NoImages),
-    )
+    private fun unopenedComposer(): ComposerViewModel = viewModels.composer(server)
 
     private fun form(id: String, sessionID: String): FormInfo = FormInfo(id = id, sessionID = sessionID, title = "A question")
 }

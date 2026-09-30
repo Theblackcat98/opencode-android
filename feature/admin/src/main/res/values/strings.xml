@@ -16,6 +16,7 @@
     <string name="admin_write_privilege_warning">This edits the agent\'s own configuration. The agent will be able to do more, or less, than it could before.</string>
     <string name="admin_write_size">%1$d bytes becomes %2$d bytes.</string>
     <string name="admin_write_size_new">A new file of %1$d bytes.</string>
+    <string name="admin_write_size_setting">The server applies this change itself. The file above is not sent from here.</string>
 
     <string name="admin_diagnostic_at">Line %1$d, column %2$d</string>
     <string name="admin_diagnostic_where">At %1$s</string>
@@ -55,7 +56,8 @@
     <string name="admin_shell_help">The program the bash tool and every terminal run. This changes the server\'s global configuration, not this project\'s file.</string>
     <string name="admin_shell_field">Shell program</string>
     <string name="admin_shell_apply">Use this shell</string>
-    <string name="admin_shell_off">Turn on the configuration experiment in settings to change the shell.</string>
+    <string name="admin_shell_off">Turn on \"Change the server\'s global configuration\" in Experimental features to change the shell.</string>
+    <string name="admin_shell_absent">This server does not have the route that changes the shell.</string>
 
     <!-- Config editor. -->
     <string name="admin_config_editor_title">opencode.jsonc</string>
@@ -165,7 +167,8 @@
     <!-- Session instructions. -->
     <string name="admin_instructions_title">Session instructions</string>
     <string name="admin_instructions_help">Entries are attached to this session and take effect at the next step. A plain word is stored as text; anything that is JSON is stored as JSON.</string>
-    <string name="admin_instructions_off">Turn on the session-instructions experiment in settings to read and write these.</string>
+    <string name="admin_instructions_off">Turn on \"Session instruction entries\" in Experimental features to read and write these.</string>
+    <string name="admin_instructions_absent">This server does not have the route that carries instruction entries.</string>
     <string name="admin_instructions_key">Key</string>
     <string name="admin_instructions_value">Value</string>
     <string name="admin_instructions_value_hint">Not JSON, so it will be stored as text.</string>

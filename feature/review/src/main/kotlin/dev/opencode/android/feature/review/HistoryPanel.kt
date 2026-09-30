@@ -319,6 +319,31 @@ fun ExperimentalSettingsContent(
     onPersistentPtyChange: (Boolean) -> Unit = {},
     onMcpRuntimeChange: (Boolean) -> Unit = {},
     onWellknownIntegrationsChange: (Boolean) -> Unit = {},
+    /**
+     * `experimental.config.update`, the one route that writes the server's *global* configuration.
+     *
+     * **It had a preference, a setter and a screen that waits for it, and no row.** The configuration
+     * screen's shell card is enabled only when this is on, and the card told the user to turn it on "in
+     * settings", where nothing could: five switches, none of them this one (manual test G7). It is a switch
+     * of its own rather than a use of "Edit files on the server", for the reason `ExperimentalSettings`
+     * gives — a user who will not let the app edit files has not said no to choosing a shell, and the
+     * reverse — and the row says which file it reaches, because that is the part the project's own
+     * configuration does not prepare anyone for.
+     */
+    configUpdate: Boolean = false,
+    onConfigUpdateChange: (Boolean) -> Unit = {},
+    /**
+     * `experimental.session.instructions`, the durable entries a session tells the agent to follow.
+     *
+     * **The seventh row, and the same defect one instance over.** `InstructionsViewModel` gates the session
+     * instruction entries on `ExperimentalPreferences.sessionInstructions` and told the user to turn on
+     * "the session-instructions experiment in settings", where nothing could — a preference, a setter and
+     * a screen that waits for it, with no row. The two rows above it are not a substitute: an instruction
+     * entry is announced to a turn that is already running, so agreeing to write a file the user is
+     * looking at is not the same decision, and the reason the preference has its own KDoc.
+     */
+    sessionInstructions: Boolean = false,
+    onSessionInstructionsChange: (Boolean) -> Unit = {},
     modifier: Modifier = Modifier,
     onDismiss: () -> Unit = {},
 ) {
@@ -339,6 +364,13 @@ fun ExperimentalSettingsContent(
             body = stringResource(R.string.experimental_fs_write_body),
             enabled = fileWrites,
             onChange = onFileWritesChange,
+        )
+        HorizontalDivider()
+        ExperimentalRow(
+            title = stringResource(R.string.experimental_config_update),
+            body = stringResource(R.string.experimental_config_update_body),
+            enabled = configUpdate,
+            onChange = onConfigUpdateChange,
         )
         HorizontalDivider()
         ExperimentalRow(
@@ -371,6 +403,13 @@ fun ExperimentalSettingsContent(
             body = stringResource(R.string.experimental_wellknown_body),
             enabled = wellknownIntegrations,
             onChange = onWellknownIntegrationsChange,
+        )
+        HorizontalDivider()
+        ExperimentalRow(
+            title = stringResource(R.string.experimental_session_instructions),
+            body = stringResource(R.string.experimental_session_instructions_body),
+            enabled = sessionInstructions,
+            onChange = onSessionInstructionsChange,
         )
     }
 }

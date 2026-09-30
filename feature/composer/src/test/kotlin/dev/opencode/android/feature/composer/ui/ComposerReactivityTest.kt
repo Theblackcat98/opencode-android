@@ -40,6 +40,7 @@ import org.junit.Test
 class ComposerReactivityTest {
 
     private lateinit var server: ComposerServer
+    private val viewModels = ComposerViewModels()
 
     @Before
     fun setUp() {
@@ -49,6 +50,9 @@ class ComposerReactivityTest {
 
     @After
     fun tearDown() {
+        // The view models first: clearing them cancels `viewModelScope`, so no collector is left to resume
+        // on a `Dispatchers.Main` that `resetMain()` has already taken away.
+        viewModels.clear()
         server.close()
         Dispatchers.resetMain()
     }
@@ -213,12 +217,7 @@ class ComposerReactivityTest {
         assertFalse(composer.state.value.busy)
     }
 
-    private fun composer(draft: String = DRAFT): ComposerViewModel = ComposerViewModel(
-        active = MutableStateFlow(server.set),
-        modelPreferences = FakeModelPreferences,
-        memory = FakeComposerMemory(draft),
-        attachmentReader = AttachmentReader(NoImages),
-    )
+    private fun composer(draft: String = DRAFT): ComposerViewModel = viewModels.composer(server, draft)
 
     /** Opens the session and waits for `open` to finish, which is when the draft it restores is showing. */
     private suspend fun openComposer(draft: String = DRAFT): ComposerViewModel {

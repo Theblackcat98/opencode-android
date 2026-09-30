@@ -28,6 +28,7 @@ import org.junit.Test
 class ComposerRevertTest {
 
     private lateinit var server: ComposerServer
+    private val viewModels = ComposerViewModels()
 
     @Before
     fun setUp() {
@@ -37,6 +38,9 @@ class ComposerRevertTest {
 
     @After
     fun tearDown() {
+        // The view models first: clearing them cancels `viewModelScope`, so no collector is left to resume
+        // on a `Dispatchers.Main` that `resetMain()` has already taken away.
+        viewModels.clear()
         server.close()
         Dispatchers.resetMain()
     }
@@ -100,7 +104,11 @@ class ComposerRevertTest {
 
         composer.askRedo()
 
-        assertTrue("the question is open", composer.state.value.confirmingRedo)
+        // Awaited, not read: `askRedo` writes a `MutableStateFlow` that a `combine` turns into `state`, so
+        // `.value` read straight afterwards is the state from before the question, and which test failed
+        // depended on which ran next.
+        val asked = composer.state.await("the question to open") { it.confirmingRedo }
+        assertTrue("the undo is still staged", asked.isStaged)
         assertTrue("nothing has been asked of the server: ${server.calls}", server.calls.none { it.method == "DELETE" })
 
         composer.dismissRedo()
@@ -161,12 +169,7 @@ class ComposerRevertTest {
     )
 
     private suspend fun openComposer(draft: String = "unsent draft"): ComposerViewModel {
-        val composer = ComposerViewModel(
-            active = MutableStateFlow(server.set),
-            modelPreferences = FakeModelPreferences,
-            memory = FakeComposerMemory(draft),
-            attachmentReader = AttachmentReader(NoImages),
-        )
+        val composer = viewModels.composer(server, draft)
         composer.open(server.sessionID)
         composer.state.await("open to restore the draft") { it.text == draft && it.sessionID == server.sessionID }
         return composer

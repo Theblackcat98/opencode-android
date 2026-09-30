@@ -1,5 +1,7 @@
 package dev.opencode.android.feature.admin
 
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
@@ -98,8 +100,11 @@ class ConfigEditorWriteFailureTest {
 
     private fun show() {
         compose.setContent {
+            // The state is collected rather than read, because `StateFlow.value` inside a composition is
+            // a lint error and a real bug: it draws the state at composition time and nothing after it.
+            val state by model.state.collectAsState()
             ConfigEditorScreen(
-                state = model.state.value,
+                state = state,
                 onPathChange = {},
                 onDraftChange = {},
                 onOpenTemplate = {},

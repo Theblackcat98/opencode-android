@@ -176,6 +176,19 @@ class CoverageGapWireTest {
     private fun lastRequest(): String = synchronized(sent) { sent.last() }
         .let { "${it.method} ${it.url.encodedPath}?${it.url.query ?: ""}" }
 
+    /**
+     * Whether [expected] — a `METHOD path?query`, as [lastRequest] writes one — is among what reached the
+     * server.
+     *
+     * **Needed wherever a surface refreshes a list behind the call under test.** `completeOauth` re-reads
+     * the integrations, so a `GET /api/integration` goes out right after the `POST …/complete` and which
+     * of the two is last is a race between the assertion and that refresh. The claim is that the complete
+     * call went out on its own route, which "it is in the list" states and "it is the last one" does not.
+     */
+    private fun requested(expected: String): Boolean = synchronized(sent) {
+        sent.any { "${it.method} ${it.url.encodedPath}?${it.url.query ?: ""}" == expected }
+    }
+
     private fun lastBody(): JsonObject = synchronized(sent) { sent.last() }
         .let { Json.parseToJsonElement(String((it.body ?: okio.ByteString.EMPTY).toByteArray(), Charsets.UTF_8)) as JsonObject }
 
@@ -289,9 +302,13 @@ class CoverageGapWireTest {
 
         status("POST /api/integration/placeholder-integration/connect/oauth/att_1/complete", 204)
         assertTrue(surface.completeOauth("/work", "placeholder-integration", "att_1", "c1").isSuccess)
-        assertEquals(
-            "POST /api/integration/placeholder-integration/connect/oauth/att_1/complete?location[directory]=/work",
-            lastRequest(),
+        assertTrue(
+            "POST /api/integration/placeholder-integration/connect/oauth/att_1/complete" +
+                "?location[directory]=/work must have been sent, whatever followed it",
+            requested(
+                "POST /api/integration/placeholder-integration/connect/oauth/att_1/complete" +
+                    "?location[directory]=/work",
+            ),
         )
         assertEquals("c1", (bodyOf()["code"] as JsonPrimitive).content)
     }

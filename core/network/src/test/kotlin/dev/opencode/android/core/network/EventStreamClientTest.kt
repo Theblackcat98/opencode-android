@@ -35,11 +35,25 @@ class EventStreamClientTest {
     private lateinit var scope: CoroutineScope
     private lateinit var client: EventStreamClient
 
+    /**
+     * The `OkHttpClient` every test here builds the event client over.
+     *
+     * **Held because it is never closed, and an unclosed pool keeps the socket open.** `EventStreamClient`
+     * cancels the *call* on `stop()`, which is what unblocks its own reader, but the connection itself is
+     * only returned to the pool's keep-alive when OkHttp's reader thread unwinds — and nothing joined that
+     * thread, so `server.close()` raced it and gave up with "Gave up waiting for queue to shut down". That
+     * is a teardown failure attributed to whichever test ran under load; the tests assert the state, not
+     * the close, so nothing in them was wrong.
+     */
+    private lateinit var http: OkHttpClient
+
     @Before
     fun setUp() {
         server = MockWebServer()
         server.start()
         scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        // No read timeout: the stream is meant to stay open, which is the whole subject of these tests.
+        http = OkHttpClient.Builder().readTimeout(0, TimeUnit.MILLISECONDS).build()
     }
 
     @After
@@ -48,6 +62,14 @@ class EventStreamClientTest {
         // away: otherwise `close()` waits on a connection nobody ends.
         if (::client.isInitialized) client.stop()
         scope.cancel()
+        // Then the pool, which is what actually returns the connection, before the server gives up on it.
+        // Awaited rather than merely asked for: the reader unwinds on OkHttp's own executor, and a loaded
+        // machine needs longer than `evictAll()` alone allows before `server.close()` looks at the socket.
+        if (::http.isInitialized) {
+            http.dispatcher.executorService.shutdown()
+            http.dispatcher.executorService.awaitTermination(SHUTDOWN_MILLIS, TimeUnit.MILLISECONDS)
+            http.connectionPool.evictAll()
+        }
         server.close()
     }
 
@@ -459,7 +481,7 @@ class EventStreamClientTest {
     ) = EventStreamClient(
         baseUrl = server.url("/").toString(),
         credentialProvider = { credential },
-        okHttpClient = OkHttpClient.Builder().readTimeout(0, TimeUnit.MILLISECONDS).build(),
+        okHttpClient = http,
         connectivityMonitor = connectivityMonitor,
         watchdogTimeoutMillis = watchdogMillis,
         watchdogCheckIntervalMillis = watchdogCheckMillis,
@@ -565,6 +587,9 @@ class EventStreamClientTest {
          * whole Gradle test task with no output, which is worse than a failure.
          */
         const val AWAIT_MILLIS = 20_000L
+
+        /** How long teardown gives OkHttp's reader threads to unwind before the socket is cut. */
+        const val SHUTDOWN_MILLIS = 5_000L
         const val HEARTBEAT_WINDOW_MILLIS = 2_000L
         const val HEARTBEAT_PERIOD_MILLIS = 150L
         const val HEARTBEAT_FRAME = ": heartbeat\n\n"

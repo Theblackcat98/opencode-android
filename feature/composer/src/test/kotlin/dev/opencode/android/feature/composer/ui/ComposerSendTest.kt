@@ -40,6 +40,7 @@ import org.junit.Test
 class ComposerSendTest {
 
     private lateinit var server: ComposerServer
+    private val viewModels = ComposerViewModels()
 
     @Before
     fun setUp() {
@@ -49,6 +50,10 @@ class ComposerSendTest {
 
     @After
     fun tearDown() {
+        // The view models first: clearing them cancels `viewModelScope`, so no collector is left to resume
+        // on a `Dispatchers.Main` that `resetMain()` has already taken away. A test that sends a prompt
+        // leaks one, which is what failed whichever test ran next.
+        viewModels.clear()
         server.close()
         Dispatchers.resetMain()
     }
@@ -159,12 +164,7 @@ class ComposerSendTest {
         return state.await("the box to show '$line'") { it.text == line }
     }
 
-    private fun composer(draft: String): ComposerViewModel = ComposerViewModel(
-        active = MutableStateFlow(server.set),
-        modelPreferences = FakeModelPreferences,
-        memory = FakeComposerMemory(draft),
-        attachmentReader = AttachmentReader(NoImages),
-    )
+    private fun composer(draft: String): ComposerViewModel = viewModels.composer(server, draft)
 
     /** Opens the session and waits for `open` to finish, which is when the draft it restores is showing. */
     private suspend fun openComposer(draft: String): ComposerViewModel {

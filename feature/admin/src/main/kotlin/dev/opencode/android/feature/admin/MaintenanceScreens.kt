@@ -314,7 +314,9 @@ fun InstructionsScreen(
     Column(modifier = modifier.fillMaxSize()) {
         if (!state.usable) {
             Text(
-                text = stringResource(R.string.admin_instructions_off),
+                text = stringResource(
+                    if (state.allowed) R.string.admin_instructions_absent else R.string.admin_instructions_off,
+                ),
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.padding(16.dp),
             )

@@ -22,6 +22,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -612,6 +613,15 @@ data class InstructionsUiState(
     val loading: Boolean = false,
     /** Whether the switch and the route both say the entries may be read and written. */
     val usable: Boolean = false,
+    /**
+     * Whether the user has turned on "Session instruction entries", apart from the route.
+     *
+     * **Two reasons to be off and only one is the user's to fix**, the same split the configuration
+     * screen's shell card makes: a switch that is off is turned on in Experimental features, and a route
+     * the server answered `404` for is not turned on anywhere. The screen says which, rather than sending
+     * a user who has already agreed to go and agree again.
+     */
+    val allowed: Boolean = false,
     val entries: List<InstructionEntry> = emptyList(),
     val loaded: Boolean = false,
     /** The key of the entry awaiting removal. */
@@ -652,9 +662,13 @@ class InstructionsViewModel @Inject constructor(
         _state.value = _state.value.copy(sessionID = sessionID)
         settingsJob?.cancel()
         settingsJob = viewModelScope.launch {
-            experimental.settings.collect { settings ->
-                val usable = set.configuration.instructionsUsable(settings.sessionInstructions)
-                _state.value = _state.value.copy(usable = usable)
+            // The route's own answer is a flow too, for the reason the shell card's is: reading `.value`
+            // when the *switch* changed went on offering the screen against a server that has since said
+            // it has no such route.
+            combine(experimental.settings, set.configuration.instructions) { settings, _ ->
+                settings.sessionInstructions to set.configuration.instructionsUsable(settings.sessionInstructions)
+            }.collect { (allowed, usable) ->
+                _state.value = _state.value.copy(allowed = allowed, usable = usable)
                 if (usable) load()
             }
         }

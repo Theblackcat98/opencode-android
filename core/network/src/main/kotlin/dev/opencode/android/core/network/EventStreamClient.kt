@@ -600,9 +600,12 @@ class EventStreamClient(
 
     private fun onServerConnected(at: Long) {
         _state.value = ConnectionState.Connected(connectedAt = at, lastActivityAt = at)
+        // Counted before it is logged, so the count and the log that describes it cannot disagree: a
+        // caller that waits for the second "Connected" and then reads the count read 1, because the
+        // increment had not run yet. The count is the fact; the two log lines are what it looks like.
+        _resyncCount.value += 1
         log(ConnectionEventType.CONNECTED, "Connected: the server sent $SERVER_CONNECTED")
         log(ConnectionEventType.RESYNC, "Firing the resync signal on $SERVER_CONNECTED")
-        _resyncCount.value += 1
         _resyncSignals.tryEmit(Unit)
     }
 
