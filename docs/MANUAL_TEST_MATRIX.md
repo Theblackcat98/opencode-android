@@ -4,12 +4,17 @@ Plan §5.3 asks for a matrix of phone, tablet and foldable, Android 8 to latest,
 servers, run before each release. Plan §6's second exit criterion is that the release candidate
 passes it.
 
-**It was not run. There is no device, no emulator and no second device in this environment**, so
-this document is the matrix and the procedure, not a result. Nothing in the repository claims the
-release candidate passed it, and this is the one exit criterion Phase 10 does not meet.
+**It has been run only in part, and only on one emulator.** The one device is an Android 16 (API 36)
+phone emulator, 1280×2856 at 480 dpi, running the `fdroid` debug build. It talked to two servers over
+plain HTTP: the maintainer's real `opencode serve` 2.0.20 (read-only checks; it is a working environment)
+and a disposable `scripts/dev-server.sh` 2.0.18 with the scripted fake provider (everything that changes
+state). There was no physical device, no second device, no HTTPS server, no TalkBack and no `play`
+build. A ✓ below is a pass *on that setup*; it is not a pass of the row on the device it names. The
+release candidate has **not** passed this matrix, and it is not shippable while any row is ✗ or blank.
 
 Run it and record the outcome in the *Result* column of each row. A row with a blank result is
-untested, not passed.
+untested, not passed. **A row can pass here and still fail on a device**: the frame-time numbers in C4 and
+the layout rows in J and K need real hardware.
 
 ## What is needed to run it
 
@@ -42,7 +47,7 @@ no `POST_NOTIFICATIONS` permission, and the smallest screens.
 | # | Check | Result |
 | --- | --- | --- |
 | B1 | Add a server by scanning the QR from `opencode pair` | |
-| B2 | Add a server by typing the URL and the password | ✓ pass (added http://192.168.1.199:4096 on Manual tab) |
+| B2 | Add a server by typing the URL and the password | ✓ pass (added http://192.168.1.199:4096 on Manual tab). A later run found that a 32-character password typed in one burst (as paste or autofill would) came out with its first two characters swapped in the Edit form and was rejected; fixed in `97c1fac`, and four bursts on the fixed build were identical and saved and connected |
 | B3 | A plain `http://` server shows the **Unencrypted** badge on the list and the status page | ✓ pass (badge shown on server card and Server Details screen) |
 | B4 | A wrong password reports "re-pair" and does not crash or hang | ✓ pass (401 shows 'Could not connect' dialog with 'Pair again' option) |
 | B5 | An `https://` server with a self-signed certificate, with the CA installed, connects | |
@@ -57,20 +62,20 @@ no `POST_NOTIFICATIONS` permission, and the smallest screens.
 
 | # | Check | Result |
 | --- | --- | --- |
-| C1 | Projects, sessions and the timeline open cold and from cache | |
-| C2 | Kill the app, reopen: the timeline is there immediately, then fills in | |
+| C1 | Projects, sessions and the timeline open cold and from cache | ✓ pass (real server: projects, `testproject` sessions and a timeline with Edit diff, command output, "Turn finished" on a cold start; the same offline in airplane mode) |
+| C2 | Kill the app, reopen: the timeline is there immediately, then fills in | ✓ pass (force-stopped, airplane mode on, reopened: cached timeline shown at once; network back: context bar filled in. Note: the composer's "No model available" banner stays stale until the session is re-entered — see D8) |
 | C3 | Text, reasoning and tool output stream and are ordered | |
-| C4 | A long session scrolls without dropping a frame on a mid-range phone (A2) | |
-| C5 | A session with an image attachment shows the image | |
+| C4 | A long session scrolls without dropping a frame on a mid-range phone (A2) | n/a (no A2 device; not a pass. Emulator proxy, 768-message real session, 50 fling swipes: 393 frames, 5.85% janky, p50/p90 16 ms, p95 21 ms, p99 26 ms; the same swipes on the 122-row project list: 3.34% janky, p99 16 ms) |
+| C5 | A session with an image attachment shows the image | ✗ fail (emulator, real server: the message shows a "1 attachment / clipway-mockup.webp" chip only; no image is drawn and tapping the chip does nothing) |
 | C6 | An unknown message type renders as a generic fallback and does not crash | |
 
 ## D. Driving a session
 
 | # | Check | Result |
 | --- | --- | --- |
-| D1 | A prompt reaches the agent and the reply comes back | |
-| D2 | Steer interrupts a running turn | |
-| D3 | Queue parks a prompt until the turn ends | |
+| D1 | A prompt reaches the agent and the reply comes back | ✓ pass (dev server, `fake/reasoning`: prompt arrived verbatim, reasoning block then answer, "Turn finished", title generated) |
+| D2 | Steer interrupts a running turn | ✓ pass after fix `4f38c92`, with a limit on what was shown (dev server, `fake/slow`, a single 40 s step). First run failed: while a turn ran the composer's action row (seven icons plus "Stop" and "Background") pushed Send off the 427 dp-wide screen, and the only tappable thing at the right edge sent `POST …/background`. Fixed build: Stop and Background sit in their own row, Send stays at the bottom right; a prompt sent mid-turn with Steer was accepted at once and answered. With one long step the server takes the steered prompt at the step boundary (recorded 41 s after the turn began), so "interrupts" here means "does not wait for the user to stop it"; it is not distinguishable from Queue with this model |
+| D3 | Queue parks a prompt until the turn ends | ✓ pass after fix `4f38c92` (same setup: long-press on Send while a turn ran showed the prompt at once and the server recorded it only after the running turn ended, 41 s later. The queued bubble is not labelled as queued) |
 | D4 | A permission request appears in the shade **and** in the app, and answering from either works | |
 | D5 | "Allow always" **shows the patterns it will store** before it stores them | |
 | D6 | A form renders and answers, including a multiselect and a conditional field | |
@@ -81,18 +86,18 @@ no `POST_NOTIFICATIONS` permission, and the smallest screens.
 
 | # | Check | Result |
 | --- | --- | --- |
-| E1 | A diff renders with additions and deletions coloured and labelled | |
-| E2 | Undo stages, redoes clears, and a commit reverts the files | |
-| E3 | Fork produces a new session that is independently usable | |
-| E4 | A binary file in a diff is shown as binary, not as mojibake | |
-| E5 | The file browser opens a file larger than memory and does not hang | |
+| E1 | A diff renders with additions and deletions coloured and labelled | ✓ pass (dev server, `fake/edit`: red `-` / green `+` rows with line numbers in the Review screen and in the timeline's Edit card) |
+| E2 | Undo stages, redoes clears, and a commit reverts the files | ✗ fail (dev server: "Undo to here" opens the confirmation and the confirm dismisses it, but no `POST …/revert/stage` is ever sent (logging proxy saw nothing), no `session.revert.staged` event arrives and the file on disk is unchanged. The same request sent by hand stages the revert and restores the file, and the app receives the `session.revert.cleared` from the hand-sent redo) |
+| E3 | Fork produces a new session that is independently usable | ✗ fail (dev server: "Fork from here" sends no `POST …/fork`, shows no error and does not navigate) |
+| E4 | A binary file in a diff is shown as binary, not as mojibake | ✓ pass (6 KB random `blob.bin` changed in the working tree: Review → Uncommitted shows "Binary file, not shown") |
+| E5 | The file browser opens a file larger than memory and does not hang | ✓ pass after fix `9f90ff2` (dev server, 572 MB text file. First run: tapping it killed the app — the Retrofit call was not `@Streaming` and `FileReader.read` buffered the whole body. Re-run on the fixed build: app stays alive (Java heap ~33 MB), the viewer shows the first 2.1 MB with "Showing the first 2.1 MB. The file is larger than the phone will open…" and does not offer edit, share or download for the cut file) |
 
 ## F. Execution
 
 | # | Check | Result |
 | --- | --- | --- |
 | F1 | A shell command runs and its output streams | |
-| F2 | A PTY terminal renders colours and handles a full-screen program (`htop`, `vim`) | |
+| F2 | A PTY terminal renders colours and handles a full-screen program (`htop`, `vim`) | ✗ fail (dev server: "New terminal → Use the default shell" creates the PTY on the server (`POST /api/pty` 200) but the app shows "The terminal could not be opened — unknown-terminal" every time: `openTerminal` looks the new id up in a cached list the server's event has not filled yet) |
 | F3 | The terminal survives rotation and app backgrounding, reattaching at the right cursor | |
 | F4 | Resizing the terminal on a foldable or a tablet resizes the PTY | |
 | F5 | A worktree is created, used and removed | |
@@ -178,7 +183,7 @@ Run on A1 (smallest) and A3, with TalkBack on and the font size at the platform 
 | L2 | Latest server version: every screen in this matrix | |
 | L3 | A server **newer** than tested shows "untested server version" and still works | ✓ pass (v2.0.20 server connected with warning note) |
 | L4 | A server missing an experimental route hides that feature everywhere | |
-| L5 | The F-Droid build scans a QR and needs no Play Services (verify with `adb shell pm list packages \| grep gms`) | |
+| L5 | The F-Droid build scans a QR and needs no Play Services (verify with `adb shell pm list packages \| grep gms`) | n/a (partial, not a pass: the emulator image ships Play Services, so the `pm list` check proves nothing here, and there is no camera feed to scan with. Static check of `app-fdroid-debug.apk`: zero `com/google/mlkit` and zero `com/google/android/gms` strings in all 26 dex files and none in the manifest; ZXing classes present) |
 
 ## M. Release mechanics
 
