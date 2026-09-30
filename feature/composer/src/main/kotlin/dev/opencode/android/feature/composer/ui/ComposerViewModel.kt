@@ -1263,21 +1263,28 @@ class ComposerViewModel(
      * **Needs no open session.** The request names the session that asked ([PermissionRequest.sessionID]),
      * and the global inbox answers requests of sessions this instance never opened; gating on the open
      * session made "Allow once" there a call that silently did not happen.
+     *
+     * **A refusal is [ComposerUiState.error], whether or not a session is open.** The global inbox reads it
+     * from its own instance; the session's composer shows it above the field. The previous answer's failure is
+     * cleared when the next answer starts, so the message on screen is about the last thing the user pressed.
      */
     fun replyPermission(request: PermissionRequest, decision: PermissionReply, feedback: String? = null) =
         withServer { set ->
+            local.value = local.value.copy(error = null)
             val error = set.requests.replyPermission(request, decision, feedback)
             if (error != null) local.value = local.value.copy(error = error)
         }
 
     /** Answers a form. Like [replyPermission], it goes to the session the form names, not the one open here. */
     fun submitForm(form: FormInfo, answer: FormAnswer) = withServer { set ->
+        local.value = local.value.copy(error = null)
         val error = set.requests.replyForm(form, answer)
         if (error != null) local.value = local.value.copy(error = error)
     }
 
     /** Dismisses a form, which cancels it. */
     fun cancelForm(form: FormInfo) = withServer { set ->
+        local.value = local.value.copy(error = null)
         val error = set.requests.cancelForm(form)
         if (error != null) local.value = local.value.copy(error = error)
     }

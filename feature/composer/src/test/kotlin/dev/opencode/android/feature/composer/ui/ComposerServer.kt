@@ -62,6 +62,8 @@ class ComposerServer(
     private val answers = ConcurrentHashMap<String, Answer>()
     private val sequence = AtomicInteger()
 
+    @Volatile private var stopped = false
+
     private data class Answer(val status: Int, val body: String)
 
     private val recorded = CopyOnWriteArrayList<Call>()
@@ -181,6 +183,19 @@ class ComposerServer(
     /** Makes [path] answer `500`, the way a server that is unreachable or not yet ready does. */
     fun failing(path: String) = answer(path, """{"_tag":"unavailable","message":"not ready"}""", status = 500)
 
+    /** Makes [path] refuse with [status] and [body], the server's own error as the wire carries it. */
+    fun refusing(path: String, status: Int, body: String) = answer(path, body, status = status)
+
+    /**
+     * Stops listening, so the next request fails to connect the way a phone that lost the network does.
+     *
+     * Only the socket goes: the read model keeps running, so a test can look at what a failed call left behind.
+     */
+    fun goOffline() {
+        if (!stopped) server.close()
+        stopped = true
+    }
+
     /**
      * An event as the stream delivers it, for [ServerDataSet.apply].
      *
@@ -199,7 +214,7 @@ class ComposerServer(
     /** Stops answering, and stops everything the set has running. */
     fun close() {
         scope.cancel()
-        server.close()
+        goOffline()
     }
 
     private fun answer(path: String, body: String, status: Int = 200) {

@@ -1,6 +1,8 @@
 package dev.opencode.android.feature.requests.ui
 
 import androidx.annotation.StringRes
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.stringResource
 import dev.opencode.android.core.data.action.ActionError
 import dev.opencode.android.core.data.action.ActionErrorKind
 import dev.opencode.android.core.data.forms.FieldProblem
@@ -27,6 +29,16 @@ fun ActionErrorKind.messageRes(): Int = when (this) {
     ActionErrorKind.OFFLINE -> R.string.action_error_offline
     ActionErrorKind.UNKNOWN -> R.string.action_error_unknown
 }
+
+/**
+ * [this] worded for a person: the class's sentence, with the server's own words where the class takes them.
+ *
+ * One reading of an [ActionError] for the screens that show one, so a failure reads the same in the global
+ * inbox as it does under the composer.
+ */
+@Composable
+fun ActionError.displayMessage(): String =
+    if (takesArgument) stringResource(kind.messageRes(), message) else stringResource(kind.messageRes())
 
 /**
  * True for the two classes whose message carries the server's own words.

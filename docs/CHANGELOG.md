@@ -172,8 +172,7 @@ Found by driving the app against a live server on an emulator, which no test had
   `ComposerViewModel` of its own and never opens a session in it, and `replyPermission`, `submitForm` and
   `cancelForm` returned without a word unless one was open, although every request names the session that
   asked. They no longer need one. `ComposerRequestAnswerTest` (MockWebServer) fails on the old code; not yet
-  seen on a device. A failed answer from the inbox still shows nothing, because that screen does not display
-  the composer's error.
+  seen on a device. A refused answer from the inbox was still invisible; see "The global inbox swallowed a refused answer" below.
 - **"Undo to here" confirmed and did nothing, and files attached from the file browser went nowhere.**
   `OpenCodeApp` took `composer: ComposerViewModel = hiltViewModel()`, which is evaluated in the activity's
   `ViewModelStoreOwner`, not in a route, so the confirmation's `stageUndo` ran on a composer that had never
@@ -211,6 +210,23 @@ Found by driving the app against a live server on an emulator, which no test had
   (`permission-card-plugin`, `permission-card-plugin-large-font`, `request-dock-plugin`, `requests-inbox-plugin`) and the
   existing ones are unchanged. Not done: the notification for such a request (`AttentionNotificationBuilder`) still
   reads "Allow external_directory? … is waiting for you" with no mention of who asked. Not yet seen on a device.
+- **The global inbox swallowed a refused answer.** The composer its host asks for records a `404` (gone), a `409`
+  (already settled) or an unreachable server in its own `error`, and `PendingRequestsScreen` drew only the requests,
+  so "Allow once" that failed looked like a button that did nothing, on a request that was still blocking the agent.
+  The screen now takes the `ActionError` and draws "Your answer was not sent" and the reason, in the composer's own
+  wording (`displayMessage`), in an error row above the list with Dismiss, and the request stays under it because
+  the server never echoed an answer for it; `PendingRequestsHost` passes `composer.state.error`. The next answer
+  clears the previous one's failure (`replyPermission`, `submitForm`, `cancelForm`), which they did not before, so a
+  stale row is not shown beside an answer that went through. `action_error_conflict` said "The server already has
+  something different under that id", which is wrong for the `409` a form gives when another client settled it
+  (`FormAlreadySettledError`), and now says that it conflicts and that another client may have answered first; the
+  composer and the session dock use the same sentence. `ComposerRequestAnswerTest` (MockWebServer: `404`, `409`,
+  the socket closed) holds the composer's side, and fails on the stale failure; `InboxAnswerFailureTest` (every
+  `ActionErrorKind`, 320 dp at 2.0x font, an empty inbox) fails without the row; two baselines are new
+  (`requests-inbox-answer-failed`, `requests-inbox-answer-failed-large-font`). `PendingRequestsHost` is in `:app`,
+  which cannot host a test, so the one line that hands the error to the screen is not exercised by anything. An MCP
+  elicitation is a modal sheet over this screen, and whether the row can be seen beside it was not checked. Not yet
+  seen on a device.
 - Markdown inside list items (`**bold**`, `` `code` ``, links) was drawn as typed; only paragraphs,
   headings and table cells were parsed.
 - "Changed 1 files" is now "Changed 1 file".

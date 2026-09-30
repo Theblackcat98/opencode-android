@@ -62,12 +62,13 @@
     <string name="requests_inbox_empty_title">Nothing is waiting</string>
     <string name="requests_inbox_empty_subtitle">When the agent needs a permission or an answer, it appears here and in the session.</string>
     <string name="requests_inbox_open_session">Open the session</string>
+    <string name="requests_inbox_answer_failed">Your answer was not sent</string>
 
     <!-- Failure messages -->
     <string name="action_error_unauthorized">The server rejected this device. Pair it again.</string>
     <string name="action_error_forbidden">The agent or the server refused this action.</string>
     <string name="action_error_not_found">That is gone. Another client may have answered it first.</string>
-    <string name="action_error_conflict">The server already has something different under that id.</string>
+    <string name="action_error_conflict">That conflicts with what the server already has. Another client may have answered it first.</string>
     <string name="action_error_session_busy">The session is busy. Try again when it is idle.</string>
     <string name="action_error_invalid">The server rejected that: %1$s</string>
     <string name="action_error_server">The server had a problem. It may be starting up.</string>

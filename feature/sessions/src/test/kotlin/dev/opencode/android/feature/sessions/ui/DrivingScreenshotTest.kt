@@ -12,6 +12,8 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.unit.dp
 import com.github.takahirom.roborazzi.captureRoboImage
+import dev.opencode.android.core.data.action.ActionError
+import dev.opencode.android.core.data.action.ActionErrorKind
 import dev.opencode.android.core.data.catalog.ModelCatalog
 import dev.opencode.android.core.data.forms.FormEngine
 import dev.opencode.android.core.data.server.PendingRequest
@@ -129,6 +131,29 @@ class DrivingScreenshotTest {
             onNavigateBack = {},
         )
     }
+
+    @Test
+    fun pendingRequestsScreenWithAFailedAnswer() = capture("requests-inbox-answer-failed") {
+        PendingRequestsScreen(
+            requests = DrivingFixtures.dockRequests(),
+            sessionTitles = mapOf("ses_1" to "Fix the timeline convergence check"),
+            actions = RequestActions(),
+            onNavigateBack = {},
+            error = ActionError(ActionErrorKind.CONFLICT, "The question was already answered", httpStatus = 409),
+        )
+    }
+
+    @Test
+    fun pendingRequestsScreenWithAFailedAnswerAtLargeFontScale() =
+        capture("requests-inbox-answer-failed-large-font", fontScale = 2f) {
+            PendingRequestsScreen(
+                requests = listOf(PendingRequest.Permission(DrivingFixtures.permissionRequest())),
+                sessionTitles = mapOf("ses_1" to "Fix the timeline convergence check"),
+                actions = RequestActions(),
+                onNavigateBack = {},
+                error = ActionError(ActionErrorKind.NOT_FOUND, "No such request", httpStatus = 404),
+            )
+        }
 
     @Test
     fun formFields() = capture("form-fields") {

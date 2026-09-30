@@ -728,6 +728,7 @@ private fun PendingRequestsHost(
 ) {
     val pending by requests.pending.collectAsStateWithLifecycle()
     val titles by requests.sessionTitles.collectAsStateWithLifecycle()
+    val composerState by composer.state.collectAsStateWithLifecycle()
     val uriHandler = LocalUriHandler.current
     val actions = RequestActions(
         onReplyOnce = { composer.replyPermission(it.request, PermissionReply.Once) },
@@ -745,6 +746,9 @@ private fun PendingRequestsHost(
         sessionTitles = titles,
         actions = actions,
         onNavigateBack = onNavigateBack,
+        // The composer records a refused answer in its own state, and nothing else on this screen reads it.
+        error = composerState.error,
+        onDismissError = composer::dismissError,
     )
 }
 
