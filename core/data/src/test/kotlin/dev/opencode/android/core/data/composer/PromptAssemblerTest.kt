@@ -351,6 +351,47 @@ class PromptAssemblerTest {
     }
 
     @Test
+    fun `an app command that takes no argument is a send, and one that needs an argument is not until it has one`() {
+        ClientCommands.ALL.forEach { command ->
+            val bare = ComposerInput(text = "/${command.name}")
+            assertEquals(
+                "/${command.name}",
+                !command.takesArguments,
+                PromptAssembler.isSendable(bare),
+            )
+            assertEquals(
+                "/${command.name} with blanks after it",
+                !command.takesArguments,
+                PromptAssembler.isSendable(ComposerInput(text = "/${command.name}   ")),
+            )
+            assertTrue(
+                "/${command.name} with an argument",
+                PromptAssembler.isSendable(ComposerInput(text = "/${command.name} something")),
+            )
+        }
+    }
+
+    @Test
+    fun `nothing is sendable exactly when the assembler answers empty`() {
+        listOf("", "   ", "!", "! ", "/", "/ ", "/btw").forEach { text ->
+            assertEquals(Assembly.Empty, PromptAssembler.assemble(ComposerInput(text = text)))
+            assertEquals("'$text'", false, PromptAssembler.isSendable(ComposerInput(text = text)))
+        }
+        listOf("hello", "!ls", "/unknown", "/deploy", "/compact", "/undo").forEach { text ->
+            val input = ComposerInput(text = text, serverCommands = serverCommands)
+            assertTrue("'$text'", PromptAssembler.assemble(input) != Assembly.Empty)
+            assertTrue("'$text'", PromptAssembler.isSendable(input))
+        }
+    }
+
+    @Test
+    fun `a refusal is still a send, so the button is enabled and says why`() {
+        val input = ComposerInput(text = "/compact", attachments = listOf(serverFile("/work/a.ts", "a.ts")))
+        assertEquals(Assembly.Refused(PromptProblem.ATTACHMENT_BLOCKED), PromptAssembler.assemble(input))
+        assertTrue(PromptAssembler.isSendable(input))
+    }
+
+    @Test
     fun `the intent of a command with no arguments is empty text, not a missing command`() {
         assertEquals(PromptIntent.Command("deploy", ""), PromptAssembler.intentOf("/deploy", serverCommands))
     }

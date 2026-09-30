@@ -132,6 +132,15 @@ Found by driving the app against a live server on an emulator, which no test had
   `unknown-terminal` and `socket-unavailable`: the two reasons the app gives itself are `strings.xml` text and
   what the server said is still shown as it said it. `TerminalOpenTest` drives the view model over a real data set
   and a MockWebServer with both orderings and fails on the old code; not yet seen on a device.
+- **App commands with no argument could not be sent.** Typing `/compact`, `/undo`, `/redo`, `/diff`, `/new`,
+  `/sessions`, `/models`, `/agents` or `/editor` and picking it from the palette left Send disabled, because
+  `ComposerUiState.canSend` required text after the command name and only `/btw <question>` has any. It also
+  enabled Send for a lone `!` or `/`, which then did nothing. `PromptAssembler.isSendable` is now the one
+  answer (a send is sendable unless `assemble` says `Empty`), the button asks it, and `send()` builds its input
+  the same way. `ComposerSendTest` drives the view model over a real data set and a MockWebServer (`/compact`
+  posts to `api/session/{id}/compact`, `/btw` alone stays disabled, `/undo` raises the confirmation) and fails
+  on the old code; not yet seen on a device. Picking an app command from the palette still only inserts its
+  text, as it does for a server command: Send is what runs it.
 - Markdown inside list items (`**bold**`, `` `code` ``, links) was drawn as typed; only paragraphs,
   headings and table cells were parsed.
 - "Changed 1 files" is now "Changed 1 file".

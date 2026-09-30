@@ -189,7 +189,7 @@ data class ComposerUiState(
     /** A revert operation is in flight, which disables the send. */
     val reverting: Boolean = false,
 ) {
-    val canSend: Boolean get() = !sending && !reverting && problem == null && assemblyIsSendable()
+    val canSend: Boolean get() = !sending && !reverting && problem == null && PromptAssembler.isSendable(toInput())
 
     /** Whether a revert is staged, which is what the banner and the commit-first send key on. */
     val isStaged: Boolean get() = stagedRevert != null
@@ -226,14 +226,27 @@ data class ComposerUiState(
     /** Whether a confirmation is being asked for, which is the only "send anyway" in the composer. */
     val needsConfirmation: Boolean get() = problem == ComposerProblem.ATTACHMENT_NEEDS_CONFIRMATION
 
-    /** Whether the box has anything a send could act on at all. */
-    private fun assemblyIsSendable(): Boolean {
-        val intent = intent
-        return when (intent) {
-            is PromptIntent.Client -> intent.text.isNotEmpty()
-            else -> text.isNotBlank() || attachments.isNotEmpty() || reviewComments.isNotEmpty()
-        }
-    }
+    /**
+     * What [PromptAssembler] is asked, for the send and for the button that enables it.
+     *
+     * One construction for both, so the button cannot be enabled by a different reading of the box than
+     * the one `send()` acts on: the assembler decides what a `/compact` or a bare `!` is, and the composer
+     * decides nothing about the text itself.
+     */
+    internal fun toInput(delivery: Delivery = this.delivery): ComposerInput = ComposerInput(
+        text = text,
+        attachments = attachments,
+        skills = skills,
+        delivery = delivery,
+        resume = resume,
+        location = directory,
+        model = modelInfo,
+        serverCommands = serverCommands,
+        agents = agents,
+        // The comments the review screen left here, which is the whole point of the
+        // composer being the thing that turns a review into a prompt.
+        reviewComments = reviewComments,
+    )
 }
 
 /**
@@ -592,24 +605,16 @@ class ComposerViewModel(
         val id = sessionID.value ?: return
         val set = active.value ?: return
         if (local.value.sending) return
-        val snapshot = state.value
-        val assembly = PromptAssembler.assemble(
-            input = ComposerInput(
-                text = local.value.text,
-                attachments = local.value.attachments,
-                skills = local.value.skills,
-                delivery = delivery,
-                resume = local.value.resume,
-                location = snapshot.directory,
-                model = snapshot.modelInfo,
-                serverCommands = snapshot.serverCommands,
-                agents = snapshot.agents,
-                // The comments the review screen left here, which is the whole point of the
-                // composer being the thing that turns a review into a prompt.
-                reviewComments = snapshot.reviewComments,
-            ),
-            confirmed = confirmed,
+        // The box's own fields are read from `local` rather than from the projection: a keystroke that has
+        // not reached the derived state yet is still what the user is sending.
+        val mine = local.value
+        val snapshot = state.value.copy(
+            text = mine.text,
+            attachments = mine.attachments,
+            skills = mine.skills,
+            resume = mine.resume,
         )
+        val assembly = PromptAssembler.assemble(input = snapshot.toInput(delivery), confirmed = confirmed)
         when (assembly) {
             is Assembly.Client -> performClient(assembly.action, assembly.text)
 

@@ -33,6 +33,7 @@ import mockwebserver3.MockWebServer
 import mockwebserver3.RecordedRequest
 import okhttp3.OkHttpClient
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.atomic.AtomicInteger
 
 /**
@@ -60,6 +61,14 @@ class ComposerServer(
 
     private data class Answer(val status: Int, val body: String)
 
+    private val recorded = CopyOnWriteArrayList<Call>()
+
+    /** One request the composer made: the method and the path, which is what a wire assertion is about. */
+    data class Call(val method: String, val path: String, val body: String)
+
+    /** Every request that reached the server so far, oldest first. */
+    val calls: List<Call> get() = recorded.toList()
+
     /** The read model of the server, wired to the routes below. */
     val set: ServerDataSet = ServerDataSet(
         serverId = SERVER_ID,
@@ -72,6 +81,7 @@ class ComposerServer(
     init {
         server.dispatcher = object : Dispatcher() {
             override fun dispatch(request: RecordedRequest): MockResponse {
+                recorded += Call(request.method.orEmpty(), request.url.encodedPath, request.body?.utf8().orEmpty())
                 val answer = answers[request.url.encodedPath] ?: Answer(404, "{}")
                 return MockResponse.Builder()
                     .code(answer.status)
@@ -128,6 +138,22 @@ class ComposerServer(
         "/api/project",
         OpenCodeJson.encodeToString(ListSerializer(Project.serializer()), projects),
     )
+
+    /** The messages `message.list` returns, as the JSON the server sends: newest first, as the real route answers. */
+    fun messages(json: String) = answer("/api/session/$sessionID/message", """{"data":$json,"cursor":{}}""")
+
+    /** A user message the timeline will show, which is what an undo is aimed at. */
+    fun userMessage(id: String, text: String, created: Long): String =
+        """{"id":"$id","time":{"created":$created},"type":"user","text":"$text"}"""
+
+    /** `session.compact` accepted: the inbox item the server enqueued for the compaction. */
+    fun compactionAccepted() = answer(
+        "/api/session/$sessionID/compact",
+        """{"data":{"id":"msg_c1","sessionID":"$sessionID","type":"compaction","payload":{},"delivery":"steer"}}""",
+    )
+
+    /** `session.generate` answered: the side question's reply, which is a body rather than an event. */
+    fun sideAnswer(text: String) = answer("/api/session/$sessionID/generate", """{"data":{"text":"$text"}}""")
 
     /** Makes [path] answer `500`, the way a server that is unreachable or not yet ready does. */
     fun failing(path: String) = answer(path, """{"_tag":"unavailable","message":"not ready"}""", status = 500)

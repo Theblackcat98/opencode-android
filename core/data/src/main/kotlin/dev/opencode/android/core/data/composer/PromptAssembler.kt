@@ -168,6 +168,19 @@ object PromptAssembler {
         }
     }
 
+    /**
+     * Whether a send of [input] would do anything, which is `false` exactly when [assemble] answers
+     * [Assembly.Empty].
+     *
+     * **The Send button asks this instead of deciding for itself.** A refusal is not empty — an attachment
+     * the model will not be sent is a send that says why — so the button stays enabled for it and the
+     * reason is what the user sees. What is empty is a box with nothing in it, a `!` or a `/` alone, and a
+     * command that wants an argument and has none (`/btw`). An app command that takes no argument (`/compact`,
+     * `/undo`, `/new`) is not empty, because the command *is* the send. A button that guessed this from the
+     * text was disabled for every one of them, and enabled for a bare `!` that then did nothing.
+     */
+    fun isSendable(input: ComposerInput): Boolean = assemble(input) !is Assembly.Empty
+
     /** The intent on its own, for the composer's mode indicator and for tests of the text rules. */
     fun intentOf(
         text: String,
