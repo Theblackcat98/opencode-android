@@ -96,6 +96,14 @@ Found by driving the app against a live server on an emulator, which no test had
   diff and nothing else. Every kind now draws the message under "Why it failed", capped at six lines
   with the rest one tap away, and it is part of the card's accessibility description. Covered by unit
   tests and Roborazzi baselines (`tool-failed-edit`, `tool-failed-shell-dark`); not yet seen on a device.
+- **Send was pushed off the screen while a turn ran.** The composer's seven 48 dp icons, Stop, Background and
+  Send shared one `Row`, and Send, laid out last, got the width that was left, which on a phone was none (a tap
+  at the far right hit Background); idle it overflowed too below 408 dp. Stop and Background now have a row of
+  their own that exists only while a turn runs, and the icons wrap beside Send, so under about 408 dp the last
+  icon takes a second line. `ComposerLayoutTest` (320, 360 and 427 dp, 2.0x font) asserts every control is on
+  screen, 48 dp square and clear of the others and that Send answers click and long click; it fails on the
+  old code. Thirteen existing composer baselines changed because they had drawn Send squeezed. Not yet seen
+  on a device.
 - **Opening a file larger than memory killed the app.** `fs.read` was a buffering Retrofit call, so a 572 MB
   file was copied whole into the heap on an OkHttp thread (`OutOfMemoryError`, seen as `IllegalStateException:
   Check failed` in `TaskRunner`), then copied again to be classified. `FileReader.read` now streams the body,

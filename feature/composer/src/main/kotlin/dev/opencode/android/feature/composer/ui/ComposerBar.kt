@@ -6,8 +6,8 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -45,6 +45,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
@@ -241,59 +242,60 @@ fun ComposerBar(
                     )
                 }
             }
+            // Stop and Background have a row of their own, above the buttons and only while a turn runs.
+            // Sharing the send row with them put about 430 dp of buttons on a row a 360 dp phone gives
+            // 336, and Send, laid out last, took the nothing that was left.
+            if (state.busy) {
+                RunningTurnActions(onInterrupt = { onInterrupt(false) }, onBackground = onBackground)
+            }
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(0.dp),
+                // At the bottom so Send stays under the thumb whether the icons take one line or two.
+                verticalAlignment = Alignment.Bottom,
             ) {
                 // The ergonomics the TUI has on keys are buttons here, because a phone has no up-arrow
-                // to bind and a chip row that scrolls is a row whose last items nobody finds. They sit
-                // on the send row, which is otherwise empty, so they cost no vertical space.
-                ComposerAction(
-                    icon = Icons.Filled.AttachFile,
-                    description = stringResource(R.string.composer_attach),
-                    onClick = onAttach,
-                )
-                ComposerAction(
-                    icon = Icons.Filled.AutoAwesome,
-                    description = stringResource(R.string.composer_add_skill),
-                    onClick = onOpenSkills,
-                )
-                ComposerAction(
-                    icon = Icons.Filled.KeyboardArrowUp,
-                    description = stringResource(R.string.composer_history_older),
-                    onClick = onOlderHistory,
-                )
-                ComposerAction(
-                    icon = Icons.Filled.KeyboardArrowDown,
-                    description = stringResource(R.string.composer_history_newer),
-                    onClick = onNewerHistory,
-                )
-                ComposerAction(
-                    icon = Icons.Filled.Inventory2,
-                    description = stringResource(R.string.composer_stash),
-                    onClick = onStash,
-                    enabled = state.text.isNotBlank(),
-                )
-                ComposerAction(
-                    icon = Icons.Filled.Unarchive,
-                    description = stringResource(R.string.composer_stash_pop),
-                    onClick = onOpenStash,
-                    enabled = state.stash.isNotEmpty(),
-                )
-                ComposerAction(
-                    icon = Icons.Filled.OpenInFull,
-                    description = stringResource(R.string.composer_editor),
-                    onClick = onOpenEditor,
-                )
-                Spacer(Modifier.weight(1f))
-                if (state.busy) {
-                    TextButton(onClick = { onInterrupt(false) }) {
-                        Text(stringResource(R.string.composer_interrupt))
-                    }
-                    TextButton(onClick = onBackground) {
-                        Text(stringResource(R.string.composer_background))
-                    }
+                // to bind and a chip row that scrolls is a row whose last items nobody finds. They wrap
+                // rather than scroll for the same reason: seven 48 dp buttons need 336 dp, Send needs 48
+                // more, and a phone is 320 to 411 dp wide, so on the narrow ones the last icon drops to a
+                // second line beside Send instead of pushing Send off the edge.
+                FlowRow(modifier = Modifier.weight(1f)) {
+                    ComposerAction(
+                        icon = Icons.Filled.AttachFile,
+                        description = stringResource(R.string.composer_attach),
+                        onClick = onAttach,
+                    )
+                    ComposerAction(
+                        icon = Icons.Filled.AutoAwesome,
+                        description = stringResource(R.string.composer_add_skill),
+                        onClick = onOpenSkills,
+                    )
+                    ComposerAction(
+                        icon = Icons.Filled.KeyboardArrowUp,
+                        description = stringResource(R.string.composer_history_older),
+                        onClick = onOlderHistory,
+                    )
+                    ComposerAction(
+                        icon = Icons.Filled.KeyboardArrowDown,
+                        description = stringResource(R.string.composer_history_newer),
+                        onClick = onNewerHistory,
+                    )
+                    ComposerAction(
+                        icon = Icons.Filled.Inventory2,
+                        description = stringResource(R.string.composer_stash),
+                        onClick = onStash,
+                        enabled = state.text.isNotBlank(),
+                    )
+                    ComposerAction(
+                        icon = Icons.Filled.Unarchive,
+                        description = stringResource(R.string.composer_stash_pop),
+                        onClick = onOpenStash,
+                        enabled = state.stash.isNotEmpty(),
+                    )
+                    ComposerAction(
+                        icon = Icons.Filled.OpenInFull,
+                        description = stringResource(R.string.composer_editor),
+                        onClick = onOpenEditor,
+                    )
                 }
                 SendButton(
                     enabled = state.canSend,
@@ -304,6 +306,25 @@ fun ComposerBar(
                 )
             }
         }
+    }
+}
+
+/**
+ * Stop and Background, for as long as a turn runs.
+ *
+ * Text buttons, because the two words say what they do and a pair of icons would be one more thing to
+ * learn, and a [FlowRow] so that a long translation or a large font wraps the second button under the
+ * first instead of clipping it. They sit at the start of the row, away from Send at the bottom end:
+ * the tap that was aiming for Send must not be able to land on Background.
+ */
+@Composable
+private fun RunningTurnActions(onInterrupt: () -> Unit, onBackground: () -> Unit, modifier: Modifier = Modifier) {
+    FlowRow(
+        modifier = modifier.fillMaxWidth().padding(top = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        TextButton(onClick = onInterrupt) { Text(stringResource(R.string.composer_interrupt)) }
+        TextButton(onClick = onBackground) { Text(stringResource(R.string.composer_background)) }
     }
 }
 
@@ -349,6 +370,7 @@ fun SendButton(
 ) {
     val longPressLabel = stringResource(R.string.composer_queue_on_long_press)
     val send = stringResource(R.string.composer_send)
+    val sendingState = stringResource(R.string.composer_sending)
     val container = if (enabled) {
         MaterialTheme.colorScheme.primaryContainer
     } else {
@@ -372,7 +394,12 @@ fun SendButton(
                 onLongClick = onLongClick.takeIf { queueOnLongPress },
                 onLongClickLabel = longPressLabel.takeIf { queueOnLongPress },
             )
-            .semantics { contentDescription = if (queueOnLongPress) "$send. $longPressLabel" else send },
+            .semantics {
+                contentDescription = if (queueOnLongPress) "$send. $longPressLabel" else send
+                // The spinner has no words, so the state is said here, with a string that already existed
+                // and was never used.
+                if (sending) stateDescription = sendingState
+            },
         contentAlignment = Alignment.Center,
     ) {
         if (sending) {
