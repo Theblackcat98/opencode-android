@@ -8,6 +8,14 @@
  * The scenario is chosen by the requested model id (`model` in the request body), so a whole
  * scenario runs by pointing one session at one model.
  *
+ * Tool arguments must match the tool schemas of the pinned server (`@opencode/cli` 2.0.18):
+ * `edit` takes `path` (not `filePath`) and `subagent` takes `agent` (not `subagent_type`). A
+ * missing required key fails the call with `Invalid arguments for tool "<name>"`; a key the
+ * schema does not name is ignored, not rejected.
+ * The server offers the current schemas in every request, so read them from `GET /__requests`
+ * (`body.tools[].function.parameters`) after any turn, rather than from memory. A relative
+ * `path` resolves against the session's directory.
+ *
  * A step is one of:
  *   { text: ["chunk", ...] }                          text deltas
  *   { reasoning: ["chunk", ...] }                     reasoning deltas
@@ -56,7 +64,7 @@ export const SCENARIOS = {
           id: "call_edit_1",
           name: "edit",
           args: {
-            filePath: "fake-provider-target.txt",
+            path: "fake-provider-target.txt",
             oldString: "before",
             newString: "after",
           },
@@ -90,7 +98,9 @@ export const SCENARIOS = {
     ],
   },
   subagent: {
-    description: "A subagent tool call, then an answer.",
+    description:
+      "A subagent tool call, then an answer. The child session runs this same model, so it replays " +
+      "step 0 too: its `subagent` call errors (its agent is not offered the tool) before it answers.",
     steps: [
       {
         tool: {
@@ -99,7 +109,7 @@ export const SCENARIOS = {
           args: {
             description: "Ask the fake subagent",
             prompt: "Reply with the word pong.",
-            subagent_type: "general",
+            agent: "general",
           },
         },
       },
