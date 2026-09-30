@@ -38,7 +38,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
@@ -70,6 +69,7 @@ import androidx.core.content.ContextCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.opencode.android.core.data.repository.AddServerErrorType
+import dev.opencode.android.core.designsystem.text.SyncedTextField
 import dev.opencode.android.feature.servers.R
 import dev.opencode.android.feature.servers.camera.QrCodeScannerView
 
@@ -194,6 +194,7 @@ object AddServerTags {
     const val PASTE_LINK_INPUT = "paste_link_input"
     const val PAIR_BUTTON = "pair_button"
     const val MANUAL_URL_INPUT = "manual_url_input"
+    const val MANUAL_NAME_INPUT = "manual_name_input"
     const val MANUAL_PASSWORD_INPUT = "manual_password_input"
     const val MANUAL_CONNECT_BUTTON = "manual_connect_button"
 }
@@ -369,7 +370,7 @@ private fun ScanQrTab(
 }
 
 @Composable
-private fun PasteLinkTab(
+internal fun PasteLinkTab(
     state: AddServerUiState,
     onLinkChange: (String) -> Unit,
     onPair: () -> Unit,
@@ -384,7 +385,7 @@ private fun PasteLinkTab(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        OutlinedTextField(
+        SyncedTextField(
             value = state.pairingLinkInput,
             onValueChange = onLinkChange,
             label = { Text(stringResource(R.string.paste_link_label)) },
@@ -428,7 +429,7 @@ private fun PasteLinkTab(
 }
 
 @Composable
-private fun ManualEntryTab(
+internal fun ManualEntryTab(
     state: AddServerUiState,
     onUrlChange: (String) -> Unit,
     onNameChange: (String) -> Unit,
@@ -444,7 +445,7 @@ private fun ManualEntryTab(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        OutlinedTextField(
+        SyncedTextField(
             value = state.manualUrlInput,
             onValueChange = onUrlChange,
             label = { Text(stringResource(R.string.server_url_label)) },
@@ -456,12 +457,14 @@ private fun ManualEntryTab(
             enabled = !state.isWorking,
         )
 
-        OutlinedTextField(
+        SyncedTextField(
             value = state.manualNameInput,
             onValueChange = onNameChange,
             label = { Text(stringResource(R.string.server_name_label)) },
             placeholder = { Text(stringResource(R.string.server_name_hint)) },
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag(AddServerTags.MANUAL_NAME_INPUT),
             singleLine = true,
             enabled = !state.isWorking,
         )
@@ -504,7 +507,7 @@ fun CredentialField(
     supportingText: String? = null,
 ) {
     var visible by remember { mutableStateOf(false) }
-    OutlinedTextField(
+    SyncedTextField(
         value = value,
         onValueChange = onValueChange,
         label = { Text(stringResource(R.string.server_password_label)) },

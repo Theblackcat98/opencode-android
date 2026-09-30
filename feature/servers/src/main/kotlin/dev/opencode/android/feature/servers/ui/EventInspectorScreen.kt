@@ -37,7 +37,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -59,6 +58,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import dev.opencode.android.core.designsystem.text.SyncedTextField
 import dev.opencode.android.core.model.json.OpenCodeJson
 import dev.opencode.android.core.network.ConnectionState
 import dev.opencode.android.core.network.InspectedEvent
@@ -152,7 +152,7 @@ fun EventInspectorScreen(
                 .fillMaxSize()
                 .padding(padding),
         ) {
-            OutlinedTextField(
+            SyncedTextField(
                 value = uiState.searchQuery,
                 onValueChange = viewModel::updateSearchQuery,
                 placeholder = { Text(stringResource(R.string.inspector_search_hint)) },

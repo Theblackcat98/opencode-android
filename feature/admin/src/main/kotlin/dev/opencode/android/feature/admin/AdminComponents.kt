@@ -10,7 +10,6 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -26,6 +25,7 @@ import dev.opencode.android.core.data.action.ActionError
 import dev.opencode.android.core.data.config.DocumentParseFailure
 import dev.opencode.android.core.data.config.SchemaDiagnostic
 import dev.opencode.android.core.data.config.WritePlan
+import dev.opencode.android.core.designsystem.text.SyncedTextField
 
 /**
  * The dialog every write in this phase goes through.
@@ -202,7 +202,12 @@ fun ErrorLine(error: ActionError, onDismiss: () -> Unit, modifier: Modifier = Mo
     }
 }
 
-/** A field with an error under it, which is how every form in this phase reports a problem. */
+/**
+ * A field with an error under it, which is how every form in this phase reports a problem.
+ *
+ * Every value it shows comes from a view model, so it is a [SyncedTextField]: a paste or a fast burst of
+ * typing must not be rewound to the echo of an older keystroke.
+ */
 @Composable
 fun LabelledField(
     label: String,
@@ -215,7 +220,7 @@ fun LabelledField(
     supporting: String? = null,
     tag: String? = null,
 ) {
-    OutlinedTextField(
+    SyncedTextField(
         value = value,
         onValueChange = onValueChange,
         label = { Text(label) },

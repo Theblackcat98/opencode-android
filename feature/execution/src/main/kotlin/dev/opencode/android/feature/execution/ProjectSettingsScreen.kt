@@ -15,7 +15,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -33,6 +32,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import dev.opencode.android.core.designsystem.text.SyncedTextField
 import dev.opencode.android.core.model.Project
 
 /**
@@ -229,7 +229,7 @@ private fun ProjectField(
     labelRes: Int,
     monospace: Boolean = false,
 ) {
-    OutlinedTextField(
+    SyncedTextField(
         value = value,
         onValueChange = onValueChange,
         label = { Text(stringResource(labelRes)) },

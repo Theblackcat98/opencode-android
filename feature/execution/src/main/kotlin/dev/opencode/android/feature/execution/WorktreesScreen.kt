@@ -21,7 +21,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -33,6 +32,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import dev.opencode.android.core.designsystem.text.SyncedTextField
 import dev.opencode.android.core.model.Project
 
 /**
@@ -84,21 +84,21 @@ fun WorktreesScreen(
             modifier = Modifier.padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            OutlinedTextField(
+            SyncedTextField(
                 value = state.draftFrom,
                 onValueChange = onFromChange,
                 label = { Text(stringResource(R.string.worktrees_from)) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
-            OutlinedTextField(
+            SyncedTextField(
                 value = state.draftBranch,
                 onValueChange = onBranchChange,
                 label = { Text(stringResource(R.string.worktrees_branch)) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
-            OutlinedTextField(
+            SyncedTextField(
                 value = state.draftName,
                 onValueChange = onNameChange,
                 label = { Text(stringResource(R.string.worktrees_name)) },

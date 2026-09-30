@@ -14,7 +14,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -28,6 +27,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import dev.opencode.android.core.data.config.WritePlan
+import dev.opencode.android.core.designsystem.text.SyncedTextField
 
 /**
  * The configuration file editor (plan §6, "Config and definition editor").
@@ -104,7 +104,7 @@ fun ConfigEditorScreen(
             }
         }
         HorizontalDivider()
-        OutlinedTextField(
+        SyncedTextField(
             value = state.draft,
             onValueChange = onDraftChange,
             label = { Text(stringResource(R.string.admin_config_text)) },

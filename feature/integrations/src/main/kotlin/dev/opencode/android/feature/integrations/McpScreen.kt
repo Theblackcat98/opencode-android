@@ -29,7 +29,6 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -43,6 +42,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import dev.opencode.android.core.data.integrations.McpConfigProblem
 import dev.opencode.android.core.data.sync.SyncStatus
+import dev.opencode.android.core.designsystem.text.SyncedTextField
 import dev.opencode.android.core.model.McpProtocol
 import dev.opencode.android.core.model.McpResource
 import dev.opencode.android.core.model.McpServer
@@ -285,7 +285,7 @@ fun McpAddSheetContent(
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Text(stringResource(R.string.mcp_add), style = MaterialTheme.typography.titleLarge)
-        OutlinedTextField(
+        SyncedTextField(
             value = draft.name,
             onValueChange = { onChange(draft.copy(name = it)) },
             label = { Text(stringResource(R.string.mcp_add_name)) },
@@ -303,7 +303,7 @@ fun McpAddSheetContent(
             }
         }
         if (draft.kind == dev.opencode.android.core.data.integrations.McpServerDraft.Kind.LOCAL) {
-            OutlinedTextField(
+            SyncedTextField(
                 value = draft.command,
                 onValueChange = { onChange(draft.copy(command = it)) },
                 label = { Text(stringResource(R.string.mcp_add_command)) },
@@ -312,14 +312,14 @@ fun McpAddSheetContent(
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
-            OutlinedTextField(
+            SyncedTextField(
                 value = draft.cwd,
                 onValueChange = { onChange(draft.copy(cwd = it)) },
                 label = { Text(stringResource(R.string.mcp_add_cwd)) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
-            OutlinedTextField(
+            SyncedTextField(
                 value = draft.environment,
                 onValueChange = { onChange(draft.copy(environment = it)) },
                 label = { Text(stringResource(R.string.mcp_add_env)) },
@@ -327,7 +327,7 @@ fun McpAddSheetContent(
                 modifier = Modifier.fillMaxWidth().heightIn(min = 72.dp),
             )
         } else {
-            OutlinedTextField(
+            SyncedTextField(
                 value = draft.url,
                 onValueChange = { onChange(draft.copy(url = it)) },
                 label = { Text(stringResource(R.string.mcp_add_url)) },
@@ -346,7 +346,7 @@ fun McpAddSheetContent(
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
-            OutlinedTextField(
+            SyncedTextField(
                 value = draft.headers,
                 onValueChange = { onChange(draft.copy(headers = it)) },
                 label = { Text(stringResource(R.string.mcp_add_headers)) },
@@ -394,7 +394,7 @@ private fun TimeoutFields(
     )
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         labels.forEachIndexed { index, (label, value) ->
-            OutlinedTextField(
+            SyncedTextField(
                 value = value,
                 onValueChange = { text ->
                     onChange(

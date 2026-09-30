@@ -31,7 +31,6 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -55,6 +54,7 @@ import dev.opencode.android.core.data.integrations.ConnectAttemptState
 import dev.opencode.android.core.data.integrations.CredentialAction
 import dev.opencode.android.core.data.integrations.IntegrationFlow
 import dev.opencode.android.core.data.sync.SyncStatus
+import dev.opencode.android.core.designsystem.text.SyncedTextField
 import dev.opencode.android.core.model.ConnectionInfo
 import dev.opencode.android.core.model.FormValues
 import dev.opencode.android.core.model.IntegrationMethod
@@ -367,7 +367,7 @@ fun ConnectSheetContent(
             IntegrationFormFields(state = state, onAnswer = onAnswer)
         }
 
-        OutlinedTextField(
+        SyncedTextField(
             value = state.labelDraft,
             onValueChange = onLabelChange,
             label = { Text(stringResource(R.string.connect_label)) },
@@ -412,7 +412,7 @@ fun ConnectSheetContent(
 @Composable
 private fun SecretKeyField(value: String, onValueChange: (String) -> Unit) {
     var visible by remember { mutableStateOf(false) }
-    OutlinedTextField(
+    SyncedTextField(
         value = value,
         onValueChange = onValueChange,
         label = { Text(stringResource(R.string.connect_api_key)) },
@@ -457,7 +457,7 @@ private fun IntegrationFormFields(
             .filter { dev.opencode.android.core.data.forms.FormEngine.isVisible(it, state.formAnswers) }
             .forEach { field ->
                 val problem = problems[field.key]
-                OutlinedTextField(
+                SyncedTextField(
                     value = jsonText(state.formAnswers[field.key]),
                     onValueChange = { text ->
                         // The engine owns how an answer is represented; the field only reports the
@@ -514,7 +514,7 @@ private fun OAuthProgress(
             }
         }
         if (state.needsCode) {
-            OutlinedTextField(
+            SyncedTextField(
                 value = state.codeDraft,
                 onValueChange = onCodeChange,
                 label = { Text(stringResource(R.string.connect_device_code)) },
@@ -615,7 +615,7 @@ private fun WellknownSourceCard(
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        OutlinedTextField(
+        SyncedTextField(
             value = url,
             onValueChange = onUrlChange,
             label = { Text(stringResource(R.string.connect_wellknown_url)) },
@@ -649,7 +649,7 @@ private fun CredentialConfirmDialog(
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(stringResource(bodyFor(pending.action), pending.connection.label))
                 if (pending.action == CredentialAction.RENAME) {
-                    OutlinedTextField(
+                    SyncedTextField(
                         value = pending.label,
                         onValueChange = onLabelChange,
                         label = { Text(stringResource(R.string.connect_label)) },

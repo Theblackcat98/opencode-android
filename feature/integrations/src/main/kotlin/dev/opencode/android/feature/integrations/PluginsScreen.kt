@@ -21,7 +21,6 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -32,6 +31,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import dev.opencode.android.core.data.sync.SyncStatus
+import dev.opencode.android.core.designsystem.text.SyncedTextField
 import dev.opencode.android.core.model.PluginInfo
 import dev.opencode.android.core.model.PluginSource
 import dev.opencode.android.core.model.PluginState
@@ -221,7 +221,7 @@ fun ProvidersScreen(
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier.fillMaxSize()) {
-        OutlinedTextField(
+        SyncedTextField(
             value = state.search,
             onValueChange = onSearchChange,
             label = { Text(stringResource(R.string.providers_search)) },
@@ -374,7 +374,7 @@ fun WebSearchScreen(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            OutlinedTextField(
+            SyncedTextField(
                 value = state.query,
                 onValueChange = onQueryChange,
                 label = { Text(stringResource(R.string.websearch_query)) },

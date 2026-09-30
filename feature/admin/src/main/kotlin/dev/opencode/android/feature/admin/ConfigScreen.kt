@@ -19,7 +19,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -36,6 +35,7 @@ import dev.opencode.android.core.data.config.ConfigKey
 import dev.opencode.android.core.data.config.ConfigRow
 import dev.opencode.android.core.data.config.ConfigSource
 import dev.opencode.android.core.data.config.WritePlan
+import dev.opencode.android.core.designsystem.text.SyncedTextField
 
 /**
  * The config explorer (plan §6, "Config explorer").
@@ -238,7 +238,7 @@ private fun ShellCard(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            OutlinedTextField(
+            SyncedTextField(
                 value = state.shellChoice ?: state.currentShell.orEmpty(),
                 onValueChange = onShellChange,
                 label = { Text(stringResource(R.string.admin_shell_field)) },

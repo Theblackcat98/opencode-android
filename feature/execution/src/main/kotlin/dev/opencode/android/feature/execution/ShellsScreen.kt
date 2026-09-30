@@ -28,7 +28,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -43,6 +42,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import dev.opencode.android.core.designsystem.text.SyncedTextField
 import dev.opencode.android.core.model.ShellStatus
 
 /**
@@ -78,7 +78,7 @@ fun ShellsScreen(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            OutlinedTextField(
+            SyncedTextField(
                 value = state.draft,
                 onValueChange = onDraftChange,
                 label = { Text(stringResource(R.string.shells_command)) },

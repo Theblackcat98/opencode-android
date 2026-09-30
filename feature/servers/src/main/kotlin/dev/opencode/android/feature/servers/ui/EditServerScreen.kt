@@ -19,7 +19,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -36,6 +35,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import dev.opencode.android.core.designsystem.text.SyncedTextField
 import dev.opencode.android.feature.servers.R
 
 /**
@@ -45,7 +45,6 @@ import dev.opencode.android.feature.servers.R
  * The credential field starts empty on purpose; leaving it empty keeps the stored one, which is how
  * a rotated password is replaced without ever showing the old token.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditServerScreen(
     onNavigateBack: () -> Unit,
@@ -58,6 +57,40 @@ fun EditServerScreen(
         if (uiState.saved) onNavigateBack()
     }
 
+    EditServerContent(
+        uiState = uiState,
+        onNavigateBack = onNavigateBack,
+        onNameChange = viewModel::updateName,
+        onUrlChange = viewModel::updateUrl,
+        onPasswordChange = viewModel::updatePassword,
+        onDefaultChange = viewModel::setDefault,
+        onTrustUserCertificatesChange = viewModel::setTrustUserCertificates,
+        onSave = viewModel::save,
+        onClearError = viewModel::clearError,
+        modifier = modifier,
+    )
+}
+
+/**
+ * The edit form for a given [uiState], with no view model behind it.
+ *
+ * Separate from [EditServerScreen] so a test can stand in for a view model that echoes each keystroke
+ * late, which is the thing the fields have to survive.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun EditServerContent(
+    uiState: EditServerUiState,
+    onNavigateBack: () -> Unit,
+    onNameChange: (String) -> Unit,
+    onUrlChange: (String) -> Unit,
+    onPasswordChange: (String) -> Unit,
+    onDefaultChange: (Boolean) -> Unit,
+    onTrustUserCertificatesChange: (Boolean) -> Unit,
+    onSave: () -> Unit,
+    onClearError: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     Scaffold(
         modifier = modifier.testTag(EditServerTags.SCREEN),
         topBar = {
@@ -93,18 +126,20 @@ fun EditServerScreen(
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                OutlinedTextField(
+                SyncedTextField(
                     value = uiState.name,
-                    onValueChange = viewModel::updateName,
+                    onValueChange = onNameChange,
                     label = { Text(stringResource(R.string.server_name_label)) },
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag(EditServerTags.NAME_INPUT),
                     singleLine = true,
                     enabled = !uiState.isWorking,
                 )
 
-                OutlinedTextField(
+                SyncedTextField(
                     value = uiState.url,
-                    onValueChange = viewModel::updateUrl,
+                    onValueChange = onUrlChange,
                     label = { Text(stringResource(R.string.server_url_label)) },
                     placeholder = { Text(stringResource(R.string.server_url_hint)) },
                     modifier = Modifier
@@ -116,7 +151,7 @@ fun EditServerScreen(
 
                 CredentialField(
                     value = uiState.password,
-                    onValueChange = viewModel::updatePassword,
+                    onValueChange = onPasswordChange,
                     enabled = !uiState.isWorking,
                     supportingText = stringResource(R.string.edit_server_password_hint),
                     modifier = Modifier.testTag(EditServerTags.PASSWORD_INPUT),
@@ -124,18 +159,18 @@ fun EditServerScreen(
 
                 DefaultServerToggle(
                     checked = uiState.isDefault,
-                    onCheckedChange = viewModel::setDefault,
+                    onCheckedChange = onDefaultChange,
                     enabled = !uiState.isWorking,
                 )
 
                 TrustUserCertificatesToggle(
                     checked = uiState.trustUserCertificates,
-                    onCheckedChange = viewModel::setTrustUserCertificates,
+                    onCheckedChange = onTrustUserCertificatesChange,
                     enabled = !uiState.isWorking,
                 )
 
                 Button(
-                    onClick = viewModel::save,
+                    onClick = onSave,
                     enabled = !uiState.isWorking,
                     modifier = Modifier
                         .fillMaxWidth()
@@ -153,14 +188,15 @@ fun EditServerScreen(
         ConnectionErrorDialog(
             error = error,
             technicalDetail = uiState.errorTechnicalDetail,
-            onPairAgain = viewModel::clearError,
-            onDismiss = viewModel::clearError,
+            onPairAgain = onClearError,
+            onDismiss = onClearError,
         )
     }
 }
 
 object EditServerTags {
     const val SCREEN = "edit_server_screen"
+    const val NAME_INPUT = "edit_server_name_input"
     const val URL_INPUT = "edit_server_url_input"
     const val PASSWORD_INPUT = "edit_server_password_input"
     const val SAVE_BUTTON = "edit_server_save_button"

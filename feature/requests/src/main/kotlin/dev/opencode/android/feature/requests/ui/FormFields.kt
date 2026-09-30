@@ -14,7 +14,6 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -30,6 +29,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import dev.opencode.android.core.data.forms.FormEngine
 import dev.opencode.android.core.data.forms.FormFieldState
+import dev.opencode.android.core.designsystem.text.SyncedTextField
 import dev.opencode.android.core.model.FormAnswer
 import dev.opencode.android.core.model.FormField
 import dev.opencode.android.core.model.FormOption
@@ -174,7 +174,7 @@ private fun StringFieldRow(
             }
         }
         if (field.custom || field.options.isEmpty()) {
-            OutlinedTextField(
+            SyncedTextField(
                 value = if (customOnly) text else "",
                 onValueChange = { onAnswerChange(field.key, FormValues.string(it)) },
                 label = if (field.options.isEmpty()) {
@@ -206,7 +206,7 @@ private fun NumberFieldRow(
     val text = (state.value as? JsonPrimitive)?.content.orEmpty()
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         FieldLabel(state)
-        OutlinedTextField(
+        SyncedTextField(
             value = text,
             // Kept as text, not as a number: a partially typed "1e" or "-" is a legitimate state to
             // be in, and parsing it on every keystroke would delete the user's typing.

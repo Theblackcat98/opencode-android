@@ -69,6 +69,16 @@ Found by driving the app against a live server on an emulator, which no test had
   (it is a `combine(…).stateIn(…)`), so fast typing, a paste or autofill was rewound to a stale echo.
   `TextSync` remembers what the field itself reported and ignores the echo of it; `SyncedTextField`
   applies that to a field.
+- **Typing was still reordered in every other form.** A 32-character password typed with
+  `adb shell input text` into Edit server arrived with its first two characters swapped and was
+  rejected. A plain `MutableStateFlow` echoes late too, because `collectAsStateWithLifecycle` hands the
+  write to the composition a frame later, so the server forms, the event inspector search, the admin
+  fields, the shell and worktree fields, project settings, the connect sheet's key and login fields, the
+  MCP form, the plugin, provider and web-search boxes, the history search and a request form's text and
+  number answers all showed a stale echo. They use `SyncedTextField` now, and a number field can hold a
+  decimal point, which the old field deleted. Tests drive each screen with a state that trails on
+  purpose and fail on the old code; not yet seen on a device. The file browser's search and the review
+  comment box still have the old behaviour.
 - **Typing a directory registered a project for every prefix.** `NewSessionViewModel.setPathDraft`
   chose a location on every keystroke of anything that looked like an absolute path, which loads that
   directory's agents and models, and the server registers every directory it is asked about. Typing

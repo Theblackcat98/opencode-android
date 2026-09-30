@@ -16,7 +16,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -30,6 +29,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import dev.opencode.android.core.data.config.DefinitionKind
+import dev.opencode.android.core.designsystem.text.SyncedTextField
 
 /**
  * The guided templates sheet (plan §6).
@@ -317,7 +317,7 @@ fun DefinitionScreen(
                 }
             }
         }
-        OutlinedTextField(
+        SyncedTextField(
             value = state.body,
             onValueChange = onBodyChange,
             label = { Text(stringResource(R.string.admin_definition_body)) },
