@@ -53,6 +53,8 @@
     <string name="terminal_kill_body">The process is killed and the terminal is removed. Anything running in it stops.</string>
     <string name="terminal_kill_confirm">Remove it</string>
     <string name="terminal_failed">The terminal could not be opened</string>
+    <string name="terminal_error_gone">This terminal is no longer on the server. It may have been removed from another device.</string>
+    <string name="terminal_error_no_connection">There is no connection to the server, so the terminal could not be attached. Check the connection and try again.</string>
     <string name="terminal_exit">exit %1$d</string>
     <string name="terminal_extra_keys">Terminal keys</string>
     <string name="terminal_picker_title">Choose a shell</string>

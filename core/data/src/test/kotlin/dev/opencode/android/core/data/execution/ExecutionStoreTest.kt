@@ -51,6 +51,9 @@ class ExecutionStoreTest {
     private lateinit var server: MockWebServer
     private lateinit var api: ServerApi
     private val bodies = mutableMapOf<String, String>()
+
+    /** Answers that differ from the harness's status, keyed like [bodies]; a key may name a method. */
+    private val statuses = mutableMapOf<String, Int>()
     private val recorded = mutableListOf<RecordedRequest>()
 
     /** Every request the app made, in order, so a test can assert on the query it sent. */
@@ -77,9 +80,11 @@ class ExecutionStoreTest {
         server.dispatcher = object : Dispatcher() {
             override fun dispatch(request: RecordedRequest): MockResponse {
                 synchronized(recorded) { recorded += request }
-                val answer = bodies[request.url.encodedPath] ?: body
+                // A key may name the method as well as the path, because `pty.list` and `pty.create` share one.
+                val key = "${request.method} ${request.url.encodedPath}"
+                val answer = bodies[key] ?: bodies[request.url.encodedPath] ?: body
                 return MockResponse.Builder()
-                    .code(status)
+                    .code(statuses[key] ?: status)
                     .addHeader("Content-Type", "application/json")
                     .body(answer)
                     .build()
@@ -154,6 +159,68 @@ class ExecutionStoreTest {
         )
         assertEquals(1, store.ptys.value.size)
         assertEquals("build log", store.ptys.value.single().title)
+    }
+
+    @Test
+    fun `a terminal the server just created is listed from its answer, and the event then adds nothing`() =
+        runTest(UnconfinedTestDispatcher()) {
+            val scope = backgroundScope
+            bodies["GET /api/pty"] = ptyList("/a")
+            bodies["POST /api/pty"] = ptyCreated("/a", "pty_1", "shell")
+            val surface = ExecutionSurface("srv", api, scope)
+            val store = surface.at("/a")
+            awaitUntil("the empty list to be read") { store.ptyList.value != null }
+
+            val created = surface.commands.createPty("/a", title = "shell")
+
+            // No event has been applied and nothing has been re-read: the answer is all the list has heard.
+            assertEquals("pty_1", created.getOrThrow().id)
+            assertEquals(listOf("pty_1"), store.ptys.value.map { it.id })
+
+            store.apply(event("pty.created", "/a", PtyCreated(pty("pty_1", "shell"))))
+            assertEquals(listOf("pty_1"), store.ptys.value.map { it.id })
+        }
+
+    @Test
+    fun `the event before the answer leaves one row too`() = runTest(UnconfinedTestDispatcher()) {
+        val scope = backgroundScope
+        bodies["GET /api/pty"] = ptyList("/a")
+        bodies["POST /api/pty"] = ptyCreated("/a", "pty_1", "shell")
+        val surface = ExecutionSurface("srv", api, scope)
+        val store = surface.at("/a")
+        awaitUntil("the empty list to be read") { store.ptyList.value != null }
+        store.apply(event("pty.created", "/a", PtyCreated(pty("pty_1", "shell"))))
+
+        surface.commands.createPty("/a", title = "shell").getOrThrow()
+
+        assertEquals(listOf("pty_1"), store.ptys.value.map { it.id })
+    }
+
+    @Test
+    fun `a create for a location nobody opened builds no store for it`() = runTest(UnconfinedTestDispatcher()) {
+        val scope = backgroundScope
+        bodies["POST /api/pty"] = ptyCreated("/z", "pty_z", "shell")
+        val surface = ExecutionSurface("srv", api, scope)
+
+        surface.commands.createPty("/z", title = "shell").getOrThrow()
+
+        assertTrue("a create is not a reason to start listing a location", surface.directories.isEmpty())
+    }
+
+    @Test
+    fun `a refused create lists nothing and reports the failure`() = runTest(UnconfinedTestDispatcher()) {
+        val scope = backgroundScope
+        bodies["GET /api/pty"] = ptyList("/a")
+        bodies["POST /api/pty"] = """{"_tag":"unavailable","message":"out of terminals"}"""
+        statuses["POST /api/pty"] = 500
+        val surface = ExecutionSurface("srv", api, scope)
+        val store = surface.at("/a")
+        awaitUntil("the empty list to be read") { store.ptyList.value != null }
+
+        val created = surface.commands.createPty("/a", title = "shell")
+
+        assertTrue(created.isFailure)
+        assertTrue(store.ptys.value.isEmpty())
     }
 
     @Test
@@ -408,6 +475,11 @@ class ExecutionStoreTest {
         )
         append("]}")
     }
+
+    /** A `pty.create` answer: the terminal itself, in the `{location, data}` wrapper. */
+    private fun ptyCreated(directory: String, id: String, title: String): String =
+        """{"location":{"directory":"$directory"},"data":{"id":"$id","title":"$title","command":"/bin/bash",""" +
+            """"args":["-l"],"cwd":"$directory","status":"running","pid":4242}}"""
 
     /** A `shell.list` answer, with every field `ShellInfo` requires. */
     private fun shellList(directory: String, vararg shells: Pair<String, String>): String = buildString {

@@ -18,6 +18,9 @@ dependencies {
     // and a feature may not import another feature (see the feature convention plugin), so this module
     // takes the same test-only arrangement Phase 3 and Phase 6 used.
     testImplementation(projects.core.testing)
+    // The terminal tests drive a real `ServerDataSet` over a MockWebServer, and the set's on-device cache is
+    // `core:database`'s interface, which the data layer keeps off a feature's compile classpath.
+    testImplementation(projects.core.database)
     testImplementation(libs.okhttp.mockwebserver)
     testImplementation(libs.robolectric)
     testImplementation(libs.kotlinx.coroutines.test)

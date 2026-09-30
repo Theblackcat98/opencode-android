@@ -3,9 +3,11 @@ package dev.opencode.android.feature.execution
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dev.opencode.android.core.data.action.ActionError
 import dev.opencode.android.core.data.action.toActionError
 import dev.opencode.android.core.data.connection.ServerConnectionManager
 import dev.opencode.android.core.data.server.ServerDataRegistry
+import dev.opencode.android.core.data.server.ServerDataSet
 import dev.opencode.android.core.data.terminal.TerminalBridgeMessage
 import dev.opencode.android.core.data.terminal.TerminalGrid
 import dev.opencode.android.core.data.terminal.TerminalGridSize
@@ -62,7 +64,7 @@ data class TerminalUiState(
     val selection: String? = null,
     /** Output the page has not taken yet, and which the screen writes and then clears. */
     val pendingOutput: String = "",
-    val error: String? = null,
+    val error: TerminalError? = null,
 ) {
     val canStartProject: Boolean get() = !creating && !startCommand.isNullOrBlank()
 
@@ -87,6 +89,28 @@ data class TerminalUiState(
 }
 
 /**
+ * Why the terminal screen is telling the user something went wrong.
+ *
+ * **A reason and not a sentence, so the screen can localise it.** A view model has no `Context`, and a
+ * string typed here would reach the dialog as the code it is written as. The two reasons this client
+ * itself has are objects the screen turns into `strings.xml` text; anything the *server* said, or the
+ * page reported, is [Said] and is shown as it came, because it is more specific than anything this
+ * client could write.
+ */
+sealed interface TerminalError {
+    /** The server's own words, or the page's, shown as they arrived. */
+    data class Said(val message: String) : TerminalError
+
+    /** The terminal the user chose is no longer in the server's list: another client removed it. */
+    data object Gone : TerminalError
+
+    /** There is no server connection to open the terminal's socket over. */
+    data object NoConnection : TerminalError
+}
+
+private fun ActionError.said(): TerminalError = TerminalError.Said(message)
+
+/**
  * A live terminal: the socket, the resize, and the bridge messages (features doc §31).
  *
  * **The WebSocket belongs to this view model, not to the screen.** A terminal has to survive a
@@ -102,15 +126,31 @@ data class TerminalUiState(
  * cell count and [TerminalGrid.needsResize] says whether it moved, so a drag that produces twenty
  * layouts costs at most a couple of `pty.update` calls and never sends a `size {rows: 0}` the server
  * refuses.
+ *
+ * **A terminal the user just created is opened from what the server answered, not from the list.**
+ * `pty.create` answers with the whole terminal, and the list learns of it from the `pty.created` event
+ * that follows, which the dispatcher applies a frame later. Looking the new id up in the list — which is
+ * what this used to do — found nothing whenever the answer won that race, and the screen said the terminal
+ * was unknown while the server was running it. A terminal the user *taps*, by contrast, is a row of the
+ * list, so it is looked up there.
  */
 @HiltViewModel
-class TerminalViewModel @Inject constructor(
-    private val dataSets: ServerDataRegistry,
-    private val connections: ServerConnectionManager,
-    private val credentialCache: ServerCredentialCache,
-    private val serverTls: ServerTls,
-    private val okHttpClient: OkHttpClient,
+class TerminalViewModel(
+    private val active: StateFlow<ServerDataSet?>,
+    private val sockets: TerminalSockets,
 ) : ViewModel() {
+
+    /**
+     * Hilt's constructor: the read model of the server being followed, and the socket that server's
+     * credential and trust setting build.
+     */
+    @Inject
+    constructor(
+        dataSets: ServerDataRegistry,
+        connections: ServerConnectionManager,
+        credentialCache: ServerCredentialCache,
+        serverTls: ServerTls,
+    ) : this(dataSets.active, ActiveServerSockets(connections, credentialCache, serverTls))
 
     private val _state = MutableStateFlow(TerminalUiState())
     val state: StateFlow<TerminalUiState> = _state.asStateFlow()
@@ -140,7 +180,7 @@ class TerminalViewModel @Inject constructor(
 
     /** Binds the panel to a location and reads the terminals. */
     fun open(directory: String, startCommand: String? = null) {
-        val set = dataSets.active.value ?: return
+        val set = active.value ?: return
         _state.value = TerminalUiState(directory = directory, startCommand = startCommand)
         set.execution.open(directory)
         // The project's own `commands.start` is what the quick action runs. It is resolved here rather
@@ -179,16 +219,27 @@ class TerminalViewModel @Inject constructor(
      */
     fun openTerminal(ptyID: String) {
         val directory = _state.value.directory ?: return
+        // A row the user tapped is in the list, so a miss means the server removed it since it was drawn.
         val info = _state.value.terminals.firstOrNull { it.id == ptyID }
         if (info == null) {
-            _state.value = _state.value.copy(error = "unknown-terminal")
+            _state.value = _state.value.copy(error = TerminalError.Gone)
             return
         }
+        attach(directory, info)
+    }
+
+    /**
+     * Shows [info] as the open terminal and connects to it.
+     *
+     * Takes the terminal itself rather than an id, so a terminal the server has just described can be
+     * opened before the list has heard of it.
+     */
+    private fun attach(directory: String, info: PtyInfo) {
         closeSocket()
         ticketTried = false
         _state.value = _state.value.copy(open = info, size = null, ticket = null, pickerOpen = false)
-        val created = connect(directory, ptyID, ticket = null)
-        if (created == null) _state.value = _state.value.copy(error = "socket-unavailable")
+        val created = connect(directory, info.id, ticket = null)
+        if (created == null) _state.value = _state.value.copy(error = TerminalError.NoConnection)
     }
 
     /** Re-opens the socket from the cursor the server last reported. */
@@ -212,7 +263,7 @@ class TerminalViewModel @Inject constructor(
     private fun connectWithTicket(directory: String, ptyID: String) {
         if (ticketTried) return
         ticketTried = true
-        val commands = dataSets.active.value?.execution?.commands ?: return
+        val commands = active.value?.execution?.commands ?: return
         viewModelScope.launch {
             val ticket = commands.ptyTicket(directory, ptyID).getOrNull()?.ticket
             if (ticket == null) return@launch
@@ -223,24 +274,7 @@ class TerminalViewModel @Inject constructor(
     }
 
     private fun connect(directory: String, ptyID: String, ticket: String?): PtySocket? {
-        val profile = connections.activeConnection.value?.serverProfile ?: return null
-        val client = serverTls
-            .clientFor(profile.trustUserCertificates)
-            .newBuilder()
-            .addInterceptor(AuthInterceptor(credentialProvider = credentialCache))
-            .build()
-        val socket = PtySocket(
-            url = PtySocket.terminalUrl(
-                baseUrl = profile.baseUrl,
-                path = "api/pty/$ptyID/connect",
-                query = mapOf(LOCATION_QUERY to directory),
-            ),
-            okHttpClient = client,
-            // The interceptor supplies the credential; a ticket is only ever set explicitly, because a
-            // credential in a URL would end up in a log.
-            credential = null,
-            ticket = ticket,
-        )
+        val socket = sockets.create(directory, ptyID, ticket) ?: return null
         this.socket = socket
         viewModelScope.launch {
             socket.state.collect { stream -> foldStream(stream) }
@@ -283,7 +317,8 @@ class TerminalViewModel @Inject constructor(
 
             is TerminalBridgeMessage.Selection -> _state.value = _state.value.copy(selection = message.data)
 
-            is TerminalBridgeMessage.Failed -> _state.value = _state.value.copy(error = message.message)
+            is TerminalBridgeMessage.Failed ->
+                _state.value = _state.value.copy(error = TerminalError.Said(message.message))
         }
     }
 
@@ -318,25 +353,31 @@ class TerminalViewModel @Inject constructor(
         if (!TerminalGrid.needsResize(_state.value.size, next)) return
         val directory = _state.value.directory ?: return
         val id = _state.value.open?.id ?: return
-        val set = dataSets.active.value ?: return
+        val set = active.value ?: return
         _state.value = _state.value.copy(size = next)
         viewModelScope.launch {
             val error = set.execution.commands.resizePty(directory, id, PtySize(rows, cols))
                 .exceptionOrNull()?.toActionError()
-            if (error != null) _state.value = _state.value.copy(error = error.message)
+            if (error != null) _state.value = _state.value.copy(error = error.said())
         }
     }
 
-    /** `pty.create`, with the shell the user picked. A `null` [command] runs the configured shell. */
+    /**
+     * `pty.create`, with the shell the user picked. A `null` [command] runs the configured shell.
+     *
+     * The terminal that opens is the one the server answered with. The store has recorded the same answer
+     * by then, and `pty.created` will confirm it, but neither is waited for: the answer is already the
+     * server's word, and waiting for a second copy of it is what made this fail.
+     */
     fun createTerminal(command: String?, args: List<String>? = null, title: String? = null) {
         val directory = _state.value.directory ?: return
-        val set = dataSets.active.value ?: return
+        val set = active.value ?: return
         _state.value = _state.value.copy(creating = true, error = null)
         viewModelScope.launch {
             val result = set.execution.commands.createPty(directory, command, args, title)
             val error = result.exceptionOrNull()?.toActionError()
-            _state.value = _state.value.copy(creating = false, error = error?.message, pickerOpen = false)
-            result.getOrNull()?.let { openTerminal(it.id) }
+            _state.value = _state.value.copy(creating = false, error = error?.said(), pickerOpen = false)
+            result.getOrNull()?.let { attach(directory, it) }
         }
     }
 
@@ -360,10 +401,10 @@ class TerminalViewModel @Inject constructor(
     /** `pty.update` with a title; `pty.updated` then renames every open view of the terminal. */
     fun rename(ptyID: String, title: String) {
         val directory = _state.value.directory ?: return
-        val commands = dataSets.active.value?.execution?.commands ?: return
+        val commands = active.value?.execution?.commands ?: return
         viewModelScope.launch {
             val error = commands.renamePty(directory, ptyID, title).exceptionOrNull()?.toActionError()
-            if (error != null) _state.value = _state.value.copy(error = error.message)
+            if (error != null) _state.value = _state.value.copy(error = error.said())
         }
     }
 
@@ -387,13 +428,13 @@ class TerminalViewModel @Inject constructor(
     /** `pty.remove`, after the confirmation plan §5.2 asks for. */
     fun confirmKill() {
         val directory = _state.value.directory ?: return
-        val set = dataSets.active.value ?: return
+        val set = active.value ?: return
         val target = _state.value.killTarget ?: return
         _state.value = _state.value.copy(killTarget = null)
         viewModelScope.launch {
             val error = set.execution.commands.removePty(directory, target).exceptionOrNull()?.toActionError()
             if (error != null) {
-                _state.value = _state.value.copy(error = error.message)
+                _state.value = _state.value.copy(error = error.said())
             } else if (_state.value.open?.id == target) {
                 closeSocket()
                 _state.value = _state.value.copy(open = null, stream = PtyStreamState.Closed("removed"))
@@ -467,15 +508,6 @@ class TerminalViewModel @Inject constructor(
     }
 
     private companion object {
-        /**
-         * The `location[directory]` query the WebSocket URL carries, named once.
-         *
-         * The deepObject spelling is the one every route takes; `LocationParam.QUERY_KEY` is in
-         * `core:network` and this module depends on the core modules only, so the literal is asserted
-         * against the constant by a test rather than imported.
-         */
-        const val LOCATION_QUERY = "location[directory]"
-
         /** How much output is held before the oldest is dropped: 256 KiB of characters. */
         const val PENDING_LIMIT = 256 * 1024
 
@@ -489,3 +521,70 @@ class TerminalViewModel @Inject constructor(
         val TICKET_WORTH_REFUSALS = setOf("refused (401)", "refused (403)")
     }
 }
+
+/**
+ * Where a terminal's socket comes from.
+ *
+ * A seam rather than a constructor argument list, because everything that builds a socket — the server's
+ * address, its trust setting, the credential — belongs to the *active connection*, and a test has none.
+ */
+fun interface TerminalSockets {
+    /** An unopened socket for [ptyID], or `null` when there is no server connection to build one over. */
+    fun create(directory: String, ptyID: String, ticket: String?): PtySocket?
+}
+
+/**
+ * The app's sockets: the active server's address and trust setting, with [AuthInterceptor] on the upgrade.
+ *
+ * The interceptor is the same one every REST call uses, which is what makes a re-pair take effect on the
+ * next reconnect.
+ */
+private class ActiveServerSockets(
+    private val connections: ServerConnectionManager,
+    private val credentialCache: ServerCredentialCache,
+    private val serverTls: ServerTls,
+) : TerminalSockets {
+    override fun create(directory: String, ptyID: String, ticket: String?): PtySocket? {
+        val profile = connections.activeConnection.value?.serverProfile ?: return null
+        val client = serverTls
+            .clientFor(profile.trustUserCertificates)
+            .newBuilder()
+            .addInterceptor(AuthInterceptor(credentialProvider = credentialCache))
+            .build()
+        return terminalSocket(profile.baseUrl, client, directory, ptyID, ticket)
+    }
+}
+
+/**
+ * The socket for one terminal, addressed the way the server's `pty.connect` route is.
+ *
+ * Shared by the app's sockets and by the tests that stand a fake server behind them, so a test asserts
+ * the URL production builds rather than one it wrote for itself.
+ */
+internal fun terminalSocket(
+    baseUrl: String,
+    client: OkHttpClient,
+    directory: String,
+    ptyID: String,
+    ticket: String?,
+): PtySocket = PtySocket(
+    url = PtySocket.terminalUrl(
+        baseUrl = baseUrl,
+        path = "api/pty/$ptyID/connect",
+        query = mapOf(LOCATION_QUERY to directory),
+    ),
+    okHttpClient = client,
+    // The interceptor supplies the credential; a ticket is only ever set explicitly, because a
+    // credential in a URL would end up in a log.
+    credential = null,
+    ticket = ticket,
+)
+
+/**
+ * The `location[directory]` query the WebSocket URL carries, named once.
+ *
+ * The deepObject spelling is the one every route takes; `LocationParam.QUERY_KEY` is in `core:network` and
+ * this module depends on the core modules only, so the literal is asserted against the request a test's
+ * server records rather than imported.
+ */
+private const val LOCATION_QUERY = "location[directory]"

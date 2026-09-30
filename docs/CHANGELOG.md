@@ -123,6 +123,15 @@ Found by driving the app against a live server on an emulator, which no test had
   download on a file it holds only the start of. The viewer's content was also never published (nothing set
   `FileBrowserState.content`), so a file that did read was never shown; `FileReader.open` does. A wire test over a streamed
   256 MiB body fails on the old code; not yet seen on a device.
+- **A new terminal was reported as unknown and never opened.** "New terminal, Use the default shell" created the
+  PTY on the server (`POST /api/pty` answered 200) and the app then said "The terminal could not be opened -
+  unknown-terminal". `TerminalViewModel` looked the new id up in its copy of the terminal list, which learns of a
+  terminal from the `pty.created` event, and the dispatcher applies that a frame after the response. It now opens
+  the `PtyInfo` the create call returned, and `ExecutionCommands.createPty` records that answer in the store so
+  the list is right before the event; the event then replaces the same row. The dialog no longer prints the codes
+  `unknown-terminal` and `socket-unavailable`: the two reasons the app gives itself are `strings.xml` text and
+  what the server said is still shown as it said it. `TerminalOpenTest` drives the view model over a real data set
+  and a MockWebServer with both orderings and fails on the old code; not yet seen on a device.
 - Markdown inside list items (`**bold**`, `` `code` ``, links) was drawn as typed; only paragraphs,
   headings and table cells were parsed.
 - "Changed 1 files" is now "Changed 1 file".

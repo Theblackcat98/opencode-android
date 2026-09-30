@@ -156,7 +156,7 @@ class ExecutionStore(
             }
 
             is PtyCreated -> {
-                _ptys.value = _ptys.value.filterNot { it.id == payload.info.id } + payload.info
+                record(payload.info)
                 true
             }
 
@@ -179,6 +179,19 @@ class ExecutionStore(
 
             else -> false
         }
+    }
+
+    /**
+     * Puts a terminal the server has described into [ptys], in place of any row with the same id.
+     *
+     * **Idempotent on purpose, because the server says the same thing twice.** `pty.create` answers with the
+     * whole terminal and `pty.created` then carries it again, and the two reach the client in either order.
+     * Whichever comes second finds the row and replaces it with the same object, so the list neither misses
+     * the terminal nor shows it twice. What is recorded is always the server's own description; nothing here
+     * is a guess about a terminal the server has not confirmed.
+     */
+    fun record(info: PtyInfo) {
+        _ptys.value = _ptys.value.filterNot { it.id == info.id } + info
     }
 
     /** Records what a failed call to an experimental route proved, or proved nothing. */
@@ -257,7 +270,15 @@ class ExecutionCommands(
     suspend fun shell(directory: String, id: String): Result<ShellInfo> =
         call { api.getShell(id, directory).data }
 
-    /** `pty.create`: starts a terminal. A `null` [command] runs the location's configured shell. */
+    /**
+     * `pty.create`: starts a terminal. A `null` [command] runs the location's configured shell.
+     *
+     * **The answer is the terminal, and it is recorded before the caller sees it.** The server's own
+     * `pty.created` follows on the event stream, where the dispatcher buffers it until the next frame, so a
+     * caller that went and looked the new id up in [ExecutionStore.ptys] would usually look before the event
+     * had been applied. The response carries the whole [PtyInfo], so the list is brought up to date from it
+     * here; the event then replaces the same row with the same object.
+     */
     suspend fun createPty(
         directory: String,
         command: String? = null,
@@ -265,7 +286,7 @@ class ExecutionCommands(
         title: String? = null,
     ): Result<PtyInfo> = call {
         api.createPty(directory, PtyCreateRequest(command = command, args = args, title = title)).data
-    }
+    }.onSuccess { info -> stores()[directory]?.record(info) }
 
     /**
      * `pty.update` with a size, which is how a layout change reaches the terminal.

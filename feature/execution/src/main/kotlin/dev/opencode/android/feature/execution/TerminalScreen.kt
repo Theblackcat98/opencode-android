@@ -149,16 +149,28 @@ fun TerminalScreen(
         )
     }
 
-    state.error?.let { error ->
-        AlertDialog(
-            onDismissRequest = onDismissError,
-            title = { Text(stringResource(R.string.terminal_failed)) },
-            text = { Text(error) },
-            confirmButton = {
-                TextButton(onClick = onDismissError) { Text(stringResource(R.string.action_close)) }
-            },
-        )
-    }
+    state.error?.let { error -> TerminalErrorDialog(error = error, onDismiss = onDismissError) }
+}
+
+/** The dialog a failed terminal action ends in: one title, and the reason in words the user can read. */
+@Composable
+internal fun TerminalErrorDialog(error: TerminalError, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.terminal_failed)) },
+        text = { Text(error.text()) },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_close)) }
+        },
+    )
+}
+
+/** The words for a reason: the server's own when it gave any, and this app's own for the two it has. */
+@Composable
+private fun TerminalError.text(): String = when (this) {
+    is TerminalError.Said -> message
+    TerminalError.Gone -> stringResource(R.string.terminal_error_gone)
+    TerminalError.NoConnection -> stringResource(R.string.terminal_error_no_connection)
 }
 
 /**

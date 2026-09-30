@@ -1,12 +1,27 @@
 package dev.opencode.android.feature.execution
 
+import dev.opencode.android.core.data.config.ConfigSchema
+import dev.opencode.android.core.data.server.ServerDataSet
+import dev.opencode.android.core.database.cache.ReadCacheStore
+import dev.opencode.android.core.model.SessionInfo
+import dev.opencode.android.core.model.SessionMessage
 import dev.opencode.android.core.network.ServerApi
 import dev.opencode.android.core.network.ServerApiFactory
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.serialization.json.JsonObject
 import mockwebserver3.Dispatcher
 import mockwebserver3.MockResponse
 import mockwebserver3.MockWebServer
 import mockwebserver3.RecordedRequest
 import okhttp3.OkHttpClient
+import okhttp3.Response
+import okhttp3.WebSocket
+import okhttp3.WebSocketListener
+import okio.ByteString
+import okio.ByteString.Companion.toByteString
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -29,6 +44,28 @@ class ExecutionServer(
     val baseUrl: String get() = server.url("/").toString().trimEnd('/')
     val api: ServerApi = ServerApiFactory(OkHttpClient()).createForReads(baseUrl)
 
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
+    /**
+     * The read model over [api], for the view models that follow a set rather than call an api.
+     *
+     * The real one: a stand-in would hand a terminal list back at whatever moment the test asked, and the
+     * moment the list catches up with the server is exactly what a terminal test is about.
+     */
+    val set: ServerDataSet = ServerDataSet(
+        serverId = "srv",
+        api = api,
+        scope = scope,
+        cache = NoCache,
+        schema = ConfigSchema(JsonObject(emptyMap())),
+    )
+
+    /** What runs when a request arrives and before it is answered, keyed like [bodies]. */
+    val beforeAnswer = mutableMapOf<String, () -> Unit>()
+
+    /** The server's end of every WebSocket upgrade it accepted, so a test can speak as the terminal. */
+    private val peers = mutableListOf<WebSocket>()
+
     private val recorded = mutableListOf<RecordedRequest>()
     private val bodiesSent = mutableListOf<String>()
 
@@ -50,6 +87,12 @@ class ExecutionServer(
                     bodiesSent += request.body?.let { String(it.toByteArray(), Charsets.UTF_8) }.orEmpty()
                 }
                 val key = "${request.method} ${request.url.encodedPath}"
+                // A PTY upgrade is accepted and left open: the request is recorded above, which is all
+                // most tests need to know, and the peer is kept so one can send the terminal's frames.
+                if (request.headers["Upgrade"].equals("websocket", ignoreCase = true)) {
+                    return MockResponse.Builder().webSocketUpgrade(acceptor).build()
+                }
+                (beforeAnswer[key] ?: beforeAnswer[request.url.encodedPath])?.invoke()
                 val body = bodies[key] ?: bodies[request.url.encodedPath] ?: "{}"
                 val status = statuses[key] ?: statuses[request.url.encodedPath] ?: 200
                 val builder = MockResponse.Builder().code(status)
@@ -69,11 +112,19 @@ class ExecutionServer(
     /** The last request whose path contains [fragment], which is how a query is asserted. */
     fun lastRequest(fragment: String): String? = requests.lastOrNull { it.contains(fragment) }
 
-    /** The last request *body* whose path contains [fragment], for the routes that take one. */
-    fun lastBody(fragment: String): String? = synchronized(bodiesSent) {
+    /**
+     * The last request *body* whose path contains [fragment], for the routes that take one.
+     *
+     * [method] narrows it to one verb: `/api/pty` is the path of the create and also the start of every
+     * terminal's socket URL, and the socket's upgrade has no body to be mistaken for the create's.
+     */
+    fun lastBody(fragment: String, method: String? = null): String? = synchronized(recorded) {
         var index = recorded.size - 1
         while (index >= 0) {
-            if (recorded[index].url.encodedPath.contains(fragment)) return bodiesSent[index]
+            val request = recorded[index]
+            if (request.url.encodedPath.contains(fragment) && (method == null || request.method == method)) {
+                return bodiesSent[index]
+            }
             index--
         }
         null
@@ -89,7 +140,28 @@ class ExecutionServer(
         return null
     }
 
+    /** How many WebSocket upgrades the server has accepted. */
+    val sockets: Int get() = synchronized(peers) { peers.size }
+
+    /** Sends the control frame the server writes after a terminal's replay, to the newest socket. */
+    fun sendCursor(cursor: Long) {
+        val frame = byteArrayOf(0x00) + """{"cursor":$cursor}""".toByteArray()
+        synchronized(peers) { peers.last() }.send(frame.toByteString())
+    }
+
+    private val acceptor = object : WebSocketListener() {
+        override fun onOpen(webSocket: WebSocket, response: Response) {
+            synchronized(peers) { peers += webSocket }
+        }
+
+        override fun onMessage(webSocket: WebSocket, bytes: ByteString) = Unit
+    }
+
     fun close() {
+        // A socket left open makes `MockWebServer.close()` wait for a queue that never shuts down, which
+        // hides the real failure behind a hang.
+        synchronized(peers) { peers.forEach { it.close(1000, "test over") } }
+        scope.cancel()
         server.close()
     }
 
@@ -127,4 +199,34 @@ abstract class ExecutionServerTest {
     protected fun assertSentDirectory(request: String) {
         assertTrue("no location on $request", request.contains("location[directory]="))
     }
+}
+
+/** A cache that remembers nothing: these tests are about the network path and not the disk one. */
+object NoCache : ReadCacheStore {
+    override suspend fun readSessions(serverId: String, directory: String?, limit: Int): List<SessionInfo> =
+        emptyList()
+
+    override suspend fun writeSessions(serverId: String, directory: String?, sessions: List<SessionInfo>) = Unit
+
+    override suspend fun readSession(serverId: String, sessionId: String): SessionInfo? = null
+
+    override suspend fun writeSession(serverId: String, sessionId: String, session: SessionInfo) = Unit
+
+    override suspend fun deleteSession(serverId: String, sessionId: String) = Unit
+
+    override suspend fun readMessages(serverId: String, sessionId: String, limit: Int): List<SessionMessage> =
+        emptyList()
+
+    override suspend fun writeMessages(
+        serverId: String,
+        sessionId: String,
+        messages: List<SessionMessage>,
+        keep: Int,
+    ) = Unit
+
+    override suspend fun deleteMessages(serverId: String, sessionId: String) = Unit
+
+    override suspend fun dropLocation(serverId: String, directory: String?) = Unit
+
+    override suspend fun dropServer(serverId: String) = Unit
 }
