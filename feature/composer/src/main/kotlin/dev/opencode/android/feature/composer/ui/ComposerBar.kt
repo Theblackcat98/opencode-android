@@ -125,7 +125,7 @@ fun ComposerBar(
     // and is overwritten whenever the text arrives from somewhere else — a completion, a history
     // step, a restored draft, a cleared box — which is the only way the caret survives a recomposition
     // without being reset on every keystroke.
-    var field by remember(state.text) { mutableStateOf(TextFieldValue(state.text)) }
+    var field by remember { mutableStateOf(TextFieldValue(state.text, TextRange(state.text.length))) }
     LaunchedEffect(state.text) {
         if (field.text != state.text) {
             field = TextFieldValue(state.text, TextRange(state.text.length))

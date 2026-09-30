@@ -23,7 +23,21 @@ class ServerCredentialCache(
 
     private val entries = ConcurrentHashMap<String, String>()
 
-    override fun credentialFor(url: HttpUrl): String? = entries[url.originKey()]
+    override fun credentialFor(url: HttpUrl): String? {
+        val rootWithPort = "${url.scheme}://${url.host}:${url.port}".lowercase()
+        val rootNoPort = "${url.scheme}://${url.host}".lowercase()
+        var path = url.encodedPath.trimEnd('/')
+        while (true) {
+            val keyWithPort = if (path.isEmpty()) rootWithPort else "$rootWithPort$path".lowercase()
+            entries[keyWithPort]?.let { return it }
+            val keyNoPort = if (path.isEmpty()) rootNoPort else "$rootNoPort$path".lowercase()
+            entries[keyNoPort]?.let { return it }
+            if (path.isEmpty()) break
+            val nextSlash = path.lastIndexOf('/')
+            path = if (nextSlash > 0) path.substring(0, nextSlash) else ""
+        }
+        return null
+    }
 
     /** Stores [credential] for the server at [baseUrl], replacing any earlier one. */
     fun put(baseUrl: String, credential: String?) {
@@ -52,9 +66,6 @@ class ServerCredentialCache(
      * reverse-proxy subpath is again another server.
      */
     private fun String.toCredentialKey(): String? = trimEnd('/').takeIf { it.isNotBlank() }?.lowercase()
-
-    private fun HttpUrl.originKey(): String =
-        "$scheme://$host:$port${encodedPath.trimEnd('/')}".lowercase()
 
     private fun evictOverflow() {
         if (entries.size < maxEntries) return

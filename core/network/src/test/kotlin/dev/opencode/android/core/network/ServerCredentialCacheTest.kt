@@ -61,6 +61,21 @@ class ServerCredentialCacheTest {
     }
 
     @Test
+    fun matchesChildRequestUrlsUnderTheBaseUrl() {
+        val cache = ServerCredentialCache()
+        cache.put("http://192.168.1.50:4096", "token-1")
+        cache.put("http://box:4096/opencode", "token-prefix")
+
+        assertEquals("token-1", cache.credentialFor("http://192.168.1.50:4096/api/session".toHttpUrl()))
+        assertEquals(
+            "token-1",
+            cache.credentialFor("http://192.168.1.50:4096/api/model?directory=%2Fhome".toHttpUrl()),
+        )
+        assertEquals("token-prefix", cache.credentialFor("http://box:4096/opencode/api/session".toHttpUrl()))
+        assertNull(cache.credentialFor("http://192.168.1.51:4096/api/session".toHttpUrl()))
+    }
+
+    @Test
     fun storingABlankCredentialRemovesTheEntry() {
         val cache = ServerCredentialCache()
         cache.put("http://box:4096", "token")
