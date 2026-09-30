@@ -149,6 +149,11 @@ class ExecutionServer(
         synchronized(peers) { peers.last() }.send(frame.toByteString())
     }
 
+    /** Sends terminal output, as the text frame the server writes it in, to the newest socket. */
+    fun sendOutput(text: String) {
+        synchronized(peers) { peers.last() }.send(text)
+    }
+
     private val acceptor = object : WebSocketListener() {
         override fun onOpen(webSocket: WebSocket, response: Response) {
             synchronized(peers) { peers += webSocket }

@@ -1166,10 +1166,13 @@ different directions were each broken deliberately to confirm they fail:
 | Shell output cursor paging, truncation, the exited case, the loop stopping | `advanceTimeBy` on a `TestScope`, never an unbounded wait | `ShellOutputPollerTest` (10) |
 | Session tree from `parentID`: nesting, orphans, cycles, siblings, the subagent card | A pure function of `SessionRow`s | `SessionTreeTest` (13) |
 | Events land in the right store and the wrong one is untouched | `ExecutionSurface.apply` with recorded events | `ExecutionStoreTest` (19) |
-| The bridge refuses malformed, unknown and out-of-range messages | The codec as a pure function | `TerminalBridgeTest` (20) |
+| The bridge refuses malformed, unknown and out-of-range messages | The codec as a pure function | `TerminalBridgeTest` (21) |
 | Every message the codec produces reaches the host | The screen's relay, with a `WebView` replaced by a list | `TerminalSurfaceTest` (23) |
 | Key encoding, modifiers, the plan's row | `TerminalInput.encode` and `ExtraKeys.row` | `TerminalInputTest` (15) |
 | The WebView is hardened | `harden()` against a `WebSettings` made permissive first | `TerminalChannelTest` (9, plus 14 baselines) |
+| A replaced page or socket still gets its output; a recreated activity keeps the open terminal and replays into the new page | The view model over a real data set and `MockWebServer`, the server driving output | `TerminalPageTest` (10) |
+| The composed WebView is told to fill its parent; a listed terminal can be tapped; a replay starts from an empty page | Robolectric composition and the channel with `evaluateInPage` recorded | `TerminalWebViewTest` (8), `TerminalScreenTest` (2) |
+| The page reads the fields the channel sends | `index.html` read as text, against what the channel really evaluates | `TerminalPageContractTest` (5) |
 | Subagent and shell completion reach `AttentionCoordinator` | The coordinator and its drafts | `ShellCompletionAttentionTest` (8) |
 
 **What was found.** The inherited code had never been built or run. Its own tests did not compile or failed, and
@@ -1217,8 +1220,10 @@ each failure was a real defect rather than a broken test:
 
 **Known limitations.**
 
-- **A WebView cannot render in this environment at all**, so nothing here proves xterm.js draws. What is proven is
-  everything around it: the framing, the codec, the forwarding, the grid arithmetic, the resize. The terminal's
+- **A WebView cannot render in this environment at all**, so nothing here proves xterm.js draws, and nothing executes
+  `index.html`: `TerminalPageContractTest` reads it as text. What is proven is everything around it: the framing, the
+  codec, the forwarding, the grid arithmetic, the resize, what the composed view is handed. What a JVM cannot show,
+  an emulator run did — see the changelog entry "A terminal that said Live drew nothing". The terminal's
   *chrome* is a separate composable (`TerminalChrome`) precisely so a baseline can photograph it — a screenshot
   of a `WebView` is an empty rectangle, which P6 learned about a sheet.
 - **The extra-keys row is data, not layout**, so the Roborazzi baselines name the keys. Its TalkBack labels are the

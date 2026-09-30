@@ -19,6 +19,7 @@ import dev.opencode.android.core.network.PtySocket
 import dev.opencode.android.core.network.PtyStreamState
 import dev.opencode.android.core.network.ServerCredentialCache
 import dev.opencode.android.core.network.ServerTls
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -64,6 +65,14 @@ data class TerminalUiState(
     val selection: String? = null,
     /** Output the page has not taken yet, and which the screen writes and then clears. */
     val pendingOutput: String = "",
+    /**
+     * How many times the page has been told to start from an empty screen.
+     *
+     * **It changes whenever a new socket starts, because a new socket replays from the beginning.** The
+     * screen watches it and empties the page before the replay arrives; without it a reconnect, or a
+     * second terminal, is drawn on top of what the page already shows.
+     */
+    val epoch: Int = 0,
     val error: TerminalError? = null,
 ) {
     val canStartProject: Boolean get() = !creating && !startCommand.isNullOrBlank()
@@ -164,8 +173,21 @@ class TerminalViewModel(
      */
     private val pendingOutput = StringBuilder()
 
+    /**
+     * Whether a page is mounted and can take output.
+     *
+     * **It belongs to the page and not to the socket.** A socket that is replaced leaves the page where
+     * it was — mounted, ready, and never going to say `ready` again — so replacing one must not clear
+     * this; only the page going away does.
+     */
     private var pageReady = false
+
+    /** The grid the page last measured, which a terminal the server has just made is told about. */
+    private var grid: TerminalGridSize? = null
     private var socket: PtySocket? = null
+
+    /** The two collectors of [socket], cancelled with it so a closed socket cannot write into its successor. */
+    private var collectors: Job? = null
 
     /**
      * Whether this terminal has already spent its one `pty.connect.token` attempt.
@@ -178,9 +200,17 @@ class TerminalViewModel(
      */
     private var ticketTried = false
 
-    /** Binds the panel to a location and reads the terminals. */
+    /**
+     * Binds the panel to a location and reads the terminals.
+     *
+     * **Binding to the location it is already bound to changes nothing.** The screen calls this from a
+     * `LaunchedEffect`, which runs again whenever the activity is recreated — a rotation is enough — and
+     * this view model outlives the activity. Starting over then emptied the state while the socket stayed
+     * open, so the terminal the user was in became "No terminal open" over a live connection.
+     */
     fun open(directory: String, startCommand: String? = null) {
         val set = active.value ?: return
+        if (_state.value.directory == directory) return
         _state.value = TerminalUiState(directory = directory, startCommand = startCommand)
         set.execution.open(directory)
         // The project's own `commands.start` is what the quick action runs. It is resolved here rather
@@ -219,6 +249,8 @@ class TerminalViewModel(
      */
     fun openTerminal(ptyID: String) {
         val directory = _state.value.directory ?: return
+        // The row of the terminal already on screen is not a request to reconnect it.
+        if (_state.value.open?.id == ptyID && _state.value.connected) return
         // A row the user tapped is in the list, so a miss means the server removed it since it was drawn.
         val info = _state.value.terminals.firstOrNull { it.id == ptyID }
         if (info == null) {
@@ -239,7 +271,13 @@ class TerminalViewModel(
         ticketTried = false
         _state.value = _state.value.copy(open = info, size = null, ticket = null, pickerOpen = false)
         val created = connect(directory, info.id, ticket = null)
-        if (created == null) _state.value = _state.value.copy(error = TerminalError.NoConnection)
+        if (created == null) {
+            _state.value = _state.value.copy(error = TerminalError.NoConnection)
+            return
+        }
+        // The page keeps the grid it measured for the terminal before, and the one the server has just
+        // made has been told nothing: the page will not measure again, because nothing about it moved.
+        grid?.let { resize(it.cols, it.rows) }
     }
 
     /** Re-opens the socket from the cursor the server last reported. */
@@ -276,18 +314,20 @@ class TerminalViewModel(
     private fun connect(directory: String, ptyID: String, ticket: String?): PtySocket? {
         val socket = sockets.create(directory, ptyID, ticket) ?: return null
         this.socket = socket
-        viewModelScope.launch {
-            socket.state.collect { stream -> foldStream(stream) }
-        }
-        viewModelScope.launch {
-            socket.output.collect { chunk ->
-                // A terminal writes faster than a WebView lays out a line, so the buffer drops its
-                // oldest frames rather than applying backpressure to the socket (plan §4.2, "never
-                // block the reader"). What is lost is a frame of output; the page redraws from its own
-                // buffer, so the terminal's state is not lost.
-                pendingOutput.append(chunk)
-                trimPending()
-                drain()
+        // A new socket replays the retained buffer from the start, so the page starts from an empty screen.
+        _state.value = _state.value.copy(pendingOutput = "", epoch = _state.value.epoch + 1)
+        collectors = viewModelScope.launch {
+            launch { socket.state.collect { stream -> foldStream(stream) } }
+            launch {
+                socket.output.collect { chunk ->
+                    // A terminal writes faster than a WebView lays out a line, so the buffer drops its
+                    // oldest frames rather than applying backpressure to the socket (plan §4.2, "never
+                    // block the reader"). What is lost is a frame of output; the page redraws from its own
+                    // buffer, so the terminal's state is not lost.
+                    pendingOutput.append(chunk)
+                    trimPending()
+                    drain()
+                }
             }
         }
         socket.open(viewModelScope)
@@ -307,13 +347,21 @@ class TerminalViewModel(
     fun onBridgeMessage(message: TerminalBridgeMessage) {
         when (message) {
             is TerminalBridgeMessage.Ready -> {
+                // A page says `ready` once, when it loads. A second one, with the first never withdrawn,
+                // is a *different* page — the activity was recreated, and the screen the old one drew went
+                // with it. The socket is still open and will only say what comes next, so it is started
+                // again, and its replay is what fills the new page.
+                val replacement = pageReady
                 pageReady = true
-                drain()
+                if (replacement && _state.value.open != null) reconnect() else drain()
             }
 
             is TerminalBridgeMessage.Input -> sendInput(message.data)
 
-            is TerminalBridgeMessage.Resize -> resize(message.cols, message.rows)
+            is TerminalBridgeMessage.Resize -> {
+                grid = TerminalGridSize(cols = message.cols, rows = message.rows)
+                resize(message.cols, message.rows)
+            }
 
             is TerminalBridgeMessage.Selection -> _state.value = _state.value.copy(selection = message.data)
 
@@ -339,7 +387,10 @@ class TerminalViewModel(
         if (!pageReady || pendingOutput.isEmpty()) return
         val chunk = pendingOutput.toString()
         pendingOutput.setLength(0)
-        _state.value = _state.value.copy(pendingOutput = _state.value.pendingOutput + chunk)
+        // Bounded like the builder above: while the screen is stopped nothing consumes this, and a busy
+        // terminal would otherwise grow it for as long as the app stays in the background.
+        val held = (_state.value.pendingOutput + chunk).takeLast(PENDING_LIMIT)
+        _state.value = _state.value.copy(pendingOutput = held)
     }
 
     private fun trimPending() {
@@ -437,6 +488,8 @@ class TerminalViewModel(
                 _state.value = _state.value.copy(error = error.said())
             } else if (_state.value.open?.id == target) {
                 closeSocket()
+                // Nothing is open, so the page is unmounted; the next terminal gets a new one.
+                pageReady = false
                 _state.value = _state.value.copy(open = null, stream = PtyStreamState.Closed("removed"))
             }
         }
@@ -496,10 +549,11 @@ class TerminalViewModel(
     private fun shellPath(): String? = _state.value.shells.firstOrNull { it.acceptable }?.path
 
     private fun closeSocket() {
+        collectors?.cancel()
+        collectors = null
         socket?.close("closed")
         socket = null
         pendingOutput.setLength(0)
-        pageReady = false
     }
 
     override fun onCleared() {

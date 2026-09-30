@@ -167,6 +167,13 @@ class TerminalBridgeTest {
         )
     }
 
+    @Test
+    fun `a reset message is a type and nothing else`() {
+        // Sent before a new socket's replay so the page starts from an empty screen. It carries no payload
+        // because there is nothing to say: what the page is asked to do is the whole message.
+        assertEquals("""{"type":"reset"}""", TerminalBridgeCodec.encode(TerminalHostMessage.Reset))
+    }
+
     // ------------------------------------------------------------------ the grid
 
     @Test

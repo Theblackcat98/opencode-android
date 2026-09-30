@@ -313,6 +313,9 @@ private fun TerminalList(
                 },
                 modifier = Modifier
                     .fillMaxWidth()
+                    // The row is what opens the terminal. It was handed `onOpen` and never used it, so a
+                    // terminal that was listed — every one after a rotation — could not be opened at all.
+                    .clickable { onOpen(terminal.id) }
                     .testTag(TerminalTags.TERMINAL + terminal.id)
                     .semantics { contentDescription = terminal.title },
             )
@@ -343,6 +346,9 @@ private fun TerminalSurface(
     onOutputConsumed: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    // Declared before the output effect on purpose: when the view model starts a replay it changes the
+    // epoch and empties the output in one update, and the screen has to be cleared before what follows.
+    LaunchedEffect(state.epoch) { channel.reset() }
     LaunchedEffect(state.pendingOutput) {
         if (state.pendingOutput.isEmpty()) return@LaunchedEffect
         channel.write(state.pendingOutput)

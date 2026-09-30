@@ -100,6 +100,8 @@ object TerminalBridgeCodec {
                     state = message.state,
                     cursor = message.cursor,
                 )
+
+                TerminalHostMessage.Reset -> Host(type = Reset.TYPE)
             },
         )
     }.getOrDefault(HOST_ENCODE_FAILED)
@@ -191,6 +193,10 @@ object TerminalBridgeCodec {
         const val TYPE: String = "state"
     }
 
+    private object Reset {
+        const val TYPE: String = "reset"
+    }
+
     private object Ready {
         const val TYPE: String = "ready"
     }
@@ -240,6 +246,14 @@ sealed interface TerminalHostMessage {
 
     /** The stream's state, so the page can show "reconnecting" itself. */
     data class State(val state: String, val cursor: Long?) : TerminalHostMessage
+
+    /**
+     * Empty the screen and the scrollback.
+     *
+     * Sent before a new socket's replay: a fresh connection sends the server's whole retained buffer from
+     * the start, and written onto a screen that already shows it that is every line twice.
+     */
+    data object Reset : TerminalHostMessage
 }
 
 /**

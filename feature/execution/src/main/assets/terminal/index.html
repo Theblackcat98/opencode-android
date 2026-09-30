@@ -136,19 +136,54 @@
     reportSize();
   }, { passive: true });
 
-  // What the host sends. Every field is the host's own; the page validates nothing because it has
+  // What the host sends. Every call is `window.__terminal.<method>(<message>)`, where <message> is the
+  // JSON object the host's TerminalBridgeCodec encoded — `{"type":"output","data":"..."}`,
+  // `{"type":"cursor","cursor":n}`, `{"type":"state","state":"live","cursor":n}` — written as a literal,
+  // so the text inside it can never end the string it is in. The page validates nothing because it has
   // nothing to decide, and a malformed host message is a bug in the app rather than an attack.
+  //
+  // `write` used to take a bare string and the host has always sent the object, so every chunk of output
+  // was ignored without a word: a terminal that was connected, resized and completely blank. A bare
+  // string is still accepted; an object is read for its `data`.
+  var lastCursor = null;
+  var streamState = "idle";
+
+  function outputOf(message) {
+    if (typeof message === "string") {
+      return message;
+    }
+    return message && typeof message.data === "string" ? message.data : "";
+  }
+
   window.__terminal = {
-    write: function (text) {
-      if (typeof text === "string" && text.length > 0) {
+    write: function (message) {
+      var text = outputOf(message);
+      if (text.length > 0) {
         term.write(text);
       }
     },
-    cursor: function (value) {
-      post({ type: "cursor", cursor: value });
+    // A new socket replays the server's whole retained buffer from the start, so the screen and the
+    // scrollback are emptied first; without it a reconnect draws every line twice.
+    reset: function () {
+      term.reset();
     },
-    state: function (state, cursor) {
-      post({ type: "state", state: state, cursor: cursor === undefined ? null : cursor });
+    // The cursor and the state are the host's to keep and the page's only to show. Neither is posted
+    // back: the host already has both, and a "cursor" or "state" message is one its codec refuses.
+    cursor: function (message) {
+      if (message && typeof message.cursor === "number") {
+        lastCursor = message.cursor;
+      }
+    },
+    state: function (message) {
+      if (message && typeof message.state === "string") {
+        streamState = message.state;
+        // A terminal that is not following the server is one whose screen may be stale.
+        document.getElementById("terminal").style.opacity =
+          streamState === "live" || streamState === "connecting" ? "1" : "0.55";
+      }
+      if (message && typeof message.cursor === "number") {
+        lastCursor = message.cursor;
+      }
     },
     // The host sends every buffered chunk on one tick, so a terminal that was written to before the
     // page was ready gets its whole replay in order.

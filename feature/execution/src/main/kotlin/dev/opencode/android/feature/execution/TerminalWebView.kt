@@ -1,7 +1,12 @@
 package dev.opencode.android.feature.execution
 
 import android.annotation.SuppressLint
+import android.content.Context
 import android.graphics.Color
+import android.os.Handler
+import android.os.Looper
+import android.view.ViewGroup
+import android.view.ViewGroup.LayoutParams.MATCH_PARENT
 import android.webkit.JavascriptInterface
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
@@ -9,10 +14,10 @@ import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.viewinterop.AndroidView
 import dev.opencode.android.core.data.terminal.TerminalBridgeCodec
@@ -102,7 +107,17 @@ open class TerminalChannel {
         ready = false
     }
 
-    fun detach() {
+    /**
+     * Lets go of the page, and of what was held for it.
+     *
+     * **[view] names the page being released, and a page that is no longer the channel's is ignored.** A
+     * terminal that is given a fresh page (a reconnect, another terminal) attaches the new `WebView`
+     * while Compose is still releasing the old one, and the release arrives *after* the attach. Detaching
+     * unconditionally would then detach the page that had just been attached, and the new terminal would
+     * be written into nothing.
+     */
+    fun detach(view: WebView? = null) {
+        if (view != null && webView !== view) return
         webView = null
         ready = false
         buffer.setLength(0)
@@ -123,6 +138,18 @@ open class TerminalChannel {
             return
         }
         evaluate("write", TerminalHostMessage.Output(text))
+    }
+
+    /**
+     * Empties the page's screen, because what is about to be written starts from the beginning.
+     *
+     * A new socket replays the server's whole retained buffer, so writing it onto a screen that already
+     * shows the terminal would draw every line twice. A page that is not ready yet is empty by
+     * construction; all that is left to drop is what was queued for it.
+     */
+    fun reset() {
+        buffer.setLength(0)
+        if (ready) evaluate("reset", TerminalHostMessage.Reset)
     }
 
     /** Publishes the server's cursor, so a reconnect can resume from it. */
@@ -236,29 +263,65 @@ fun TerminalWebView(
     onMessage: (TerminalBridgeMessage) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val context = LocalContext.current
-    val bridge = remember { TerminalBridge(onMessage) }
+    // **The page's messages arrive on the WebView's own `JavaBridge` thread, and everything they reach
+    // belongs to the main one.** The channel's buffer, the view model's state and `evaluateJavascript`
+    // are all main-thread; a `ready` handled where it arrived flushed the channel and rewrote the state
+    // from a second thread, racing the socket's collector for the same `StateFlow`.
+    val latest by rememberUpdatedState(onMessage)
+    val bridge = remember { bridgeOnMain { latest } }
 
     AndroidView(
         modifier = modifier.testTag(TerminalTags.VIEW),
-        factory = { viewContext ->
-            WebView(viewContext).apply {
-                harden(settings)
-                webViewClient = LockedNavigationClient()
-                addJavascriptInterface(bridge, TerminalBridgeCodec.INTERFACE_NAME)
-                setBackgroundColor(Color.TRANSPARENT)
-                isVerticalScrollBarEnabled = false
-                isHorizontalScrollBarEnabled = false
-                overScrollMode = WebView.OVER_SCROLL_NEVER
-                loadUrl(LockedNavigationClient.PAGE_URL)
-            }.also { channel.attach(it) }
+        factory = { viewContext -> terminalWebView(viewContext, bridge, channel) },
+        onRelease = { view ->
+            channel.detach(view)
+            view.destroy()
         },
     )
-
-    DisposableEffect(context, channel) {
-        onDispose { channel.detach() }
-    }
 }
+
+/**
+ * A bridge whose messages are handled on the main thread, whichever thread the page posted them on.
+ *
+ * `@JavascriptInterface` methods run on the WebView's own thread. [latest] is read when the message is
+ * handled rather than when it arrived, so a recomposition that replaced the callback is not bypassed.
+ */
+internal fun bridgeOnMain(latest: () -> (TerminalBridgeMessage) -> Unit): TerminalBridge {
+    val main = Handler(Looper.getMainLooper())
+    return TerminalBridge { message -> main.post { latest()(message) } }
+}
+
+/**
+ * The `WebView` the terminal page runs in, hardened and attached to [channel].
+ *
+ * **It is told to fill its parent, and that is not decoration.** A `WebView` that is added to a view
+ * group without layout parameters gets `WRAP_CONTENT`, which is what Compose's `AndroidView` does to
+ * anything a factory returns. Chromium reads that: a `WebView` whose height is `WRAP_CONTENT` is one
+ * whose *content* decides its height, so the page's layout viewport is given a height of **zero** no
+ * matter how tall the view is measured — `window.innerHeight` says 506 while `100%`, `100vh` and
+ * `matchMedia("(min-height: 400px)")` all say 0. The terminal page sizes itself with `height: 100%`,
+ * so xterm's fit addon measured a container of no height, asked for a grid of one row, and the one row
+ * it had was clipped away: a terminal that was connected, resized to `52x1` and drew nothing.
+ * `MATCH_PARENT` in both directions is what makes the layout viewport the view's own size.
+ *
+ * Extracted so a test can assert what the composed view is given rather than photograph a `WebView`.
+ */
+@SuppressLint("SetJavaScriptEnabled", "JavascriptInterface")
+internal fun terminalWebView(context: Context, bridge: TerminalBridge, channel: TerminalChannel): WebView =
+    WebView(context).apply {
+        layoutParams = ViewGroup.LayoutParams(MATCH_PARENT, MATCH_PARENT)
+        harden(settings)
+        webViewClient = LockedNavigationClient()
+        addJavascriptInterface(bridge, TerminalBridgeCodec.INTERFACE_NAME)
+        setBackgroundColor(Color.TRANSPARENT)
+        isVerticalScrollBarEnabled = false
+        isHorizontalScrollBarEnabled = false
+        overScrollMode = WebView.OVER_SCROLL_NEVER
+        // Attached before the page can say `ready`, so a `ready` that beats the end of this function
+        // cannot be the one the channel then forgets.
+        channel.attach(this)
+        loadUrl(LockedNavigationClient.PAGE_URL)
+    }
 
 /**
  * Applies every restriction the terminal's WebView needs, in one place so the hardening is auditable.

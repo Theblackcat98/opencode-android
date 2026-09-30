@@ -132,6 +132,33 @@ Found by driving the app against a live server on an emulator, which no test had
   `unknown-terminal` and `socket-unavailable`: the two reasons the app gives itself are `strings.xml` text and
   what the server said is still shown as it said it. `TerminalOpenTest` drives the view model over a real data set
   and a MockWebServer with both orderings and fails on the old code; not yet seen on a device.
+- **A terminal that said Live drew nothing, and could not be brought back after a rotation.** Four separate faults,
+  found on the emulator against the dev server. (1) Compose adds the factory's `WebView` to its holder with
+  `WRAP_CONTENT`, and Chromium then gives the page a layout viewport of no height (`innerHeight` 506, `100vh` 0), so
+  xterm's fit addon measured a container of zero, asked the PTY for `52x1` and clipped the one row it had;
+  `terminalWebView` now asks for `MATCH_PARENT`. (2) The channel evaluates `window.__terminal.write({"type":"output",
+  "data":…})` and the page's `write` took a string, so every chunk was ignored without an error; the page now reads the
+  message the codec encodes, and no longer posts `cursor` and `state` back as messages the codec refuses. (3) A
+  reconnect, or a second terminal, marked the page "not ready" although it had said `ready` and never would again, so
+  the new socket's output was held for ever; and a rotation re-ran `open`, which threw the open terminal away over a
+  live socket, while the WebView that replaced the page was empty and nothing replayed into it. `open` on a location
+  that is already bound now changes nothing, a second `ready` is read as a new page and the socket is started again to
+  fill it, every new socket empties the page first (`reset`, new `TerminalHostMessage.Reset`), and a terminal opened
+  on an existing page is told the grid the page measured. (4) The rows of the terminal list were given `onOpen` and
+  never used it, so a listed terminal could not be tapped open. Also: the page's messages were handled on the
+  WebView's `JavaBridge` thread, racing the socket's collector for the same state, and are now handed to the main
+  thread; the released WebView is destroyed; and output held while the screen is stopped is bounded. On the emulator
+  (fdroid debug, 1280x2856 at 480 dpi) the prompt and `ls --color=always /` rendered with colour, `top` and `less`
+  drew and `less` restored the screen when quit (`top` does not use the alternate screen on this host, so its last
+  frame stays, as in any terminal), `stty size` read `33 52` in portrait and `8 113` after rotating to landscape,
+  rotating and backgrounding for ten seconds kept the content and cursor with a ping's output arriving in between,
+  and Reconnect and switching terminals replayed once, not twice. `TerminalPageTest`, `TerminalWebViewTest`,
+  `TerminalScreenTest` and `TerminalPageContractTest` fail on the old code (14 of them, with the fixes reverted
+  together, and the grid test alone). No JVM test can execute the page or draw a WebView; the contract test reads
+  `index.html` as text. Not fixed: characters typed at `adb input text` speed arrive duplicated (`ls --color` became
+  `ls ---ccolollor`) through xterm.js's composition diffing, exact when sent one at a time 200 ms apart, and one
+  character of a slow run was dropped once and not reproduced; in landscape the list keeps 40% of the height and the
+  terminal gets 8 rows; the first prompt is drawn at the server's 80x24 before the first resize arrives.
 - **App commands with no argument could not be sent.** Typing `/compact`, `/undo`, `/redo`, `/diff`, `/new`,
   `/sessions`, `/models`, `/agents` or `/editor` and picking it from the palette left Send disabled, because
   `ComposerUiState.canSend` required text after the command name and only `/btw <question>` has any. It also
