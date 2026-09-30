@@ -1223,21 +1223,27 @@ class ComposerViewModel(
         if (error != null) local.value = local.value.copy(error = error)
     }
 
-    /** Answers a permission request. The event removes it; a failure leaves it pending. */
+    /**
+     * Answers a permission request. The event removes it; a failure leaves it pending.
+     *
+     * **Needs no open session.** The request names the session that asked ([PermissionRequest.sessionID]),
+     * and the global inbox answers requests of sessions this instance never opened; gating on the open
+     * session made "Allow once" there a call that silently did not happen.
+     */
     fun replyPermission(request: PermissionRequest, decision: PermissionReply, feedback: String? = null) =
-        withSession { set, _ ->
+        withServer { set ->
             val error = set.requests.replyPermission(request, decision, feedback)
             if (error != null) local.value = local.value.copy(error = error)
         }
 
-    /** Answers a form. */
-    fun submitForm(form: FormInfo, answer: FormAnswer) = withSession { set, _ ->
+    /** Answers a form. Like [replyPermission], it goes to the session the form names, not the one open here. */
+    fun submitForm(form: FormInfo, answer: FormAnswer) = withServer { set ->
         val error = set.requests.replyForm(form, answer)
         if (error != null) local.value = local.value.copy(error = error)
     }
 
     /** Dismisses a form, which cancels it. */
-    fun cancelForm(form: FormInfo) = withSession { set, _ ->
+    fun cancelForm(form: FormInfo) = withServer { set ->
         val error = set.requests.cancelForm(form)
         if (error != null) local.value = local.value.copy(error = error)
     }
@@ -1355,6 +1361,12 @@ class ComposerViewModel(
             local.value = local.value.copy(text = draft, cursor = draft.length, loadedDraft = true)
             refresh()
         }
+    }
+
+    /** For an operation that names its own session in what it carries, so none has to be open here. */
+    private fun withServer(block: suspend (ServerDataSet) -> Unit) {
+        val set = active.value ?: return
+        viewModelScope.launch { block(set) }
     }
 
     private fun withSession(block: suspend (ServerDataSet, String) -> Unit) {

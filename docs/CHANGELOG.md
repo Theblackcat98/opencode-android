@@ -141,6 +141,12 @@ Found by driving the app against a live server on an emulator, which no test had
   posts to `api/session/{id}/compact`, `/btw` alone stays disabled, `/undo` raises the confirmation) and fails
   on the old code; not yet seen on a device. Picking an app command from the palette still only inserts its
   text, as it does for a server command: Send is what runs it.
+- **Answering a permission or a form from the global inbox did nothing.** `PendingRequestsHost` asks for a
+  `ComposerViewModel` of its own and never opens a session in it, and `replyPermission`, `submitForm` and
+  `cancelForm` returned without a word unless one was open, although every request names the session that
+  asked. They no longer need one. `ComposerRequestAnswerTest` (MockWebServer) fails on the old code; not yet
+  seen on a device. A failed answer from the inbox still shows nothing, because that screen does not display
+  the composer's error.
 - Markdown inside list items (`**bold**`, `` `code` ``, links) was drawn as typed; only paragraphs,
   headings and table cells were parsed.
 - "Changed 1 files" is now "Changed 1 file".

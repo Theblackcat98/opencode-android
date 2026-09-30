@@ -155,6 +155,9 @@ class ComposerServer(
     /** `session.generate` answered: the side question's reply, which is a body rather than an event. */
     fun sideAnswer(text: String) = answer("/api/session/$sessionID/generate", """{"data":{"text":"$text"}}""")
 
+    /** Makes [path] answer `204`, which is what a reply, a cancel or a clear answers with. */
+    fun accepted(path: String) = answer(path, "", status = 204)
+
     /** Makes [path] answer `500`, the way a server that is unreachable or not yet ready does. */
     fun failing(path: String) = answer(path, """{"_tag":"unavailable","message":"not ready"}""", status = 500)
 
