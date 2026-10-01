@@ -81,13 +81,36 @@ class ExecutionStore(
     private val _error = MutableStateFlow<ActionError?>(null)
     val error: StateFlow<ActionError?> = _error.asStateFlow()
 
+    /**
+     * The ids events have spoken about since a list load began, so that load can neither lose nor revive a row.
+     *
+     * **A load and an event write the same field, and the load used to win outright — in both directions.**
+     * `shell.created` inserted the row immediately, and the `shell.list` already in flight published over the
+     * top of it when it landed, carrying a list the server had answered *before* that command existed: the
+     * command the user had just started left the list, silently, on any server slow enough for the two to
+     * overlap, and came back only if something else refetched. The same shape was worse for terminals, where
+     * it ran the other way: a `pty.deleted` that raced an in-flight `pty.list` left a terminal the server had
+     * already killed sitting in the list, because the load put back what the event had removed.
+     *
+     * **Both directions are needed, because both are wrong.** A row an event created is not in a list that was
+     * requested before it existed, so it is kept; a row an event deleted is still in one, so it is dropped. A
+     * load is only allowed to overwrite a row no event has mentioned, and both sets are emptied once it has,
+     * because from that point the server's own answer is at least as new as the events this store has seen.
+     *
+     * One ledger per list, and guarded because a load publishes on an OkHttp thread while events arrive on the
+     * collector's. `lock` is the store's, shared by both ledgers, because both are written by `apply`.
+     */
+    private val shellLedger = Ledger()
+    private val ptyLedger = Ledger()
+    private val lock = Any()
+
     /** `shell.list`, published into [shells] as well so an event and a refetch cannot disagree. */
     val shellList: SyncedResource<List<ShellInfo>> = SyncedResource(
         key = ResourceKey(serverId, directory),
         name = "shell.list($directory)",
         scope = scope,
         loader = { api.listShells(directory).data },
-        onValue = { value -> _shells.value = value },
+        onValue = { value -> publish(_shells, value, shellLedger) { it.id } },
     )
 
     /** `pty.list`. */
@@ -96,8 +119,84 @@ class ExecutionStore(
         name = "pty.list($directory)",
         scope = scope,
         loader = { api.listPtys(directory).data },
-        onValue = { value -> _ptys.value = value },
+        onValue = { value -> publish(_ptys, value, ptyLedger) { it.id } },
     )
+
+    /**
+     * Publishes a loaded list, folded in with what the events have said.
+     *
+     * **The publish and the merge are one locked step, and must be.** An event writes the row and then the
+     * ledger; a load reads the ledger and then writes the row. If the two were not atomic, a load could
+     * merge against an empty ledger in the window between an event's write and its ledger entry and then
+     * overwrite the row — which is the very bug this ledger exists to stop, reintroduced one step later.
+     */
+    private fun <T> publish(
+        into: MutableStateFlow<List<T>>,
+        listed: List<T>,
+        ledger: Ledger,
+        idOf: (T) -> String,
+    ) = synchronized(lock) {
+        into.value = ledger.merge(listed, into.value, idOf)
+    }
+
+    /**
+     * Runs an event's change to a list and its ledger entry as one locked step.
+     *
+     * The pairing is the whole point: a row the event has just written must be visible to the merge that
+     * runs next, and the id it has just named must be visible too, or one of the two is missed. Which of the
+     * two ledger entries an event makes is its own business, so this takes the change rather than an id.
+     */
+    private fun atomically(change: () -> Unit) = synchronized(lock) { change() }
+
+    /**
+     * What events have said about one list since its last load, and the merge of a load with that.
+     *
+     * @param merge the loaded list, the rows on screen now, and how a row names itself — one implementation
+     *   for shells and terminals, which differ in nothing else here.
+     */
+    private class Ledger {
+
+        private val held = mutableSetOf<String>()
+        private val dropped = mutableSetOf<String>()
+
+        /** An event named this row, so a load that predates it must not overwrite it. */
+        fun named(id: String) = synchronized(this) {
+            held += id
+            dropped -= id
+        }
+
+        /** An event removed this row, so a load that predates the removal must not bring it back. */
+        fun removed(id: String) = synchronized(this) {
+            dropped += id
+            held -= id
+        }
+
+        /** Everything this location has forgotten, which is what `location.shutdown` means. */
+        fun forget() = synchronized(this) {
+            held.clear()
+            dropped.clear()
+        }
+
+        /**
+         * The loaded list with the events folded in: rows a create event added are kept, rows a delete event
+         * removed are taken out, and everything else is the server's own answer.
+         *
+         * The event's own version wins over the list's, because the list is older by construction — it was
+         * requested before the event and cannot reflect it. The sets are emptied here, because this load is
+         * now as new as the events that led to it, and a later one may be believed outright.
+         */
+        fun <T> merge(listed: List<T>, current: List<T>, idOf: (T) -> String): List<T> = synchronized(this) {
+            val keep = held.toSet()
+            val remove = dropped.toSet()
+            held.clear()
+            dropped.clear()
+            val listedIDs = listed.mapTo(mutableSetOf(), idOf)
+            val kept = keep.filterNot { it in listedIDs }.mapNotNull { id ->
+                current.firstOrNull { idOf(it) == id }
+            }
+            listed.filterNot { idOf(it) in remove } + kept
+        }
+    }
 
     fun start() {
         scope.launch { shellList.sync() }
@@ -115,6 +214,12 @@ class ExecutionStore(
         ptyList.clear()
         _shells.value = emptyList()
         _ptys.value = emptyList()
+        // The ledgers go with the rows: this location has nothing left, and a load that lands after a
+        // shutdown must not bring back a command the user was told had gone.
+        atomically {
+            shellLedger.forget()
+            ptyLedger.forget()
+        }
     }
 
     /**
@@ -130,10 +235,10 @@ class ExecutionStore(
         val named = event.location?.directory
         if (named != null && named != directory) return false
         return when (payload) {
-            is ShellCreated -> {
+            is ShellCreated -> atomically {
                 _shells.value = _shells.value.filterNot { it.id == payload.info.id } + payload.info
-                true
-            }
+                shellLedger.named(payload.info.id)
+            }.let { true }
 
             is ShellExited -> {
                 _shells.value = _shells.value.map { shell ->
@@ -150,15 +255,15 @@ class ExecutionStore(
                 true
             }
 
-            is ShellDeleted -> {
+            is ShellDeleted -> atomically {
+                shellLedger.removed(payload.id)
                 _shells.value = _shells.value.filterNot { it.id == payload.id }
-                true
-            }
+            }.let { true }
 
-            is PtyCreated -> {
+            is PtyCreated -> atomically {
                 record(payload.info)
-                true
-            }
+                ptyLedger.named(payload.info.id)
+            }.let { true }
 
             is PtyUpdated -> {
                 _ptys.value = _ptys.value.map { pty -> if (pty.id == payload.info.id) payload.info else pty }
@@ -172,10 +277,11 @@ class ExecutionStore(
                 true
             }
 
-            is PtyDeleted -> {
+            is PtyDeleted -> atomically {
+                // As for a shell: without this a load already in flight puts a killed terminal back.
+                ptyLedger.removed(payload.id)
                 _ptys.value = _ptys.value.filterNot { it.id == payload.id }
-                true
-            }
+            }.let { true }
 
             else -> false
         }

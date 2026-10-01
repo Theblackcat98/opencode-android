@@ -239,7 +239,16 @@ class PairingAndReconnectTest {
         val connection = connections.connectServer(profile)
 
         withTimeout(TIMEOUT_MILLIS) { connection.resyncCount.first { it >= 1L } }
-        withTimeout(TIMEOUT_MILLIS) { connection.resyncCount.first { it >= 2L } }
+        // Waited on the *history*, not the counter, and the two are not interchangeable. `EventStreamClient`
+        // counts a connection before it logs it — the count is the fact, the log is what it looks like — so
+        // a wait on `resyncCount >= 2` can be satisfied while only one "Connected" has been written, and the
+        // assertion below then read a history the wait had not reached. Waiting on the history is the
+        // stronger of the two: the counter is already past it by the time a log entry exists.
+        withTimeout(TIMEOUT_MILLIS) {
+            connection.connectionLogs.first { logs ->
+                logs.count { it.type == ConnectionEventType.CONNECTED } >= 2
+            }
+        }
 
         assertTrue(
             "Every server.connected must fire a resync, so a restart cannot leave stores stale",

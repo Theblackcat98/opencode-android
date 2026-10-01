@@ -318,13 +318,30 @@ Found by driving the app against a live server on an emulator, which no test had
   stream over, so `server.close()` raced the reader thread and gave up with "Gave up waiting for queue to shut
   down", blaming whichever test ran under load; the pool is shut down and awaited before the server goes.
   `CoverageGapWireTest` asserted that an OAuth completion was the *last* request, but `completeOauth` re-reads the
-  integrations behind it, so which of the two was last was a race. Finally, `EventStreamClient` logged "Connected"
-  before incrementing the resync count it describes, so a caller that waited for the second connection and then
-  read the count read 1; the count is now the fact and the log lines are what it looks like.
-  Not fixed, and left as it was found: `core:data`'s `ExecutionStoreTest` and `PairingAndReconnectTest` still fail
-  intermittently when all sixteen modules' tests run at once, on a machine with an emulator and a Gradle daemon on it.
-  They are not a regression from this work — they fail the same way on the tree it started from — and chasing them
-  further was the wrong use of the time. See [`MANUAL_TEST_MATRIX.md`](./MANUAL_TEST_MATRIX.md).
+  integrations behind it, so which of the two was last was a race; it names the request it is about now.
+  Finally, `EventStreamClient` logged "Connected" before incrementing the resync count it describes, so a
+  caller that waited for the second connection and then read the count read 1; the count is now the fact and the
+  log lines are what it looks like — and `PairingAndReconnectTest`, which waited on the count and then asserted
+  on the history, had to start waiting on the history, which is the stronger of the two waits.
+- **A command or a terminal could vanish from, or come back to, a list that was already loading.** This is the
+  one that was hiding in the "flaky test" bucket, and it was a defect. `ExecutionStore` inserts a `shell.created`
+  row into `_shells` immediately and the `shell.list` load publishes into the same field, so whichever landed
+  second won: a command the user had just started was erased by a list the server had answered *before* that
+  command existed, on any server slow enough for the two to overlap. The terminal case ran the other way and was
+  worse — a `pty.deleted` that raced an in-flight `pty.list` left a terminal the server had already killed sitting
+  in the list, because the load put back what the event had removed. Each list now keeps a ledger of the ids
+  events have named since its last load: a create is kept when the list lacks it, a delete is taken out when the
+  list still has it, and the ledger is emptied once a load has been merged, because from then on the server's own
+  answer is at least as new as the events. `ExecutionShellsRaceTest` holds the list open behind a latch so both
+  orderings are deterministic, and both of its tests fail on the old code.
+  This is what `ExecutionStoreTest` was intermittently reporting: `runTest(UnconfinedTestDispatcher())` makes the
+  *test* eager, not the load, which is answered from an OkHttp thread, so it passed or failed on which of the two
+  won the race. It was failing that way on a clean tree.
+  Still not fixed, and recorded rather than papered over: `PairingAndReconnectTest`'s
+  `aPairingLinkBecomesAConnectedServerWithAStoredCredential` asserts that `addPairedServer` returns a profile
+  whose health is already `CONNECTED`, and the health is a snapshot taken when the call returns, so there is
+  nothing to wait on — whether the repository should block until the connection is up, or return and let the
+  store report it, is undecided. `TerminalPageTest` still fails now and then under full parallel load.
 
 Also added while testing:
 
@@ -366,12 +383,17 @@ Earlier fixes:
   [`MANUAL_TEST_MATRIX.md`](./MANUAL_TEST_MATRIX.md).
 - **No signed artifact was produced.** No keystore exists and none was created. The build is ready
   for one and refuses to pretend otherwise; see [`RELEASE.md`](./RELEASE.md).
-- **A handful of tests still fail when every module's tests run at once.** `core:data`'s
-  `ExecutionStoreTest` and `PairingAndReconnectTest` fail intermittently under
-  `./gradlew unitTest --rerun-tasks` on a loaded machine, and the gate sequence CI runs is green.
-  Four real causes were found and fixed on the way (see "Three test suites failed at random" under
-  Fixed); what is left is wall-clock timing in tests that wait on a store's first load, and it was
-  failing the same way before this work. It is not a regression, and it is not fixed.
+- **A few tests still fail now and then when every module's tests run at once.** Under
+  `./gradlew unitTest --rerun-tasks` on a loaded machine, one test in a different module fails roughly one
+  full run in six to ten; the gate sequence CI runs is green, and the module in question fails in isolation
+  every time. Six real causes were found and fixed on the way and two of them were product defects (see "A
+  command or a terminal could vanish from, or come back to, a list that was already loading" under Fixed) —
+  the full run went from failing every time to usually passing. Two are still outstanding and are recorded
+  rather than papered over: `PairingAndReconnectTest.aPairingLinkBecomesAConnectedServerWithAStoredCredential`
+  asserts that `addPairedServer` returns a profile whose health is already `CONNECTED`, and the health is a
+  snapshot taken when the call returns, so nothing can be waited on — whether the repository should block
+  until the connection is up is a decision nobody has made; and `TerminalPageTest` drives a JavaScript page
+  contract from a text fixture. Neither is a regression from this work and neither is fixed.
 - An unrecognised TUI command is shown but not performed. A newer TUI's commands need an app
   action before they can be run from the phone.
 - The terminal is a JavaScript grid with no semantics. The session transcript carries the same output

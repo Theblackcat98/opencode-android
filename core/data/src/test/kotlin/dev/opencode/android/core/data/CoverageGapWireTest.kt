@@ -177,16 +177,19 @@ class CoverageGapWireTest {
         .let { "${it.method} ${it.url.encodedPath}?${it.url.query ?: ""}" }
 
     /**
-     * Whether [expected] — a `METHOD path?query`, as [lastRequest] writes one — is among what reached the
-     * server.
+     * Selects the one recorded request a claim is about, rather than whichever arrived last.
      *
-     * **Needed wherever a surface refreshes a list behind the call under test.** `completeOauth` re-reads
-     * the integrations, so a `GET /api/integration` goes out right after the `POST …/complete` and which
-     * of the two is last is a race between the assertion and that refresh. The claim is that the complete
-     * call went out on its own route, which "it is in the list" states and "it is the last one" does not.
+     * **Needed wherever a surface refreshes a list behind the call under test.** `completeOauth` re-reads the
+     * integrations, so a `GET /api/integration` goes out right after the `POST …/complete`; "the last
+     * request" and "the request under test" are then different things, and which one a test got was a race
+     * against a background refresh. Naming the request states the claim, and it is the only form of it
+     * that holds while something else is in flight.
+     *
+     * @param expected a `METHOD path?query`, as [lastRequest] writes one.
      */
-    private fun requested(expected: String): Boolean = synchronized(sent) {
-        sent.any { "${it.method} ${it.url.encodedPath}?${it.url.query ?: ""}" == expected }
+    private fun bodyOfRequest(expected: String): JsonObject = synchronized(sent) {
+        val request = sent.last { "${it.method} ${it.url.encodedPath}?${it.url.query ?: ""}" == expected }
+        Json.parseToJsonElement(String((request.body ?: okio.ByteString.EMPTY).toByteArray(), Charsets.UTF_8)) as JsonObject
     }
 
     private fun lastBody(): JsonObject = synchronized(sent) { sent.last() }
@@ -302,15 +305,17 @@ class CoverageGapWireTest {
 
         status("POST /api/integration/placeholder-integration/connect/oauth/att_1/complete", 204)
         assertTrue(surface.completeOauth("/work", "placeholder-integration", "att_1", "c1").isSuccess)
-        assertTrue(
-            "POST /api/integration/placeholder-integration/connect/oauth/att_1/complete" +
-                "?location[directory]=/work must have been sent, whatever followed it",
-            requested(
-                "POST /api/integration/placeholder-integration/connect/oauth/att_1/complete" +
-                    "?location[directory]=/work",
-            ),
+        // The code went in this call's body, and this call is named rather than assumed to be the last one
+        // sent, because completing an OAuth attempt re-reads the integrations behind it.
+        assertEquals(
+            "c1",
+            (
+                bodyOfRequest(
+                    "POST /api/integration/placeholder-integration/connect/oauth/att_1/complete" +
+                        "?location[directory]=/work",
+                )["code"] as JsonPrimitive
+                ).content,
         )
-        assertEquals("c1", (bodyOf()["code"] as JsonPrimitive).content)
     }
 
     /**
