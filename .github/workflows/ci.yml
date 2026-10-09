@@ -114,11 +114,11 @@ jobs:
           exports="$(./scripts/dev-server.sh start)"
           eval "$exports"
           {
-            printf 'OPENCODE_URL=%s\\n' "$OPENCODE_URL"
-            printf 'OPENCODE_PASSWORD=%s\\n' "$OPENCODE_PASSWORD"
-            printf 'OPENCODE_DIRECTORY=%s\\n' "$OPENCODE_DIRECTORY"
-            printf 'OPENCODE_VERSION=%s\\n' "$OPENCODE_VERSION"
-            printf 'FAKE_PROVIDER_URL=%s\\n' "$FAKE_PROVIDER_URL"
+            printf 'OPENCODE_URL=%s\n' "$OPENCODE_URL"
+            printf 'OPENCODE_PASSWORD=%s\n' "$OPENCODE_PASSWORD"
+            printf 'OPENCODE_DIRECTORY=%s\n' "$OPENCODE_DIRECTORY"
+            printf 'OPENCODE_VERSION=%s\n' "$OPENCODE_VERSION"
+            printf 'FAKE_PROVIDER_URL=%s\n' "$FAKE_PROVIDER_URL"
           } >> "$GITHUB_ENV"
 
       - name: Run Integration Tests
