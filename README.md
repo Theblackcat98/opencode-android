@@ -265,6 +265,7 @@ eval "$(./scripts/dev-server.sh start)"
 | [`docs/SECURITY_REVIEW.md`](docs/SECURITY_REVIEW.md) | Credentials, cleartext, the WebView, confirmations and the manifest, read against the code rather than the plan |
 | [`docs/PRIVACY_REVIEW.md`](docs/PRIVACY_REVIEW.md) | What leaves the device, what is stored, the notification payloads, and the two owner decisions that are still open |
 | [`docs/ACCESSIBILITY_AUDIT.md`](docs/ACCESSIBILITY_AUDIT.md) | The §5.4 checklist, what is checked mechanically, and what needs a device with a screen reader |
+| [`docs/COMPATIBILITY.md`](docs/COMPATIBILITY.md) | Environments actually tested, evidence limits and outstanding compatibility checks |
 | [`docs/CHANGELOG.md`](docs/CHANGELOG.md) | What changed, in the order a user would notice it |
 
 ## Connecting to your server
