@@ -105,10 +105,36 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Run Integration Tests
+      - name: Start pinned OpenCode dev server
         run: |
-          eval "$(./scripts/dev-server.sh start)"
-          ./gradlew integrationTest
+          set -euo pipefail
+          # Keep the command-substitution status: eval "$(command)" can return success
+          # even when command fails and emits no exports, which used to run integration
+          # tests without a server and turn one startup failure into dozens of test failures.
+          exports="$(./scripts/dev-server.sh start)"
+          eval "$exports"
+          {
+            printf 'OPENCODE_URL=%s\\n' "$OPENCODE_URL"
+            printf 'OPENCODE_PASSWORD=%s\\n' "$OPENCODE_PASSWORD"
+            printf 'OPENCODE_DIRECTORY=%s\\n' "$OPENCODE_DIRECTORY"
+            printf 'OPENCODE_VERSION=%s\\n' "$OPENCODE_VERSION"
+            printf 'FAKE_PROVIDER_URL=%s\\n' "$FAKE_PROVIDER_URL"
+          } >> "$GITHUB_ENV"
+
+      - name: Run Integration Tests
+        run: ./gradlew integrationTest
+
+      - name: Upload dev-server diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-dev-server-diagnostics
+          path: |
+            .dev-server/serve.log
+            .dev-server/supervisor.log
+            .dev-server/fake-provider.log
+          if-no-files-found: warn
+          retention-days: 7
 
       - name: Teardown Dev Server
         if: always()
