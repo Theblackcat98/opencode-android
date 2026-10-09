@@ -175,9 +175,12 @@ class ExecutionServer(
     }
 
     fun close() {
-        // A socket left open makes `MockWebServer.close()` wait for a queue that never shuts down, which
-        // hides the real failure behind a hang.
-        synchronized(peers) { peers.forEach { it.close(1000, "test over") } }
+        // WebSocket.close() starts an asynchronous close handshake. Immediately shutting down MockWebServer
+        // can race that handshake and leave its task queue alive until MockWebServer's shutdown timeout.
+        // The test harness has no protocol work left to preserve at teardown, so cancel each peer to release
+        // the server-side socket deterministically instead of waiting for the client to acknowledge a close.
+        val openPeers = synchronized(peers) { peers.toList() }
+        openPeers.forEach { it.cancel() }
         scope.cancel()
         server.close()
     }
