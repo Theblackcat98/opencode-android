@@ -71,6 +71,14 @@ fun SessionActionsSheet(
      */
     onWaitUntilIdle: (() -> Unit)? = null,
     /**
+     * Whether the app follows the desktop TUI: a session the TUI selects is opened here while this is on.
+     *
+     * The row shows the current state, and it stays on the sheet when tapped, so the change is seen at once.
+     */
+    followDesktopOn: Boolean = false,
+    /** Turns following on or off, and `null` hides the row, the same as [onWaitUntilIdle]. */
+    onToggleFollowDesktop: (() -> Unit)? = null,
+    /**
      * Opens the dialog that adds a synthetic note to the session.
      *
      * Always offered: `session.synthetic` is in the spec, not behind an experimental switch, so there is no route
@@ -128,6 +136,7 @@ fun SessionActionsSheet(
             }
             onOpenHistory?.let { open -> SheetAction(R.string.session_history) { open() } }
             onWaitUntilIdle?.let { wait -> SheetAction(R.string.session_wait_idle) { wait() } }
+            onToggleFollowDesktop?.let { toggle -> FollowDesktopRow(on = followDesktopOn, onClick = toggle) }
             onAddSyntheticNote?.let { add -> SheetAction(R.string.session_synthetic_note) { add() } }
             onOpenEventHistory?.let { open -> SheetAction(R.string.session_event_history) { open() } }
             onOpenExperimental?.let { open -> SheetAction(R.string.session_experimental) { open() } }
@@ -292,6 +301,24 @@ fun SyntheticNoteDialog(
             }
         },
     )
+}
+
+/**
+ * The desktop-follow row. Its label is the state the app is in now, so a screen reader hears "on" or "off" before
+ * the explanation, and the explanation says what on does.
+ */
+@Composable
+private fun FollowDesktopRow(on: Boolean, onClick: () -> Unit) {
+    TextButton(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.fillMaxWidth()) {
+            Text(stringResource(if (on) R.string.session_follow_desktop_on else R.string.session_follow_desktop_off))
+            Text(
+                stringResource(R.string.session_follow_desktop_explain),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
 }
 
 /** One row of the sheet. */

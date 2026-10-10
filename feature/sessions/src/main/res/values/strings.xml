@@ -167,6 +167,9 @@
     <string name="session_attention">Notifications and auto-approve</string>
     <string name="session_history">History, export and context</string>
     <string name="session_wait_idle">Wait until idle</string>
+    <string name="session_follow_desktop_on">Follow the desktop TUI: on</string>
+    <string name="session_follow_desktop_off">Follow the desktop TUI: off</string>
+    <string name="session_follow_desktop_explain">When on, selecting a session in the TUI opens it here. Off by default.</string>
     <string name="session_wait_idle_title">Waiting for this session</string>
     <string name="session_wait_idle_body">This waits until the session\'s current turn ends. It changes nothing on the server, and stopping the wait only ends this request.</string>
     <string name="session_wait_idle_stop">Stop waiting</string>

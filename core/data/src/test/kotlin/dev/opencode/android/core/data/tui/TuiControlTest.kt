@@ -83,6 +83,17 @@ class TuiControlTest {
         job.cancel()
     }
 
+    /**
+     * Following is a setting the user turns on, so it starts off. Both the composer hand-off and the session
+     * hand-off are gated on it, and a first launch that already followed would take over a session unasked.
+     */
+    @Test
+    fun followDesktopIsOffUntilTheUserTurnsItOn() {
+        assertFalse(control.followDesktop.value)
+        control.setFollowDesktop(true)
+        assertTrue(control.followDesktop.value)
+    }
+
     @Test
     fun promptTextIsIgnoredUntilFollowDesktopIsOn() = runTest {
         val seen = mutableListOf<TuiControl.PromptAppend>()

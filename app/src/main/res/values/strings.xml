@@ -8,6 +8,10 @@
     <string name="shortcut_new_session_short">New session</string>
     <string name="shortcut_new_session_long">New session</string>
 
+    <!-- A TUI command, shown as a message and never performed (navigation/TuiCommands.kt). %1$s is the command name the server sent. -->
+    <string name="tui_command_unknown">The TUI asked for: %1$s</string>
+    <string name="tui_command_offered">The TUI asked to run %1$s. Nothing was run.</string>
+
     <!-- The in-app changelog, in navigation/ChangelogHost.kt and changelog/ChangelogScreen.kt. -->
     <string name="changelog_title">Changelog</string>
     <string name="changelog_navigate_back">Back</string>

@@ -120,6 +120,7 @@ fun SessionHost(
     val childCount by management.childCount.collectAsStateWithLifecycle()
     val waiting by management.waiting.collectAsStateWithLifecycle()
     val waitAvailable by management.waitAvailable.collectAsStateWithLifecycle()
+    val followDesktop by management.followDesktop.collectAsStateWithLifecycle()
     val eventHistoryState by eventHistory.state.collectAsStateWithLifecycle()
     val eventHistoryAvailable by eventHistory.available.collectAsStateWithLifecycle()
     val forked by management.forked.collectAsStateWithLifecycle()
@@ -396,6 +397,9 @@ fun SessionHost(
             } else {
                 null
             },
+            // The row stays on the sheet, so the state it shows changes under the user's thumb.
+            followDesktopOn = followDesktop,
+            onToggleFollowDesktop = { management.setFollowDesktop(!followDesktop) },
             onAddSyntheticNote = {
                 actionsOpen = false
                 // A failure left over from an earlier action would otherwise show as this dialog's first error.

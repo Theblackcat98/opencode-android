@@ -89,6 +89,21 @@ class SessionManagementViewModel(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT), true)
 
     /**
+     * Whether the app follows the desktop TUI on the active server. The sheet's row shows it as on or off.
+     *
+     * It is read from the server's `TuiControl`, through the active server, so a switch of server shows that server's
+     * value. Nothing is stored: the setting is in memory and starts off whenever the server's data set is made.
+     */
+    val followDesktop: StateFlow<Boolean> = active
+        .flatMapLatest { set -> set?.tui?.followDesktop ?: flowOf(false) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT), false)
+
+    /** Turns following the desktop TUI on or off for the active server. It changes nothing on the server. */
+    fun setFollowDesktop(enabled: Boolean) {
+        active.value?.tui?.setFollowDesktop(enabled)
+    }
+
+    /**
      * The id of a session this app has just forked, or `null`.
      *
      * It is a one-shot rather than a sticky field because the graph navigates on it: a fork that

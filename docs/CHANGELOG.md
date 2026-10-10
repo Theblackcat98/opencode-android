@@ -49,10 +49,15 @@ left to do.
   A server without the route is learned from that press, and the screen then says so instead of offering a
   button. Not run with a second device.
 
-**TUI control events**, which had payload classes since P0 and no handler: a toast becomes a snackbar
-at the server's own variant, an opt-in "follow desktop" mode mirrors the TUI's session and composer and
-is off by default, and a command that would change server state is offered rather than performed. A
-command this build does not know is shown verbatim rather than dropped.
+**TUI control events**, which had payload classes since P0 and no handler. A toast becomes a snackbar at
+the server's own variant. A command the TUI runs is shown as a snackbar message that says "Nothing was
+run", with the name verbatim when this build does not know it, and no command is performed from the phone:
+a command that would change server state stays a message, and so does a safe one, because no mapping to an
+app action exists yet. An opt-in "follow desktop" switch, in the session menu and off by default, opens on
+the phone the session the TUI selects while it is on, and turning it off stops that at once. All of it is
+built and unit tested, and none of it has been seen working with a real TUI. **Not built:** the prompt text
+the TUI puts in its composer (`tui.prompt.append`) does not reach the app's composer, the switch is not
+saved, so it is off again after the app restarts, and no TUI command is performed.
 
 **Coverage.** Every row in the plan's §7 and §8 matrices is implemented and tested: 138 of 138
 operations declared, wired and tested, and 94 of 94 event types handled and tested. The audit of what

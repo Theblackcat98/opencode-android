@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
@@ -32,6 +33,7 @@ import androidx.navigation.toRoute
 import dev.opencode.android.OpenLocationTarget
 import dev.opencode.android.OpenSessionTarget
 import dev.opencode.android.OpenShortcutTarget
+import dev.opencode.android.R
 import dev.opencode.android.ShortcutDestination
 import dev.opencode.android.core.data.server.ServerDataRegistry
 import dev.opencode.android.core.data.server.ServerDataSet
@@ -296,6 +298,30 @@ fun OpenCodeApp(
             .collect { toast ->
                 val text = toastText(toast)
                 if (text.isNotBlank()) snackbarHostState.showSnackbar(text, duration = toastDuration(toast.level))
+            }
+    }
+
+    // A TUI command (`tui.command.execute`) is shown as a message and never performed; the decision and its
+    // sentence are in `commandOffer`. Performing a safe command is not built, so nothing here runs one.
+    val unknownCommandText = stringResource(R.string.tui_command_unknown)
+    val offeredCommandText = stringResource(R.string.tui_command_offered)
+    LaunchedEffect(serverDataSets) {
+        serverDataSets.active
+            .flatMapLatest { set -> set?.tui?.commands ?: emptyFlow() }
+            .collect { command ->
+                val offer = commandOffer(command, unknownCommandText, offeredCommandText)
+                snackbarHostState.showSnackbar(offer.text, duration = SnackbarDuration.Long)
+            }
+    }
+
+    // A TUI session selection (`tui.session.select`) opens that session here, but only while the app follows the
+    // desktop. The gate is `followedSessionSelections`, which stops at once when following is turned off. The
+    // session is opened on the active server, so the route takes no server id.
+    LaunchedEffect(serverDataSets) {
+        serverDataSets.active
+            .flatMapLatest { set -> set?.tui?.let(::followedSessionSelections) ?: emptyFlow() }
+            .collect { selection ->
+                navController.navigate(SessionRoute(null, selection.sessionID)) { launchSingleTop = true }
             }
     }
 
