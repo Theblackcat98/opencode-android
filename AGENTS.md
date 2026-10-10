@@ -16,9 +16,10 @@ node tools/audit-viewmodels.test.mjs && node tools/audit-viewmodels.mjs  # every
 node .opencode/plugins/process-guard.test.mjs
 node tools/audit-strings.mjs              # UI strings externalized
 node tools/audit-accessibility.mjs
+node tools/audit-matrix.test.mjs && node tools/audit-matrix.mjs  # every manual-matrix row has a result marker
 ```
 
-`audit-viewmodels` exists because `hiltViewModel()` compiles for any `ViewModel` and fails only when the screen opens; seven screens crashed that way. It also fails on the two shapes that gave a screen a `ComposerViewModel` no session was opened in ("Undo to here" and the file browser's attachments did nothing): a `hiltViewModel()` default on the function that builds the `NavHost`, and a second `ComposerViewModel` default outside `SessionHost` without a `// audit-viewmodels: own-instance` claim. `:app` has no Hilt or Robolectric test wiring, so this is a source check, not a navigation test. Only `--strict`, `--check` and `audit-viewmodels` fail on their own. **`audit-strings` and `audit-accessibility` always exit 0** — read the output. CI gates strings through a shell pipeline over `audit-strings --json` in `.github/workflows/ci.yml`, not through the tool.
+`audit-viewmodels` exists because `hiltViewModel()` compiles for any `ViewModel` and fails only when the screen opens; seven screens crashed that way. It also fails on the two shapes that gave a screen a `ComposerViewModel` no session was opened in ("Undo to here" and the file browser's attachments did nothing): a `hiltViewModel()` default on the function that builds the `NavHost`, and a second `ComposerViewModel` default outside `SessionHost` without a `// audit-viewmodels: own-instance` claim. `:app` has no Hilt or Robolectric test wiring, so this is a source check, not a navigation test. Only `--strict`, `--check`, `audit-viewmodels` and `audit-matrix` fail on their own. **`audit-strings` and `audit-accessibility` always exit 0** — read the output. CI gates strings through a shell pipeline over `audit-strings --json` in `.github/workflows/ci.yml`, not through the tool.
 
 **Gradle gates** (this is what CI runs, in this order):
 
