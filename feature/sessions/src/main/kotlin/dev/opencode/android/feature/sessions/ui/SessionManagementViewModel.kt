@@ -15,6 +15,7 @@ import dev.opencode.android.core.model.SessionMessage
 import dev.opencode.android.core.model.SessionStatus
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -164,12 +165,14 @@ class SessionManagementViewModel(
         if (waitJob?.isActive == true) return
         _waiting.value = true
         waitJob = viewModelScope.launch {
+            val self = currentCoroutineContext()[Job]
             try {
                 val result = set.insights.waitUntilIdle(id)
                 // Cancelling is the user's choice, not a failure, so it does not reach the error line.
                 if (isActive) result.exceptionOrNull()?.let { _error.value = it.toActionError() }
             } finally {
-                _waiting.value = false
+                // A stopped wait has already cleared the flag in stopWaiting, and a newer wait may own it by now.
+                if (waitJob === self) _waiting.value = false
             }
         }
     }
@@ -178,6 +181,7 @@ class SessionManagementViewModel(
     fun stopWaiting() {
         waitJob?.cancel()
         waitJob = null
+        _waiting.value = false
     }
 
     /**

@@ -7,6 +7,7 @@ import dev.opencode.android.core.network.LanFound
 import dev.opencode.android.core.network.LanProber
 import dev.opencode.android.core.network.LanScanner
 import dev.opencode.android.core.network.LocalIpv4Source
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -133,11 +134,19 @@ class LanDiscoveryViewModel @Inject constructor(
             )
         }
         scanJob = viewModelScope.launch {
-            scanner.scan(hosts, ports, onProbed = ::countProbe).collect { server ->
-                _uiState.update { it.copy(found = (it.found + server).sortedBy { entry -> entry.sortKey() }) }
+            try {
+                scanner.scan(hosts, ports, onProbed = ::countProbe).collect { server ->
+                    _uiState.update { it.copy(found = (it.found + server).sortedBy { entry -> entry.sortKey() }) }
+                }
+                scanJob = null
+                _uiState.update { it.copy(scanning = false, notice = LanNotice.FINISHED) }
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Throwable) {
+                // A probe that blew up must not leave Scan disabled; what was found before it stays.
+                scanJob = null
+                _uiState.update { it.copy(scanning = false, notice = LanNotice.STOPPED) }
             }
-            scanJob = null
-            _uiState.update { it.copy(scanning = false, notice = LanNotice.FINISHED) }
         }
     }
 

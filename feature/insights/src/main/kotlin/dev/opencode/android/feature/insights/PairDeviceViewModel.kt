@@ -10,6 +10,7 @@ import dev.opencode.android.core.data.integrations.ActionFailure
 import dev.opencode.android.core.data.server.ServerDataRegistry
 import dev.opencode.android.core.model.PairingCode
 import dev.opencode.android.core.network.PairingLink
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -56,12 +57,20 @@ class PairDeviceViewModel @Inject constructor(
     private val _state = MutableStateFlow(PairDeviceUiState())
     val state: StateFlow<PairDeviceUiState> = _state.asStateFlow()
 
+    private var generateJob: Job? = null
+
     init {
         // A code belongs to the server that minted it, so following a different server drops the one on screen,
         // and the new server's route is Unknown until its own first press says otherwise.
         viewModelScope.launch {
             dataSets.active.collectLatest { set ->
-                _state.update { it.copy(offer = null, error = null, availability = RouteAvailability.Unknown) }
+                // A mint still in flight belongs to the server being left, so it is cancelled and cannot land
+                // its code on the new one.
+                generateJob?.cancel()
+                generateJob = null
+                _state.update {
+                    it.copy(offer = null, generating = false, error = null, availability = RouteAvailability.Unknown)
+                }
                 set?.insights?.pairDevice?.collect { availability ->
                     _state.update { it.copy(availability = availability) }
                 }
@@ -80,7 +89,7 @@ class PairDeviceViewModel @Inject constructor(
         val set = dataSets.active.value ?: return
         val profile = dataSets.activeProfile.value?.takeIf { it.id == set.serverId } ?: return
         if (!_state.value.canGenerate) return
-        viewModelScope.launch {
+        generateJob = viewModelScope.launch {
             _state.update { it.copy(generating = true, offer = null, error = null) }
             val outcome = set.insights.createPairingCode()
             // The route records its own answer before the call returns, so an absent route is read here and

@@ -106,6 +106,25 @@ class InsightsViewModel(
         val projects: Flow<List<Project>> = active.flatMapLatest { set ->
             set?.projects?.state?.map { it.value.orEmpty() } ?: flowOf(emptyList())
         }
+        // The selection belongs to the server it was made on: a project id means nothing to another server, and
+        // the figures on screen are the old server's. Range and tool detail are the user's, so they stay.
+        // Only a change from the server already followed resets; the first emission, which may arrive after
+        // open() has asked, is the server the screen started on.
+        var followed = active.value?.serverId
+        viewModelScope.launch {
+            active.collect { set ->
+                if (set?.serverId == followed) return@collect
+                followed = set?.serverId
+                inFlight?.cancel()
+                _state.value = _state.value.copy(
+                    loading = false,
+                    project = null,
+                    stats = null,
+                    error = null,
+                    availability = RouteAvailability.Unknown,
+                )
+            }
+        }
         viewModelScope.launch {
             projects.collect { list -> _state.value = _state.value.copy(projects = list) }
         }
