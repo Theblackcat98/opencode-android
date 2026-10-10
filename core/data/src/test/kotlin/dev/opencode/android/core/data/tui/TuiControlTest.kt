@@ -57,6 +57,33 @@ class TuiControlTest {
     }
 
     @Test
+    fun oneToastEventEmitsExactlyOneToastWithItsTitleMessageAndLevel() = runTest {
+        val seen = mutableListOf<TuiControl.Toast>()
+        val job = launch(UnconfinedTestDispatcher(testScheduler)) { control.toasts.collect { seen += it } }
+
+        control.apply(event("tui.toast.show", """{"title":"Config","message":"Reloaded","variant":"warning"}"""))
+
+        assertEquals(
+            listOf(TuiControl.Toast("Config", "Reloaded", TuiControl.ToastLevel.WARNING, "/work")),
+            seen,
+        )
+        job.cancel()
+    }
+
+    @Test
+    fun aToastIsNotReplayedToACollectorThatSubscribesAfterIt() = runTest {
+        // The app's snackbar collector only sees toasts that arrive while it is subscribed. A toast from
+        // before the app opened is gone, which is what the code in the app states as its limit.
+        control.apply(event("tui.toast.show", """{"message":"Too early","variant":"info"}"""))
+
+        val seen = mutableListOf<TuiControl.Toast>()
+        val job = launch(UnconfinedTestDispatcher(testScheduler)) { control.toasts.collect { seen += it } }
+
+        assertTrue(seen.isEmpty())
+        job.cancel()
+    }
+
+    @Test
     fun promptTextIsIgnoredUntilFollowDesktopIsOn() = runTest {
         val seen = mutableListOf<TuiControl.PromptAppend>()
         val job = launch(UnconfinedTestDispatcher(testScheduler)) { control.promptAppends.collect { seen += it } }

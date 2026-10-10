@@ -1,6 +1,14 @@
 package dev.opencode.android.navigation
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -8,9 +16,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavBackStackEntry
@@ -50,8 +60,11 @@ import dev.opencode.android.feature.sessions.ui.HomeRoute
 import dev.opencode.android.feature.sessions.ui.ManageDestination
 import dev.opencode.android.feature.sessions.ui.PendingRequestsViewModel
 import dev.opencode.android.feature.sessions.ui.SessionListRoute
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.serialization.Serializable
 import javax.inject.Inject
 
@@ -218,6 +231,7 @@ data class ProjectSettingsRoute(
  * never been told about, and each returned without a word. A ViewModel a route needs is taken *inside*
  * that route's lambda, with the entry as its owner; `tools/audit-viewmodels.mjs` fails on the other shape.
  */
+@OptIn(ExperimentalCoroutinesApi::class)
 @Composable
 fun OpenCodeApp(
     sharedPayload: String? = null,
@@ -272,496 +286,523 @@ fun OpenCodeApp(
         }
     }
 
-    NavHost(
-        navController = navController,
-        startDestination = ServersRoute,
-        modifier = modifier,
-    ) {
-        composable<ServersRoute> {
-            ServersScreen(
-                onHomeClick = { serverId -> navController.navigate(HomeRoute(serverId)) },
-                onAddServerClick = { navController.navigate(AddServerRoute()) },
-                onServerClick = { serverId -> navController.navigate(ServerStatusRoute(serverId)) },
-                onEditServerClick = { serverId -> navController.navigate(EditServerRoute(serverId)) },
-                onPairAgainClick = { serverId ->
-                    // A rejected credential is repaired by re-pairing, which keeps the profile.
-                    navController.navigate(AddServerRoute(replaceServerId = serverId))
-                },
-                onInspectorClick = { navController.navigate(EventInspectorRoute()) },
-                onOpenChangelog = { navController.navigate(ChangelogRoute) },
-            )
-        }
+    // A TUI toast (`tui.toast.show`) is shown as a snackbar. The collector follows the active server, so
+    // switching servers stops the old one's toasts. The flow has no replay: a toast that arrives while the
+    // app is closed is not shown when it next opens, and nothing keeps a record of it.
+    val snackbarHostState = remember { SnackbarHostState() }
+    LaunchedEffect(serverDataSets) {
+        serverDataSets.active
+            .flatMapLatest { set -> set?.tui?.toasts ?: emptyFlow() }
+            .collect { toast ->
+                val text = toastText(toast)
+                if (text.isNotBlank()) snackbarHostState.showSnackbar(text, duration = toastDuration(toast.level))
+            }
+    }
 
-        composable<AddServerRoute> {
-            AddServerScreen(onNavigateBack = { navController.popBackStack() })
-        }
+    // The host sits over the whole app rather than in a Scaffold, which would pad every screen that already
+    // has its own top and bottom bars a second time. It is inset for the navigation bar only.
+    Box(modifier = modifier) {
+        NavHost(
+            navController = navController,
+            startDestination = ServersRoute,
+            modifier = Modifier.fillMaxSize(),
+        ) {
+            composable<ServersRoute> {
+                ServersScreen(
+                    onHomeClick = { serverId -> navController.navigate(HomeRoute(serverId)) },
+                    onAddServerClick = { navController.navigate(AddServerRoute()) },
+                    onServerClick = { serverId -> navController.navigate(ServerStatusRoute(serverId)) },
+                    onEditServerClick = { serverId -> navController.navigate(EditServerRoute(serverId)) },
+                    onPairAgainClick = { serverId ->
+                        // A rejected credential is repaired by re-pairing, which keeps the profile.
+                        navController.navigate(AddServerRoute(replaceServerId = serverId))
+                    },
+                    onInspectorClick = { navController.navigate(EventInspectorRoute()) },
+                    onOpenChangelog = { navController.navigate(ChangelogRoute) },
+                )
+            }
 
-        composable<ServerStatusRoute> {
-            ServerStatusScreen(
-                onNavigateBack = { navController.popBackStack() },
-                onEditServer = { serverId -> navController.navigate(EditServerRoute(serverId)) },
-                onOpenInspector = { serverId -> navController.navigate(EventInspectorRoute(serverId)) },
-                // Re-pairing keeps the profile and replaces only the credential.
-                onPairAgain = { serverId -> navController.navigate(AddServerRoute(replaceServerId = serverId)) },
-            )
-        }
+            composable<AddServerRoute> {
+                AddServerScreen(onNavigateBack = { navController.popBackStack() })
+            }
 
-        composable<EditServerRoute> {
-            EditServerScreen(onNavigateBack = { navController.popBackStack() })
-        }
+            composable<ServerStatusRoute> {
+                ServerStatusScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onEditServer = { serverId -> navController.navigate(EditServerRoute(serverId)) },
+                    onOpenInspector = { serverId -> navController.navigate(EventInspectorRoute(serverId)) },
+                    // Re-pairing keeps the profile and replaces only the credential.
+                    onPairAgain = { serverId -> navController.navigate(AddServerRoute(replaceServerId = serverId)) },
+                )
+            }
 
-        composable<EventInspectorRoute> {
-            EventInspectorScreen(
-                onNavigateBack = { navController.popBackStack() },
-                onAddServer = {
-                    navController.popBackStack()
-                    navController.navigate(AddServerRoute())
-                },
-            )
-        }
+            composable<EditServerRoute> {
+                EditServerScreen(onNavigateBack = { navController.popBackStack() })
+            }
 
-        composable<HomeRoute> { entry ->
-            val route = entry.toRoute<HomeRoute>()
-            var newSessionOpen by remember { mutableStateOf(route.openNewSession) }
-            HomeRoute(
-                serverId = route.serverId,
-                onSessionClick = { sessionId ->
-                    navController.navigate(SessionRoute(route.serverId, sessionId))
-                },
-                onAllSessionsClick = { serverId ->
-                    navController.navigate(SessionListRoute(serverId = serverId))
-                },
-                onNewSessionClick = { newSessionOpen = true },
-                onPendingRequestsClick = { serverId ->
-                    navController.navigate(PendingRequestsRoute(serverId))
-                },
-                onBackClick = { navController.popBackStack() },
-                // The plan's "Manage" section (§4.3). The app module owns the graph, so the feature
-                // hands the destination over and this is where it becomes a route.
-                onManageClick = { directory, destination ->
-                    when (destination) {
-                        ManageDestination.ACCOUNTS ->
-                            navController.navigate(ConnectRoute(route.serverId, directory))
+            composable<EventInspectorRoute> {
+                EventInspectorScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onAddServer = {
+                        navController.popBackStack()
+                        navController.navigate(AddServerRoute())
+                    },
+                )
+            }
 
-                        ManageDestination.PROVIDERS ->
-                            navController.navigate(ProvidersRoute(route.serverId, directory))
-
-                        ManageDestination.MCP ->
-                            navController.navigate(McpRoute(route.serverId, directory))
-
-                        ManageDestination.PLUGINS ->
-                            navController.navigate(PluginsRoute(route.serverId, directory))
-
-                        ManageDestination.WEB_SEARCH ->
-                            navController.navigate(WebSearchRoute(route.serverId, directory))
-
-                        // ---------------------------------------------------------------- Phase 9
-                        ManageDestination.CONFIGURATION ->
-                            navController.navigate(ConfigRoute(route.serverId, directory))
-
-                        ManageDestination.AGENTS ->
-                            navController.navigate(CatalogRoute(route.serverId, directory, "agents"))
-
-                        ManageDestination.DEFINITIONS ->
-                            navController.navigate(CatalogRoute(route.serverId, directory, "commands"))
-
-                        ManageDestination.PERMISSIONS ->
-                            navController.navigate(PermissionsRoute(route.serverId, directory))
-
-                        // Maintenance is server-wide, so it takes no directory: it lists what the server
-                        // has loaded and what would be dropped, which is a property of the server.
-                        ManageDestination.MAINTENANCE ->
-                            navController.navigate(MaintenanceRoute(route.serverId))
-
-                        ManageDestination.USAGE ->
-                            navController.navigate(UsageRoute(route.serverId))
-
-                        ManageDestination.QUICK_ASK ->
-                            navController.navigate(QuickAskRoute(route.serverId))
-
-                        ManageDestination.RPC_CONSOLE ->
-                            navController.navigate(RpcConsoleRoute(route.serverId))
-
-                        ManageDestination.PAIR_DEVICE ->
-                            navController.navigate(PairDeviceRoute(route.serverId))
-                    }
-                },
-            )
-            if (newSessionOpen) {
-                NewSessionHost(
-                    onCreated = { sessionId ->
-                        newSessionOpen = false
+            composable<HomeRoute> { entry ->
+                val route = entry.toRoute<HomeRoute>()
+                var newSessionOpen by remember { mutableStateOf(route.openNewSession) }
+                HomeRoute(
+                    serverId = route.serverId,
+                    onSessionClick = { sessionId ->
                         navController.navigate(SessionRoute(route.serverId, sessionId))
                     },
-                    onDismiss = { newSessionOpen = false },
+                    onAllSessionsClick = { serverId ->
+                        navController.navigate(SessionListRoute(serverId = serverId))
+                    },
+                    onNewSessionClick = { newSessionOpen = true },
+                    onPendingRequestsClick = { serverId ->
+                        navController.navigate(PendingRequestsRoute(serverId))
+                    },
+                    onBackClick = { navController.popBackStack() },
+                    // The plan's "Manage" section (§4.3). The app module owns the graph, so the feature
+                    // hands the destination over and this is where it becomes a route.
+                    onManageClick = { directory, destination ->
+                        when (destination) {
+                            ManageDestination.ACCOUNTS ->
+                                navController.navigate(ConnectRoute(route.serverId, directory))
+
+                            ManageDestination.PROVIDERS ->
+                                navController.navigate(ProvidersRoute(route.serverId, directory))
+
+                            ManageDestination.MCP ->
+                                navController.navigate(McpRoute(route.serverId, directory))
+
+                            ManageDestination.PLUGINS ->
+                                navController.navigate(PluginsRoute(route.serverId, directory))
+
+                            ManageDestination.WEB_SEARCH ->
+                                navController.navigate(WebSearchRoute(route.serverId, directory))
+
+                            // ---------------------------------------------------------------- Phase 9
+                            ManageDestination.CONFIGURATION ->
+                                navController.navigate(ConfigRoute(route.serverId, directory))
+
+                            ManageDestination.AGENTS ->
+                                navController.navigate(CatalogRoute(route.serverId, directory, "agents"))
+
+                            ManageDestination.DEFINITIONS ->
+                                navController.navigate(CatalogRoute(route.serverId, directory, "commands"))
+
+                            ManageDestination.PERMISSIONS ->
+                                navController.navigate(PermissionsRoute(route.serverId, directory))
+
+                            // Maintenance is server-wide, so it takes no directory: it lists what the server
+                            // has loaded and what would be dropped, which is a property of the server.
+                            ManageDestination.MAINTENANCE ->
+                                navController.navigate(MaintenanceRoute(route.serverId))
+
+                            ManageDestination.USAGE ->
+                                navController.navigate(UsageRoute(route.serverId))
+
+                            ManageDestination.QUICK_ASK ->
+                                navController.navigate(QuickAskRoute(route.serverId))
+
+                            ManageDestination.RPC_CONSOLE ->
+                                navController.navigate(RpcConsoleRoute(route.serverId))
+
+                            ManageDestination.PAIR_DEVICE ->
+                                navController.navigate(PairDeviceRoute(route.serverId))
+                        }
+                    },
+                )
+                if (newSessionOpen) {
+                    NewSessionHost(
+                        onCreated = { sessionId ->
+                            newSessionOpen = false
+                            navController.navigate(SessionRoute(route.serverId, sessionId))
+                        },
+                        onDismiss = { newSessionOpen = false },
+                    )
+                }
+            }
+
+            composable<SessionListRoute> { entry ->
+                val route = entry.toRoute<SessionListRoute>()
+                SessionListRoute(
+                    serverId = route.serverId,
+                    projectId = route.projectId,
+                    onSessionClick = { sessionId ->
+                        navController.navigate(SessionRoute(route.serverId, sessionId))
+                    },
                 )
             }
-        }
 
-        composable<SessionListRoute> { entry ->
-            val route = entry.toRoute<SessionListRoute>()
-            SessionListRoute(
-                serverId = route.serverId,
-                projectId = route.projectId,
-                onSessionClick = { sessionId ->
-                    navController.navigate(SessionRoute(route.serverId, sessionId))
-                },
-            )
-        }
-
-        composable<SessionRoute> { entry ->
-            val route = entry.toRoute<SessionRoute>()
-            // This entry's composer, taken with the entry as its owner. It is the instance `SessionHost`
-            // opens the session in, and the one the review below this session hands its comments and
-            // attachments to (see `ReviewRoute`), so nothing in the graph holds a second, unopened one.
-            val composer = hiltViewModel<ComposerViewModel>(entry)
-            SessionHost(
-                sessionId = route.sessionId,
-                composer = composer,
-                onNavigateBack = { navController.popBackStack() },
-                onSessionDeleted = { navController.popBackStack() },
-                // The composer's client commands: `/sessions` and `/new` navigate, and the
-                // composition root is the only place that knows this graph.
-                onOpenSessionList = {
-                    navController.navigate(SessionListRoute(serverId = route.serverId))
-                },
-                onNewSession = {
-                    // `/new`: the new-session flow is a sheet over the home, so this is the home with
-                    // the sheet already open. `popUpTo` the session so Back returns where it was.
-                    navController.navigate(HomeRoute(route.serverId, openNewSession = true)) {
-                        popUpTo(SessionRoute(route.serverId, route.sessionId)) { inclusive = true }
-                        launchSingleTop = true
-                    }
-                },
-                onOpenReview = { path ->
-                    // `/diff` and a changed-files link both land here; the link adds the file.
-                    navController.navigate(
-                        ReviewRoute(
-                            serverId = route.serverId,
-                            sessionId = route.sessionId,
-                            initialPath = path,
-                        ),
-                    )
-                },
-                // The subagent strip opens the child session in place, which is the only place a
-                // subagent's transcript is read from.
-                onOpenChild = { childId ->
-                    navController.navigate(SessionRoute(route.serverId, childId)) { launchSingleTop = true }
-                },
-                onOpenShells = { directory ->
-                    navController.navigate(ShellsRoute(route.serverId, directory))
-                },
-                onOpenTerminal = { directory, startCommand ->
-                    navController.navigate(TerminalRoute(route.serverId, directory, startCommand))
-                },
-                onOpenSubagents = {
-                    navController.navigate(SubagentsRoute(route.serverId, route.sessionId))
-                },
-                onOpenWorktrees = { projectId ->
-                    navController.navigate(WorktreesRoute(route.serverId, projectId, route.sessionId))
-                },
-                onOpenSessionTerminals = {
-                    navController.navigate(SessionTerminalsRoute(route.serverId, route.sessionId))
-                },
-                // Phase 9, from the session: its own permission rules and its instruction entries are
-                // scoped to a session rather than to a checkout, so Manage cannot reach them.
-                onOpenSessionPermissions = { projectId: String?, directory: String ->
-                    navController.navigate(
-                        PermissionsRoute(
-                            serverId = route.serverId,
-                            directory = directory,
-                            projectID = projectId,
-                            sessionID = route.sessionId,
-                        ),
-                    )
-                },
-                onOpenSessionInstructions = {
-                    navController.navigate(InstructionsRoute(route.serverId, route.sessionId))
-                },
-                onOpenProjectSettings = { projectId ->
-                    navController.navigate(
-                        ProjectSettingsRoute(
-                            serverId = route.serverId,
-                            projectId = projectId,
-                            fromSessionId = route.sessionId,
-                        ),
-                    )
-                },
-                // A fork is a new session id, so the graph navigates to it rather than the screen
-                // re-rendering the one it is on. The view model publishes the id once.
-                onForked = { sessionId -> navController.navigate(SessionRoute(route.serverId, sessionId)) },
-            )
-        }
-
-        composable<ReviewRoute> { entry ->
-            val route = entry.toRoute<ReviewRoute>()
-            // The review is opened from a session, and what it produces (comments, attached files) is that
-            // session's composer's to hold: so the composer is the one in the session's back-stack entry,
-            // which is still on the stack under this one. Asking for a composer here would build a third,
-            // whose session nobody opened.
-            val sessionEntry = remember(entry) { navController.sessionEntryOf(route) }
-            if (sessionEntry == null) {
-                // Nothing to hand a comment or a file to, so there is nothing to show: a review that
-                // accepted them into a composer nobody sees would be the silent failure this avoids.
-                LaunchedEffect(entry) { navController.popBackStack() }
-            } else {
-                ReviewHost(
+            composable<SessionRoute> { entry ->
+                val route = entry.toRoute<SessionRoute>()
+                // This entry's composer, taken with the entry as its owner. It is the instance `SessionHost`
+                // opens the session in, and the one the review below this session hands its comments and
+                // attachments to (see `ReviewRoute`), so nothing in the graph holds a second, unopened one.
+                val composer = hiltViewModel<ComposerViewModel>(entry)
+                SessionHost(
                     sessionId = route.sessionId,
-                    composer = hiltViewModel<ComposerViewModel>(sessionEntry),
-                    initialPath = route.initialPath,
+                    composer = composer,
                     onNavigateBack = { navController.popBackStack() },
-                    onAttached = { navController.popBackStack() },
+                    onSessionDeleted = { navController.popBackStack() },
+                    // The composer's client commands: `/sessions` and `/new` navigate, and the
+                    // composition root is the only place that knows this graph.
+                    onOpenSessionList = {
+                        navController.navigate(SessionListRoute(serverId = route.serverId))
+                    },
+                    onNewSession = {
+                        // `/new`: the new-session flow is a sheet over the home, so this is the home with
+                        // the sheet already open. `popUpTo` the session so Back returns where it was.
+                        navController.navigate(HomeRoute(route.serverId, openNewSession = true)) {
+                            popUpTo(SessionRoute(route.serverId, route.sessionId)) { inclusive = true }
+                            launchSingleTop = true
+                        }
+                    },
+                    onOpenReview = { path ->
+                        // `/diff` and a changed-files link both land here; the link adds the file.
+                        navController.navigate(
+                            ReviewRoute(
+                                serverId = route.serverId,
+                                sessionId = route.sessionId,
+                                initialPath = path,
+                            ),
+                        )
+                    },
+                    // The subagent strip opens the child session in place, which is the only place a
+                    // subagent's transcript is read from.
+                    onOpenChild = { childId ->
+                        navController.navigate(SessionRoute(route.serverId, childId)) { launchSingleTop = true }
+                    },
+                    onOpenShells = { directory ->
+                        navController.navigate(ShellsRoute(route.serverId, directory))
+                    },
+                    onOpenTerminal = { directory, startCommand ->
+                        navController.navigate(TerminalRoute(route.serverId, directory, startCommand))
+                    },
+                    onOpenSubagents = {
+                        navController.navigate(SubagentsRoute(route.serverId, route.sessionId))
+                    },
+                    onOpenWorktrees = { projectId ->
+                        navController.navigate(WorktreesRoute(route.serverId, projectId, route.sessionId))
+                    },
+                    onOpenSessionTerminals = {
+                        navController.navigate(SessionTerminalsRoute(route.serverId, route.sessionId))
+                    },
+                    // Phase 9, from the session: its own permission rules and its instruction entries are
+                    // scoped to a session rather than to a checkout, so Manage cannot reach them.
+                    onOpenSessionPermissions = { projectId: String?, directory: String ->
+                        navController.navigate(
+                            PermissionsRoute(
+                                serverId = route.serverId,
+                                directory = directory,
+                                projectID = projectId,
+                                sessionID = route.sessionId,
+                            ),
+                        )
+                    },
+                    onOpenSessionInstructions = {
+                        navController.navigate(InstructionsRoute(route.serverId, route.sessionId))
+                    },
+                    onOpenProjectSettings = { projectId ->
+                        navController.navigate(
+                            ProjectSettingsRoute(
+                                serverId = route.serverId,
+                                projectId = projectId,
+                                fromSessionId = route.sessionId,
+                            ),
+                        )
+                    },
+                    // A fork is a new session id, so the graph navigates to it rather than the screen
+                    // re-rendering the one it is on. The view model publishes the id once.
+                    onForked = { sessionId -> navController.navigate(SessionRoute(route.serverId, sessionId)) },
                 )
             }
-        }
 
-        composable<PendingRequestsRoute> { entry ->
-            val route = entry.toRoute<PendingRequestsRoute>()
-            PendingRequestsHost(
-                onNavigateBack = { navController.popBackStack() },
-                onOpenSession = { sessionId ->
-                    navController.navigate(SessionRoute(route.serverId, sessionId))
-                },
-            )
-        }
-
-        composable<ShellsRoute> { entry ->
-            val route = entry.toRoute<ShellsRoute>()
-            ShellsHost(
-                directory = route.directory,
-                onNavigateBack = { navController.popBackStack() },
-            )
-        }
-
-        composable<TerminalRoute> { entry ->
-            val route = entry.toRoute<TerminalRoute>()
-            TerminalHost(
-                directory = route.directory,
-                startCommand = route.startCommand,
-                onNavigateBack = { navController.popBackStack() },
-            )
-        }
-
-        composable<SubagentsRoute> { entry ->
-            val route = entry.toRoute<SubagentsRoute>()
-            SubagentsHost(
-                sessionId = route.sessionId,
-                onOpenSession = { sessionId ->
-                    navController.navigate(SessionRoute(route.serverId, sessionId))
-                },
-                onNavigateBack = { navController.popBackStack() },
-            )
-        }
-
-        composable<WorktreesRoute> { entry ->
-            val route = entry.toRoute<WorktreesRoute>()
-            WorktreesHost(
-                projectId = route.projectId,
-                sessionId = route.sessionId,
-                onNavigateBack = { navController.popBackStack() },
-            )
-        }
-
-        composable<SessionTerminalsRoute> { entry ->
-            val route = entry.toRoute<SessionTerminalsRoute>()
-            SessionTerminalsHost(
-                sessionId = route.sessionId,
-                onNavigateBack = { navController.popBackStack() },
-            )
-        }
-
-        composable<ProjectSettingsRoute> { entry ->
-            val route = entry.toRoute<ProjectSettingsRoute>()
-            ProjectSettingsHost(
-                projectId = route.projectId,
-                onNavigateBack = { navController.popBackStack() },
-            )
-        }
-
-        // ------------------------------------------------------------------ Phase 8 destinations
-        //
-        // The "Manage" section of the plan (§4.3). All five are per-directory, because every catalog
-        // behind them is location-scoped, and the two that cross a feature boundary — an MCP server's
-        // OAuth and a resource attached to a prompt — are joined *here* rather than in the feature,
-        // which is the deviation a feature may not import another feature (see `ExecutionHost`).
-
-        composable<ConnectRoute> { entry ->
-            val route = entry.toRoute<ConnectRoute>()
-            ConnectHost(
-                directory = route.directory,
-                onNavigateBack = { navController.popBackStack() },
-            )
-        }
-
-        composable<McpRoute> { entry ->
-            val route = entry.toRoute<McpRoute>()
-            McpHost(
-                directory = route.directory,
-                onNavigateBack = { navController.popBackStack() },
-                // A `needs_auth` server names the integration that owns the flow, so this opens the
-                // accounts screen pointed at it rather than a second, near-identical login sheet.
-                onAuthenticate = { integrationId ->
-                    navController.navigate(ConnectRoute(route.serverId, route.directory))
-                },
-                onAttachResource = { server, name, uri ->
-                    // The composer owns prompt contents, so an attached resource is a hand-off and
-                    // not a write. The pending-requests inbox is where the composer is reachable from
-                    // a manage screen, and it is also the screen a form can be answered from.
-                    navController.navigate(PendingRequestsRoute(route.serverId))
-                },
-            )
-        }
-
-        composable<PluginsRoute> { entry ->
-            val route = entry.toRoute<PluginsRoute>()
-            PluginsHost(
-                directory = route.directory,
-                onNavigateBack = { navController.popBackStack() },
-            )
-        }
-
-        composable<ProvidersRoute> { entry ->
-            val route = entry.toRoute<ProvidersRoute>()
-            ProvidersHost(
-                directory = route.directory,
-                onNavigateBack = { navController.popBackStack() },
-            )
-        }
-
-        composable<WebSearchRoute> { entry ->
-            val route = entry.toRoute<WebSearchRoute>()
-            WebSearchHost(
-                directory = route.directory,
-                onNavigateBack = { navController.popBackStack() },
-            )
-        }
-
-        // -------------------------------------------------------------------- Phase 9 destinations
-        //
-        // "Configuration, permissions admin, maintenance" (plan §4.1, §6). Six destinations: the
-        // explorer, the `opencode.jsonc` editor, the definition editor, the catalog browsers, the
-        // permissions admin and maintenance. The seventh feature — session instruction entries — is
-        // reached from the session rather than from Manage, because it is scoped to a session.
-
-        composable<ConfigRoute> { entry ->
-            val route = entry.toRoute<ConfigRoute>()
-            ConfigHost(
-                directory = route.directory,
-                onNavigateBack = { navController.popBackStack() },
-                onOpenEditor = { path ->
-                    navController.navigate(ConfigEditorRoute(route.serverId, route.directory, path))
-                },
-                onOpenDefinitions = {
-                    navController.navigate(DefinitionRoute(route.serverId, route.directory, "agent", ""))
-                },
-                onOpenCatalogs = { navController.navigate(CatalogRoute(route.serverId, route.directory, "agents")) },
-                onOpenPermissions = {
-                    navController.navigate(PermissionsRoute(route.serverId, route.directory))
-                },
-            )
-        }
-
-        composable<ConfigEditorRoute> { entry ->
-            val route = entry.toRoute<ConfigEditorRoute>()
-            ConfigEditorHost(
-                directory = route.directory,
-                path = route.path,
-                onNavigateBack = { navController.popBackStack() },
-            )
-        }
-
-        composable<DefinitionRoute> { entry ->
-            val route = entry.toRoute<DefinitionRoute>()
-            DefinitionHost(
-                directory = route.directory,
-                kind = definitionKindOf(route.kind),
-                name = route.name,
-                onNavigateBack = { navController.popBackStack() },
-            )
-        }
-
-        composable<CatalogRoute> { entry ->
-            val route = entry.toRoute<CatalogRoute>()
-            val dataSet: ServerDataSet? = serverDataSets.active.collectAsStateWithLifecycle().value
-            val directory = route.directory
-            var tab by remember(route.tab) { mutableStateOf(catalogOf(route.tab)) }
-            var search by remember { mutableStateOf("") }
-            val agents by (dataSet?.agents(directory)?.state ?: loadingFlow())
-                .collectAsStateWithLifecycle()
-            val commands by (dataSet?.composerCatalogs?.commands(directory)?.state ?: loadingFlow())
-                .collectAsStateWithLifecycle()
-            val skills by (dataSet?.composerCatalogs?.skills(directory)?.state ?: loadingFlow())
-                .collectAsStateWithLifecycle()
-            val references by (dataSet?.composerCatalogs?.references(directory)?.state ?: loadingFlow())
-                .collectAsStateWithLifecycle()
-            // The four lists are read here because `feature/admin` may not import the modules that own
-            // them: the agents come from the sessions module and the other three from the composer's
-            // `ComposerCatalogs`. A null data set is the pre-connection state, and it renders as
-            // loading rather than as an empty catalog — an empty list would say "this project has no
-            // agents", which is a different and wrong claim.
-            LaunchedEffect(directory) {
-                dataSet?.agents(directory)?.sync()
-                dataSet?.composerCatalogs?.commands(directory)?.sync()
-                dataSet?.composerCatalogs?.skills(directory)?.sync()
-                dataSet?.composerCatalogs?.references(directory)?.sync()
+            composable<ReviewRoute> { entry ->
+                val route = entry.toRoute<ReviewRoute>()
+                // The review is opened from a session, and what it produces (comments, attached files) is that
+                // session's composer's to hold: so the composer is the one in the session's back-stack entry,
+                // which is still on the stack under this one. Asking for a composer here would build a third,
+                // whose session nobody opened.
+                val sessionEntry = remember(entry) { navController.sessionEntryOf(route) }
+                if (sessionEntry == null) {
+                    // Nothing to hand a comment or a file to, so there is nothing to show: a review that
+                    // accepted them into a composer nobody sees would be the silent failure this avoids.
+                    LaunchedEffect(entry) { navController.popBackStack() }
+                } else {
+                    ReviewHost(
+                        sessionId = route.sessionId,
+                        composer = hiltViewModel<ComposerViewModel>(sessionEntry),
+                        initialPath = route.initialPath,
+                        onNavigateBack = { navController.popBackStack() },
+                        onAttached = { navController.popBackStack() },
+                    )
+                }
             }
-            CatalogHost(
-                state = CatalogUiState(
-                    tab = tab,
-                    search = search,
-                    agents = agents,
-                    commands = commands,
-                    skills = skills,
-                    references = references,
-                ),
-                onTabChange = { tab = it },
-                onSearchChange = { search = it },
-                onNavigateBack = { navController.popBackStack() },
-            )
+
+            composable<PendingRequestsRoute> { entry ->
+                val route = entry.toRoute<PendingRequestsRoute>()
+                PendingRequestsHost(
+                    onNavigateBack = { navController.popBackStack() },
+                    onOpenSession = { sessionId ->
+                        navController.navigate(SessionRoute(route.serverId, sessionId))
+                    },
+                )
+            }
+
+            composable<ShellsRoute> { entry ->
+                val route = entry.toRoute<ShellsRoute>()
+                ShellsHost(
+                    directory = route.directory,
+                    onNavigateBack = { navController.popBackStack() },
+                )
+            }
+
+            composable<TerminalRoute> { entry ->
+                val route = entry.toRoute<TerminalRoute>()
+                TerminalHost(
+                    directory = route.directory,
+                    startCommand = route.startCommand,
+                    onNavigateBack = { navController.popBackStack() },
+                )
+            }
+
+            composable<SubagentsRoute> { entry ->
+                val route = entry.toRoute<SubagentsRoute>()
+                SubagentsHost(
+                    sessionId = route.sessionId,
+                    onOpenSession = { sessionId ->
+                        navController.navigate(SessionRoute(route.serverId, sessionId))
+                    },
+                    onNavigateBack = { navController.popBackStack() },
+                )
+            }
+
+            composable<WorktreesRoute> { entry ->
+                val route = entry.toRoute<WorktreesRoute>()
+                WorktreesHost(
+                    projectId = route.projectId,
+                    sessionId = route.sessionId,
+                    onNavigateBack = { navController.popBackStack() },
+                )
+            }
+
+            composable<SessionTerminalsRoute> { entry ->
+                val route = entry.toRoute<SessionTerminalsRoute>()
+                SessionTerminalsHost(
+                    sessionId = route.sessionId,
+                    onNavigateBack = { navController.popBackStack() },
+                )
+            }
+
+            composable<ProjectSettingsRoute> { entry ->
+                val route = entry.toRoute<ProjectSettingsRoute>()
+                ProjectSettingsHost(
+                    projectId = route.projectId,
+                    onNavigateBack = { navController.popBackStack() },
+                )
+            }
+
+            // ------------------------------------------------------------------ Phase 8 destinations
+            //
+            // The "Manage" section of the plan (§4.3). All five are per-directory, because every catalog
+            // behind them is location-scoped, and the two that cross a feature boundary — an MCP server's
+            // OAuth and a resource attached to a prompt — are joined *here* rather than in the feature,
+            // which is the deviation a feature may not import another feature (see `ExecutionHost`).
+
+            composable<ConnectRoute> { entry ->
+                val route = entry.toRoute<ConnectRoute>()
+                ConnectHost(
+                    directory = route.directory,
+                    onNavigateBack = { navController.popBackStack() },
+                )
+            }
+
+            composable<McpRoute> { entry ->
+                val route = entry.toRoute<McpRoute>()
+                McpHost(
+                    directory = route.directory,
+                    onNavigateBack = { navController.popBackStack() },
+                    // A `needs_auth` server names the integration that owns the flow, so this opens the
+                    // accounts screen pointed at it rather than a second, near-identical login sheet.
+                    onAuthenticate = { integrationId ->
+                        navController.navigate(ConnectRoute(route.serverId, route.directory))
+                    },
+                    onAttachResource = { server, name, uri ->
+                        // The composer owns prompt contents, so an attached resource is a hand-off and
+                        // not a write. The pending-requests inbox is where the composer is reachable from
+                        // a manage screen, and it is also the screen a form can be answered from.
+                        navController.navigate(PendingRequestsRoute(route.serverId))
+                    },
+                )
+            }
+
+            composable<PluginsRoute> { entry ->
+                val route = entry.toRoute<PluginsRoute>()
+                PluginsHost(
+                    directory = route.directory,
+                    onNavigateBack = { navController.popBackStack() },
+                )
+            }
+
+            composable<ProvidersRoute> { entry ->
+                val route = entry.toRoute<ProvidersRoute>()
+                ProvidersHost(
+                    directory = route.directory,
+                    onNavigateBack = { navController.popBackStack() },
+                )
+            }
+
+            composable<WebSearchRoute> { entry ->
+                val route = entry.toRoute<WebSearchRoute>()
+                WebSearchHost(
+                    directory = route.directory,
+                    onNavigateBack = { navController.popBackStack() },
+                )
+            }
+
+            // -------------------------------------------------------------------- Phase 9 destinations
+            //
+            // "Configuration, permissions admin, maintenance" (plan §4.1, §6). Six destinations: the
+            // explorer, the `opencode.jsonc` editor, the definition editor, the catalog browsers, the
+            // permissions admin and maintenance. The seventh feature — session instruction entries — is
+            // reached from the session rather than from Manage, because it is scoped to a session.
+
+            composable<ConfigRoute> { entry ->
+                val route = entry.toRoute<ConfigRoute>()
+                ConfigHost(
+                    directory = route.directory,
+                    onNavigateBack = { navController.popBackStack() },
+                    onOpenEditor = { path ->
+                        navController.navigate(ConfigEditorRoute(route.serverId, route.directory, path))
+                    },
+                    onOpenDefinitions = {
+                        navController.navigate(DefinitionRoute(route.serverId, route.directory, "agent", ""))
+                    },
+                    onOpenCatalogs = {
+                        navController.navigate(CatalogRoute(route.serverId, route.directory, "agents"))
+                    },
+                    onOpenPermissions = {
+                        navController.navigate(PermissionsRoute(route.serverId, route.directory))
+                    },
+                )
+            }
+
+            composable<ConfigEditorRoute> { entry ->
+                val route = entry.toRoute<ConfigEditorRoute>()
+                ConfigEditorHost(
+                    directory = route.directory,
+                    path = route.path,
+                    onNavigateBack = { navController.popBackStack() },
+                )
+            }
+
+            composable<DefinitionRoute> { entry ->
+                val route = entry.toRoute<DefinitionRoute>()
+                DefinitionHost(
+                    directory = route.directory,
+                    kind = definitionKindOf(route.kind),
+                    name = route.name,
+                    onNavigateBack = { navController.popBackStack() },
+                )
+            }
+
+            composable<CatalogRoute> { entry ->
+                val route = entry.toRoute<CatalogRoute>()
+                val dataSet: ServerDataSet? = serverDataSets.active.collectAsStateWithLifecycle().value
+                val directory = route.directory
+                var tab by remember(route.tab) { mutableStateOf(catalogOf(route.tab)) }
+                var search by remember { mutableStateOf("") }
+                val agents by (dataSet?.agents(directory)?.state ?: loadingFlow())
+                    .collectAsStateWithLifecycle()
+                val commands by (dataSet?.composerCatalogs?.commands(directory)?.state ?: loadingFlow())
+                    .collectAsStateWithLifecycle()
+                val skills by (dataSet?.composerCatalogs?.skills(directory)?.state ?: loadingFlow())
+                    .collectAsStateWithLifecycle()
+                val references by (dataSet?.composerCatalogs?.references(directory)?.state ?: loadingFlow())
+                    .collectAsStateWithLifecycle()
+                // The four lists are read here because `feature/admin` may not import the modules that own
+                // them: the agents come from the sessions module and the other three from the composer's
+                // `ComposerCatalogs`. A null data set is the pre-connection state, and it renders as
+                // loading rather than as an empty catalog — an empty list would say "this project has no
+                // agents", which is a different and wrong claim.
+                LaunchedEffect(directory) {
+                    dataSet?.agents(directory)?.sync()
+                    dataSet?.composerCatalogs?.commands(directory)?.sync()
+                    dataSet?.composerCatalogs?.skills(directory)?.sync()
+                    dataSet?.composerCatalogs?.references(directory)?.sync()
+                }
+                CatalogHost(
+                    state = CatalogUiState(
+                        tab = tab,
+                        search = search,
+                        agents = agents,
+                        commands = commands,
+                        skills = skills,
+                        references = references,
+                    ),
+                    onTabChange = { tab = it },
+                    onSearchChange = { search = it },
+                    onNavigateBack = { navController.popBackStack() },
+                )
+            }
+
+            composable<PermissionsRoute> { entry ->
+                val route = entry.toRoute<PermissionsRoute>()
+                PermissionsHost(
+                    directory = route.directory,
+                    projectID = route.projectID,
+                    sessionID = route.sessionID,
+                    onNavigateBack = { navController.popBackStack() },
+                )
+            }
+
+            composable<InstructionsRoute> { entry ->
+                val route = entry.toRoute<InstructionsRoute>()
+                InstructionsHost(
+                    sessionID = route.sessionID,
+                    onNavigateBack = { navController.popBackStack() },
+                )
+            }
+
+            composable<MaintenanceRoute> { entry ->
+                val route = entry.toRoute<MaintenanceRoute>()
+                MaintenanceHost(onNavigateBack = { navController.popBackStack() })
+            }
+
+            composable<ChangelogRoute> {
+                ChangelogHost(onNavigateBack = { navController.popBackStack() })
+            }
+
+            composable<UsageRoute> {
+                UsageHost(onNavigateBack = { navController.popBackStack() })
+            }
+
+            composable<QuickAskRoute> {
+                QuickAskHost(onNavigateBack = { navController.popBackStack() })
+            }
+
+            composable<RpcConsoleRoute> {
+                RpcConsoleHost(onNavigateBack = { navController.popBackStack() })
+            }
+
+            composable<PairDeviceRoute> {
+                PairDeviceHost(onNavigateBack = { navController.popBackStack() })
+            }
         }
 
-        composable<PermissionsRoute> { entry ->
-            val route = entry.toRoute<PermissionsRoute>()
-            PermissionsHost(
-                directory = route.directory,
-                projectID = route.projectID,
-                sessionID = route.sessionID,
-                onNavigateBack = { navController.popBackStack() },
-            )
-        }
-
-        composable<InstructionsRoute> { entry ->
-            val route = entry.toRoute<InstructionsRoute>()
-            InstructionsHost(
-                sessionID = route.sessionID,
-                onNavigateBack = { navController.popBackStack() },
-            )
-        }
-
-        composable<MaintenanceRoute> { entry ->
-            val route = entry.toRoute<MaintenanceRoute>()
-            MaintenanceHost(onNavigateBack = { navController.popBackStack() })
-        }
-
-        composable<ChangelogRoute> {
-            ChangelogHost(onNavigateBack = { navController.popBackStack() })
-        }
-
-        composable<UsageRoute> {
-            UsageHost(onNavigateBack = { navController.popBackStack() })
-        }
-
-        composable<QuickAskRoute> {
-            QuickAskHost(onNavigateBack = { navController.popBackStack() })
-        }
-
-        composable<RpcConsoleRoute> {
-            RpcConsoleHost(onNavigateBack = { navController.popBackStack() })
-        }
-
-        composable<PairDeviceRoute> {
-            PairDeviceHost(onNavigateBack = { navController.popBackStack() })
-        }
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .windowInsetsPadding(WindowInsets.navigationBars)
+                .padding(16.dp),
+        )
     }
 }
 
