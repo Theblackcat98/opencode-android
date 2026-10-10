@@ -80,6 +80,8 @@ of them; this changelog does not claim them.
 
 ### Fixed
 
+- **On a server without the usage statistics route, the usage screen showed the error card** (issue #34, one slice). `InsightsScreen` now reads `InsightsUiState.available` and shows "This server does not have the usage statistics route." in place of the cards. A Compose test renders the absent state; the 2.0.18 dev server has the route, so the absent path was not seen on a server.
+
 - **Failures of rename, delete, fork and wait were never shown.** `SessionManagementViewModel.error` was collected only inside the synthetic note dialog, so the other four failed silently. They now appear in the composer's error slot with a dismiss action. Compiles and the normal flows still work on the emulator; the failure path itself was not triggered.
 
 - **A double tap on Undo or Redo could send the revert twice** (issue #9, one slice). `stageUndo` and `redo` now ignore a second call while one is running, and the Redo and confirm buttons are disabled meanwhile. Two unit tests fail without the guard; one of them relies on a 500 ms hold, so it is timing-based. Not seen on a device.
