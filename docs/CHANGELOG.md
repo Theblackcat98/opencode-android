@@ -33,6 +33,7 @@ left to do.
   on a device (matrix H2).
 - Static launcher shortcuts for Servers and New session, opened by an intent action in `MainActivity`; checked by firing the actions, not by tapping the launcher.
 - A Quick Settings tile that starts and stops the connection service (matrix J9). It is lit while the service runs, and a tap starts or stops it through the same launcher as the app. The tile's state and the policy behind its taps are unit tested; the tile was not seen in the shade or tapped on a device.
+- A home-screen widget (matrix J8) showing "N waiting for you" and "N running", with the connection notification's two counts. At zero it reads "Nothing running or waiting"; with no live stream it asks the user to open the app rather than showing a count nothing refreshes. A tap opens the app. It is an `AppWidgetProvider` drawn from `RemoteViews`, with no new dependency. Counts are pushed on every change from the presence signals, and the widget has a 30-minute period. The policy and the inflated layout are unit tested; the widget was not placed on a home screen, and a tap was not made.
 - A command palette, opened by Ctrl+P on a hardware keyboard or by the Search icon, labelled "Command palette", in the
   Servers and the server home top bars. It is a search field over what the app can run from here: Servers, New session,
   Usage, Quick ask, RPC console, Pair another device (the last five only while a server is active), Changelog and Event
@@ -57,8 +58,7 @@ left to do.
   the error, as the JSON that came back. Only the error path was exercised: the dev server has no plugin
   that answers.
 - Quick ask (`experimental.generate.text`), with a screen under Manage ("Quick ask"). It takes an optional
-  `provider/model`, because a server with no default model refuses the ask without one. The home-screen
-  widget that the plan also names is not built. Pair another device
+  `provider/model`, because a server with no default model refuses the ask without one. Pair another device
   (`POST /api/pair` — capability-gated, because the route is not in the published spec), with a screen under
   Manage ("Pair another device"). It mints a code on the first press, never on open, and draws it as a QR
   code with the link under it, which is the form the app's paste field and a browser's `/auth/connect` take.
@@ -96,10 +96,9 @@ regression.
   [accessibility audit](./ACCESSIBILITY_AUDIT.md), a [coverage audit](./COVERAGE.md), a
   [manual test matrix](./MANUAL_TEST_MATRIX.md) and a [release runbook](./RELEASE.md).
 
-**Not built:** the home-screen
-widget, the Inbox shortcut, session tabs, the
+**Not built:** the Inbox shortcut, session tabs, the
 adaptive list-detail layouts, the LAN prober and the OpenCode theme import. The phase plan lists all
-of them; this changelog does not claim them.
+of them; this changelog does not claim them. The home-screen widget is built (see Added) but has not been placed on a home screen.
 
 ### Fixed
 

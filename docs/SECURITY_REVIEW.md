@@ -101,6 +101,8 @@ Two more that the plan does not name but that this phase added, confirmed for th
 Two exported components: `MainActivity`, the launcher, and `ConnectionTileService`, the Quick Settings tile. The tile has to be exported for the system to bind it, so it is guarded by `android.permission.BIND_QUICK_SETTINGS_TILE`. The `FileProvider` carries
 `android:exported="false"` and `grantUriPermissions="true"`, which is what a share sheet needs.
 
+The home-screen widget's receiver, `AttentionWidgetProvider`, is `android:exported="false"`. The system is the only sender of `APPWIDGET_UPDATE`, and a tap opens the launcher activity through its own pending intent, so the receiver is not an exported component and the count stays at two.
+
 `android:allowBackup="false"`, `android:fullBackupContent="false"` and an explicit
 `dataExtractionRules` file. A server token in the backup set would be a credential handed to anyone
 with the device's cloud account, so the backup is off rather than filtered.

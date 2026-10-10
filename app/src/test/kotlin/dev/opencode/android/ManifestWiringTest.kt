@@ -118,6 +118,33 @@ class ManifestWiringTest {
     }
 
     @Test
+    fun `the home-screen widget is declared, unexported, and points at provider info with a description and no preview`() {
+        // A launcher finds a widget through the APPWIDGET_UPDATE action and the provider meta-data, and a missing or
+        // misspelled one leaves the widget out of the picker with no error. The provider info is read as a source too, so
+        // its description cannot be lost and no preview can be declared for an image the widget does not ship.
+        val receiver = declarations(requests, "receiver").single {
+            it.getAttribute("android:name").endsWith("AttentionWidgetProvider")
+        }
+        assertEquals("false", receiver.getAttribute("android:exported"))
+        assertEquals("@string/widget_label", receiver.getAttribute("android:label"))
+        val action = receiver.getElementsByTagName("action").item(0) as Element
+        assertEquals("android.appwidget.action.APPWIDGET_UPDATE", action.getAttribute("android:name"))
+        val meta = receiver.getElementsByTagName("meta-data").item(0) as Element
+        assertEquals("android.appwidget.provider", meta.getAttribute("android:name"))
+        assertEquals("@xml/attention_widget_info", meta.getAttribute("android:resource"))
+
+        val info = parse("../feature/requests/src/main/res/xml/attention_widget_info.xml")
+        assertEquals("@string/widget_description", info.getAttribute("android:description"))
+        assertEquals("@layout/attention_widget", info.getAttribute("android:initialLayout"))
+        assertEquals("", info.getAttribute("android:previewImage"))
+        assertEquals("", info.getAttribute("android:previewLayout"))
+        assertTrue(
+            "the layout the widget starts with is missing",
+            java.io.File("../feature/requests/src/main/res/layout/attention_widget.xml").exists(),
+        )
+    }
+
+    @Test
     fun `the activity still claims the pairing links, and the manifest is still one application`() {
         val activity = declarations(app, "activity").single()
         val views = activity.getElementsByTagName("data")

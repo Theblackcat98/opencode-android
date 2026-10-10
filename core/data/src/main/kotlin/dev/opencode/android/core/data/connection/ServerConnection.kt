@@ -13,8 +13,10 @@ import dev.opencode.android.core.network.NetworkConnectivityMonitor
 import dev.opencode.android.core.network.ServerCredentialCache
 import dev.opencode.android.core.network.ServerTls
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
 import java.util.concurrent.atomic.AtomicBoolean
@@ -48,6 +50,14 @@ class ServerConnection(
     )
 
     val connectionState: StateFlow<ConnectionState> = client.state
+
+    /**
+     * Whether the stream is live right now. The stores hold this server's state only while it is: a process
+     * that starts with the stream down has no sessions paged in, so a reader that shows counts from them has
+     * to ask this first. The home-screen widget is the reader that needs it (matrix J8).
+     */
+    val isLive: Flow<Boolean> = connectionState.map { it is ConnectionState.Connected }
+
     val connectionLogs: StateFlow<List<ConnectionLogEntry>> = client.logs
     val inspectedEvents: StateFlow<List<InspectedEvent>> = client.inspectedEvents
     val events: SharedFlow<Event> = client.events

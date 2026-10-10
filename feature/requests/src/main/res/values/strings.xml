@@ -162,6 +162,14 @@
     <string name="connection_idle_body">Connected and ready.</string>
     <string name="connection_auto_approve_subtext">Auto-approving</string>
 
+    <!-- Home-screen widget (matrix J8) -->
+    <string name="widget_label">OpenCode</string>
+    <string name="widget_description">Sessions running and requests waiting for you. Tap to open the app.</string>
+    <string name="widget_waiting">%1$d waiting for you</string>
+    <string name="widget_running">%1$d running</string>
+    <string name="widget_nothing_active">Nothing running or waiting</string>
+    <string name="widget_open_app">Open OpenCode to see sessions</string>
+
     <!-- Launcher shortcut -->
     <plurals name="launcher_unread_label">
         <item quantity="one">%1$d unread</item>

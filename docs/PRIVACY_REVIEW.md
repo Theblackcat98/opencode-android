@@ -52,6 +52,14 @@ permission without unlocking, which is most of the value of the feature) for les
 choice made is the feature, and the exposure is bounded by the fact that the payload names a
 resource rather than quoting anything.
 
+## The home-screen widget
+
+The widget (matrix J8) draws two counts, sessions running and requests waiting, under fixed labels. It carries no
+session title, no prompt text, no file content and no request detail, so the most a launcher can show of it is those
+two numbers. Where a launcher draws widgets on a locked screen, the numbers are visible there. The counts are withheld
+while the active server's stream is down, and the widget then asks the user to open the app. A count left on screen by
+a process that has ended stays until the widget's next scheduled update, which is not yet seen on a device.
+
 ## Analytics and crash reports
 
 Neither exists. There is no analytics SDK, no crash SDK, and no opt-in switch for either, because

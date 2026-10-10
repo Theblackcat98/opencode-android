@@ -6,6 +6,7 @@ import dev.opencode.android.core.data.attention.AttentionCoordinator
 import dev.opencode.android.core.data.server.DebugFlags
 import dev.opencode.android.feature.requests.notifications.ConnectionServiceLauncher
 import dev.opencode.android.feature.requests.notifications.installAttentionChannels
+import dev.opencode.android.feature.requests.widget.AttentionWidgetUpdater
 import javax.inject.Inject
 
 /**
@@ -30,11 +31,16 @@ class OpenCodeApplication : Application() {
     @Inject
     lateinit var serviceLauncher: ConnectionServiceLauncher
 
+    @Inject
+    lateinit var widgetUpdater: AttentionWidgetUpdater
+
     override fun onCreate() {
         super.onCreate()
         DebugFlags.selfCheckLogs = BuildConfig.DEBUG
         installAttentionChannels(this)
         attention.start()
         serviceLauncher.start()
+        // The home-screen widget reads the same counts the shade does, so it starts with them (matrix J8).
+        widgetUpdater.start()
     }
 }

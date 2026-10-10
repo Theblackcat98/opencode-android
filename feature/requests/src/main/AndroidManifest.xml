@@ -44,6 +44,22 @@
                 <action android:name="dev.opencode.android.action.PERFORM_ATTENTION_ACTION" />
             </intent-filter>
         </receiver>
+
+        <!--
+          The home-screen widget (matrix J8). Not exported: the system is the only sender of APPWIDGET_UPDATE, and a
+          tap opens the launcher activity through its own pending intent rather than through this receiver.
+        -->
+        <receiver
+            android:name=".widget.AttentionWidgetProvider"
+            android:exported="false"
+            android:label="@string/widget_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/attention_widget_info" />
+        </receiver>
     </application>
 
 </manifest>

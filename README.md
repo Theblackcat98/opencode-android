@@ -26,7 +26,7 @@ implied otherwise.
 **What P10 did and did not finish.** P10's exit criterion is coverage, and that is met. The *wire and
 state* half of the phase is built and tested; the *screen* half is not. Everything below is a real
 data-layer capability reachable and covered, but only the TUI control events are wired to a surface a
-user can see. There is no widget, no LAN prober and no theme import yet. Leader keys (Ctrl+X, then a letter) are built and unit tested, but not yet run from a keyboard. The plan's scope list for the phase is in
+user can see. The home-screen widget is built and unit tested but not yet placed on a home screen (matrix J8). There is no LAN prober and no theme import yet. Leader keys (Ctrl+X, then a letter) are built and unit tested, but not yet run from a keyboard. The plan's scope list for the phase is in
 [`docs/ANDROID_APP_PLAN.md`](docs/ANDROID_APP_PLAN.md#phase-10-insights-extensibility-adaptive-ui-and-release-m);
 the gap between it and this list is the honest measure of what is left.
 

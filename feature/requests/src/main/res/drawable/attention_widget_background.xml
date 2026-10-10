@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A fixed dark card. A launcher draws the widget outside the app, so the colour cannot follow the app's theme. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="#FF1F2328" />
+    <corners android:radius="16dp" />
+</shape>

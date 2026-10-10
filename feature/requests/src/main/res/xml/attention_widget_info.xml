@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The widget's provider info (matrix J8). There is no preview image: the picker shows the description and the app icon.
+
+  updatePeriodMillis is the platform's minimum, 30 minutes. The live pushes from AttentionWidgetUpdater cover every
+  change while the process is alive. The period covers the one case they cannot: a process that died leaves its last
+  counts on the home screen, and the next scheduled update starts a process whose stream is down, so the widget reverts
+  to "open the app" rather than keeping a count nothing refreshes.
+-->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:description="@string/widget_description"
+    android:initialLayout="@layout/attention_widget"
+    android:minWidth="110dp"
+    android:minHeight="56dp"
+    android:resizeMode="horizontal|vertical"
+    android:updatePeriodMillis="1800000"
+    android:widgetCategory="home_screen" />
