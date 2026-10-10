@@ -33,7 +33,9 @@ left to do.
   keep a frame's `id` and `event` so the `log.synced` end-of-replay is not lost.
 - Synthetic notes (`session.synthetic`), wait-until-idle (`experimental.session.wait`), and
   programmatic permission and form creation, for plugin and workflow testing. Wait until idle is in
-  the session menu, with a dialog that stops it; the other three have no UI yet.
+  the session menu, with a dialog that stops it. "Add a synthetic note" is in the menu too: its dialog
+  says the note is injected rather than typed by the user, and only its "Add note" button sends it.
+  Permission and form creation have no UI yet.
 - A plugin RPC console surface (`rpc.call`) that refuses an id or method that would break the URL, and
   a viewer for `rpc.<id>.<event>`. The console is under Manage ("RPC console") and shows the answer, or
   the error, as the JSON that came back. Only the error path was exercised: the dev server has no plugin

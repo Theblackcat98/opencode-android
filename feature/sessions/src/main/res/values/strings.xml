@@ -169,6 +169,13 @@
     <string name="session_wait_idle_title">Waiting for this session</string>
     <string name="session_wait_idle_body">This waits until the session\'s current turn ends. It changes nothing on the server, and stopping the wait only ends this request.</string>
     <string name="session_wait_idle_stop">Stop waiting</string>
+    <string name="session_synthetic_note">Add a synthetic note</string>
+    <string name="session_synthetic_title">Add a synthetic note</string>
+    <string name="session_synthetic_explain">This adds text you did not type. The agent will read it as injected context. The transcript shows it as an injected note, not as a message from you.</string>
+    <string name="session_synthetic_text_hint">Note text</string>
+    <string name="session_synthetic_description_hint">Description (optional)</string>
+    <string name="session_synthetic_confirm">Add note</string>
+    <string name="session_synthetic_cancel">Cancel</string>
     <string name="session_event_history">Event history</string>
     <string name="event_history_title">Event history</string>
     <string name="event_history_close">Close</string>

@@ -52,6 +52,8 @@ class SessionManagementViewModel(
     private val _error = MutableStateFlow<ActionError?>(null)
     private val _forked = MutableStateFlow<String?>(null)
     private val _waiting = MutableStateFlow(false)
+    private val _syntheticSending = MutableStateFlow(false)
+    private val _syntheticSent = MutableStateFlow(false)
     private var waitJob: Job? = null
 
     /** The last failure, which the screen shows as a snackbar and then clears. */
@@ -59,6 +61,21 @@ class SessionManagementViewModel(
 
     /** Whether a [waitUntilIdle] is in flight. The screen shows its dialog, with a way to stop, while it is. */
     val waiting: StateFlow<Boolean> = _waiting.asStateFlow()
+
+    /**
+     * Whether a synthetic note is being sent. The dialog locks its fields and confirm button while it is, and
+     * [addSyntheticNote] ignores a second call, so a double tap sends one note.
+     */
+    val syntheticSending: StateFlow<Boolean> = _syntheticSending.asStateFlow()
+
+    /**
+     * Set when the server has accepted a synthetic note. The host closes its dialog on it and then calls
+     * [consumeSyntheticSent].
+     *
+     * Whether a dialog is open is the screen's state, so the ViewModel reports the outcome and the host closes it.
+     * It is consumed the way [forked] is, so one accepted note closes the dialog exactly once.
+     */
+    val syntheticSent: StateFlow<Boolean> = _syntheticSent.asStateFlow()
 
     /**
      * Whether the menu offers "wait until idle".
@@ -137,6 +154,36 @@ class SessionManagementViewModel(
         waitJob = null
     }
 
+    /**
+     * `session.synthetic` on the open session: text the user did not type, delivered through the session's inbox.
+     *
+     * The note is sent trimmed and is never a user prompt; the dialog that calls this says so before its button is
+     * pressed. A failure goes to [error] and leaves [syntheticSent] false, so the dialog stays open for a retry.
+     * A call made while a note is in flight, or with no text, does nothing.
+     */
+    fun addSyntheticNote(text: String, description: String?) {
+        if (_syntheticSending.value) return
+        val note = SyntheticNote.of(text, description) ?: return
+        val id = open.value ?: return
+        val set = active.value ?: return
+        _error.value = null
+        _syntheticSending.value = true
+        viewModelScope.launch {
+            try {
+                val result = set.insights.addSyntheticInput(id, note.text, note.description)
+                if (result.isSuccess) _syntheticSent.value = true
+                result.exceptionOrNull()?.let { _error.value = it.toActionError() }
+            } finally {
+                _syntheticSending.value = false
+            }
+        }
+    }
+
+    /** Takes the accepted-note flag, once, so the host closes the synthetic note dialog exactly one time. */
+    fun consumeSyntheticSent() {
+        _syntheticSent.value = false
+    }
+
     /** The text "copy message" puts on the clipboard. */
     fun copyMessage(message: SessionMessage): String = TranscriptFormatter.message(message)
 
@@ -180,6 +227,21 @@ class SessionManagementViewModel(
 
     private companion object {
         const val STOP_TIMEOUT = 5_000L
+    }
+}
+
+/**
+ * The text and description a synthetic note sends, trimmed, or `null` when there is no text to send.
+ *
+ * Trimming lives here so the request and the dialog's enabled state agree on what "blank" means, and a description
+ * that is only spaces is sent as absent rather than as an empty string the server would store.
+ */
+internal data class SyntheticNote(val text: String, val description: String?) {
+    companion object {
+        fun of(text: String, description: String?): SyntheticNote? {
+            val trimmed = text.trim().takeIf { it.isNotEmpty() } ?: return null
+            return SyntheticNote(trimmed, description?.trim()?.takeIf { it.isNotEmpty() })
+        }
     }
 }
 

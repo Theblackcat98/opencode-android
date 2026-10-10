@@ -52,6 +52,7 @@ import dev.opencode.android.feature.sessions.ui.SessionManagementViewModel
 import dev.opencode.android.feature.sessions.ui.SessionMenuRow
 import dev.opencode.android.feature.sessions.ui.SessionScreen
 import dev.opencode.android.feature.sessions.ui.SessionViewModel
+import dev.opencode.android.feature.sessions.ui.SyntheticNoteDialog
 import dev.opencode.android.feature.sessions.ui.UserMessageActions
 import dev.opencode.android.feature.sessions.ui.WaitingForIdleDialog
 import dev.opencode.android.feature.sessions.R as SessionsR
@@ -122,6 +123,9 @@ fun SessionHost(
     val eventHistoryState by eventHistory.state.collectAsStateWithLifecycle()
     val eventHistoryAvailable by eventHistory.available.collectAsStateWithLifecycle()
     val forked by management.forked.collectAsStateWithLifecycle()
+    val syntheticSending by management.syntheticSending.collectAsStateWithLifecycle()
+    val syntheticSent by management.syntheticSent.collectAsStateWithLifecycle()
+    val managementError by management.error.collectAsStateWithLifecycle()
     val strip by subagents.strip.collectAsStateWithLifecycle()
     val favorites by composer.modelFavorites.collectAsStateWithLifecycle()
     val recents by composer.modelRecents.collectAsStateWithLifecycle()
@@ -133,6 +137,7 @@ fun SessionHost(
     var historyOpen by remember { mutableStateOf(false) }
     var experimentalOpen by remember { mutableStateOf(false) }
     var eventHistoryOpen by remember { mutableStateOf(false) }
+    var syntheticOpen by remember { mutableStateOf(false) }
     var inboxOpen by remember { mutableStateOf(false) }
     var agentPickerOpen by remember { mutableStateOf(false) }
     var modelPickerOpen by remember { mutableStateOf(false) }
@@ -155,6 +160,14 @@ fun SessionHost(
     // in the same call is what makes the navigation happen once.
     LaunchedEffect(forked) {
         management.consumeFork()?.let(onForked)
+    }
+
+    // An accepted synthetic note closes its dialog. The flag is taken in the same breath, so it closes once.
+    LaunchedEffect(syntheticSent) {
+        if (syntheticSent) {
+            syntheticOpen = false
+            management.consumeSyntheticSent()
+        }
     }
 
     LaunchedEffect(sessionId) {
@@ -311,6 +324,24 @@ fun SessionHost(
         WaitingForIdleDialog(onStop = management::stopWaiting)
     }
 
+    if (syntheticOpen) {
+        // The failure is drawn in the dialog rather than under the screen: the dialog is its own window, so a
+        // snackbar behind it would be hidden from the one control that can retry. The wording comes from the
+        // requests feature, as the composer's does, because a feature may not import another feature.
+        SyntheticNoteDialog(
+            onSend = management::addSyntheticNote,
+            onDismiss = { syntheticOpen = false },
+            sending = syntheticSending,
+            failure = managementError?.let { error ->
+                if (error.takesArgument) {
+                    stringResource(error.kind.messageRes(), error.message)
+                } else {
+                    stringResource(error.kind.messageRes())
+                }
+            },
+        )
+    }
+
     if (eventHistoryOpen) {
         SessionLogDialog(
             state = eventHistoryState,
@@ -358,6 +389,12 @@ fun SessionHost(
                 }
             } else {
                 null
+            },
+            onAddSyntheticNote = {
+                actionsOpen = false
+                // A failure left over from an earlier action would otherwise show as this dialog's first error.
+                management.dismissError()
+                syntheticOpen = true
             },
             onOpenEventHistory = if (eventHistoryAvailable) {
                 {

@@ -11,6 +11,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
@@ -70,6 +71,13 @@ fun SessionActionsSheet(
      */
     onWaitUntilIdle: (() -> Unit)? = null,
     /**
+     * Opens the dialog that adds a synthetic note to the session.
+     *
+     * Always offered: `session.synthetic` is in the spec, not behind an experimental switch, so there is no route
+     * availability to ask about. `null` hides the row, the same as [onWaitUntilIdle].
+     */
+    onAddSyntheticNote: (() -> Unit)? = null,
+    /**
      * Opens the session's event history, the durable log replayed up to `log.synced`, when this server has the
      * log route. `null` hides the row, the same as [onWaitUntilIdle].
      */
@@ -120,6 +128,7 @@ fun SessionActionsSheet(
             }
             onOpenHistory?.let { open -> SheetAction(R.string.session_history) { open() } }
             onWaitUntilIdle?.let { wait -> SheetAction(R.string.session_wait_idle) { wait() } }
+            onAddSyntheticNote?.let { add -> SheetAction(R.string.session_synthetic_note) { add() } }
             onOpenEventHistory?.let { open -> SheetAction(R.string.session_event_history) { open() } }
             onOpenExperimental?.let { open -> SheetAction(R.string.session_experimental) { open() } }
             executionSlot()
@@ -220,6 +229,67 @@ fun WaitingForIdleDialog(onStop: () -> Unit) {
         },
         confirmButton = {
             TextButton(onClick = onStop) { Text(stringResource(R.string.session_wait_idle_stop)) }
+        },
+    )
+}
+
+/**
+ * Adds a synthetic note to the open session: text the user did not type, which the agent reads as injected context.
+ *
+ * **The confirm button is the confirmation, so there is no second dialog.** The explanation is on screen before
+ * "Add note" can be pressed, and it says what the note becomes: an injected note in the transcript, not a message
+ * from the user. Nothing is sent until that button is pressed.
+ *
+ * A failure keeps the dialog open with the text still in it, so a retry is one tap. The caller closes it once the
+ * server has accepted the note. While [sending], the fields are locked and the dialog cannot be dismissed, so the
+ * note cannot be edited or abandoned while its request is in flight.
+ */
+@Composable
+fun SyntheticNoteDialog(
+    onSend: (text: String, description: String?) -> Unit,
+    onDismiss: () -> Unit,
+    sending: Boolean,
+    failure: String? = null,
+) {
+    var text by rememberSaveable { mutableStateOf("") }
+    var description by rememberSaveable { mutableStateOf("") }
+    AlertDialog(
+        onDismissRequest = { if (!sending) onDismiss() },
+        title = { Text(stringResource(R.string.session_synthetic_title)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(stringResource(R.string.session_synthetic_explain), style = MaterialTheme.typography.bodyMedium)
+                OutlinedTextField(
+                    value = text,
+                    onValueChange = { text = it },
+                    label = { Text(stringResource(R.string.session_synthetic_text_hint)) },
+                    minLines = 3,
+                    enabled = !sending,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                OutlinedTextField(
+                    value = description,
+                    onValueChange = { description = it },
+                    label = { Text(stringResource(R.string.session_synthetic_description_hint)) },
+                    singleLine = true,
+                    enabled = !sending,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                if (sending) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                failure?.let {
+                    Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error)
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onSend(text, description) }, enabled = text.isNotBlank() && !sending) {
+                Text(stringResource(R.string.session_synthetic_confirm))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss, enabled = !sending) {
+                Text(stringResource(R.string.session_synthetic_cancel))
+            }
         },
     )
 }
