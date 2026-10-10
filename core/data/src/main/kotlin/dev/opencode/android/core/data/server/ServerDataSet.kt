@@ -47,6 +47,7 @@ import dev.opencode.android.core.model.event.VcsBranchUpdated
 import dev.opencode.android.core.model.event.WorktreeResolved
 import dev.opencode.android.core.model.event.WorktreeUpdated
 import dev.opencode.android.core.network.ServerApi
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -327,7 +328,13 @@ class ServerDataSet(
         // directories to ask about are the projects', and a request already pending in one of them when the
         // app started is otherwise never read: nothing has told this set that the directory exists.
         scope.launch {
-            runCatching { projects.sync() }
+            try {
+                projects.sync()
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (error: Throwable) {
+                // A project list that will not load only narrows the directories asked about; the rest still resync.
+            }
             val directories = (
                 locations.keys + requests.knownDirectories + projects.value.orEmpty().map { it.canonical }
                 ).toSet()

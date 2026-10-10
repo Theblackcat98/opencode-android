@@ -5,6 +5,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -91,7 +92,17 @@ class SyncedResource<T>(
     val isStale: Boolean get() = stale
 
     private val mutex = Mutex()
+
+    /** Written by event handlers and by loads on other threads, so it is volatile rather than mutex-held. */
+    @Volatile
     private var stale = true
+
+    /**
+     * Guards [invalidateJob], [retryJob] and [failedAttempts]. Event handlers, ViewModels and the retry
+     * coroutine all reach them from different threads, and [mutex] cannot be taken from the non-suspending
+     * [invalidate]. Nothing suspends while holding it.
+     */
+    private val guard = Any()
     private var invalidateJob: Job? = null
 
     /** A retry that is waiting to start. Cleared once it starts, so cancelling never cuts a running load short. */
@@ -107,10 +118,7 @@ class SyncedResource<T>(
      * forced load is a fresh request, so it also cancels a waiting retry and starts the budget again.
      */
     suspend fun sync(force: Boolean = false) {
-        if (force) {
-            cancelRetry()
-            failedAttempts = 0
-        }
+        if (force) resetRetry()
         mutex.withLock { runLoad(force) }
     }
 
@@ -123,12 +131,13 @@ class SyncedResource<T>(
      */
     fun invalidate() {
         stale = true
-        cancelRetry()
-        failedAttempts = 0
-        invalidateJob?.cancel()
-        invalidateJob = scope.launch {
-            delay(invalidateDebounceMillis)
-            sync()
+        resetRetry()
+        synchronized(guard) {
+            invalidateJob?.cancel()
+            invalidateJob = scope.launch {
+                delay(invalidateDebounceMillis)
+                sync()
+            }
         }
     }
 
@@ -140,8 +149,7 @@ class SyncedResource<T>(
      */
     fun complete(value: T) {
         stale = false
-        cancelRetry()
-        failedAttempts = 0
+        resetRetry()
         _state.value = SyncedState(value, SyncStatus.Ready)
         onValue(value)
     }
@@ -149,14 +157,15 @@ class SyncedResource<T>(
     /** Drops the value, for example when `location.shutdown` invalidates a location. */
     fun clear() {
         stale = true
-        cancelRetry()
-        failedAttempts = 0
+        resetRetry()
         _state.value = SyncedState()
     }
 
     fun stop() {
-        invalidateJob?.cancel()
-        invalidateJob = null
+        synchronized(guard) {
+            invalidateJob?.cancel()
+            invalidateJob = null
+        }
         cancelRetry()
     }
 
@@ -168,8 +177,7 @@ class SyncedResource<T>(
         _state.value = _state.value.copy(status = SyncStatus.Loading)
         try {
             val loaded = loader()
-            failedAttempts = 0
-            cancelRetry() // a retry still waiting is now redundant
+            resetRetry() // a retry still waiting is now redundant
             _state.value = SyncedState(loaded, SyncStatus.Ready)
             onValue(loaded)
         } catch (cancellation: CancellationException) {
@@ -179,9 +187,9 @@ class SyncedResource<T>(
             // mobile network drops, and a catalog that empties itself on one failed poll is worse
             // than one that is briefly out of date. The retry below makes that a bounded promise.
             stale = true
-            failedAttempts++
+            val attempts = synchronized(guard) { ++failedAttempts }
             _state.value = _state.value.copy(status = SyncStatus.Failed(error))
-            scheduleRetry(error)
+            scheduleRetry(error, attempts)
             onError(error)
         }
     }
@@ -190,29 +198,45 @@ class SyncedResource<T>(
      * Schedules the next automatic retry of a failed load, or none when the error will not change on
      * a retry or the budget is spent. The status stays [SyncStatus.Failed] while the retry waits.
      */
-    private fun scheduleRetry(error: Throwable) {
-        cancelRetry()
-        if (failedAttempts >= maxAttempts || !error.isRetryableLoadFailure()) return
-        // Doubling per failure: the first retry waits [retryDelayMillis], the second twice that.
-        val waitMillis = retryDelayMillis * (1L shl (failedAttempts - 1))
-        // Created lazily so the job is recorded before it can run, which lets it clear its own record.
-        val job = scope.launch(start = CoroutineStart.LAZY) {
-            delay(waitMillis)
-            mutex.withLock {
-                // Still cancellable while it queues for the mutex, so an invalidation or a forced sync
-                // that lands first replaces it. Once it holds the mutex it is an ordinary load.
-                retryJob = null
-                runLoad(force = false)
+    private fun scheduleRetry(error: Throwable, attempts: Int) {
+        synchronized(guard) {
+            retryJob?.cancel()
+            retryJob = null
+            if (attempts >= maxAttempts || !error.isRetryableLoadFailure()) return
+            // Doubling per failure: the first retry waits [retryDelayMillis], the second twice that.
+            val waitMillis = retryDelayMillis * (1L shl (attempts - 1))
+            // Created lazily so the job is recorded before it can run, which lets it clear its own record.
+            val job = scope.launch(start = CoroutineStart.LAZY) {
+                val self = currentCoroutineContext()[Job]
+                delay(waitMillis)
+                mutex.withLock {
+                    // Still cancellable while it queues for the mutex, so an invalidation or a forced sync
+                    // that lands first replaces it. Once it holds the mutex it is an ordinary load. Only its
+                    // own record is cleared: a newer retry may have replaced it.
+                    synchronized(guard) { if (retryJob === self) retryJob = null }
+                    runLoad(force = false)
+                }
             }
+            retryJob = job
+            job.start()
         }
-        retryJob = job
-        job.start()
     }
 
     /** Cancels a retry that is still waiting. One that has started is left to finish. */
     private fun cancelRetry() {
-        retryJob?.cancel()
-        retryJob = null
+        synchronized(guard) {
+            retryJob?.cancel()
+            retryJob = null
+        }
+    }
+
+    /** Cancels a waiting retry and starts the retry budget again, as one step. */
+    private fun resetRetry() {
+        synchronized(guard) {
+            retryJob?.cancel()
+            retryJob = null
+            failedAttempts = 0
+        }
     }
 
     companion object {
