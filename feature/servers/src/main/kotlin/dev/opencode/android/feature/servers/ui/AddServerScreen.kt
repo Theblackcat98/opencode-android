@@ -70,6 +70,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.opencode.android.core.data.repository.AddServerErrorType
 import dev.opencode.android.core.designsystem.text.SyncedTextField
+import dev.opencode.android.core.network.LanFound
 import dev.opencode.android.feature.servers.R
 import dev.opencode.android.feature.servers.camera.QrCodeScannerView
 
@@ -86,8 +87,10 @@ fun AddServerScreen(
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: AddServerViewModel = hiltViewModel(),
+    lanViewModel: LanDiscoveryViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val lanState by lanViewModel.uiState.collectAsStateWithLifecycle()
     // A re-pair replaces one credential, so the scan and manual tabs, which create a new profile,
     // are not offered; the link tab is the only way in.
     val visibleTabs = if (viewModel.isRePairing) listOf(AddServerTab.PASTE) else AddServerTab.entries
@@ -158,6 +161,12 @@ fun AddServerScreen(
                         onPasswordChange = viewModel::updateManualPasswordInput,
                         onTrustUserCertificatesChange = viewModel::setTrustUserCertificates,
                         onConnect = viewModel::connectManually,
+                        lan = lanState,
+                        onLanEnabledChange = lanViewModel::setEnabled,
+                        onLanPortsChange = lanViewModel::updatePortsInput,
+                        onLanScan = lanViewModel::startScan,
+                        onLanStop = lanViewModel::stopScan,
+                        onLanUseServer = { server -> viewModel.updateManualUrlInput(server.url) },
                     )
                 }
 
@@ -437,6 +446,12 @@ internal fun ManualEntryTab(
     onTrustUserCertificatesChange: (Boolean) -> Unit,
     onConnect: () -> Unit,
     modifier: Modifier = Modifier,
+    lan: LanDiscoveryUiState = LanDiscoveryUiState(),
+    onLanEnabledChange: (Boolean) -> Unit = {},
+    onLanPortsChange: (String) -> Unit = {},
+    onLanScan: () -> Unit = {},
+    onLanStop: () -> Unit = {},
+    onLanUseServer: (LanFound) -> Unit = {},
 ) {
     Column(
         modifier = modifier
@@ -491,6 +506,15 @@ internal fun ManualEntryTab(
         ) {
             Text(stringResource(R.string.connect_and_save))
         }
+
+        LanDiscoverySection(
+            state = lan,
+            onEnabledChange = onLanEnabledChange,
+            onPortsChange = onLanPortsChange,
+            onScan = onLanScan,
+            onStop = onLanStop,
+            onUseServer = onLanUseServer,
+        )
 
         Spacer(modifier = Modifier.height(8.dp))
         OnboardingGuideCard()

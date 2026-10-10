@@ -93,6 +93,27 @@ a server the user added. It is not sent anywhere except to that server.
   CAs.
 - Cleartext when the server is `http://`, with a visible badge and a reason in §2.4 of the plan.
 - No third-party network access of any kind. The WebView loads bundled assets only.
+- The opt-in LAN probe, off by default, sends one unauthenticated request to each address on the
+  phone's own local /24. It is described in the next section.
+
+## The LAN probe
+
+The add-server form can look for OpenCode servers on the local network. It is opt-in, and the security
+side is in [`SECURITY_REVIEW.md`](./SECURITY_REVIEW.md) §7.
+
+- **What leaves the device.** One `GET /api/info` per address in the phone's own /24, on ports 49374 and
+  4096 and any the user types. Every request goes to the local network and to nothing else. It carries
+  no credential and no device or account identifier: the headers are an `Accept: application/json` and the
+  defaults OkHttp adds, its User-Agent and Accept-Encoding. Nothing goes to the internet, and no third-party host is contacted.
+- **What the device keeps.** Nothing. The switch, the typed extra ports and the addresses found live in
+  a view model, not in storage. A restart clears them and leaves the switch off. A found address is kept
+  only if the user goes on to connect to it, and then as the server profile they already chose to save.
+- **What other devices see.** The probe is a short burst of connections from this phone to every address
+  on its /24. Other devices on that network can see it, and a network that logs connections will show it.
+  That is the cost of the feature, and it is why the feature is off by default.
+
+**Limits.** This is code reading, and the probe has not been run on a device (matrix B7 and B8). It was
+not checked on a network with a server on it, so what it reveals on a real network is not measured.
 
 ## What a release still has to do
 

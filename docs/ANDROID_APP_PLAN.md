@@ -1949,7 +1949,8 @@ built. The usage dashboard is the exception: it is reachable from Manage ("Usage
 cards, built and unit tested but not seen changing numbers on a device (matrix H2). Wait until idle is reachable from the session menu, and Quick ask and the RPC console are
 reachable from Manage. The session event history is reachable from the session menu. The Quick Settings tile is built and unit tested but not exercised on a device (matrix J9). The home-screen widget is
 built and unit tested but not placed on a home screen (matrix J8). There are no session tabs, no adaptive
-list-detail layouts, no LAN prober and no OpenCode theme import. The leader keys (Ctrl+X, then a letter) are built and unit tested, and are not run from a keyboard (matrix J5). Everything in the feature list above
+list-detail layouts and no OpenCode theme import. The LAN prober is built and unit tested, as the opt-in
+"find servers on this network" section of the add-server form, but it has not been run on a device (matrix B7 and B8). The leader keys (Ctrl+X, then a letter) are built and unit tested, and are not run from a keyboard (matrix J5). Everything in the feature list above
 is therefore a capability rather than a screen, and this phase's Status should be read with that
 distinction in mind: the exit criterion it set is met, and the feature list it also set is not.
 

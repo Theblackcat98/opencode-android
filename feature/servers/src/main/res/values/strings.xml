@@ -172,4 +172,24 @@
     <string name="inspector_directory_label">Directory</string>
     <string name="inspector_event_durable">durable: seq %1$d, version %2$d, aggregate %3$s</string>
     <string name="inspector_truncated">…</string>
+
+    <!-- Find servers on this network: the opt-in LAN probe on the manual tab of the add-server form. -->
+    <string name="lan_section_title">Find servers on this network</string>
+    <string name="lan_switch_label">Probe every address on this network</string>
+    <string name="lan_switch_help">Off by default, and off again every time the app starts. When it is on, the app probes every address on the local network of this phone for an OpenCode server, on ports 49374 and 4096 and any port you add. Only private addresses are probed, no password is sent, redirects are not followed, and nothing found is saved.</string>
+    <string name="lan_switch_description">%1$s. %2$s</string>
+    <string name="lan_ports_label">Extra ports</string>
+    <string name="lan_ports_hint">For example 4097, 8080</string>
+    <string name="lan_ports_help">Separate ports with commas or spaces. Each one must be from 1 to 65535.</string>
+    <string name="lan_ports_invalid">Not a port from 1 to 65535: %1$s</string>
+    <string name="lan_scan_button">Scan</string>
+    <string name="lan_stop_button">Stop</string>
+    <string name="lan_progress">Checked %1$d of %2$d. Found %3$d so far.</string>
+    <string name="lan_stopped">Scan stopped. Checked %1$d of %2$d.</string>
+    <string name="lan_finished_none">Scan finished. No OpenCode server answered on this network.</string>
+    <string name="lan_finished_found">Scan finished. Found %1$d.</string>
+    <string name="lan_no_private_address">This phone has no private IPv4 address on its current network, so there is nothing to scan.</string>
+    <string name="lan_found_title">Found on this network</string>
+    <string name="lan_found_address">%1$s:%2$d</string>
+    <string name="lan_use_server">Use %1$s as the server address</string>
 </resources>

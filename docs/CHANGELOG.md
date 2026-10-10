@@ -34,6 +34,14 @@ left to do.
 - Static launcher shortcuts for Servers and New session, opened by an intent action in `MainActivity`; checked by firing the actions, not by tapping the launcher.
 - A Quick Settings tile that starts and stops the connection service (matrix J9). It is lit while the service runs, and a tap starts or stops it through the same launcher as the app. The tile's state and the policy behind its taps are unit tested; the tile was not seen in the shade or tapped on a device.
 - A home-screen widget (matrix J8) showing "N waiting for you" and "N running", with the connection notification's two counts. At zero it reads "Nothing running or waiting"; with no live stream it asks the user to open the app rather than showing a count nothing refreshes. A tap opens the app. It is an `AppWidgetProvider` drawn from `RemoteViews`, with no new dependency. Counts are pushed on every change from the presence signals, and the widget has a 30-minute period. The policy and the inflated layout are unit tested; the widget was not placed on a home screen, and a tap was not made.
+- An opt-in LAN probe, "Find servers on this network", on the manual tab of the add-server form. Its switch is off by
+  default and is not saved, so it is off again on every launch. When it is on, the Scan button probes the /24 around the
+  phone's own private IPv4 address (never a wider netmask, never an address outside the three RFC 1918 ranges) on ports
+  49374 and 4096 and any valid ports typed. An address counts when `GET /api/info` answers `401` with the
+  `UnauthorizedError` tag, or `200` with a server-info body. Tapping a found address fills the Server URL field. The probe
+  sends one unauthenticated request per address, no credential and no redirect followed, and Stop cancels the requests in
+  flight. Built and unit tested (`LanProberWireTest`, `LanProberLogicTest`, `LanDiscoveryViewModelTest`). **Not run:** on a
+  device, against a server on a real network (matrix B7 and B8).
 - A command palette, opened by Ctrl+P on a hardware keyboard or by the Search icon, labelled "Command palette", in the
   Servers and the server home top bars. It is a search field over what the app can run from here: Servers, New session,
   Usage, Quick ask, RPC console, Pair another device (the last five only while a server is active), Changelog and Event
@@ -97,8 +105,8 @@ regression.
   [manual test matrix](./MANUAL_TEST_MATRIX.md) and a [release runbook](./RELEASE.md).
 
 **Not built:** the Inbox shortcut, session tabs, the
-adaptive list-detail layouts, the LAN prober and the OpenCode theme import. The phase plan lists all
-of them; this changelog does not claim them. The home-screen widget is built (see Added) but has not been placed on a home screen.
+adaptive list-detail layouts and the OpenCode theme import. The phase plan lists all
+of them; this changelog does not claim them. The home-screen widget is built (see Added) but has not been placed on a home screen. The LAN prober is built (see Added) but has not been run on a device.
 
 ### Fixed
 
@@ -427,6 +435,9 @@ Earlier fixes:
 
 ### Security
 
+- The LAN probe is the one feature that sends requests to addresses the user did not name. It is opt-in and off by
+  default, not saved, limited to the phone's own private /24, sends no credential, follows no redirect and is cancellable.
+  The reasoning is in [`SECURITY_REVIEW.md`](./SECURITY_REVIEW.md) §7 and [`PRIVACY_REVIEW.md`](./PRIVACY_REVIEW.md).
 - The model and vendor identifiers in the test fixtures are gone, replaced with the neutral
   placeholders the rest of the suite already used. The GitHub token prefixes the credential-redaction
   list has to name are deliberately left alone: those are a security control, not a fixture.

@@ -6,8 +6,12 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import dev.opencode.android.core.network.AndroidLocalIpv4Source
 import dev.opencode.android.core.network.AndroidNetworkConnectivityMonitor
 import dev.opencode.android.core.network.AndroidUserCertificateSource
+import dev.opencode.android.core.network.LanProber
+import dev.opencode.android.core.network.LanScanner
+import dev.opencode.android.core.network.LocalIpv4Source
 import dev.opencode.android.core.network.NetworkConnectivityMonitor
 import dev.opencode.android.core.network.PairingClient
 import dev.opencode.android.core.network.ServerApiFactory
@@ -81,4 +85,13 @@ object NetworkModule {
     @Singleton
     fun providePairingClient(serverApiFactory: ServerApiFactory): PairingClient =
         PairingClient(serverApiFactory)
+
+    @Provides
+    @Singleton
+    fun provideLocalIpv4Source(@ApplicationContext context: Context): LocalIpv4Source =
+        AndroidLocalIpv4Source(context)
+
+    /** Not scoped: the prober holds no state, and each scan derives its own client from the shared one. */
+    @Provides
+    fun provideLanScanner(okHttpClient: OkHttpClient): LanScanner = LanProber(okHttpClient)
 }

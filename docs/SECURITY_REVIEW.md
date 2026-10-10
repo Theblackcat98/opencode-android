@@ -20,6 +20,7 @@ Every finding names the file that produced it, so a disagreement is a diff rathe
 | Exported components | Two: the launcher activity, and the Quick Settings tile service, which only the system can bind (`BIND_QUICK_SETTINGS_TILE`). The `FileProvider` is not exported |
 | Backups | Disabled, with explicit extraction rules |
 | Secrets in the repository | None. No keystore, no `local.properties`, no credential literal |
+| LAN probe | Opt-in and off by default, not persisted. Probes only the phone's own private /24, with one unauthenticated `GET /api/info` per address, no redirects, and a cancellable scan (§7) |
 
 ## 1. Credentials
 
@@ -116,7 +117,47 @@ that is reachable only from an explicit screen; neither is on a release path.
 This is the finding most likely to rot, because it depends on nobody adding a `Log.d` with a
 `toString()` in it. `Secret` and the classified `ActionError` are what keep that safe today.
 
-## 7. What a release still has to do
+## 7. The LAN prober
+
+The add-server form has an opt-in probe for OpenCode servers on the phone's local network. The scanner
+is `LanProber` in `core/network/…/LanProber.kt`, its switch and results are `LanDiscoveryViewModel` and
+`LanDiscoverySection` in `feature/servers`, and the tests are `LanProberLogicTest`, `LanProberWireTest` and
+`LanDiscoveryViewModelTest`. The parts that matter for security:
+
+- **Off by default, and not persisted.** The switch is view-model state, so a process restart starts it
+  off again. Nothing turns it on by itself, and switching it on starts no scan.
+- **Only the phone's own /24.** `LanProber.hostsOf` takes the phone's address from the active network's
+  `LinkProperties` and returns the 253 host addresses of the /24 around it, with the phone itself and the
+  network and broadcast addresses left out. A prefix other than 24 is refused, so the scan never widens to
+  a /16 sweep.
+- **Private IPv4 only.** Only the three RFC 1918 ranges (10/8, 172.16/12, 192.168/16) are scanned. A
+  public, loopback, link-local, CGNAT or IPv6 address is refused, and then nothing is scanned.
+- **One unauthenticated request per address.** `GET /api/info` on 49374, 4096 and any valid port typed.
+  The client is derived from the shared `OkHttpClient`, which has no interceptor, so no `Authorization`
+  header is sent. `LanProberWireTest` checks that on the wire.
+- **No redirects.** `followRedirects(false)` and `followSslRedirects(false)`. A redirect answer is a
+  non-match and its target is never requested.
+- **Plain HTTP only, no TLS.** The probe sends no credential and does no handshake, so an HTTPS-only
+  server on a probed port is not found. The user can still type its address.
+- **A narrow fingerprint, which is a hint.** A `401` whose body is `{"_tag":"UnauthorizedError",…}`, or a
+  `200` whose body decodes as `ServerInfo`. A `401` that only mentions the word, and every other status,
+  is not a match. A match is a candidate: `ServerValidator` still runs when the user connects, and nothing
+  is authenticated against it during the probe.
+- **Bounded and silent.** At most 64 KiB of a response is read. The prober contains no `Log` call, so no
+  address it finds or response body reaches the log, which keeps the one-`Log`-call finding in §6 true.
+- **Cancellable.** Stop cancels the collecting coroutine, and cancelling it cancels each OkHttp call in
+  flight (`LanProberWireTest` checks that the scan ends within a second and that the OkHttp call ends as
+  cancelled). Switching the probe
+  off, or leaving the screen, does the same. Nothing is reported after a stop.
+- **Found addresses are shown, not saved.** Tapping one puts `http://host:port` in the Server URL field.
+  It is saved only if the user goes on to connect.
+
+**Limits.** With a VPN as the active network, the probe covers the VPN's /24, not the Wi-Fi one. The
+800 ms timeout can miss a slow server on a busy network. The probe is visible to the other devices on the
+network as a short burst of connections. This section is code reading. The probe has not been run on a
+device (matrix B7 and B8).
+
+## 8. What a release still has to do
 
 - Decide whether the keystore key should require user authentication. See §1.
 - Confirm the release build has no `BuildConfig.DEBUG`-gated logging beyond the one call.
@@ -128,6 +169,6 @@ This is the finding most likely to rot, because it depends on nobody adding a `L
 - The reviews in this document are code reading. None of it was run: there is no device, so the
   WebView's actual behaviour, the Keystore's behaviour on a specific device, and the notification
   permission flows are all unexercised.
-- The LAN prober (`feature/insights`) is a network scanner and is described in its own file: opt-in,
-  off by default, cancellable, and it treats `401 {"_tag":"UnauthorizedError"}` as a fingerprint
-  rather than something to authenticate against.
+- The LAN prober is a network scanner, and §7 describes it: opt-in, off by default, not persisted, the
+  phone's own private /24 only, cancellable. It treats `401 {"_tag":"UnauthorizedError"}` as a fingerprint
+  rather than something to authenticate against. It is built and unit tested, but not run on a device.
