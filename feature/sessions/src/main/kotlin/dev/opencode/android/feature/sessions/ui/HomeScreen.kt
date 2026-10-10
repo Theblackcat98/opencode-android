@@ -172,10 +172,12 @@ fun HomeScreen(
             )
         },
         floatingActionButton = {
+            val newSession = stringResource(R.string.home_new_session)
             ExtendedFloatingActionButton(
                 onClick = onNewSessionClick,
                 icon = { Icon(Icons.Filled.Add, contentDescription = null) },
-                text = { Text(stringResource(R.string.home_new_session)) },
+                text = { Text(newSession) },
+                modifier = Modifier.semantics { contentDescription = newSession },
             )
         },
     ) { padding ->
