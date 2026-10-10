@@ -35,6 +35,7 @@ left to do.
 - A Quick Settings tile that starts and stops the connection service (matrix J9). It is lit while the service runs, and a tap starts or stops it through the same launcher as the app. The tile's state and the policy behind its taps are unit tested; the tile was not seen in the shade or tapped on a device.
 - A home-screen widget (matrix J8) showing "N waiting for you" and "N running", with the connection notification's two counts. At zero it reads "Nothing running or waiting"; with no live stream it asks the user to open the app rather than showing a count nothing refreshes. A tap opens the app. It is an `AppWidgetProvider` drawn from `RemoteViews`, with no new dependency. Counts are pushed on every change from the presence signals, and the widget has a 30-minute period. The policy and the inflated layout are unit tested; the widget was not placed on a home screen, and a tap was not made.
 - Session tabs (matrix J7): a strip under the session's top bar, drawn with two or more tabs, lists the sessions opened in this app run for the active server, oldest first and at most eight, with the one on screen selected. A tap on another tab replaces the session on screen with it, and its close button removes the tab; closing the tab on screen opens its neighbour, or goes to the server's home when it was the last. Opening a listed session does not move it. The list is saved with the screen's state, so a rotation should keep it; the saver is unit tested and a rotation was not run. The rules are unit tested and the strip's labels, selected state and 48dp targets are Robolectric tested. Not seen on a device, and no tab was tapped.
+- The session list beside a session on a wide window (matrix J1-J3). On a window at least 840 dp wide, a session shows the active server's recent sessions in a 320 dp list at its left, newest first and at most 30, with the one on screen selected. A tap on a row replaces the session on screen with the tapped one, the same way the tab strip does, and the home screen is unchanged. A narrower window shows the session alone, as before. Built and unit tested: the 840 dp decision, and the list's labels, selection, 48 dp rows and taps. Not seen on a tablet or a resizable window.
 - An opt-in LAN probe, "Find servers on this network", on the manual tab of the add-server form. Its switch is off by
   default and is not saved, so it is off again on every launch. When it is on, the Scan button probes the /24 around the
   phone's own private IPv4 address (never a wider netmask, never an address outside the three RFC 1918 ranges) on ports
@@ -106,9 +107,8 @@ regression.
   [accessibility audit](./ACCESSIBILITY_AUDIT.md), a [coverage audit](./COVERAGE.md), a
   [manual test matrix](./MANUAL_TEST_MATRIX.md) and a [release runbook](./RELEASE.md).
 
-**Not built:** the Inbox shortcut, the adaptive list-detail
-layouts and the OpenCode theme import. The phase plan lists all
-of them; this changelog does not claim them. The home-screen widget is built (see Added) but has not been placed on a home screen. The LAN prober is built (see Added) but has not been run on a device.
+**Not built:** the Inbox shortcut and the OpenCode theme import. The phase plan lists all
+of them; this changelog does not claim them. The session list beside a session is built for wide windows (see Added) but has not been seen on a tablet. The home-screen widget is built (see Added) but has not been placed on a home screen. The LAN prober is built (see Added) but has not been run on a device.
 
 ### Fixed
 

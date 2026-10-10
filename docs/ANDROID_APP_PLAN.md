@@ -1070,8 +1070,8 @@ experimental switches that govern it. Phase 7 reuses the diff rows, the code hig
   and a viewer that wrote a preview to storage would be creating files on the user's behalf for a file they only
   looked at. A decode that fails falls back to the same sentence a binary gets. Coil earns its place when a
   *remote* image is shown, which is P8's `websearch` and P10's attachments.
-- **The split view is a threshold, not an adaptive layout.** There is no list-detail pane and no foldable posture;
-  Phase 10's adaptive work is where that belongs.
+- **The split view is a threshold, not an adaptive layout.** There is no list-detail pane in the review and no foldable
+  posture; the session list beside a session, built in Phase 10 for wide windows, is the only one (matrix J1-J3).
 - **The search is a substring match over the formatted message.** It has no ranking, no regex and no highlighting
   in the timeline, and it runs on the transcript already in memory rather than asking the server — there is no
   route for it.
@@ -1949,7 +1949,8 @@ built. The usage dashboard is the exception: it is reachable from Manage ("Usage
 cards, built and unit tested but not seen changing numbers on a device (matrix H2). Wait until idle is reachable from the session menu, and Quick ask and the RPC console are
 reachable from Manage. The session event history is reachable from the session menu. The Quick Settings tile is built and unit tested but not exercised on a device (matrix J9). The home-screen widget is
 built and unit tested but not placed on a home screen (matrix J8). Session tabs are built and unit tested, and are not
-seen on a device (matrix J7). There are no adaptive list-detail layouts and no OpenCode theme import. The LAN prober is built and unit tested, as the opt-in
+seen on a device (matrix J7). The session list beside a session on windows at least 840 dp wide is built and unit tested, and is not seen on a
+tablet (matrix J1-J3). There is no OpenCode theme import. The LAN prober is built and unit tested, as the opt-in
 "find servers on this network" section of the add-server form, but it has not been run on a device (matrix B7 and B8). The leader keys (Ctrl+X, then a letter) are built and unit tested, and are not run from a keyboard (matrix J5). Everything in the feature list above
 is therefore a capability rather than a screen, and this phase's Status should be read with that
 distinction in mind: the exit criterion it set is met, and the feature list it also set is not.

@@ -2,15 +2,19 @@ package dev.opencode.android.navigation
 
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -26,6 +30,7 @@ import androidx.compose.ui.input.key.isCtrlPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -297,6 +302,10 @@ fun OpenCodeApp(
     // The session tabs of this app run (SessionTabs.kt). They are kept across a rotation. Their titles come from the
     // active server's session store, which the inbox reads too, so a tab never fetches a session of its own.
     var sessionTabs by rememberSaveable(stateSaver = sessionTabsSaver) { mutableStateOf(SessionTabs()) }
+    // The session list drawn beside a session on a wide window (SessionListPane.kt). Its scroll is held here, above
+    // the NavHost, because a tap replaces the session's back-stack entry and an entry-level state would start again
+    // at the top.
+    val sessionListState = rememberLazyListState()
     // Built once, not per composition: a flow operator run in composition restarts its collection each time.
     val sessionInfoFlow = remember(serverDataSets) {
         serverDataSets.active.flatMapLatest { set -> set?.sessions?.info ?: emptyFlow() }
@@ -535,123 +544,155 @@ fun OpenCodeApp(
                     current?.let { sessionTabs = sessionTabs.opened(it) }
                 }
                 val tabsOnServer = server?.let { sessionTabs.onServer(it) }.orEmpty()
-                SessionHost(
-                    sessionId = route.sessionId,
-                    composer = composer,
-                    onNavigateBack = { navController.popBackStack() },
-                    onSessionDeleted = {
-                        if (current != null) sessionTabs = sessionTabs.forgotten(current)
-                        navController.popBackStack()
-                    },
-                    // The composer's client commands: `/sessions` and `/new` navigate, and the
-                    // composition root is the only place that knows this graph.
-                    onOpenSessionList = {
-                        navController.navigate(SessionListRoute(serverId = route.serverId))
-                    },
-                    onNewSession = {
-                        // `/new`: the new-session flow is a sheet over the home, so this is the home with
-                        // the sheet already open. `popUpTo` the session so Back returns where it was.
-                        navController.navigate(HomeRoute(route.serverId, openNewSession = true)) {
+                // A tap on a session in the tab strip or in the list replaces this entry with the tapped session,
+                // which is the same navigation for both. The session on screen is not navigated to again: that would
+                // pop it and build it afresh.
+                val showInPlace: (String) -> Unit = { sessionId ->
+                    if (server != null && sessionId != route.sessionId) {
+                        navController.navigate(SessionRoute(server, sessionId)) {
                             popUpTo(SessionRoute(route.serverId, route.sessionId)) { inclusive = true }
                             launchSingleTop = true
                         }
-                    },
-                    onOpenReview = { path ->
-                        // `/diff` and a changed-files link both land here; the link adds the file.
-                        navController.navigate(
-                            ReviewRoute(
-                                serverId = route.serverId,
-                                sessionId = route.sessionId,
-                                initialPath = path,
-                            ),
-                        )
-                    },
-                    // The subagent strip opens the child session in place, which is the only place a
-                    // subagent's transcript is read from.
-                    onOpenChild = { childId ->
-                        navController.navigate(SessionRoute(route.serverId, childId)) { launchSingleTop = true }
-                    },
-                    onOpenShells = { directory ->
-                        navController.navigate(ShellsRoute(route.serverId, directory))
-                    },
-                    onOpenTerminal = { directory, startCommand ->
-                        navController.navigate(TerminalRoute(route.serverId, directory, startCommand))
-                    },
-                    onOpenSubagents = {
-                        navController.navigate(SubagentsRoute(route.serverId, route.sessionId))
-                    },
-                    onOpenWorktrees = { projectId ->
-                        navController.navigate(WorktreesRoute(route.serverId, projectId, route.sessionId))
-                    },
-                    onOpenSessionTerminals = {
-                        navController.navigate(SessionTerminalsRoute(route.serverId, route.sessionId))
-                    },
-                    // Phase 9, from the session: its own permission rules and its instruction entries are
-                    // scoped to a session rather than to a checkout, so Manage cannot reach them.
-                    onOpenSessionPermissions = { projectId: String?, directory: String ->
-                        navController.navigate(
-                            PermissionsRoute(
-                                serverId = route.serverId,
-                                directory = directory,
-                                projectID = projectId,
-                                sessionID = route.sessionId,
-                            ),
-                        )
-                    },
-                    onOpenSessionInstructions = {
-                        navController.navigate(InstructionsRoute(route.serverId, route.sessionId))
-                    },
-                    onOpenProjectSettings = { projectId ->
-                        navController.navigate(
-                            ProjectSettingsRoute(
-                                serverId = route.serverId,
-                                projectId = projectId,
-                                fromSessionId = route.sessionId,
-                            ),
-                        )
-                    },
-                    // A fork is a new session id, so the graph navigates to it rather than the screen
-                    // re-rendering the one it is on. The view model publishes the id once.
-                    onForked = { sessionId -> navController.navigate(SessionRoute(route.serverId, sessionId)) },
-                    tabs = tabsOnServer.map { tab ->
-                        SessionTabUi(
-                            id = tab.sessionId,
-                            title = sessionInfo[tab.sessionId]?.title?.takeIf { it.isNotBlank() } ?: untitledSession,
-                            selected = tab == current,
-                        )
-                    },
-                    onSelectTab = { sessionId ->
-                        // The session on screen is not navigated to again: that would pop it and build it afresh.
-                        if (server != null && sessionId != route.sessionId) {
-                            navController.navigate(SessionRoute(server, sessionId)) {
+                    }
+                }
+                // A wide window draws the session list beside the session; a narrow one draws the session alone,
+                // as before.
+                val listShown = sessionListShown(
+                    screenWidthDp = LocalConfiguration.current.screenWidthDp,
+                    sessionOnActiveServer = server != null && server == activeServerId,
+                )
+                val sessionScreen: @Composable (Modifier) -> Unit = { modifier ->
+                    SessionHost(
+                        sessionId = route.sessionId,
+                        composer = composer,
+                        onNavigateBack = { navController.popBackStack() },
+                        onSessionDeleted = {
+                            if (current != null) sessionTabs = sessionTabs.forgotten(current)
+                            navController.popBackStack()
+                        },
+                        // The composer's client commands: `/sessions` and `/new` navigate, and the
+                        // composition root is the only place that knows this graph.
+                        onOpenSessionList = {
+                            navController.navigate(SessionListRoute(serverId = route.serverId))
+                        },
+                        onNewSession = {
+                            // `/new`: the new-session flow is a sheet over the home, so this is the home with
+                            // the sheet already open. `popUpTo` the session so Back returns where it was.
+                            navController.navigate(HomeRoute(route.serverId, openNewSession = true)) {
                                 popUpTo(SessionRoute(route.serverId, route.sessionId)) { inclusive = true }
                                 launchSingleTop = true
                             }
-                        }
-                    },
-                    onCloseTab = { sessionId ->
-                        if (server != null) {
-                            val closing = sessionTabs.closed(OpenSessionTab(server, sessionId), current)
-                            sessionTabs = closing.tabs
-                            // Closing a tab that is not on screen only removes it. Closing the one on screen moves on.
-                            when (closing) {
-                                is TabClose.Stay -> Unit
+                        },
+                        onOpenReview = { path ->
+                            // `/diff` and a changed-files link both land here; the link adds the file.
+                            navController.navigate(
+                                ReviewRoute(
+                                    serverId = route.serverId,
+                                    sessionId = route.sessionId,
+                                    initialPath = path,
+                                ),
+                            )
+                        },
+                        // The subagent strip opens the child session in place, which is the only place a
+                        // subagent's transcript is read from.
+                        onOpenChild = { childId ->
+                            navController.navigate(SessionRoute(route.serverId, childId)) { launchSingleTop = true }
+                        },
+                        onOpenShells = { directory ->
+                            navController.navigate(ShellsRoute(route.serverId, directory))
+                        },
+                        onOpenTerminal = { directory, startCommand ->
+                            navController.navigate(TerminalRoute(route.serverId, directory, startCommand))
+                        },
+                        onOpenSubagents = {
+                            navController.navigate(SubagentsRoute(route.serverId, route.sessionId))
+                        },
+                        onOpenWorktrees = { projectId ->
+                            navController.navigate(WorktreesRoute(route.serverId, projectId, route.sessionId))
+                        },
+                        onOpenSessionTerminals = {
+                            navController.navigate(SessionTerminalsRoute(route.serverId, route.sessionId))
+                        },
+                        // Phase 9, from the session: its own permission rules and its instruction entries are
+                        // scoped to a session rather than to a checkout, so Manage cannot reach them.
+                        onOpenSessionPermissions = { projectId: String?, directory: String ->
+                            navController.navigate(
+                                PermissionsRoute(
+                                    serverId = route.serverId,
+                                    directory = directory,
+                                    projectID = projectId,
+                                    sessionID = route.sessionId,
+                                ),
+                            )
+                        },
+                        onOpenSessionInstructions = {
+                            navController.navigate(InstructionsRoute(route.serverId, route.sessionId))
+                        },
+                        onOpenProjectSettings = { projectId ->
+                            navController.navigate(
+                                ProjectSettingsRoute(
+                                    serverId = route.serverId,
+                                    projectId = projectId,
+                                    fromSessionId = route.sessionId,
+                                ),
+                            )
+                        },
+                        // A fork is a new session id, so the graph navigates to it rather than the screen
+                        // re-rendering the one it is on. The view model publishes the id once.
+                        onForked = { sessionId -> navController.navigate(SessionRoute(route.serverId, sessionId)) },
+                        tabs = tabsOnServer.map { tab ->
+                            SessionTabUi(
+                                id = tab.sessionId,
+                                title = sessionInfo[tab.sessionId]?.title?.takeIf { it.isNotBlank() }
+                                    ?: untitledSession,
+                                selected = tab == current,
+                            )
+                        },
+                        onSelectTab = showInPlace,
+                        onCloseTab = { sessionId ->
+                            if (server != null) {
+                                val closing = sessionTabs.closed(OpenSessionTab(server, sessionId), current)
+                                sessionTabs = closing.tabs
+                                // Closing a tab that is not on screen only removes it. Closing the one on screen moves
+                                // on.
+                                when (closing) {
+                                    is TabClose.Stay -> Unit
 
-                                is TabClose.Open -> navController.navigate(
-                                    SessionRoute(closing.next.serverId, closing.next.sessionId),
-                                ) {
-                                    popUpTo(SessionRoute(route.serverId, route.sessionId)) { inclusive = true }
-                                    launchSingleTop = true
-                                }
+                                    is TabClose.Open -> navController.navigate(
+                                        SessionRoute(closing.next.serverId, closing.next.sessionId),
+                                    ) {
+                                        popUpTo(SessionRoute(route.serverId, route.sessionId)) { inclusive = true }
+                                        launchSingleTop = true
+                                    }
 
-                                is TabClose.Home -> navController.navigate(HomeRoute(closing.serverId)) {
-                                    popUpTo(SessionRoute(route.serverId, route.sessionId)) { inclusive = true }
-                                    launchSingleTop = true
+                                    is TabClose.Home -> navController.navigate(HomeRoute(closing.serverId)) {
+                                        popUpTo(SessionRoute(route.serverId, route.sessionId)) { inclusive = true }
+                                        launchSingleTop = true
+                                    }
                                 }
                             }
-                        }
-                    },
-                )
+                        },
+                        modifier = modifier,
+                    )
+                }
+                // The session screen takes its modifier from the layout. Narrow windows give it none, as before the
+                // list existed.
+                if (listShown) {
+                    Row(Modifier.fillMaxSize()) {
+                        SessionListPaneHost(
+                            serverDataSets = serverDataSets,
+                            untitledTitle = untitledSession,
+                            selectedId = route.sessionId,
+                            listState = sessionListState,
+                            onSelect = showInPlace,
+                            modifier = Modifier.fillMaxHeight(),
+                        )
+                        VerticalDivider(modifier = Modifier.fillMaxHeight())
+                        sessionScreen(Modifier.weight(1f))
+                    }
+                } else {
+                    sessionScreen(Modifier)
+                }
             }
 
             composable<ReviewRoute> { entry ->

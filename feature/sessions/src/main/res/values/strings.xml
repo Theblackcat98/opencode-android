@@ -240,4 +240,7 @@
     <string name="session_tab_label">%1$s, tab %2$d of %3$d</string>
     <string name="session_tab_label_selected">%1$s, tab %2$d of %3$d, selected</string>
     <string name="session_tab_close">Close tab %1$s</string>
+    <string name="session_pane_title">Sessions</string>
+    <string name="session_pane_label_selected">%1$s, selected</string>
+    <string name="session_pane_empty">No sessions yet.</string>
 </resources>

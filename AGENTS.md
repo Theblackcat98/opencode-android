@@ -110,7 +110,10 @@ That script hard-asserts exactly **93** named types (94 counting the `rpc.*` fam
 
 ## Screens and navigation
 
-Contrary to the usual Compose layout, **no feature module declares a route or a `NavHost`.** Every `@Serializable` destination lives in `:app` under `app/src/main/kotlin/…/navigation/` — `Routes.kt` for the shared graph, then per-phase `SessionHost`, `ReviewHost`, `ExecutionHost`, `AdminHost`, `IntegrationsHost`. A feature contributes a *stateless* screen composable taking a `*UiState` plus lambdas; the matching `*Host` in `:app` wires the ViewModel, state and callbacks.
+Contrary to the usual Compose layout, **no feature module declares a route or a `NavHost`.** Every `@Serializable` destination lives in `:app` under `app/src/main/kotlin/…/navigation/` — `Routes.kt` for the shared graph, then per-phase `SessionHost`, `ReviewHost`, `ExecutionHost`, `AdminHost`, `IntegrationsHost`. A feature contributes a *stateless* screen composable taking a `*UiState` plus lambdas; the matching `*Host` in `:app` wires the ViewModel, state and callbacks. On a window at least 840 dp wide, the
+`SessionRoute` entry also draws the active server's session list beside `SessionHost` (`navigation/SessionListPane.kt`).
+The list is a stateless feature composable, and every session is still a `SessionRoute` entry, so `ReviewRoute`'s
+`sessionEntryOf` and the session's ViewModels need no change.
 
 ViewModels are uniformly `@HiltViewModel` + `@Inject constructor(ServerDataRegistry)`, reading `dataSets.active`. All nine features are destinations. `feature/insights` is reached from Manage on a server's home screen: Usage, Quick ask and RPC console, with their routes and hosts in `AdminHost.kt` (the screens are stateless, and `audit-viewmodels` keeps each ViewModel `@HiltViewModel`). The usage dashboard has a project row above its cards: "All projects", then the projects the active server's `ServerDataSet` lists, and choosing one re-queries with its id. It is built and unit tested but has not been seen changing numbers on a device (matrix H2). When the stats route is absent it shows a plain message in place of the cards, not the error card.
 
