@@ -30,6 +30,9 @@ enum class PresenceReason {
     /** A notification action brought the app forward, which is the other documented exemption. */
     NOTIFICATION_ACTION,
 
+    /** The user tapped this app's Quick Settings tile, so the start is the user's own. */
+    QUICK_SETTINGS_TILE,
+
     /** The user is foregrounded, so no exemption is needed at all. */
     APP_IN_FOREGROUND,
 
@@ -91,6 +94,9 @@ enum class StartExemption {
 
     /** The user turned battery optimisation off for this app. */
     BATTERY_OPTIMISATION_DISABLED,
+
+    /** The user tapped this app's Quick Settings tile. */
+    QUICK_SETTINGS_TILE,
 
     /** Nothing permits it. A start now would throw `ForegroundServiceStartNotAllowedException`. */
     NONE,
@@ -201,6 +207,7 @@ object PresencePolicy {
         StartExemption.APP_IN_FOREGROUND -> PresenceReason.APP_IN_FOREGROUND
         StartExemption.NOTIFICATION_ACTION -> PresenceReason.NOTIFICATION_ACTION
         StartExemption.BATTERY_OPTIMISATION_DISABLED -> PresenceReason.BATTERY_EXEMPT
+        StartExemption.QUICK_SETTINGS_TILE -> PresenceReason.QUICK_SETTINGS_TILE
         StartExemption.NONE -> PresenceReason.BACKGROUND_START_REFUSED
     }
 

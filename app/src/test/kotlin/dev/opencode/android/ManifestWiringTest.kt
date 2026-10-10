@@ -91,6 +91,33 @@ class ManifestWiringTest {
     }
 
     @Test
+    fun `the quick settings tile is exported only behind the bind permission, and filters the tile action`() {
+        // The tile is the one exported component this module adds. The system binds it from another process,
+        // which an unexported service cannot be, so the permission is what keeps it from being an open service.
+        val tile = declarations(requests, "service").single {
+            it.getAttribute("android:name").endsWith("ConnectionTileService")
+        }
+        assertEquals("true", tile.getAttribute("android:exported"))
+        assertEquals("android.permission.BIND_QUICK_SETTINGS_TILE", tile.getAttribute("android:permission"))
+        val actions = tile.getElementsByTagName("action")
+        assertEquals(1, actions.length)
+        val action = actions.item(0) as Element
+        assertEquals("android.service.quicksettings.action.QS_TILE", action.getAttribute("android:name"))
+        // The label and icon are resources, so the tile's text is translatable and both must exist.
+        assertEquals("@string/connection_tile_label", tile.getAttribute("android:label"))
+        assertEquals("@drawable/ic_connection_tile", tile.getAttribute("android:icon"))
+        assertTrue(
+            "the tile's label resource is missing",
+            java.io.File("../feature/requests/src/main/res/values/strings.xml").readText()
+                .contains("name=\"connection_tile_label\""),
+        )
+        assertTrue(
+            "the tile's icon is missing",
+            java.io.File("../feature/requests/src/main/res/drawable/ic_connection_tile.xml").exists(),
+        )
+    }
+
+    @Test
     fun `the activity still claims the pairing links, and the manifest is still one application`() {
         val activity = declarations(app, "activity").single()
         val views = activity.getElementsByTagName("data")

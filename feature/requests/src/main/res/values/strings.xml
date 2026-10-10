@@ -207,4 +207,8 @@
     <string name="settings_mute">Mute this session</string>
     <string name="settings_mute_body">No notifications for this session, including a permission it is waiting on.</string>
 
+
+    <!-- Quick Settings tile -->
+    <string name="connection_tile_label">OpenCode connection</string>
+
 </resources>

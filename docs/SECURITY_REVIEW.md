@@ -17,7 +17,7 @@ Every finding names the file that produced it, so a disagreement is a diff rathe
 | WebView | Hardened: local assets only, no file access, one bridged method |
 | Dangerous-action confirmations | Present for the four actions the plan names |
 | Analytics | None. No analytics or crash SDK is a dependency |
-| Exported components | One, the launcher activity. The `FileProvider` is not exported |
+| Exported components | Two: the launcher activity, and the Quick Settings tile service, which only the system can bind (`BIND_QUICK_SETTINGS_TILE`). The `FileProvider` is not exported |
 | Backups | Disabled, with explicit extraction rules |
 | Secrets in the repository | None. No keystore, no `local.properties`, no credential literal |
 
@@ -98,7 +98,7 @@ Two more that the plan does not name but that this phase added, confirmed for th
 
 ## 5. The manifest
 
-One exported component: `MainActivity`, the launcher. The `FileProvider` carries
+Two exported components: `MainActivity`, the launcher, and `ConnectionTileService`, the Quick Settings tile. The tile has to be exported for the system to bind it, so it is guarded by `android.permission.BIND_QUICK_SETTINGS_TILE`. The `FileProvider` carries
 `android:exported="false"` and `grantUriPermissions="true"`, which is what a share sheet needs.
 
 `android:allowBackup="false"`, `android:fullBackupContent="false"` and an explicit

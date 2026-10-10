@@ -43,8 +43,8 @@ data class QuickAskUiState(
 /**
  * Quick ask (matrix H5; issue #20).
  *
- * This is the in-app surface only. The home-screen widget and the Quick Settings tile the plan also names
- * are not built, and they would make the same [dev.opencode.android.core.data.insights.InsightsSurface.generateText]
+ * This is the in-app surface only. The home-screen widget the plan also names
+ * is not built, and it would make the same [dev.opencode.android.core.data.insights.InsightsSurface.generateText]
  * call, so there is one request path whichever surface asks.
  */
 @HiltViewModel

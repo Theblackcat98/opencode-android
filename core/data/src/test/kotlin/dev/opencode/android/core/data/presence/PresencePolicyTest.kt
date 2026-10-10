@@ -131,6 +131,15 @@ class PresencePolicyTest {
     }
 
     @Test
+    fun `a tap on the quick settings tile is an exemption the policy names`() {
+        val decision = decide(
+            runningSessions = 1,
+            startExemption = StartExemption.QUICK_SETTINGS_TILE,
+        )
+        assertEquals(PresenceDecision.Start(PresenceReason.QUICK_SETTINGS_TILE), decision)
+    }
+
+    @Test
     fun `work appearing while the service is down and the app is closed does not ask for a start`() {
         val decision = decide(runningSessions = 1, startExemption = StartExemption.NONE)
         assertEquals(

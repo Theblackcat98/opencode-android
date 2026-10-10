@@ -84,6 +84,50 @@ class ConnectionServiceLauncherTest {
     }
 
     @Test
+    fun `a tap on the quick settings tile starts the service from the background when work is waiting`() {
+        // The tile's start is one of the exemptions the launcher accepts, so it is the path that makes the
+        // tile useful with the app closed, where the ordinary evaluation would refuse the start.
+        val (launcher, signals) = launcher()
+        launcher.start()
+        signals.emit(running = 1)
+        settle()
+        assertEquals(0, launcher.starts.value)
+        launcher.startFromTile()
+        assertEquals("the tile's exemption started nothing", 1, awaitStarts(launcher, atLeast = 1))
+        assertTrue(launcher.requested.value)
+    }
+
+    @Test
+    fun `a tap on the quick settings tile starts nothing when no work or always-connected keeps a service`() {
+        // The policy's rule that a service runs only while something needs it. The tile does not override it,
+        // so with nothing waiting a tap leaves the tile unlit.
+        val (launcher, signals) = launcher()
+        launcher.start()
+        signals.emit(running = 0)
+        settle()
+        launcher.startFromTile()
+        settle()
+        assertEquals(0, launcher.starts.value)
+        assertFalse(launcher.requested.value)
+    }
+
+    @Test
+    fun `a tile start is not held for the next evaluation, so a stop after it is not undone`() {
+        // offer() keeps its exemption until the app leaves the foreground, so a stop after an offer would be
+        // restarted at once while work remains. The tile's exemption is for the one start it was tapped for.
+        val (launcher, signals) = launcher()
+        launcher.start()
+        signals.emit(running = 1)
+        launcher.startFromTile()
+        assertEquals(1, awaitStarts(launcher, atLeast = 1))
+        launcher.serviceStopped()
+        signals.emit(running = 2)
+        settle()
+        assertEquals("the stopped service was asked for again without a tap", 1, launcher.starts.value)
+        assertFalse(launcher.requested.value)
+    }
+
+    @Test
     fun `the service is asked for once, and again after it reports that it stopped`() {
         val (launcher, signals) = launcher()
         launcher.start()

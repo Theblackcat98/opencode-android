@@ -155,6 +155,28 @@ class ConnectionServiceLauncher @Inject constructor(
         evaluate(Evaluation(presence.signals.value, appForeground.value, exemption))
     }
 
+    /**
+     * Asks for a start because the user tapped the Quick Settings tile.
+     *
+     * It is the same evaluation as every other start, so the policy still decides whether there is work
+     * to keep a service for. The tap is an exemption for this one evaluation only: unlike [offer] it is
+     * not held for the next one, so a stop that follows cannot be undone by the tap that started it.
+     */
+    fun startFromTile() {
+        evaluate(Evaluation(presence.signals.value, appForeground.value, StartExemption.QUICK_SETTINGS_TILE))
+    }
+
+    /**
+     * Stops the service because the user tapped the Quick Settings tile.
+     *
+     * The service then does what it does on any stop: it releases the stream, removes its notification and
+     * reports [serviceStopped]. If the policy still wants a service (work, a waiting request, or always
+     * connected, with the app in the foreground) the next evaluation asks for one again.
+     */
+    fun stopFromTile() {
+        context.stopService(Intent(context, ConnectionService::class.java))
+    }
+
     /** Called by the service when it stops, so the next piece of work can start it again. */
     fun serviceStopped() {
         _requested.value = false

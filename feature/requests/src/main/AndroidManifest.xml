@@ -18,6 +18,22 @@
             android:foregroundServiceType="dataSync" />
 
         <!--
+          The Quick Settings tile (matrix J9). It is exported because the system binds it from another
+          process, which an unexported service cannot be. Only the system can bind it at all: the
+          `BIND_QUICK_SETTINGS_TILE` permission is what the platform checks on the caller.
+        -->
+        <service
+            android:name=".notifications.ConnectionTileService"
+            android:exported="true"
+            android:icon="@drawable/ic_connection_tile"
+            android:label="@string/connection_tile_label"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+
+        <!--
           Explicit rather than implicit: this receiver exists to no other app, and an implicit one
           would be a message any installed app could send carrying "answer this permission".
         -->
