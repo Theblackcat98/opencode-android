@@ -33,9 +33,13 @@ left to do.
   programmatic permission and form creation, for plugin and workflow testing. Wait until idle is in
   the session menu, with a dialog that stops it; the other three have no UI yet.
 - A plugin RPC console surface (`rpc.call`) that refuses an id or method that would break the URL, and
-  a viewer for `rpc.<id>.<event>`.
-- Quick ask (`experimental.generate.text`) and pair another device (`POST /api/pair` — capability-gated,
-  because the route is not in the published spec).
+  a viewer for `rpc.<id>.<event>`. The console is under Manage ("RPC console") and shows the answer, or
+  the error, as the JSON that came back. Only the error path was exercised: the dev server has no plugin
+  that answers.
+- Quick ask (`experimental.generate.text`), with a screen under Manage ("Quick ask"). It takes an optional
+  `provider/model`, because a server with no default model refuses the ask without one. The home-screen
+  widget and the Quick Settings tile that the plan also names are not built. Pair another device
+  (`POST /api/pair` — capability-gated, because the route is not in the published spec).
 
 **TUI control events**, which had payload classes since P0 and no handler: a toast becomes a snackbar
 at the server's own variant, an opt-in "follow desktop" mode mirrors the TUI's session and composer and
@@ -59,7 +63,7 @@ regression.
   [accessibility audit](./ACCESSIBILITY_AUDIT.md), a [coverage audit](./COVERAGE.md), a
   [manual test matrix](./MANUAL_TEST_MATRIX.md) and a [release runbook](./RELEASE.md).
 
-**Not built:** the RPC console screen, the session-log viewer, the home-screen
+**Not built:** the session-log viewer, the home-screen
 widget, the Quick Settings tile, app shortcuts, the command palette and leader keys, session tabs, the
 adaptive list-detail layouts, the LAN prober and the OpenCode theme import. The phase plan lists all
 of them; this changelog does not claim them.

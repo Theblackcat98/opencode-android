@@ -1946,8 +1946,9 @@ falling back to `Unknown`, which would have taken the event connection down over
 operations are declared, called, capability-gated and covered by tests over real HTTP, and the TUI
 control events are handled and wired to the surfaces that read them. The *screen* half is mostly not
 built. The usage dashboard is the exception: it is reachable from Manage ("Usage") and has no project
-control yet. Wait until idle is the other, reachable from the session menu. There is no RPC console screen, no session-log viewer, no home-screen widget, no Quick
-Settings tile, no app shortcuts, no command palette or leader keys, no session tabs, no adaptive
+control yet. Wait until idle is reachable from the session menu, and Quick ask and the RPC console are
+reachable from Manage. There is no session-log viewer, no home-screen widget, no Quick Settings tile,
+no app shortcuts, no command palette or leader keys, no session tabs, no adaptive
 list-detail layouts, no LAN prober and no OpenCode theme import. Everything in the feature list above
 is therefore a capability rather than a screen, and this phase's Status should be read with that
 distinction in mind: the exit criterion it set is met, and the feature list it also set is not.
