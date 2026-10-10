@@ -108,8 +108,8 @@ class LiveConfigIntegrationTest {
         // is a worse failure than a test failing.
         runBlocking {
             val original = configPath.remove(LOCATION_CONFIG)
-            FileReader(api).write(null, LOCATION_CONFIG, original ?: "{}")
-            configPath.forEach { (path, text) -> FileReader(api).write(null, path, text) }
+            FileReader(api).write(workDirectory, LOCATION_CONFIG, original ?: "{}")
+            configPath.forEach { (path, text) -> FileReader(api).write(workDirectory, path, text) }
             configPath.clear()
             // A definition file this test created is left for the server to forget on its own next
             // reload; writing `{}` over the location's configuration is enough to end this test's effect.
