@@ -59,6 +59,17 @@ fun InsightsScreen(
     onDismissError: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    if (!state.available) {
+        // The route is not on this server, so there is nothing to range over and no figure to show. The
+        // cards would only show the error, which blames a request for a feature the server does not have.
+        Text(
+            stringResource(R.string.insights_absent),
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = modifier.fillMaxWidth().padding(16.dp),
+        )
+        return
+    }
+
     val stats = state.stats
     LazyColumn(
         modifier = modifier.fillMaxSize(),

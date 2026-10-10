@@ -56,8 +56,8 @@ data class InsightsUiState(
      *
      * **Three states, not two.** `Unknown` means nothing has been asked, `Present` means it answered,
      * and `Absent` means it has no such route. The state records that, and `available` is false on the
-     * third, but no screen reads `available` yet: for a server without `/api/experimental/session/stats`
-     * the usage screen currently shows the error card rather than hiding.
+     * third. [InsightsScreen] reads `available` and, for a server without `/api/experimental/session/stats`,
+     * shows a plain message in place of the cards rather than the error card.
      */
     val availability: RouteAvailability = RouteAvailability.Unknown,
 ) {

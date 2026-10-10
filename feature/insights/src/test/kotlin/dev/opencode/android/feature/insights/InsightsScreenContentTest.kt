@@ -16,7 +16,6 @@ import dev.opencode.android.core.model.ToolDetailMode
 import dev.opencode.android.core.model.ToolTotals
 import dev.opencode.android.core.model.ToolUsage
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -201,10 +200,17 @@ class InsightsScreenContentTest {
         compose.onNodeWithText("Dismiss").assertIsDisplayed()
     }
 
+    /**
+     * The stats are present on purpose: with none, "no Totals card" would hold trivially. The absent
+     * route must suppress the cards even when a figure is in the state.
+     */
     @Test
-    fun `a server without the route is not offered a broken page`() {
-        val state = InsightsUiState(availability = RouteAvailability.Absent(404))
-        assertTrue("the screen hides itself rather than showing an error", !state.available)
+    fun `a server without the route says so instead of drawing the cards`() {
+        show(InsightsUiState(stats = stats(), availability = RouteAvailability.Absent(404)))
+
+        compose.onNodeWithText("This server does not have the usage statistics route.").assertIsDisplayed()
+        compose.onAllNodesWithText("Totals").assertCountEquals(0)
+        compose.onAllNodesWithText("Activity").assertCountEquals(0)
     }
 
     @Test

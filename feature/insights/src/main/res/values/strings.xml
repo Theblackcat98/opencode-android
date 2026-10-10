@@ -46,6 +46,7 @@
     <string name="insights_tool_detail">%1$d%% succeeded, p50 %2$d ms</string>
 
     <string name="insights_error">The usage figures could not be read.</string>
+    <string name="insights_absent">This server does not have the usage statistics route.</string>
     <string name="insights_dismiss">Dismiss</string>
 
     <!-- Quick ask: one stateless answer from the server's model. -->

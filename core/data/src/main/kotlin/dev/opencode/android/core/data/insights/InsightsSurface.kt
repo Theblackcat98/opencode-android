@@ -38,9 +38,9 @@ import java.util.concurrent.atomic.AtomicLong
  * **Every route here is experimental or unpublished, and every one of them degrades.**
  *
  *  - The statistics, generate, wait and log routes live under `/api/experimental/`, and a server may
- *    not have them. Each call records what its `404` or `405` said. Quick ask and the event history
- *    read that record, but the usage screen does not yet, so on a server without the statistics route
- *    it shows the error instead.
+ *    not have them. Each call records what its `404` or `405` said. Quick ask, the event history and
+ *    the usage screen read that record, so on a server without the statistics route the usage screen
+ *    shows a plain message in place of its cards.
  *  - `POST /api/pair` is not in the published spec at all. It is the one route that can disappear in
  *    any 2.0.x release, so it is probed like the others and is never part of a flow the app depends
  *    on. The app's own pairing, redeeming a code the CLI printed, is a different route and is
