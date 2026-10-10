@@ -552,6 +552,35 @@ class InsightsWireTest {
         assertEquals(RouteAvailability.Present, surface.log.value)
     }
 
+    /**
+     * The 2.0.18 server sends the end of a replay as `data: {"type":"log.synced","seq":N}` with no `event:`
+     * line. Found on a device: the frame was shown as an ordinary entry and the viewer never saw the end.
+     */
+    @Test
+    fun `the log stops at a log synced frame that names itself only in its type`() = runBlocking(Dispatchers.IO) {
+        val stream = buildString {
+            append("""data: {"type":"session.inbox.enqueued","seq":1}""")
+            append("\n\n")
+            append("""data: {"type":"log.synced","aggregateID":"ses_1","seq":1}""")
+            append("\n\n")
+            append("""data: {"type":"late","seq":2}""")
+            append("\n\n")
+        }
+        server.dispatcher = object : Dispatcher() {
+            override fun dispatch(request: RecordedRequest): MockResponse = MockResponse.Builder()
+                .code(200)
+                .addHeader("Content-Type", "text/event-stream")
+                .body(stream)
+                .build()
+        }
+
+        val entries = withTimeout(5.seconds) { surface.readSessionLog("ses_1").toList() }
+
+        assertEquals(1, entries.size)
+        assertEquals(1L, entries[0].seq)
+        assertTrue(entries.none { it.isSynced })
+    }
+
     @Test
     fun `the log passes after and follow through as the routes own spelling`() = runBlocking(Dispatchers.IO) {
         server.dispatcher = object : Dispatcher() {

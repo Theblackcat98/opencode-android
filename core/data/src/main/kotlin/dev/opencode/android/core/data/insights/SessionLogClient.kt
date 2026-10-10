@@ -7,9 +7,11 @@ import dev.opencode.android.core.network.ServerApi
 import dev.opencode.android.core.network.SseMessage
 import dev.opencode.android.core.network.SseParser
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -41,8 +43,15 @@ data class SessionLogEntry(
     val seq: Long?
         get() = (fields["seq"] as? JsonPrimitive)?.content?.toLongOrNull()
 
-    /** True for the frame that ends a replay, whether it arrives as a name or as a field. */
-    val isSynced: Boolean get() = event == SYNCED || fields.containsKey(SYNCED)
+    /**
+     * True for the frame that ends a replay, whether it arrives as an `event:` name, as a field, or as the
+     * `type` of the payload, which is how the 2.0.18 server spells it: `data: {"type":"log.synced",…}` with
+     * no `event:` line at all.
+     */
+    val isSynced: Boolean
+        get() = event == SYNCED ||
+            fields.containsKey(SYNCED) ||
+            (fields["type"] as? JsonPrimitive)?.content == SYNCED
 
     companion object {
         /** The frame that ends a replay. */
@@ -126,5 +135,5 @@ class SessionLogClient(
                 }
             }
         }
-    }
+    }.flowOn(Dispatchers.IO)
 }

@@ -169,6 +169,14 @@
     <string name="session_wait_idle_title">Waiting for this session</string>
     <string name="session_wait_idle_body">This waits until the session\'s current turn ends. It changes nothing on the server, and stopping the wait only ends this request.</string>
     <string name="session_wait_idle_stop">Stop waiting</string>
+    <string name="session_event_history">Event history</string>
+    <string name="event_history_title">Event history</string>
+    <string name="event_history_close">Close</string>
+    <string name="event_history_replaying">Replaying the log…</string>
+    <string name="event_history_synced">Caught up. The replay stopped at log.synced.</string>
+    <string name="event_history_stopped">The replay stopped before log.synced, so this is not the whole log.</string>
+    <string name="event_history_empty">The log has no entries yet.</string>
+
     <string name="session_experimental">Experimental features</string>
     <string name="session_execution_subagents">Subagents and sessions</string>
     <string name="session_execution_shells">Commands</string>

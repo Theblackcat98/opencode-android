@@ -46,6 +46,8 @@ import dev.opencode.android.feature.requests.ui.messageRes
 import dev.opencode.android.feature.requests.ui.takesArgument
 import dev.opencode.android.feature.sessions.R
 import dev.opencode.android.feature.sessions.ui.SessionActionsSheet
+import dev.opencode.android.feature.sessions.ui.SessionLogDialog
+import dev.opencode.android.feature.sessions.ui.SessionLogViewModel
 import dev.opencode.android.feature.sessions.ui.SessionManagementViewModel
 import dev.opencode.android.feature.sessions.ui.SessionMenuRow
 import dev.opencode.android.feature.sessions.ui.SessionScreen
@@ -110,12 +112,15 @@ fun SessionHost(
     composer: ComposerViewModel = hiltViewModel(),
     management: SessionManagementViewModel = hiltViewModel(),
     subagents: SubagentsViewModel = hiltViewModel(),
+    eventHistory: SessionLogViewModel = hiltViewModel(),
 ) {
     val state by timeline.state.collectAsStateWithLifecycle()
     val composerState by composer.state.collectAsStateWithLifecycle()
     val childCount by management.childCount.collectAsStateWithLifecycle()
     val waiting by management.waiting.collectAsStateWithLifecycle()
     val waitAvailable by management.waitAvailable.collectAsStateWithLifecycle()
+    val eventHistoryState by eventHistory.state.collectAsStateWithLifecycle()
+    val eventHistoryAvailable by eventHistory.available.collectAsStateWithLifecycle()
     val forked by management.forked.collectAsStateWithLifecycle()
     val strip by subagents.strip.collectAsStateWithLifecycle()
     val favorites by composer.modelFavorites.collectAsStateWithLifecycle()
@@ -127,6 +132,7 @@ fun SessionHost(
     var attentionOpen by remember { mutableStateOf(false) }
     var historyOpen by remember { mutableStateOf(false) }
     var experimentalOpen by remember { mutableStateOf(false) }
+    var eventHistoryOpen by remember { mutableStateOf(false) }
     var inboxOpen by remember { mutableStateOf(false) }
     var agentPickerOpen by remember { mutableStateOf(false) }
     var modelPickerOpen by remember { mutableStateOf(false) }
@@ -302,6 +308,17 @@ fun SessionHost(
         WaitingForIdleDialog(onStop = management::stopWaiting)
     }
 
+    if (eventHistoryOpen) {
+        SessionLogDialog(
+            state = eventHistoryState,
+            onClose = {
+                eventHistoryOpen = false
+                eventHistory.close()
+            },
+            onDismissError = eventHistory::dismissError,
+        )
+    }
+
     if (actionsOpen) {
         SessionActionsSheet(
             title = state.title,
@@ -335,6 +352,15 @@ fun SessionHost(
                 {
                     actionsOpen = false
                     management.waitUntilIdle()
+                }
+            } else {
+                null
+            },
+            onOpenEventHistory = if (eventHistoryAvailable) {
+                {
+                    actionsOpen = false
+                    eventHistoryOpen = true
+                    eventHistory.open(sessionId)
                 }
             } else {
                 null

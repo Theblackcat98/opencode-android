@@ -70,6 +70,11 @@ fun SessionActionsSheet(
      */
     onWaitUntilIdle: (() -> Unit)? = null,
     /**
+     * Opens the session's event history, the durable log replayed up to `log.synced`, when this server has the
+     * log route. `null` hides the row, the same as [onWaitUntilIdle].
+     */
+    onOpenEventHistory: (() -> Unit)? = null,
+    /**
      * Opens the experimental switches, when this server has any route the app could offer.
      *
      * The same arrangement as [onOpenHistory], and `null` hides the row: a server that serves
@@ -115,6 +120,7 @@ fun SessionActionsSheet(
             }
             onOpenHistory?.let { open -> SheetAction(R.string.session_history) { open() } }
             onWaitUntilIdle?.let { wait -> SheetAction(R.string.session_wait_idle) { wait() } }
+            onOpenEventHistory?.let { open -> SheetAction(R.string.session_event_history) { open() } }
             onOpenExperimental?.let { open -> SheetAction(R.string.session_experimental) { open() } }
             executionSlot()
             SheetAction(R.string.session_delete) { confirmingDelete = true }
