@@ -67,7 +67,7 @@ no `POST_NOTIFICATIONS` permission, and the smallest screens.
 | C3 | Text, reasoning and tool output stream and are ordered | ✓ pass in part (text streamed live on the dev server, chunk by chunk, in order (`fake/slow`); reasoning then answer, and an Edit card, a Run command card with output and the closing text, appeared in that order in completed turns on both servers. Reasoning and tool output were not watched arriving live: the fake provider answers them in a few milliseconds) |
 | C4 | A long session scrolls without dropping a frame on a mid-range phone (A2) | n/a (no A2 device; not a pass. Emulator proxy, 768-message real session, 50 fling swipes: 393 frames, 5.85% janky, p50/p90 16 ms, p95 21 ms, p99 26 ms; the same swipes on the 122-row project list: 3.34% janky, p99 16 ms) |
 | C5 | A session with an image attachment shows the image | ✗ fail (emulator, real server: the message shows a "1 attachment / clipway-mockup.webp" chip only; no image is drawn and tapping the chip does nothing) |
-| C6 | An unknown message type renders as a generic fallback and does not crash | |
+| C6 | An unknown message type renders as a generic fallback and does not crash | n/a (the dev server's fake provider cannot emit a message type the app does not know, and no other server was available to produce one, so nothing reached the timeline. The decoder's fallback is covered by `SessionMessageDecodingTest.fallsBackToUnknownOnUnrecognizedMessageType`, but the on-device rendering was not checked) |
 
 ## D. Driving a session
 
