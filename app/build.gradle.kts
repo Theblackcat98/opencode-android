@@ -163,3 +163,22 @@ val releaseMaterialMissing = tasks.register("releaseMaterialMissing") {
 
 tasks.matching { it.name == "assemblePlayRelease" || it.name == "assembleFdroidRelease" }
     .configureEach { dependsOn(releaseMaterialMissing) }
+
+// ------------------------------------------------------------------ the bundled changelog
+//
+// The in-app changelog is the repository's `docs/CHANGELOG.md`. It is **copied** into this module's assets as
+// `changelog.md`, the same way `core:data` copies the config schema, so the screen shows the bytes the release notes
+// were written in and there is no second checked-in copy to fall out of date.
+val syncChangelog = tasks.register<SyncVendoredAssetsTask>("syncChangelog") {
+    label.set("changelog")
+    from.set(rootProject.layout.projectDirectory.dir("docs"))
+    include.set(setOf("CHANGELOG.md"))
+    rename.set(mapOf("CHANGELOG.md" to "changelog.md"))
+    into.set(layout.buildDirectory.dir("generated/changelogAsset"))
+}
+
+androidComponents {
+    onVariants { variant ->
+        variant.sources.assets?.addGeneratedSourceDirectory(syncChangelog, SyncVendoredAssetsTask::into)
+    }
+}

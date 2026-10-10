@@ -288,6 +288,7 @@ fun OpenCodeApp(
                     navController.navigate(AddServerRoute(replaceServerId = serverId))
                 },
                 onInspectorClick = { navController.navigate(EventInspectorRoute()) },
+                onOpenChangelog = { navController.navigate(ChangelogRoute) },
             )
         }
 
@@ -737,6 +738,10 @@ fun OpenCodeApp(
         composable<MaintenanceRoute> { entry ->
             val route = entry.toRoute<MaintenanceRoute>()
             MaintenanceHost(onNavigateBack = { navController.popBackStack() })
+        }
+
+        composable<ChangelogRoute> {
+            ChangelogHost(onNavigateBack = { navController.popBackStack() })
         }
 
         composable<UsageRoute> {

@@ -16,6 +16,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Article
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.MoreVert
@@ -72,12 +73,15 @@ fun ServersScreen(
     onEditServerClick: (String) -> Unit,
     onPairAgainClick: (String) -> Unit,
     onInspectorClick: () -> Unit,
+    /** Opens the in-app changelog. Null hides the action, so a caller without a changelog screen shows none. */
+    onOpenChangelog: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
     viewModel: ServersViewModel = hiltViewModel(),
 ) {
     val servers by viewModel.servers.collectAsStateWithLifecycle()
     var serverToDelete by remember { mutableStateOf<ServerProfile?>(null) }
     val inspectorLabel = stringResource(R.string.inspector_title)
+    val changelogLabel = stringResource(R.string.servers_changelog)
 
     Scaffold(
         modifier = modifier.testTag(ServersTags.SCREEN),
@@ -85,6 +89,17 @@ fun ServersScreen(
             TopAppBar(
                 title = { Text(stringResource(R.string.servers_title)) },
                 actions = {
+                    if (onOpenChangelog != null) {
+                        IconButton(
+                            onClick = onOpenChangelog,
+                            modifier = Modifier.testTag(ServersTags.CHANGELOG_BUTTON),
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.Article,
+                                contentDescription = changelogLabel,
+                            )
+                        }
+                    }
                     IconButton(
                         onClick = onInspectorClick,
                         modifier = Modifier.testTag(ServersTags.INSPECTOR_BUTTON),
@@ -172,6 +187,7 @@ object ServersTags {
     const val SCREEN = "servers_screen"
     const val ADD_BUTTON = "servers_add_button"
     const val INSPECTOR_BUTTON = "servers_inspector_button"
+    const val CHANGELOG_BUTTON = "servers_changelog_button"
 
     fun item(id: String) = "server_item_$id"
 }

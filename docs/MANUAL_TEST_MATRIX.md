@@ -192,7 +192,7 @@ Run on A1 (smallest) and A3, with TalkBack on and the font size at the platform 
 | M1 | The Play APK is signed and installs over the previous version | n/a (there is no signing material in the tree; `assemblePlayRelease` produces `app-play-release-unsigned.apk`, per `docs/RELEASE.md`) |
 | M2 | The F-Droid APK is signed and installs | n/a (no signing material; see M1) |
 | M3 | Both flavors have a distinct application id and can be installed side by side | ✓ pass for the debug builds (emulator: `dev.opencode.android.debug` (play) and `dev.opencode.android.fdroid.debug` (fdroid) installed together, each with its own data; the release ids were not built or installed, and the play build was removed again afterwards) |
-| M4 | The in-app changelog shows this release | ✗ fail (not built: there is no in-app changelog screen in `app` or any `feature:*`; `docs/CHANGELOG.md` is a repository file) |
+| M4 | The in-app changelog shows this release | ✓ pass (emulator). The Servers screen's top bar has a "Changelog" action; it opens a screen with the bundled `docs/CHANGELOG.md`: headings, bullets, and the "[Unreleased] — 0.1.0" section. Markdown is flattened to plain text (bold, code and link markup stripped). Only the top of the file was read on screen; the missing-asset message was not seen. Screenshot `tmp/ui-shots/m4-changelog.png.png` |
 | M5 | The published compatibility matrix matches what was tested | n/a (no compatibility matrix has been published) |
 | M6 | The internal Play track accepts the bundle, then closed, then production | n/a (needs Play Console; outside this environment) |
 | M7 | GitHub Releases carries both APKs and the mapping files | n/a (needs a GitHub Release; outside this environment) |

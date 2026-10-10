@@ -7,4 +7,10 @@
     <string name="shortcut_servers_long">Servers</string>
     <string name="shortcut_new_session_short">New session</string>
     <string name="shortcut_new_session_long">New session</string>
+
+    <!-- The in-app changelog, in navigation/ChangelogHost.kt and changelog/ChangelogScreen.kt. -->
+    <string name="changelog_title">Changelog</string>
+    <string name="changelog_navigate_back">Back</string>
+    <string name="changelog_unavailable">The changelog is not available in this build.</string>
+    <string name="changelog_bullet" translatable="false">•</string>
 </resources>

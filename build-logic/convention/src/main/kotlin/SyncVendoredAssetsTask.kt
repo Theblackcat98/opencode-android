@@ -39,8 +39,9 @@ abstract class SyncVendoredAssetsTask : DefaultTask() {
     /**
      * An optional map of name to name, for a file whose asset name differs from its repository name.
      *
-     * Left for a caller that needs it; nothing uses it today, which is why it is not a `@get:Input`
-     * with a default — a property with no value would fail validation rather than silently do nothing.
+     * `:app` uses it to bundle `CHANGELOG.md` as `changelog.md`; a name absent from the map keeps its own. It is
+     * not a `@get:Input` with a default, because a property with no value would fail validation rather than
+     * silently do nothing.
      */
     @get:Input
     abstract val rename: MapProperty<String, String>

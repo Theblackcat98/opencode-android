@@ -60,6 +60,8 @@ regression.
 - ktlint through Spotless and detekt, applied to every module and failing `check`. They were in the
   version catalog and applied to nothing for three phases.
 - Signing configured and the release tasks gated, with a message that says what is missing.
+- This changelog, in the app: the Changelog action in the Servers screen's top bar shows the file this build was
+  made from, so the notes a build carries are the ones in the repository.
 - CI checks for the coverage matrices, for the generated event corpus, and for externalized strings.
 - Documented: a [security review](./SECURITY_REVIEW.md), a [privacy review](./PRIVACY_REVIEW.md), an
   [accessibility audit](./ACCESSIBILITY_AUDIT.md), a [coverage audit](./COVERAGE.md), a
