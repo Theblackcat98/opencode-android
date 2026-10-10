@@ -80,6 +80,8 @@ of them; this changelog does not claim them.
 
 ### Fixed
 
+- **Failures of rename, delete, fork and wait were never shown.** `SessionManagementViewModel.error` was collected only inside the synthetic note dialog, so the other four failed silently. They now appear in the composer's error slot with a dismiss action. Compiles and the normal flows still work on the emulator; the failure path itself was not triggered.
+
 - **A double tap on Undo or Redo could send the revert twice** (issue #9, one slice). `stageUndo` and `redo` now ignore a second call while one is running, and the Redo and confirm buttons are disabled meanwhile. Two unit tests fail without the guard; one of them relies on a 500 ms hold, so it is timing-based. Not seen on a device.
 
 - **A failed refetch after a reconnect was never retried** (issue #8, one slice). `SyncedResource` now retries a transport failure, a `5xx` or an undecodable body up to three loads in all, after 1 s and 2 s, and never retries a `4xx`; the last good value is kept. Unit tested; not seen on a device, and a forced mid-turn network drop is still untested.

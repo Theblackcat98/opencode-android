@@ -233,7 +233,11 @@ fun SessionHost(
 
     // The failure wording lives in the requests feature so there is one mapping for the whole app;
     // the composer takes it ready-made because a feature may not import another feature.
-    val composerError = composerState.error?.let { error ->
+    //
+    // A failure of rename, delete, fork or wait is shown in the same place when the composer has none of its own.
+    // The synthetic note's dialog shows its own failure inside itself, so it is not repeated here.
+    val shownError = composerState.error ?: managementError.takeIf { !syntheticOpen }
+    val composerError = shownError?.let { error ->
         if (error.takesArgument) {
             stringResource(error.kind.messageRes(), error.message)
         } else {
@@ -304,7 +308,9 @@ fun SessionHost(
                 onConfirmRedo = composer::redo,
                 onDismissRedo = composer::dismissRedo,
                 errorMessage = composerError,
-                onDismissError = composer::dismissError,
+                onDismissError = {
+                    if (composerState.error != null) composer.dismissError() else management.dismissError()
+                },
             )
         },
         menuSlot = {
