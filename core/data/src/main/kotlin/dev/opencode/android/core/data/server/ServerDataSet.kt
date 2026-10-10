@@ -323,11 +323,19 @@ class ServerDataSet(
         composerCatalogs.resync()
         execution.resync()
         integrations.resync()
-        val directories = (locations.keys + requests.knownDirectories).toSet()
-        if (directories.isEmpty()) {
-            scope.launch { requests.resync(null) }
-        } else {
-            directories.forEach { directory -> scope.launch { requests.resync(directory) } }
+        // Waits for the project list first. At connect time no session or location is known yet, so the
+        // directories to ask about are the projects', and a request already pending in one of them when the
+        // app started is otherwise never read: nothing has told this set that the directory exists.
+        scope.launch {
+            runCatching { projects.sync() }
+            val directories = (
+                locations.keys + requests.knownDirectories + projects.value.orEmpty().map { it.canonical }
+                ).toSet()
+            if (directories.isEmpty()) {
+                requests.resync(null)
+            } else {
+                directories.forEach { directory -> launch { requests.resync(directory) } }
+            }
         }
     }
 
