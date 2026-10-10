@@ -1,6 +1,7 @@
 package dev.opencode.android.feature.sessions.ui.timeline
 
 import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -41,6 +42,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -232,6 +234,7 @@ private fun UserMessageCard(message: SessionMessage.User, modifier: Modifier = M
                     AttachmentChip(
                         label = file.name ?: file.mime,
                         isImage = file.mime.startsWith("image/"),
+                        data = file.data,
                     )
                 }
             }
@@ -252,27 +255,39 @@ private fun UserMessageCard(message: SessionMessage.User, modifier: Modifier = M
 }
 
 /**
- * An attachment chip.
+ * An attachment chip, with the image above it when the attachment is one this device can decode.
  *
- * The image itself is a `data:` URL of base64 the server stored; decoding it is Phase 3's image
- * pipeline, so the chip names the file and the renderer is where a thumbnail goes. Saying so here
- * keeps the placeholder honest rather than pretending to be a thumbnail.
+ * The payload is the base64 the server stored. When it does not decode to an image, the chip
+ * names the file alone.
  */
 @Composable
-private fun AttachmentChip(label: String, isImage: Boolean) {
+private fun AttachmentChip(label: String, isImage: Boolean, data: String) {
     val description = if (isImage) {
         stringResource(R.string.timeline_image_attachment, label)
     } else {
         stringResource(R.string.timeline_file_attachment, label)
     }
-    AssistChip(
-        onClick = {},
-        label = { Text(label, style = MaterialTheme.typography.labelSmall) },
-        colors = AssistChipDefaults.assistChipColors(),
-        modifier = Modifier
-            .padding(top = 4.dp)
-            .semantics { contentDescription = description },
-    )
+    val thumbnail = remember(data, isImage) { if (isImage) decodeAttachmentImage(data) else null }
+    Column {
+        thumbnail?.let { bitmap ->
+            Image(
+                bitmap = bitmap,
+                contentDescription = description,
+                contentScale = ContentScale.Fit,
+                modifier = Modifier
+                    .padding(top = 4.dp)
+                    .size(160.dp),
+            )
+        }
+        AssistChip(
+            onClick = {},
+            label = { Text(label, style = MaterialTheme.typography.labelSmall) },
+            colors = AssistChipDefaults.assistChipColors(),
+            modifier = Modifier
+                .padding(top = 4.dp)
+                .semantics { contentDescription = description },
+        )
+    }
 }
 
 @Composable
