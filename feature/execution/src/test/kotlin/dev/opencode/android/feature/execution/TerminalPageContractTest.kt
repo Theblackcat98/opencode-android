@@ -83,4 +83,26 @@ class TerminalPageContractTest {
     fun `the page reaches the host through the interface the host installs`() {
         assertTrue(page.contains("window.${TerminalBridgeCodec.INTERFACE_NAME}"))
     }
+
+    @Test
+    fun `every message the page posts to the host is one the codec decodes`() {
+        // The other direction of the contract: the page names its messages in `post({ type: "…", … })`, and a type
+        // the codec refuses is counted as a refusal and dropped. The samples carry the fields the page really sends.
+        val samples = mapOf(
+            "ready" to """{"type":"ready"}""",
+            "input" to """{"type":"input","data":"ls"}""",
+            "selection" to """{"type":"selection","data":"text"}""",
+            "resize" to """{"type":"resize","cols":80,"rows":24}""",
+        )
+        val posted = Regex("""post\(\{ type: "([a-z]+)"""").findAll(page).map { it.groupValues[1] }.toSet()
+        assertTrue("the page posts no messages at all", posted.isNotEmpty())
+        posted.forEach { type ->
+            val sample = samples[type]
+            assertTrue("the page posts `$type` and this test has no sample for it: add one", sample != null)
+            assertTrue(
+                "the codec refuses the `$type` message the page posts: $sample",
+                TerminalBridgeCodec.decode(sample) != null,
+            )
+        }
+    }
 }
