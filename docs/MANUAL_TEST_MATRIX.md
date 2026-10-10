@@ -31,7 +31,7 @@ the layout rows in J and K need real hardware.
 
 | # | Device | Form factor | Android | Build | Result |
 | --- | --- | --- | --- | --- | --- |
-| A1 | Smallest supported phone | Phone | 8.0 (API 26) | play | n/a (only one device was available: an API 36 phone emulator, so this form factor and Android version were not run) |
+| A1 | Smallest supported phone | Phone | 8.0 (API 26) | play | n/a (only one device was available: an API 36 phone emulator, so this form factor and Android version were not run). Extra, not a pass: on the same API 36 emulator with `wm size 720x1280` and `wm density 320` (a 360 x 640 dp window) the server home and a session screen were laid out without clipping or overlap except that the "Following" label above the composer was cut off by it; the size and density were reset afterwards. This says nothing about Android 8.0 or a real small phone) |
 | A2 | Mid-range phone | Phone | 11 | play | n/a (only one device was available: an API 36 phone emulator, so this form factor and Android version were not run) |
 | A3 | Current flagship | Phone | latest | play | ✓ pass in part (an API 36 phone emulator, not a flagship device: the `play` debug build installs, launches to the empty Servers list and opens Add server with no crash. Nothing beyond that was run on this build) |
 | A4 | Small tablet | Tablet, portrait | 10 | play | n/a (only one device was available: an API 36 phone emulator, so this form factor and Android version were not run) |
