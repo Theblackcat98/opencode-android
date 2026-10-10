@@ -313,6 +313,32 @@ class AttentionReconcilerTest {
         assertTrue(AttentionReconciler.reconcile(state(), emptyList()).summaries.isEmpty())
     }
 
+    @Test
+    fun `a summary posted in one pass is removed in the next when no summary is produced`() {
+        // The summary is on screen, so the ledger has to hold it. When the count drops to nothing it is
+        // not produced, and without a removal it would stay in the shade saying "0 waiting for you".
+        val one = AttentionReconciler.reconcile(
+            state(sessions = listOf(session(outcome = Outcome.Succeeded, idle = now, viewed = 0))),
+            emptyList(),
+        )
+        assertEquals(NotificationSlot.ServerSummary(server), one.summaries.single().slot)
+        val two = AttentionReconciler.reconcile(state(), one.posts + one.summaries)
+        assertTrue(two.summaries.isEmpty())
+        assertEquals(
+            listOf(NotificationSlot.TurnFinished(server, "ses_1", now), NotificationSlot.ServerSummary(server)),
+            two.removed,
+        )
+    }
+
+    @Test
+    fun `a summary that is still produced is not reported removed, so a resync leaves it alone`() {
+        val one = state(sessions = listOf(session(outcome = Outcome.Succeeded, idle = now, viewed = 0)))
+        val first = AttentionReconciler.reconcile(one, emptyList())
+        val resync = AttentionReconciler.reconcile(one, first.posts + first.summaries)
+        assertTrue(resync.removed.isEmpty())
+        assertTrue(resync.isEmpty)
+    }
+
     // ------------------------------------------------------------------ fixtures
 
     private fun draftsFor(state: AttentionState): List<AttentionDraft> = AttentionReconciler.draftsFor(state)

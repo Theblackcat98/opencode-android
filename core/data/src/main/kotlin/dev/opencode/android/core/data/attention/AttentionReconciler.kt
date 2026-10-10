@@ -69,15 +69,17 @@ object AttentionReconciler {
     /**
      * The diff of [state] against what is on screen now.
      *
-     * [previous] is what the last pass produced, which is the only record of what is posted. It is
-     * passed in rather than kept here so the function stays pure and so two independent servers can
-     * be reconciled without sharing a ledger.
+     * [previous] is what the last pass produced, posts and summaries both, which is the only record of
+     * what is posted. It is passed in rather than kept here so the function stays pure and so two
+     * independent servers can be reconciled without sharing a ledger.
      */
     fun reconcile(state: AttentionState, previous: List<AttentionDraft>): AttentionReconcile {
         val posts = draftsFor(state)
         val summaries = summariesFor(state, posts)
         val before = previous.associateBy { it.slot }
-        val now = posts.associateBy { it.slot }
+        // A summary that is produced this pass is still on screen, so it is not removed. One that is not
+        // produced any more is, and it is the only thing that cancels it.
+        val now = (posts + summaries).associateBy { it.slot }
         val added = posts.filter { it.slot !in before }
         val changed = posts.filter { draft ->
             val seen = before[draft.slot]

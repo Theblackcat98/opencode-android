@@ -236,7 +236,9 @@ class AttentionCoordinator @Inject constructor(
         sink.setLauncherBadge(state.sessions.values.count { it.isUnread })
         val reconcile = AttentionReconciler.reconcile(state, ledger.value)
         if (reconcile.isEmpty) return
-        ledger.value = reconcile.posts
+        // The summary is posted too, so it is in the ledger: a summary the ledger does not hold is never
+        // cancelled, and stays in the shade after its count has gone.
+        ledger.value = reconcile.posts + reconcile.summaries
         sink.publish(reconcile)
     }
 
