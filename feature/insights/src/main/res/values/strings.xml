@@ -47,4 +47,25 @@
 
     <string name="insights_error">The usage figures could not be read.</string>
     <string name="insights_dismiss">Dismiss</string>
+
+    <!-- Quick ask: one stateless answer from the server's model. -->
+    <string name="quick_ask_help">One answer from the server\'s model. Nothing is kept: the next ask replaces this one.</string>
+    <string name="quick_ask_absent">This server does not have the route that generates text.</string>
+    <string name="quick_ask_model">Model (optional)</string>
+    <string name="quick_ask_model_help">Written as provider/model. Leave it empty for the server\'s default, if it has one.</string>
+    <string name="quick_ask_model_invalid">Write the model as provider/model, such as fake/text.</string>
+    <string name="quick_ask_prompt">Prompt</string>
+    <string name="quick_ask_ask">Ask</string>
+    <string name="quick_ask_asking">Asking the server…</string>
+    <string name="quick_ask_answer">Answer</string>
+
+    <!-- The RPC console: a call to a plugin method, sent as JSON. -->
+    <string name="rpc_help">Calls a method on a plugin on the server. Nothing is assumed about its input or its answer, so the answer is shown as the JSON that came back.</string>
+    <string name="rpc_id">Plugin id</string>
+    <string name="rpc_method">Method</string>
+    <string name="rpc_input">Input (JSON, optional)</string>
+    <string name="rpc_input_invalid">This is not valid JSON, so nothing was sent.</string>
+    <string name="rpc_call">Call</string>
+    <string name="rpc_calling">Calling the plugin…</string>
+    <string name="rpc_output">Answer</string>
 </resources>

@@ -356,6 +356,12 @@ fun OpenCodeApp(
 
                         ManageDestination.USAGE ->
                             navController.navigate(UsageRoute(route.serverId))
+
+                        ManageDestination.QUICK_ASK ->
+                            navController.navigate(QuickAskRoute(route.serverId))
+
+                        ManageDestination.RPC_CONSOLE ->
+                            navController.navigate(RpcConsoleRoute(route.serverId))
                     }
                 },
             )
@@ -717,6 +723,14 @@ fun OpenCodeApp(
 
         composable<UsageRoute> {
             UsageHost(onNavigateBack = { navController.popBackStack() })
+        }
+
+        composable<QuickAskRoute> {
+            QuickAskHost(onNavigateBack = { navController.popBackStack() })
+        }
+
+        composable<RpcConsoleRoute> {
+            RpcConsoleHost(onNavigateBack = { navController.popBackStack() })
         }
     }
 }

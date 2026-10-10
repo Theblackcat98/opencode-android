@@ -40,6 +40,10 @@ import dev.opencode.android.feature.admin.R
 import dev.opencode.android.feature.admin.TemplateSheet
 import dev.opencode.android.feature.insights.InsightsScreen
 import dev.opencode.android.feature.insights.InsightsViewModel
+import dev.opencode.android.feature.insights.QuickAskScreen
+import dev.opencode.android.feature.insights.QuickAskViewModel
+import dev.opencode.android.feature.insights.RpcConsoleScreen
+import dev.opencode.android.feature.insights.RpcConsoleViewModel
 import kotlinx.serialization.Serializable
 
 /**
@@ -366,6 +370,63 @@ fun UsageHost(
             state = state,
             onRangeChange = viewModel::setRange,
             onToggleToolDetail = viewModel::setToolDetail,
+            onDismissError = viewModel::dismissError,
+            modifier = Modifier.padding(padding),
+        )
+    }
+}
+
+/** Quick ask: one stateless answer from the server's model. Server-wide, so it takes no directory. */
+@Serializable
+data class QuickAskRoute(val serverId: String? = null)
+
+@Composable
+fun QuickAskHost(
+    onNavigateBack: () -> Unit,
+    modifier: Modifier = Modifier,
+    viewModel: QuickAskViewModel = hiltViewModel(),
+) {
+    val state by viewModel.state.collectAsStateWithLifecycle()
+
+    AdminScaffold(
+        title = stringResource(R.string.admin_quick_ask_title),
+        modifier = modifier,
+        onNavigateBack = onNavigateBack,
+    ) { padding ->
+        QuickAskScreen(
+            state = state,
+            onPromptChange = viewModel::setPrompt,
+            onModelChange = viewModel::setModel,
+            onAsk = viewModel::ask,
+            onDismissError = viewModel::dismissError,
+            modifier = Modifier.padding(padding),
+        )
+    }
+}
+
+/** The plugin RPC console. Server-wide, so it takes no directory: the call names its own plugin. */
+@Serializable
+data class RpcConsoleRoute(val serverId: String? = null)
+
+@Composable
+fun RpcConsoleHost(
+    onNavigateBack: () -> Unit,
+    modifier: Modifier = Modifier,
+    viewModel: RpcConsoleViewModel = hiltViewModel(),
+) {
+    val state by viewModel.state.collectAsStateWithLifecycle()
+
+    AdminScaffold(
+        title = stringResource(R.string.admin_rpc_title),
+        modifier = modifier,
+        onNavigateBack = onNavigateBack,
+    ) { padding ->
+        RpcConsoleScreen(
+            state = state,
+            onRpcIDChange = viewModel::setRpcID,
+            onMethodChange = viewModel::setMethod,
+            onInputChange = viewModel::setInput,
+            onCall = viewModel::call,
             onDismissError = viewModel::dismissError,
             modifier = Modifier.padding(padding),
         )

@@ -76,7 +76,7 @@ fun InsightsScreen(
         }
 
         state.error?.let { error ->
-            item { StatsError(error.message ?: stringResource(R.string.insights_error), onDismissError) }
+            item { InsightsErrorCard(error.message ?: stringResource(R.string.insights_error), onDismissError) }
         }
 
         if (stats != null) {
@@ -350,7 +350,7 @@ private fun ToolRow(usage: ToolUsage) {
 }
 
 @Composable
-private fun StatsError(message: String, onDismiss: () -> Unit) {
+internal fun InsightsErrorCard(message: String, onDismiss: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
