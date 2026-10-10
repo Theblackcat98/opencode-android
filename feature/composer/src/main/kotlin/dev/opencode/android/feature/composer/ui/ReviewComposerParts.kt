@@ -66,7 +66,10 @@ fun StagedRevertBanner(
                     style = MaterialTheme.typography.labelLarge,
                     modifier = Modifier.weight(1f),
                 )
-                TextButton(onClick = onRedo) { Text(stringResource(R.string.composer_redo)) }
+                // Disabled while a revert is in flight, so a second tap is not a second redo.
+                TextButton(onClick = onRedo, enabled = !state.reverting) {
+                    Text(stringResource(R.string.composer_redo))
+                }
             }
             Column(modifier = Modifier.padding(end = 8.dp)) {
                 Text(
@@ -116,12 +119,17 @@ fun StagedRevertBanner(
 fun RedoConfirmationDialog(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
+    confirmEnabled: Boolean = true,
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.composer_redo_confirm_title)) },
         text = { Text(stringResource(R.string.composer_redo_confirm_body)) },
-        confirmButton = { TextButton(onClick = onConfirm) { Text(stringResource(R.string.composer_redo)) } },
+        confirmButton = {
+            TextButton(onClick = onConfirm, enabled = confirmEnabled) {
+                Text(stringResource(R.string.composer_redo))
+            }
+        },
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.composer_redo_keep)) } },
     )
 }

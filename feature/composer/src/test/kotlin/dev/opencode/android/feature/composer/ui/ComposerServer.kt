@@ -37,6 +37,7 @@ import mockwebserver3.RecordedRequest
 import okhttp3.OkHttpClient
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 
 /**
@@ -64,7 +65,7 @@ class ComposerServer(
 
     @Volatile private var stopped = false
 
-    private data class Answer(val status: Int, val body: String)
+    private data class Answer(val status: Int, val body: String, val delayMillis: Long = 0L)
 
     private val recorded = CopyOnWriteArrayList<Call>()
 
@@ -109,6 +110,9 @@ class ComposerServer(
                     .code(answer.status)
                     .addHeader("Content-Type", "application/json")
                     .body(answer.body)
+                    // Before the headers, not the body: a `204` with an empty body would complete the call on its
+                    // headers and the delay would never hold it in flight.
+                    .headersDelay(answer.delayMillis, TimeUnit.MILLISECONDS)
                     .build()
             }
         }
@@ -180,6 +184,13 @@ class ComposerServer(
     /** Makes [path] answer `204`, which is what a reply, a cancel or a clear answers with. */
     fun accepted(path: String) = answer(path, "", status = 204)
 
+    /**
+     * Makes [path] answer [status] and [body] only after [millis], so a request to it stays in flight for that
+     * long: the window in which a second tap has to arrive for the test to mean anything.
+     */
+    fun slowly(path: String, millis: Long, status: Int, body: String) =
+        answer(path, body, status = status, delayMillis = millis)
+
     /** Makes [path] answer `500`, the way a server that is unreachable or not yet ready does. */
     fun failing(path: String) = answer(path, """{"_tag":"unavailable","message":"not ready"}""", status = 500)
 
@@ -217,8 +228,8 @@ class ComposerServer(
         goOffline()
     }
 
-    private fun answer(path: String, body: String, status: Int = 200) {
-        answers[path] = Answer(status, body)
+    private fun answer(path: String, body: String, status: Int = 200, delayMillis: Long = 0L) {
+        answers[path] = Answer(status, body, delayMillis)
     }
 
     private fun <T> answerScoped(path: String, value: T, serializer: KSerializer<T>) = answer(

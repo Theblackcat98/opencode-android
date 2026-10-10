@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.opencode.android.core.data.action.ActionError
 import dev.opencode.android.core.data.action.ActionErrorKind
+import dev.opencode.android.core.data.action.toActionError
 import dev.opencode.android.core.data.catalog.AgentCatalog
 import dev.opencode.android.core.data.catalog.ModelCatalog
 import dev.opencode.android.core.data.composer.Assembly
@@ -55,6 +56,7 @@ import dev.opencode.android.core.model.SessionInfo
 import dev.opencode.android.core.model.SessionMessage
 import dev.opencode.android.core.model.SessionRevert
 import dev.opencode.android.core.model.SkillInfo
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
@@ -186,7 +188,10 @@ data class ComposerUiState(
     val stagedRevert: SessionRevert? = null,
     /** The files a staged revert will restore, which the banner lists. */
     val restoredFiles: List<RestoredFile> = emptyList(),
-    /** A revert operation is in flight, which disables the send. */
+    /**
+     * A revert operation (undo or redo) is in flight. It disables the send, the Redo button and the confirm
+     * buttons of the undo and redo questions, and a second undo or redo is ignored until it clears.
+     */
     val reverting: Boolean = false,
     /** Redo was asked for and is waiting for the user's yes, because the working copy is about to change. */
     val confirmingRedo: Boolean = false,
@@ -796,24 +801,34 @@ class ComposerViewModel(
     fun stageUndo(messageID: String, restoreFiles: Boolean = true) {
         val id = sessionID.value ?: return
         val set = active.value ?: return
+        // A second confirmation while the first is in flight is the same stage sent twice, and the server would
+        // judge the second against the tree the first has already rolled back. The flag is shared with redo.
+        if (local.value.reverting) return
         val message = messageById(set, id, messageID)
         local.value = local.value.copy(reverting = true, error = null)
         viewModelScope.launch {
-            val outcome = set.revertCommands.stage(
-                sessionID = id,
-                messageID = messageID,
-                busy = set.sessions.activity.value[id] == SessionActivity.Running,
-                pendingUserInboxIDs = pendingUserInboxIds(set, id),
-                restoreFiles = restoreFiles,
-                prompt = message?.let { restoredFrom(it) },
-            )
-            local.value = local.value.copy(reverting = false)
-            when (outcome) {
-                is RevertCommands.StageOutcome.Done -> restore(outcome.revert, message)
+            try {
+                val outcome = set.revertCommands.stage(
+                    sessionID = id,
+                    messageID = messageID,
+                    busy = set.sessions.activity.value[id] == SessionActivity.Running,
+                    pendingUserInboxIDs = pendingUserInboxIds(set, id),
+                    restoreFiles = restoreFiles,
+                    prompt = message?.let { restoredFrom(it) },
+                )
+                when (outcome) {
+                    is RevertCommands.StageOutcome.Done -> restore(outcome.revert, message)
 
-                is RevertCommands.StageOutcome.Failed -> {
-                    local.value = local.value.copy(error = outcome.error)
+                    is RevertCommands.StageOutcome.Failed -> {
+                        local.value = local.value.copy(error = outcome.error)
+                    }
                 }
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (error: Throwable) {
+                local.value = local.value.copy(error = error.toActionError())
+            } finally {
+                local.value = local.value.copy(reverting = false)
             }
         }
     }
@@ -843,13 +858,21 @@ class ComposerViewModel(
     fun redo() {
         val id = sessionID.value ?: return
         val set = active.value ?: return
+        // The same guard as [stageUndo]: a second confirmation while one is in flight is ignored, and the
+        // question stays open so the disabled confirm says why nothing happened.
+        if (local.value.reverting) return
         local.value = local.value.copy(reverting = true, confirmingRedo = false, error = null)
         viewModelScope.launch {
-            val result = set.revertCommands.clear(id)
-            local.value = local.value.copy(
-                reverting = false,
-                error = result.actionErrorOrNull,
-            )
+            try {
+                val result = set.revertCommands.clear(id)
+                local.value = local.value.copy(error = result.actionErrorOrNull)
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (error: Throwable) {
+                local.value = local.value.copy(error = error.toActionError())
+            } finally {
+                local.value = local.value.copy(reverting = false)
+            }
         }
     }
 

@@ -137,6 +137,49 @@ class ComposerRevertTest {
     }
 
     @Test
+    fun `a second redo while the first is in flight sends one request and the flag clears after it`() = runTest {
+        server.slowly("/api/session/ses_1/revert", IN_FLIGHT_MILLIS, status = 204, body = "")
+        val composer = openComposer()
+        server.set.apply(staged(session = "ses_1", message = "msg_mine"))
+        composer.state.await("this session's staged revert") { it.isStaged }
+
+        composer.redo()
+        composer.state.await("the first redo in flight") { it.reverting }
+        composer.redo()
+
+        server.awaitCall("the redo") { it.method == "DELETE" }
+        composer.state.await("the redo to finish") { !it.reverting }
+        // The second request, had it been sent, reached the server while the first was still held: the response
+        // is delayed by IN_FLIGHT_MILLIS, and the flag only clears after it.
+        assertEquals("the second tap was not sent: ${server.calls}", 1, server.calls.count { it.method == "DELETE" })
+        assertFalse(composer.state.value.reverting)
+    }
+
+    @Test
+    fun `a second undo while the first is in flight stages once and the flag clears after it`() = runTest {
+        server.slowly(
+            "/api/session/ses_1/revert/stage",
+            IN_FLIGHT_MILLIS,
+            status = 200,
+            body = """{"data":{"messageID":"msg_mine"}}""",
+        )
+        val composer = openComposer()
+
+        composer.stageUndo("msg_mine")
+        composer.state.await("the first undo in flight") { it.reverting }
+        composer.stageUndo("msg_mine")
+
+        server.awaitCall("the stage") { it.method == "POST" && it.path.endsWith("/revert/stage") }
+        composer.state.await("the undo to finish") { !it.reverting }
+        assertEquals(
+            "the second tap was not sent: ${server.calls}",
+            1,
+            server.calls.count { it.method == "POST" && it.path.endsWith("/revert/stage") },
+        )
+        assertFalse(composer.state.value.reverting)
+    }
+
+    @Test
     fun `a redo the server refuses says so and leaves the undo staged`() = runTest {
         server.failing("/api/session/ses_1/revert")
         val composer = openComposer()
@@ -175,3 +218,6 @@ class ComposerRevertTest {
         return composer
     }
 }
+
+/** How long a held response keeps a revert in flight, so a second call lands inside that window. */
+private const val IN_FLIGHT_MILLIS = 500L

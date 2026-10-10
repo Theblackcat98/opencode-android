@@ -476,6 +476,7 @@ fun SessionHost(
             .firstOrNull { it.id == undoTarget } as? dev.opencode.android.core.model.SessionMessage.User
         RevertConfirmationDialog(
             preview = revertMessage?.text.orEmpty(),
+            confirmEnabled = !composerState.reverting,
             onConfirm = {
                 // This screen's composer, the one that has this session open: `stageUndo` returns without a
                 // session, and a callback into the graph is how it once reached one that had none.
@@ -506,6 +507,7 @@ fun SessionHost(
 @Composable
 private fun RevertConfirmationDialog(
     preview: String,
+    confirmEnabled: Boolean,
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -520,7 +522,7 @@ private fun RevertConfirmationDialog(
             )
         },
         confirmButton = {
-            TextButton(onClick = onConfirm) {
+            TextButton(onClick = onConfirm, enabled = confirmEnabled) {
                 Text(stringResource(SessionsR.string.timeline_revert_here))
             }
         },

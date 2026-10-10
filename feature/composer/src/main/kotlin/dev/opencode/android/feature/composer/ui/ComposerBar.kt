@@ -318,7 +318,11 @@ fun ComposerBar(
     }
     // A dialog window of its own, so where it is composed does not matter to the layout above.
     if (state.confirmingRedo) {
-        RedoConfirmationDialog(onConfirm = onConfirmRedo, onDismiss = onDismissRedo)
+        RedoConfirmationDialog(
+            onConfirm = onConfirmRedo,
+            onDismiss = onDismissRedo,
+            confirmEnabled = !state.reverting,
+        )
     }
 }
 
