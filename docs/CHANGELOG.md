@@ -74,6 +74,8 @@ of them; this changelog does not claim them.
 
 ### Fixed
 
+- **A failed refetch after a reconnect was never retried** (issue #8, one slice). `SyncedResource` now retries a transport failure, a `5xx` or an undecodable body up to three loads in all, after 1 s and 2 s, and never retries a `4xx`; the last good value is kept. Unit tested; not seen on a device, and a forced mid-turn network drop is still untested.
+
 - **Worktree failures were invisible, and a refused create cleared the form (issue #7).** The worktree
   panel never rendered its error, so a refused create looked like nothing had happened. The server's
   `WorktreeError` body has a `name` and no `_tag`, so it decoded as "Unknown error" and the server's reason

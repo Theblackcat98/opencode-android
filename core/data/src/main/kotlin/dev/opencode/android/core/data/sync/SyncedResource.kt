@@ -1,7 +1,9 @@
 package dev.opencode.android.core.data.sync
 
+import dev.opencode.android.core.data.action.ActionFailure
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -10,6 +12,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import retrofit2.HttpException
 
 /** What a [SyncedResource] knows about its own freshness. */
 sealed interface SyncStatus {
@@ -19,7 +22,10 @@ sealed interface SyncStatus {
     /** A load is running. */
     data object Loading : SyncStatus
 
-    /** A load ran and failed. The error is a transport or decoding failure, not an API error. */
+    /**
+     * A load ran and failed. The error is a transport or decoding failure, not an API error. The status
+     * stays Failed while an automatic retry waits to run, and becomes [Loading] when the retry starts.
+     */
     data class Failed(val error: Throwable) : SyncStatus
 
     /** The value is current: it came from this client's own load or from an authoritative event. */
@@ -49,6 +55,10 @@ data class SyncedState<T>(
  *    *starts* rather than when it ends, so an invalidation that lands mid-load is never swallowed.
  *  - **A `server.connected` resync is a plain invalidation**, which is why the resync path needs
  *    no special case.
+ *  - **A failed load is retried a bounded number of times.** A transport failure, a `5xx` or an
+ *    undecodable body is retried after [retryDelayMillis], doubling each time, up to [maxAttempts]
+ *    loads in all. A `4xx` is not retried, because the server would only repeat its answer. [value]
+ *    is kept throughout, and an explicit [invalidate] or a forced [sync] starts the budget again.
  *
  * [key] is the `(server, directory)` the value belongs to. Nothing inside the resource reads it;
  * it exists so a cache and a debug log can name the resource's scope.
@@ -61,7 +71,16 @@ class SyncedResource<T>(
     private val invalidateDebounceMillis: Long = DEFAULT_DEBOUNCE_MILLIS,
     private val onValue: (T) -> Unit = {},
     private val onError: (Throwable) -> Unit = {},
+    /** The wait before the first automatic retry of a failed load. Each later retry waits twice as long. */
+    private val retryDelayMillis: Long = DEFAULT_RETRY_DELAY_MILLIS,
+    /** Loads allowed in total for one streak of failures, the first one included. `1` turns retries off. */
+    private val maxAttempts: Int = DEFAULT_MAX_ATTEMPTS,
 ) {
+    init {
+        require(retryDelayMillis >= 0) { "retryDelayMillis must not be negative" }
+        require(maxAttempts >= 1) { "maxAttempts must allow the first load" }
+    }
+
     private val _state = MutableStateFlow(SyncedState<T>())
     val state: StateFlow<SyncedState<T>> = _state.asStateFlow()
 
@@ -75,12 +94,23 @@ class SyncedResource<T>(
     private var stale = true
     private var invalidateJob: Job? = null
 
+    /** A retry that is waiting to start. Cleared once it starts, so cancelling never cuts a running load short. */
+    private var retryJob: Job? = null
+
+    /** Failed loads since the last success, invalidation or forced sync. The retry budget is spent from this. */
+    private var failedAttempts = 0
+
     /**
      * Loads the value when it is missing or stale, and returns when the load has finished.
      *
-     * [force] reloads even a value this client believes is current, which is what a resync does.
+     * [force] reloads even a value this client believes is current, which is what a resync does. A
+     * forced load is a fresh request, so it also cancels a waiting retry and starts the budget again.
      */
     suspend fun sync(force: Boolean = false) {
+        if (force) {
+            cancelRetry()
+            failedAttempts = 0
+        }
         mutex.withLock { runLoad(force) }
     }
 
@@ -88,10 +118,13 @@ class SyncedResource<T>(
      * Marks the value stale and schedules a debounced refetch.
      *
      * Callers are event handlers, so this never blocks them: a burst of `agent.updated` events
-     * while a file is being written costs one request.
+     * while a file is being written costs one request. It also cancels a waiting retry, because the
+     * debounced refetch already asks for the same thing.
      */
     fun invalidate() {
         stale = true
+        cancelRetry()
+        failedAttempts = 0
         invalidateJob?.cancel()
         invalidateJob = scope.launch {
             delay(invalidateDebounceMillis)
@@ -107,6 +140,8 @@ class SyncedResource<T>(
      */
     fun complete(value: T) {
         stale = false
+        cancelRetry()
+        failedAttempts = 0
         _state.value = SyncedState(value, SyncStatus.Ready)
         onValue(value)
     }
@@ -114,12 +149,15 @@ class SyncedResource<T>(
     /** Drops the value, for example when `location.shutdown` invalidates a location. */
     fun clear() {
         stale = true
+        cancelRetry()
+        failedAttempts = 0
         _state.value = SyncedState()
     }
 
     fun stop() {
         invalidateJob?.cancel()
         invalidateJob = null
+        cancelRetry()
     }
 
     private suspend fun runLoad(force: Boolean) {
@@ -130,6 +168,8 @@ class SyncedResource<T>(
         _state.value = _state.value.copy(status = SyncStatus.Loading)
         try {
             val loaded = loader()
+            failedAttempts = 0
+            cancelRetry() // a retry still waiting is now redundant
             _state.value = SyncedState(loaded, SyncStatus.Ready)
             onValue(loaded)
         } catch (cancellation: CancellationException) {
@@ -137,11 +177,42 @@ class SyncedResource<T>(
         } catch (error: Throwable) {
             // The value is kept, and the resource goes stale again so the next sync retries: a
             // mobile network drops, and a catalog that empties itself on one failed poll is worse
-            // than one that is briefly out of date.
+            // than one that is briefly out of date. The retry below makes that a bounded promise.
             stale = true
+            failedAttempts++
             _state.value = _state.value.copy(status = SyncStatus.Failed(error))
+            scheduleRetry(error)
             onError(error)
         }
+    }
+
+    /**
+     * Schedules the next automatic retry of a failed load, or none when the error will not change on
+     * a retry or the budget is spent. The status stays [SyncStatus.Failed] while the retry waits.
+     */
+    private fun scheduleRetry(error: Throwable) {
+        cancelRetry()
+        if (failedAttempts >= maxAttempts || !error.isRetryableLoadFailure()) return
+        // Doubling per failure: the first retry waits [retryDelayMillis], the second twice that.
+        val waitMillis = retryDelayMillis * (1L shl (failedAttempts - 1))
+        // Created lazily so the job is recorded before it can run, which lets it clear its own record.
+        val job = scope.launch(start = CoroutineStart.LAZY) {
+            delay(waitMillis)
+            mutex.withLock {
+                // Still cancellable while it queues for the mutex, so an invalidation or a forced sync
+                // that lands first replaces it. Once it holds the mutex it is an ordinary load.
+                retryJob = null
+                runLoad(force = false)
+            }
+        }
+        retryJob = job
+        job.start()
+    }
+
+    /** Cancels a retry that is still waiting. One that has started is left to finish. */
+    private fun cancelRetry() {
+        retryJob?.cancel()
+        retryJob = null
     }
 
     companion object {
@@ -150,7 +221,37 @@ class SyncedResource<T>(
          * enough that a user does not notice.
          */
         const val DEFAULT_DEBOUNCE_MILLIS = 400L
+
+        /**
+         * The wait before the first automatic retry of a failed load, one second. A dropped connection
+         * usually comes back within that, and the wait doubles so a server that is down is not polled
+         * in a tight loop.
+         */
+        const val DEFAULT_RETRY_DELAY_MILLIS = 1_000L
+
+        /**
+         * Loads allowed for one streak of failures, the first one included: the original load, then a
+         * retry after [DEFAULT_RETRY_DELAY_MILLIS] and another after twice that. A resource that still
+         * fails after that stays [SyncStatus.Failed] until the next sync or invalidation asks again.
+         */
+        const val DEFAULT_MAX_ATTEMPTS = 3
     }
+}
+
+/**
+ * Whether a failed load is worth repeating.
+ *
+ * Decided by the HTTP status when there is one: a `4xx` means the request, the credential or the thing
+ * it names is wrong, and asking again gets the same answer. Anything without a status (a dropped
+ * connection, a timeout, a body that did not decode) and every `5xx` is worth another try.
+ */
+private fun Throwable.isRetryableLoadFailure(): Boolean {
+    val status = when (this) {
+        is HttpException -> code()
+        is ActionFailure -> error.httpStatus
+        else -> null
+    } ?: return true
+    return status in 500..599
 }
 
 /**
