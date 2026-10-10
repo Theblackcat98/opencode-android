@@ -12,7 +12,7 @@ Everything a release needs, and an honest statement of what has not been done.
 | The release tasks gated | **Yes** — they print what is missing rather than producing something that looks finished. |
 | The Play Console track progression | **Not run.** No account, no upload. |
 | GitHub Releases | **Not published.** No release was cut. |
-| The manual test matrix | **Not run.** No device, no emulator, no second device. |
+| The manual test matrix | **Partly run.** One API 36 phone emulator against a 2.0.18 dev server and a real 2.0.20 server (read-only); no second device, no tablet, no older Android. `docs/MANUAL_TEST_MATRIX.md` has the result of every row. |
 | The Phase 10 screens | **Mostly not built.** The usage dashboard, Quick ask and the RPC console are reachable from Manage, and wait until idle from the session menu; the operations behind the rest are real and tested, and nothing puts them on a display. See `docs/CHANGELOG.md`. |
 | Version | `0.1.0`, `versionCode` 1 |
 

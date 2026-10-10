@@ -147,6 +147,6 @@ Not a shipped release, and there is no signing material in the tree. `assemblePl
 
 ## Documents that are part of a change
 
-`docs/ANDROID_APP_PLAN.md` (architecture, phases, the §7/§8 matrices the audit parses) · `docs/COVERAGE.md` · `docs/CHANGELOG.md` · `docs/OPENCODE_V2_FEATURES.md` (the server contract) · `docs/SECURITY_REVIEW.md` · `docs/PRIVACY_REVIEW.md` · `docs/ACCESSIBILITY_AUDIT.md` · `docs/MANUAL_TEST_MATRIX.md` · `docs/RELEASE.md`.
+`docs/ANDROID_APP_PLAN.md` (architecture, phases, the §7/§8 matrices the audit parses) · `docs/COVERAGE.md` · `docs/CHANGELOG.md` · `docs/OPENCODE_V2_FEATURES.md` (the server contract) · `docs/SECURITY_REVIEW.md` · `docs/PRIVACY_REVIEW.md` · `docs/ACCESSIBILITY_AUDIT.md` · `docs/MANUAL_TEST_MATRIX.md` · `docs/RELEASE.md` · `docs/COMPATIBILITY.md`.
 
 This repository keeps documents honest against the code rather than aspirational. If a change alters what exists, updating the corresponding document and the phase's "Status" line is part of the change — and a claim the build cannot back is a defect.
