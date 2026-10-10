@@ -54,7 +54,7 @@ no `POST_NOTIFICATIONS` permission, and the smallest screens.
 | B6 | An `https://` server with a self-signed certificate, **without** the CA, refuses and says why | |
 | B7 | The LAN prober is **off by default** and finds the server when switched on | ✗ fail (not built: there is no LAN prober in the code and no setting for one) |
 | B8 | The LAN prober can be cancelled mid-scan and stops immediately | ✗ fail (not built: no LAN prober to cancel) |
-| B9 | "Pair another device" shows a QR, and the second device redeems it | |
+| B9 | "Pair another device" shows a QR, and the second device redeems it | n/a (only one device was attached: `adb devices` lists emulator-5554 alone, so there was no second device to redeem the QR) |
 | B10 | "Pair another device" is **hidden** on a server that answers 404 to `POST /api/pair` | |
 | B11 | Removing a server removes its token from the keystore | ✓ pass (server deleted via menu with confirmation) |
 
