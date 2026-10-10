@@ -54,8 +54,8 @@ no `POST_NOTIFICATIONS` permission, and the smallest screens.
 | B6 | An `https://` server with a self-signed certificate, **without** the CA, refuses and says why | ✓ pass (Connect and save on `https://127.0.0.1:4443` with the trust switch off, no password and no CA on the phone: "Could not connect. The server's TLS certificate could not be validated.", technical detail "Trust anchor for certification path not found"; nothing was saved. From the host, the same endpoint fails with curl exit 60 without the project CA and returns 200 with it, so the refusal was the certificate, not a dead server) |
 | B7 | The LAN prober is **off by default** and finds the server when switched on | ✗ fail (not built: there is no LAN prober in the code and no setting for one) |
 | B8 | The LAN prober can be cancelled mid-scan and stops immediately | ✗ fail (not built: no LAN prober to cancel) |
-| B9 | "Pair another device" shows a QR, and the second device redeems it | n/a (only one device was attached: `adb devices` lists emulator-5554 alone, so there was no second device to redeem the QR) |
-| B10 | "Pair another device" is **hidden** on a server that answers 404 to `POST /api/pair` | |
+| B9 | "Pair another device" shows a QR, and the second device redeems it | ✗ fail (not built: no "Pair another device" control and no pairing-code or QR generator exists in the app. The app only redeems a code printed by `opencode pair`) |
+| B10 | "Pair another device" is **hidden** on a server that answers 404 to `POST /api/pair` | ✗ fail (not built: there is no "Pair another device" control to hide. The Veritas server's Server options and Status screens show none, and no screen calls `InsightsSurface.createPairingCode()`, the only code that posts to `POST /api/pair`) |
 | B11 | Removing a server removes its token from the keystore | ✓ pass (server deleted via menu with confirmation) |
 
 ## C. The read path
