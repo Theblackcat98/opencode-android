@@ -593,6 +593,15 @@ class ComposerViewModel(
         persistDraft()
     }
 
+    /**
+     * Replaces the draft with [edit] applied to what it is now, for text that comes from outside the box and has to
+     * be added to what the person typed rather than replace it.
+     *
+     * The draft is read from the same place [setText] writes it. [state] is derived from that place asynchronously, so
+     * a caller that read `state.value.text` could write back a draft that lacks a keystroke not yet in the derived state.
+     */
+    fun editDraft(edit: (String) -> String) = setText(edit(local.value.text))
+
     fun setDelivery(delivery: Delivery) {
         local.value = local.value.copy(delivery = delivery)
     }

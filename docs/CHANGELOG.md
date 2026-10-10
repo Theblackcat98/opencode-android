@@ -60,9 +60,11 @@ run", with the name verbatim when this build does not know it, and no command is
 a command that would change server state stays a message, and so does a safe one, because no mapping to an
 app action exists yet. An opt-in "follow desktop" switch, in the session menu and off by default, opens on
 the phone the session the TUI selects while it is on, and turning it off stops that at once. All of it is
-built and unit tested, and none of it has been seen working with a real TUI. **Not built:** the prompt text
-the TUI puts in its composer (`tui.prompt.append`) does not reach the app's composer, the switch is not
+built and unit tested, and none of it has been seen working with a real TUI. **Not built:** the switch is not
 saved, so it is off again after the app restarts, and no TUI command is performed.
+
+**TUI prompt text** (`tui.prompt.append`) is added to the end of the open session's draft while follow-desktop
+is on. Built and unit tested, and not seen with a real TUI.
 
 **Coverage.** Every row in the plan's §7 and §8 matrices is implemented and tested: 138 of 138
 operations declared, wired and tested, and 94 of 94 event types handled and tested. The audit of what

@@ -10,6 +10,7 @@ import dev.opencode.android.core.data.server.ServerDataRegistry
 import dev.opencode.android.core.data.server.ServerDataSet
 import dev.opencode.android.core.data.server.actionErrorOrNull
 import dev.opencode.android.core.data.transcript.TranscriptFormatter
+import dev.opencode.android.core.data.tui.TuiControl
 import dev.opencode.android.core.model.SessionMessage
 import dev.opencode.android.core.model.SessionStatus
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -102,6 +103,16 @@ class SessionManagementViewModel(
     fun setFollowDesktop(enabled: Boolean) {
         active.value?.tui?.setFollowDesktop(enabled)
     }
+
+    /**
+     * The active server's TUI control, or `null` while there is no active server.
+     *
+     * The session screen collects the TUI's prompt text through it while following is on. It is the same object for as
+     * long as the server stays active, so a collector keyed on it starts once per server and not on each recomposition.
+     */
+    val tui: StateFlow<TuiControl?> = active
+        .map { it?.tui }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT), null)
 
     /**
      * The id of a session this app has just forked, or `null`.

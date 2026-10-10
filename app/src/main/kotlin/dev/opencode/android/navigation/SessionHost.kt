@@ -121,6 +121,7 @@ fun SessionHost(
     val waiting by management.waiting.collectAsStateWithLifecycle()
     val waitAvailable by management.waitAvailable.collectAsStateWithLifecycle()
     val followDesktop by management.followDesktop.collectAsStateWithLifecycle()
+    val tui by management.tui.collectAsStateWithLifecycle()
     val eventHistoryState by eventHistory.state.collectAsStateWithLifecycle()
     val eventHistoryAvailable by eventHistory.available.collectAsStateWithLifecycle()
     val forked by management.forked.collectAsStateWithLifecycle()
@@ -179,6 +180,18 @@ fun SessionHost(
         // rather than when its own screen opens: a subagent that starts mid-turn has to appear in the
         // composer without the user going anywhere.
         subagents.open(sessionId)
+    }
+
+    // The TUI's prompt text (`tui.prompt.append`) is added to the end of this session's draft, and only while the app
+    // follows the desktop: `followedPromptAppends` cancels at once when following is turned off. The event names no
+    // session, so the text goes to the one this screen has open. The collector is keyed on the server's control and on
+    // this composer, so it restarts when either changes and not on each recomposition.
+    LaunchedEffect(tui, composer) {
+        tui?.let { control ->
+            followedPromptAppends(control).collect { append ->
+                composer.editDraft { draft -> appendedDraft(draft, append.text) }
+            }
+        }
     }
 
     // The composer's one-shot actions. A `LaunchedEffect` with the effect flow as the key collects
