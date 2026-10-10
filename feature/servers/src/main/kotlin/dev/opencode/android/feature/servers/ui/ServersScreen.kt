@@ -20,6 +20,7 @@ import androidx.compose.material.icons.automirrored.filled.Article
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -75,6 +76,11 @@ fun ServersScreen(
     onInspectorClick: () -> Unit,
     /** Opens the in-app changelog. Null hides the action, so a caller without a changelog screen shows none. */
     onOpenChangelog: (() -> Unit)? = null,
+    /**
+     * Opens the command palette, the touch route to what the Ctrl+P shortcut opens. Null hides the action, so a
+     * caller without a palette shows none.
+     */
+    onOpenCommandPalette: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
     viewModel: ServersViewModel = hiltViewModel(),
 ) {
@@ -82,6 +88,7 @@ fun ServersScreen(
     var serverToDelete by remember { mutableStateOf<ServerProfile?>(null) }
     val inspectorLabel = stringResource(R.string.inspector_title)
     val changelogLabel = stringResource(R.string.servers_changelog)
+    val paletteLabel = stringResource(R.string.servers_command_palette)
 
     Scaffold(
         modifier = modifier.testTag(ServersTags.SCREEN),
@@ -89,6 +96,17 @@ fun ServersScreen(
             TopAppBar(
                 title = { Text(stringResource(R.string.servers_title)) },
                 actions = {
+                    if (onOpenCommandPalette != null) {
+                        IconButton(
+                            onClick = onOpenCommandPalette,
+                            modifier = Modifier.testTag(ServersTags.COMMAND_PALETTE_BUTTON),
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Search,
+                                contentDescription = paletteLabel,
+                            )
+                        }
+                    }
                     if (onOpenChangelog != null) {
                         IconButton(
                             onClick = onOpenChangelog,
@@ -188,6 +206,7 @@ object ServersTags {
     const val ADD_BUTTON = "servers_add_button"
     const val INSPECTOR_BUTTON = "servers_inspector_button"
     const val CHANGELOG_BUTTON = "servers_changelog_button"
+    const val COMMAND_PALETTE_BUTTON = "servers_command_palette_button"
 
     fun item(id: String) = "server_item_$id"
 }

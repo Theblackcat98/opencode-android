@@ -1,5 +1,6 @@
 package dev.opencode.android.navigation
 
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -19,6 +20,12 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.input.key.isCtrlPressed
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -273,19 +280,38 @@ fun OpenCodeApp(
         navController.navigate(ShellsRoute(target.serverId, target.directory)) { launchSingleTop = true }
     }
 
-    // A launcher shortcut lands on a root screen, so everything above the servers list is popped first and
-    // a shortcut never stacks a copy of a screen the user had open. "New session" is the home's own sheet,
-    // which follows the active server, so it needs no server id: the home with the sheet open on arrival.
+    // A launcher shortcut lands on a root screen. The navigation itself is shared with the command palette, so
+    // "New session" means the same from either (see openShortcutDestination).
     LaunchedEffect(openShortcut) {
         val target = openShortcut ?: return@LaunchedEffect
-        val route: Any = when (target.destination) {
-            ShortcutDestination.SERVERS -> ServersRoute
-            ShortcutDestination.NEW_SESSION -> HomeRoute(openNewSession = true)
+        navController.openShortcutDestination(target.destination)
+    }
+
+    // The command palette (navigation/CommandPalette.kt). Its open state is screen state, so it is a remembered
+    // flag here and not a ViewModel, which this function may not take. The commands are the ones the active
+    // server allows, so the server-scoped ones are listed only while there is one.
+    var paletteOpen by rememberSaveable { mutableStateOf(false) }
+    val activeServerId = serverDataSets.active.collectAsStateWithLifecycle().value?.serverId
+    val onRunPaletteCommand: (PaletteCommand) -> Unit = { command ->
+        when (command.id) {
+            PaletteCommandIds.SERVERS -> navController.openShortcutDestination(ShortcutDestination.SERVERS)
+            PaletteCommandIds.NEW_SESSION -> navController.openShortcutDestination(ShortcutDestination.NEW_SESSION)
+            PaletteCommandIds.USAGE -> navController.navigate(UsageRoute(activeServerId))
+            PaletteCommandIds.QUICK_ASK -> navController.navigate(QuickAskRoute(activeServerId))
+            PaletteCommandIds.RPC_CONSOLE -> navController.navigate(RpcConsoleRoute(activeServerId))
+            PaletteCommandIds.PAIR_DEVICE -> navController.navigate(PairDeviceRoute(activeServerId))
+            PaletteCommandIds.CHANGELOG -> navController.navigate(ChangelogRoute)
+            PaletteCommandIds.EVENT_INSPECTOR -> navController.navigate(EventInspectorRoute())
+            else -> Unit // Every id paletteCommands() returns is named above, so a new command is added to both.
         }
-        navController.navigate(route) {
-            popUpTo(ServersRoute) { inclusive = false }
-            launchSingleTop = true
-        }
+    }
+
+    // A key event reaches a handler only when something under the handler has focus, so the root takes focus and
+    // Ctrl+P is seen whichever screen is up. It is focused again on closing the palette, because the dialog's
+    // window takes focus while it is open. Only Ctrl+P is consumed; every other key still goes to the focused field.
+    val rootFocus = remember { FocusRequester() }
+    LaunchedEffect(paletteOpen) {
+        if (!paletteOpen) rootFocus.requestFocus()
     }
 
     // A TUI toast (`tui.toast.show`) is shown as a snackbar. The collector follows the active server, so
@@ -327,7 +353,16 @@ fun OpenCodeApp(
 
     // The host sits over the whole app rather than in a Scaffold, which would pad every screen that already
     // has its own top and bottom bars a second time. It is inset for the navigation bar only.
-    Box(modifier = modifier) {
+    Box(
+        modifier = modifier
+            .focusRequester(rootFocus)
+            .focusable()
+            .onPreviewKeyEvent { event ->
+                if (!isPaletteShortcut(event.key, event.isCtrlPressed, event.type)) return@onPreviewKeyEvent false
+                paletteOpen = true
+                true
+            },
+    ) {
         NavHost(
             navController = navController,
             startDestination = ServersRoute,
@@ -345,6 +380,7 @@ fun OpenCodeApp(
                     },
                     onInspectorClick = { navController.navigate(EventInspectorRoute()) },
                     onOpenChangelog = { navController.navigate(ChangelogRoute) },
+                    onOpenCommandPalette = { paletteOpen = true },
                 )
             }
 
@@ -392,6 +428,7 @@ fun OpenCodeApp(
                         navController.navigate(PendingRequestsRoute(serverId))
                     },
                     onBackClick = { navController.popBackStack() },
+                    onOpenCommandPalette = { paletteOpen = true },
                     // The plan's "Manage" section (§4.3). The app module owns the graph, so the feature
                     // hands the destination over and this is where it becomes a route.
                     onManageClick = { directory, destination ->
@@ -829,6 +866,32 @@ fun OpenCodeApp(
                 .windowInsetsPadding(WindowInsets.navigationBars)
                 .padding(16.dp),
         )
+
+        if (paletteOpen) {
+            CommandPaletteDialog(
+                commands = paletteCommands(hasActiveServer = activeServerId != null),
+                onRun = onRunPaletteCommand,
+                onDismiss = { paletteOpen = false },
+            )
+        }
+    }
+}
+
+/**
+ * Goes to a launcher shortcut's root screen: the servers list, or the home with the new-session sheet open.
+ *
+ * The launcher shortcuts and the command palette both come here, so "New session" is the same from either.
+ * Everything above the servers list is popped first, so a root screen never stacks a copy of one the user had
+ * open. "New session" is the home's own sheet, which follows the active server, so it takes no server id.
+ */
+private fun NavHostController.openShortcutDestination(destination: ShortcutDestination) {
+    val route: Any = when (destination) {
+        ShortcutDestination.SERVERS -> ServersRoute
+        ShortcutDestination.NEW_SESSION -> HomeRoute(openNewSession = true)
+    }
+    navigate(route) {
+        popUpTo(ServersRoute) { inclusive = false }
+        launchSingleTop = true
     }
 }
 

@@ -21,6 +21,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -100,6 +101,11 @@ fun HomeScreen(
      * nowhere to go.
      */
     onBackClick: (() -> Unit)? = null,
+    /**
+     * Opens the command palette. Null hides the action, so a caller without one shows none. This is the touch
+     * route to the palette on a server's home; the Ctrl+P shortcut opens the same one.
+     */
+    onOpenCommandPalette: (() -> Unit)? = null,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
     val running = rows.filter { it.activity is SessionActivity.Running || it.isRetrying }
@@ -141,6 +147,12 @@ fun HomeScreen(
                             modifier = Modifier.semantics { contentDescription = label },
                         ) {
                             Text(label, color = MaterialTheme.colorScheme.error)
+                        }
+                    }
+                    if (onOpenCommandPalette != null) {
+                        val paletteLabel = stringResource(R.string.home_command_palette)
+                        IconButton(onClick = onOpenCommandPalette) {
+                            Icon(Icons.Filled.Search, contentDescription = paletteLabel)
                         }
                     }
                     // The Manage chips sit below every session, so on a busy server they are a long scroll

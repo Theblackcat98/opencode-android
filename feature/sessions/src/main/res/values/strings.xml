@@ -21,6 +21,7 @@
     <string name="home_new_session">New session</string>
     <string name="home_back">Servers</string>
     <string name="home_more">More</string>
+    <string name="home_command_palette">Command palette</string>
 
     <!-- Session list -->
     <string name="sessions_title">Sessions</string>

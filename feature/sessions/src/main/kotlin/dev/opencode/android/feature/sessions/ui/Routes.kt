@@ -34,6 +34,8 @@ fun HomeRoute(
      */
     onManageClick: ((String, ManageDestination) -> Unit)? = null,
     onBackClick: (() -> Unit)? = null,
+    /** The command palette, passed to the home's top bar. Null hides the action. */
+    onOpenCommandPalette: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
     viewModel: HomeViewModel = hiltViewModel(),
     listViewModel: SessionListViewModel = hiltViewModel(),
@@ -66,6 +68,7 @@ fun HomeRoute(
         },
         manageDirectory = manageDirectory,
         onBackClick = onBackClick,
+        onOpenCommandPalette = onOpenCommandPalette,
     )
 }
 

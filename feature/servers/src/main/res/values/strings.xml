@@ -4,6 +4,7 @@
     <!-- Server registry -->
     <string name="servers_title">Servers</string>
     <string name="servers_changelog">Changelog</string>
+    <string name="servers_command_palette">Command palette</string>
     <string name="servers_empty_title">No servers yet</string>
     <string name="servers_empty_subtitle">Pair with the computer running OpenCode to get started.</string>
     <string name="servers_add_server">Add server</string>
