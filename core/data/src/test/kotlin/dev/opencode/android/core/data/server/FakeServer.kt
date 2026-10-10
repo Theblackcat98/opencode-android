@@ -102,6 +102,9 @@ class FakeServer(
     /** The paths of every request the server has seen, in order. */
     fun paths(): List<String> = synchronized(recorded) { recorded.map { it.url.encodedPath } }
 
+    /** Every request the server has seen, in order, with its query intact for the tests that read it. */
+    fun requests(): List<RecordedRequest> = synchronized(recorded) { recorded.toList() }
+
     fun requestCount(): Int = synchronized(recorded) { recorded.size }
 
     fun close() = server.close()
