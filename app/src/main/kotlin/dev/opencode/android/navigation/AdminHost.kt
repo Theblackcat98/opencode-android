@@ -38,6 +38,8 @@ import dev.opencode.android.feature.admin.PermissionsScreen
 import dev.opencode.android.feature.admin.PermissionsViewModel
 import dev.opencode.android.feature.admin.R
 import dev.opencode.android.feature.admin.TemplateSheet
+import dev.opencode.android.feature.insights.InsightsScreen
+import dev.opencode.android.feature.insights.InsightsViewModel
 import kotlinx.serialization.Serializable
 
 /**
@@ -335,6 +337,35 @@ fun MaintenanceHost(
             onConfirmEvict = viewModel::confirmEvict,
             onCancelEvict = viewModel::cancelEvict,
             onDismissOutcome = viewModel::dismissOutcome,
+            onDismissError = viewModel::dismissError,
+            modifier = Modifier.padding(padding),
+        )
+    }
+}
+
+/** The usage dashboard: the server's session statistics. Server-wide, so it takes no directory. */
+@Serializable
+data class UsageRoute(val serverId: String? = null)
+
+@Composable
+fun UsageHost(
+    onNavigateBack: () -> Unit,
+    modifier: Modifier = Modifier,
+    viewModel: InsightsViewModel = hiltViewModel(),
+) {
+    val state by viewModel.state.collectAsStateWithLifecycle()
+
+    LaunchedEffect(Unit) { viewModel.open() }
+
+    AdminScaffold(
+        title = stringResource(R.string.admin_usage_title),
+        modifier = modifier,
+        onNavigateBack = onNavigateBack,
+    ) { padding ->
+        InsightsScreen(
+            state = state,
+            onRangeChange = viewModel::setRange,
+            onToggleToolDetail = viewModel::setToolDetail,
             onDismissError = viewModel::dismissError,
             modifier = Modifier.padding(padding),
         )

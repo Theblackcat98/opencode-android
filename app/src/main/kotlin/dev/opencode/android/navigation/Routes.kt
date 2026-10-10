@@ -353,6 +353,9 @@ fun OpenCodeApp(
                         // has loaded and what would be dropped, which is a property of the server.
                         ManageDestination.MAINTENANCE ->
                             navController.navigate(MaintenanceRoute(route.serverId))
+
+                        ManageDestination.USAGE ->
+                            navController.navigate(UsageRoute(route.serverId))
                     }
                 },
             )
@@ -710,6 +713,10 @@ fun OpenCodeApp(
         composable<MaintenanceRoute> { entry ->
             val route = entry.toRoute<MaintenanceRoute>()
             MaintenanceHost(onNavigateBack = { navController.popBackStack() })
+        }
+
+        composable<UsageRoute> {
+            UsageHost(onNavigateBack = { navController.popBackStack() })
         }
     }
 }

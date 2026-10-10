@@ -142,6 +142,7 @@
     <!-- Maintenance. -->
     <string name="admin_maintenance_title">Maintenance</string>
     <string name="admin_navigate_back">Back</string>
+    <string name="admin_usage_title">Usage</string>
     <string name="admin_reload_locations">Reload every location</string>
     <string name="admin_reload_help">Rebuilds the server\'s services. Permissions and questions waiting for an answer are cancelled; running sessions continue at the next step.</string>
     <string name="admin_reload_done">The server reloaded. Its catalogs will be re-read.</string>
