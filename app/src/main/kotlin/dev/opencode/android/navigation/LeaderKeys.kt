@@ -1,7 +1,18 @@
 package dev.opencode.android.navigation
 
+import android.os.SystemClock
+import android.view.View
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.isAltPressed
+import androidx.compose.ui.input.key.isCtrlPressed
+import androidx.compose.ui.input.key.isMetaPressed
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.platform.LocalView
 
 /** How long Ctrl+X waits for its letter. The letter must arrive no later than this many milliseconds after Ctrl+X. */
 const val LEADER_TIMEOUT_MILLIS = 1_500L
@@ -47,11 +58,8 @@ sealed interface LeaderStep {
  * It is fed every key event and holds only whether Ctrl+X is waiting and when it was pressed. The clock is passed in
  * on each call, so the timing is tested with plain numbers and no delay.
  *
- * **The machine is fed only the keys that no focused control handled.** The caller reads it in the bubble phase of the
- * root, which runs after the focused control has had each key. A text field takes the letters and Ctrl+X it handles, so
- * Ctrl+X still cuts and typed letters still go into the field, and the machine never sees them. A control that does not
- * handle a key, such as a button, or nothing at all, leaves the key to the leader. No focus state is read, because the
- * root's own focus is not a reliable sign of whether a field has it.
+ * **The machine knows nothing about focus.** Whether it may see a key is the caller's decision: [leaderKeys] stands aside
+ * while text or a native control has focus, so this class is only the sequence, Ctrl+X and then a letter in time.
  *
  * **A key that is not the next step cancels the leader and is not consumed.** That covers an unknown letter, a letter
  * the palette does not offer for the current state, a letter held with Ctrl (so Ctrl+P still opens the palette), a
@@ -95,4 +103,57 @@ class LeaderKeyMachine(private val timeoutMillis: Long = LEADER_TIMEOUT_MILLIS) 
     fun cancel() {
         armedAtMillis = null
     }
+}
+
+/**
+ * Reads the leader keys from this node's key events, before the focused control, and runs the command each sequence
+ * names.
+ *
+ * **The leader never runs while a text editor has focus, and the guard does not depend on the editor consuming keys.**
+ * A leader that read the keys only after the focused field had them fired in the composer on the emulator: a letter
+ * went into the draft and Usage still opened (matrix J5). So the leader reads the key first and asks the window whether
+ * it may act. Compose answers [android.view.View.onCheckIsTextEditor] from its text input session, which a Compose text
+ * field starts when it takes focus and stops when it loses it. While that is true the key is left to the field and any
+ * waiting sequence is cancelled, so Ctrl+X still cuts in a field and a letter typed there is never a command.
+ *
+ * **A native view with focus is treated the same way.** The terminal is an AndroidView over a WebView, and a key it
+ * takes is its own (Ctrl+X is a shell key), so the leader stands aside while any view inside the app that is not this
+ * one has focus.
+ *
+ * The guard is read at key time, not when the modifier is composed, so a field that gains focus after the leader is
+ * armed still stops the sequence.
+ */
+@Composable
+fun Modifier.leaderKeys(
+    leader: LeaderKeyMachine,
+    offered: List<PaletteCommand>,
+    onRun: (PaletteCommand) -> Unit,
+): Modifier {
+    val view = LocalView.current
+    return onPreviewKeyEvent { event ->
+        if (view.leaderIsBlocked()) {
+            leader.cancel()
+            return@onPreviewKeyEvent false
+        }
+        val step = leader.onKeyEvent(
+            key = event.key,
+            type = event.type,
+            ctrl = event.isCtrlPressed,
+            altOrMeta = event.isAltPressed || event.isMetaPressed,
+            nowMillis = SystemClock.uptimeMillis(),
+            offered = offered,
+        )
+        if (step is LeaderStep.Run) onRun(step.command)
+        step != LeaderStep.Ignored
+    }
+}
+
+/**
+ * Whether the leader must stand aside because text or a native control has focus: a text editor in Compose, or any view
+ * below this one that holds focus. With nothing focused, or with only Compose content focused, it is false.
+ */
+private fun View.leaderIsBlocked(): Boolean {
+    if (onCheckIsTextEditor()) return true
+    val focused = findFocus()
+    return focused != null && focused !== this
 }

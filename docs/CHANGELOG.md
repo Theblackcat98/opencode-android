@@ -51,9 +51,10 @@ left to do.
 - Leader keys, on a hardware keyboard: Ctrl+X, then one letter within 1.5 s, runs the palette command that letter names:
   N New session, U Usage, Q Quick ask, R RPC console, P Pair another device, S Servers, C Changelog, E Event inspector.
   The same availability rule as the palette applies, so a server-scoped command is not run with no server. The palette
-  shows each command's key after its row. The leader is read after the focused control, so a text field keeps the Ctrl+X
-  and letters it handles and Ctrl+X still cuts there. Built and unit tested (`LeaderKeysTest`): the sequence, the timeout,
-  unknown and unoffered letters, and the chords. **Not run:** from a keyboard, on a device (matrix J5).
+  shows each command's key after its row. The leader stands aside while a text editor or a native view has focus, so Ctrl+X
+  still cuts in a text field and a letter typed there is never a command. Built and unit tested (`LeaderKeysTest`, `LeaderKeysGuardTest`): the sequence, the timeout,
+  unknown and unoffered letters, the chords, and a focused text field running nothing (Robolectric). **Not run:** from
+  a keyboard, on a device, and in the composer on the emulator since the guard fix (matrix J5).
 - The session event history, in the session menu, replays the log and says when it caught up at `log.synced`. Entry rows were not seen on a device: the dev server replayed none. `SessionLogClient` now reads on the IO dispatcher, and recognises the 2.0.18 server's `{"type":"log.synced"}` frame.
 - The durable session log (`session.log`) as a cold, cancellable `Flow`, with `SseParser` extended to
   keep a frame's `id` and `event` so the `log.synced` end-of-replay is not lost.
