@@ -51,6 +51,7 @@ import dev.opencode.android.feature.sessions.ui.SessionMenuRow
 import dev.opencode.android.feature.sessions.ui.SessionScreen
 import dev.opencode.android.feature.sessions.ui.SessionViewModel
 import dev.opencode.android.feature.sessions.ui.UserMessageActions
+import dev.opencode.android.feature.sessions.ui.WaitingForIdleDialog
 import dev.opencode.android.feature.sessions.R as SessionsR
 
 /**
@@ -113,6 +114,8 @@ fun SessionHost(
     val state by timeline.state.collectAsStateWithLifecycle()
     val composerState by composer.state.collectAsStateWithLifecycle()
     val childCount by management.childCount.collectAsStateWithLifecycle()
+    val waiting by management.waiting.collectAsStateWithLifecycle()
+    val waitAvailable by management.waitAvailable.collectAsStateWithLifecycle()
     val forked by management.forked.collectAsStateWithLifecycle()
     val strip by subagents.strip.collectAsStateWithLifecycle()
     val favorites by composer.modelFavorites.collectAsStateWithLifecycle()
@@ -295,6 +298,10 @@ fun SessionHost(
         AttentionSettingsSheet(sessionId = sessionId, onDismiss = { attentionOpen = false })
     }
 
+    if (waiting) {
+        WaitingForIdleDialog(onStop = management::stopWaiting)
+    }
+
     if (actionsOpen) {
         SessionActionsSheet(
             title = state.title,
@@ -323,6 +330,14 @@ fun SessionHost(
             onOpenHistory = {
                 actionsOpen = false
                 historyOpen = true
+            },
+            onWaitUntilIdle = if (waitAvailable) {
+                {
+                    actionsOpen = false
+                    management.waitUntilIdle()
+                }
+            } else {
+                null
             },
             onOpenExperimental = {
                 actionsOpen = false

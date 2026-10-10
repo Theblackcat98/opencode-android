@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -22,6 +23,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -61,6 +63,12 @@ fun SessionActionsSheet(
      * and a feature may not import another feature, so the app module supplies the way in.
      */
     onOpenHistory: (() -> Unit)? = null,
+    /**
+     * Starts waiting until the session's turn ends, when this server has the route to do it.
+     *
+     * The wait is the caller's to show, and `null` hides the row, the same as [onOpenHistory].
+     */
+    onWaitUntilIdle: (() -> Unit)? = null,
     /**
      * Opens the experimental switches, when this server has any route the app could offer.
      *
@@ -106,6 +114,7 @@ fun SessionActionsSheet(
                 SheetAction(R.string.session_attention) { onOpenAttention() }
             }
             onOpenHistory?.let { open -> SheetAction(R.string.session_history) { open() } }
+            onWaitUntilIdle?.let { wait -> SheetAction(R.string.session_wait_idle) { wait() } }
             onOpenExperimental?.let { open -> SheetAction(R.string.session_experimental) { open() } }
             executionSlot()
             SheetAction(R.string.session_delete) { confirmingDelete = true }
@@ -182,6 +191,29 @@ fun RenameDialog(
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_dismiss)) }
+        },
+    )
+}
+
+/**
+ * The wait started from the sheet, shown until its turn ends or the user stops it.
+ *
+ * Dismissing the dialog is the same as stopping: a wait is a request the app holds, not a change on the
+ * server, so there is nothing to confirm and nothing to undo.
+ */
+@Composable
+fun WaitingForIdleDialog(onStop: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onStop,
+        title = { Text(stringResource(R.string.session_wait_idle_title)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
+                Text(stringResource(R.string.session_wait_idle_body))
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onStop) { Text(stringResource(R.string.session_wait_idle_stop)) }
         },
     )
 }

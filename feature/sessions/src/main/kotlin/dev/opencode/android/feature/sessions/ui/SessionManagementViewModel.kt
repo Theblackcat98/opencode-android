@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.opencode.android.core.data.action.ActionError
 import dev.opencode.android.core.data.action.toActionError
+import dev.opencode.android.core.data.capability.RouteAvailability
 import dev.opencode.android.core.data.server.ServerDataRegistry
 import dev.opencode.android.core.data.server.ServerDataSet
 import dev.opencode.android.core.data.server.actionErrorOrNull
@@ -12,6 +13,7 @@ import dev.opencode.android.core.data.transcript.TranscriptFormatter
 import dev.opencode.android.core.model.SessionMessage
 import dev.opencode.android.core.model.SessionStatus
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -19,7 +21,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -47,9 +51,25 @@ class SessionManagementViewModel(
     private val open = MutableStateFlow<String?>(null)
     private val _error = MutableStateFlow<ActionError?>(null)
     private val _forked = MutableStateFlow<String?>(null)
+    private val _waiting = MutableStateFlow(false)
+    private var waitJob: Job? = null
 
     /** The last failure, which the screen shows as a snackbar and then clears. */
     val error: StateFlow<ActionError?> = _error.asStateFlow()
+
+    /** Whether a [waitUntilIdle] is in flight. The screen shows its dialog, with a way to stop, while it is. */
+    val waiting: StateFlow<Boolean> = _waiting.asStateFlow()
+
+    /**
+     * Whether the menu offers "wait until idle".
+     *
+     * Only an absent route hides it. An unknown one is offered, because the first call is what finds out,
+     * and a row that hid itself until then would never be tried.
+     */
+    val waitAvailable: StateFlow<Boolean> = active
+        .flatMapLatest { set -> set?.insights?.generate ?: flowOf(RouteAvailability.Unknown) }
+        .map { it.callable }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT), true)
 
     /**
      * The id of a session this app has just forked, or `null`.
@@ -86,6 +106,35 @@ class SessionManagementViewModel(
     fun delete() = withSession { set, id ->
         val error = set.commands.remove(id).actionErrorOrNull
         if (error != null) _error.value = error
+    }
+
+    /**
+     * `experimental.session.wait` on the open session: the request returns when its turn ends.
+     *
+     * The wait is held by the client, so [waiting] is what the screen shows while it is open and
+     * [stopWaiting] is what ends it. A second call while one is in flight does nothing, so two taps
+     * cannot start two waits on the same session.
+     */
+    fun waitUntilIdle() {
+        val id = open.value ?: return
+        val set = active.value ?: return
+        if (waitJob?.isActive == true) return
+        _waiting.value = true
+        waitJob = viewModelScope.launch {
+            try {
+                val result = set.insights.waitUntilIdle(id)
+                // Cancelling is the user's choice, not a failure, so it does not reach the error line.
+                if (isActive) result.exceptionOrNull()?.let { _error.value = it.toActionError() }
+            } finally {
+                _waiting.value = false
+            }
+        }
+    }
+
+    /** Ends the wait the user started. The server is not asked for anything: the request is what stops. */
+    fun stopWaiting() {
+        waitJob?.cancel()
+        waitJob = null
     }
 
     /** The text "copy message" puts on the clipboard. */

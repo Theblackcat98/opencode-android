@@ -165,6 +165,10 @@
     <!-- Phase 4: per-session attention -->
     <string name="session_attention">Notifications and auto-approve</string>
     <string name="session_history">History, export and context</string>
+    <string name="session_wait_idle">Wait until idle</string>
+    <string name="session_wait_idle_title">Waiting for this session</string>
+    <string name="session_wait_idle_body">This waits until the session\'s current turn ends. It changes nothing on the server, and stopping the wait only ends this request.</string>
+    <string name="session_wait_idle_stop">Stop waiting</string>
     <string name="session_experimental">Experimental features</string>
     <string name="session_execution_subagents">Subagents and sessions</string>
     <string name="session_execution_shells">Commands</string>
