@@ -103,6 +103,7 @@
     <string name="mcp_add_cwd">Working directory</string>
     <string name="mcp_add_env">Environment</string>
     <string name="mcp_add_pairs_help">One NAME=value per line.</string>
+    <string name="integrations_navigate_back">Back</string>
     <string name="mcp_add_headers">Headers</string>
     <string name="mcp_add_url">Address</string>
     <string name="mcp_add_url_help">The server connects to this. Only http and https are accepted.</string>
