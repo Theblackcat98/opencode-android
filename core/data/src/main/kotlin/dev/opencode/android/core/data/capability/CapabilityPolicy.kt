@@ -4,7 +4,7 @@ import dev.opencode.android.core.data.action.ActionError
 import dev.opencode.android.core.data.action.ActionErrorKind
 
 /**
- * The three experimental routes this phase uses (plan §4.2, "Detect capabilities"; features doc
+ * The experimental routes the app uses (plan §4.2, "Detect capabilities"; features doc
  * §13).
  *
  * **They are named, not guessed.** A route's absence is discovered by calling it and reading the

@@ -35,7 +35,7 @@ sealed interface ServerValidationResult {
 
 /** How the server version relates to the release this client was tested against (plan §5.1). */
 enum class VersionStatus {
-    /** The version this client is tested against, or an older one. */
+    /** The version this client was tested against. An older 2.x release is accepted, not tested. */
     TESTED,
 
     /** A newer release. The connection is allowed, and the UI says the version is untested. */
@@ -156,7 +156,7 @@ class ServerValidator(
 
         /**
          * `null` when the server is not an OpenCode V2 release, [VersionStatus.TESTED] for the
-         * tested range and older, and [VersionStatus.NEWER_UNTESTED] above it.
+         * tested release and older 2.x releases (accepted, not tested), and [VersionStatus.NEWER_UNTESTED] above it.
          *
          * The version string decides, and a string that does not parse is not a recognized V2
          * release: an unparsable version is exactly the case that must not be trusted, so it is
@@ -172,7 +172,7 @@ class ServerValidator(
 
         /**
          * `null` when the version is not an OpenCode V2 release, [VersionStatus.TESTED] for the
-         * tested range and older, and [VersionStatus.NEWER_UNTESTED] above it.
+         * tested release and older 2.x releases (accepted, not tested), and [VersionStatus.NEWER_UNTESTED] above it.
          */
         fun versionStatusOf(version: String): VersionStatus? {
             val parts = version.trim().removePrefix("v").split('.')

@@ -14,7 +14,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Capability detection for the three experimental routes (plan §4.2, "Detect capabilities").
+ * Capability detection for the experimental routes (plan §4.2, "Detect capabilities").
  *
  * The rule that matters is what a failure does **not** mean. A `500` is a server fault and a `409`
  * is a conflict, and both prove the route is there; only `404` and `405` hide a feature. A policy

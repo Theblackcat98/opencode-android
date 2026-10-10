@@ -152,7 +152,11 @@ node tools/gen-event-payloads.mjs --check  # the corpus is current
   nothing would satisfy this.
 - **The corpus is derived from the vendored declarations**, so it proves the models match the
   *published* types. A server that sends something else is covered by the live integration tests,
-  which need a real server and were not run in this environment.
-- **No live server test was run.** The `Live*IntegrationTest` classes need a real `opencode serve`
-  with a password and a fake provider; they skip without one. That is a genuine gap in confidence
-  that no amount of unit testing closes.
+  which need a real server (next bullet).
+- **The live tests exist and skip without a server.** The `Live*IntegrationTest` classes in `core/data`
+  (package `integration`) need a real `opencode serve` with a password and a fake provider. Without one
+  they skip through `assumeTrue`, so `unitTest` never runs them. CI's `integration` job runs them with
+  `integrationTest` against `scripts/dev-server.sh` at 2.0.18 (`.github/workflows/ci.yml`), and the plan's
+  status lines record runs against a 2.0.18 dev server in Phases 1, 3, 5, 6 and 9 (`docs/ANDROID_APP_PLAN.md`),
+  with 0 failures and 0 skipped in the Phase 6 record. This document's gates do not run them, so a server
+  that sends something else is checked only when `integrationTest` is run.

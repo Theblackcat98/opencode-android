@@ -38,8 +38,9 @@ import java.util.concurrent.atomic.AtomicLong
  * **Every route here is experimental or unpublished, and every one of them degrades.**
  *
  *  - The statistics, generate, wait and log routes live under `/api/experimental/`, and a server may
- *    not have them. Each call records what its `404` or `405` said, and the screen hides the feature
- *    rather than showing an error the user can do nothing about.
+ *    not have them. Each call records what its `404` or `405` said. Quick ask and the event history
+ *    read that record, but the usage screen does not yet, so on a server without the statistics route
+ *    it shows the error instead.
  *  - `POST /api/pair` is not in the published spec at all. It is the one route that can disappear in
  *    any 2.0.x release, so it is probed like the others and is never part of a flow the app depends
  *    on. The app's own pairing, redeeming a code the CLI printed, is a different route and is
@@ -228,8 +229,9 @@ class InsightsSurface(private val api: ServerApi) {
      * `POST /api/pair`: a one-time code another device redeems at `/auth/connect/{code}`.
      *
      * **The route is unpublished and this app does not depend on it.** It exists in the server source
-     * and is absent from the spec, so a `404` or `405` hides the screen instead of producing an
-     * error. Redeeming a code is the documented path and is a different route entirely.
+     * and is absent from the spec, so a `404` or `405` is recorded as absent rather than producing an
+     * error, and no screen reads that record yet. Redeeming a code is the documented path and is a
+     * different route entirely.
      */
     suspend fun createPairingCode(): Result<PairingCode> =
         experimental(ExperimentalRoute.PAIR_DEVICE) { api.createPairingCode() }

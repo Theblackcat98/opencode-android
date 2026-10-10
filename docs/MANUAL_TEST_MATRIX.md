@@ -5,11 +5,13 @@ servers, run before each release. Plan §6's second exit criterion is that the r
 passes it.
 
 **It has been run only in part, and only on one emulator.** The one device is an Android 16 (API 36)
-phone emulator, 1280×2856 at 480 dpi, running the `fdroid` debug build. It talked to two servers over
-plain HTTP: the maintainer's real `opencode serve` 2.0.20 (read-only checks; it is a working environment)
-and a disposable `scripts/dev-server.sh` 2.0.18 with the scripted fake provider (everything that changes
-state). There was no physical device, no second device, no HTTPS server, no TalkBack and no `play`
-build. A ✓ below is a pass *on that setup*; it is not a pass of the row on the device it names. The
+phone emulator, 1280×2856 at 480 dpi, running the `fdroid` debug build. The `play` debug build was also
+installed, for A3 and M3 only. It talked to two servers over plain HTTP: the maintainer's real `opencode serve`
+2.0.20 (read-only checks; it is a working environment) and a disposable `scripts/dev-server.sh` 2.0.18 with the
+scripted fake provider (everything that changes state). It also reached a self-signed HTTPS endpoint at
+`127.0.0.1:4443`, for B5 and B6 only. There was no physical device, no second device, no TalkBack, no HTTPS
+server beyond that endpoint, and no release build of either flavor was run. A ✓ below is a pass *on that
+setup*; it is not a pass of the row on the device it names. The
 release candidate has **not** passed this matrix, and it is not shippable while any row is ✗ or blank.
 
 Run it and record the outcome in the *Result* column of each row. A row with a blank result is
@@ -122,7 +124,7 @@ no `POST_NOTIFICATIONS` permission, and the smallest screens.
 | H1 | The usage dashboard loads and the heatmap, streak, totals and per-model usage render | ✓ pass (Dev, after Manage → Usage, which is new in this branch: the dashboard shows 7 sessions, 15 prompts, 19 steps, $0.00, a three-day activity strip with a streak of 2 days, tokens, four model rows with step counts, and tool reliability. Screenshots `tmp/ui-shots/k2-usage-screen.png.png` and `k2-usage-tools.png.png`. The heatmap on this data is three cells, so it is a weak check) |
 | H2 | Changing the date range or the project re-queries and the numbers change | ✗ fail (in part). The range chips respond (7 days, 30 days, 90 days, Year), but the numbers did not change: every session on Dev is within the last week, so Year shows the same 15 prompts and 19 steps as 7 days, and this does not show a re-query. There is no project control on the screen; `InsightsViewModel.setProject` has no caller |
 | H3 | Tool reliability shows successes, failures and a p50 duration | ✓ pass (in part). "66% of calls succeeded" with a bar, and per tool "edit", 3 calls, "66% succeeded, p50 5 ms". Failures are not counted separately; they appear only as the rest of the percentage |
-| H4 | **The dashboard is hidden** on a server with no `/api/experimental/session/stats` | n/a (the dashboard is now reachable, so this can be tested, but no server without the route was available: the 2.0.18 dev server has it and returned data, and the 2.0.20 real server was not asked) |
+| H4 | **The dashboard is hidden** on a server with no `/api/experimental/session/stats` | n/a (the dashboard is now reachable, so this can be tested, but no server without the route was available: the 2.0.18 dev server has it and returned data, and the 2.0.20 real server was not asked). The code does not hide it yet, because nothing reads `InsightsUiState.available`, so an absent route shows the error card. |
 | H5 | The quick-ask widget generates and shows the text | ✓ pass (in part). The in-app Quick ask screen, under Manage, with model `fake/text` and the prompt "say hello", showed "The fake provider streams plain text in three chunks." under "Answer". Without a model the server replied "No model specified and no supported model is available", so the optional model field is what makes this server answer. A model without a provider (`nomodel`) is refused on the screen and nothing is sent. The home-screen widget and the Quick Settings tile are **not built**, so their half of this row is not tested |
 | H6 | The RPC console sends JSON and renders the answer, including an error | ✓ pass (in part). Under Manage → RPC console, plugin id `nope`, method `ping` and input `{"a":1}` returned an error card, "RPC is unavailable: nope", and the console kept the input. **A successful answer is not shown**: the dev server has no plugin that answers `rpc.call`, so there was nothing to render |
 | H7 | The RPC console **refuses** an rpc id or method that would break the URL | ✓ pass. Plugin id `../x` was refused on the screen with "'../x' is not a usable rpc id or method: a path segment cannot be empty, '.', '..' or contain a separator". `callRpc` refuses before it calls the server, so no request is made; that is read from the code, not seen on the wire |

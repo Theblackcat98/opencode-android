@@ -111,7 +111,7 @@ That script hard-asserts exactly **93** named types (94 counting the `rpc.*` fam
 
 Contrary to the usual Compose layout, **no feature module declares a route or a `NavHost`.** Every `@Serializable` destination lives in `:app` under `app/src/main/kotlin/…/navigation/` — `Routes.kt` for the shared graph, then per-phase `SessionHost`, `ReviewHost`, `ExecutionHost`, `AdminHost`, `IntegrationsHost`. A feature contributes a *stateless* screen composable taking a `*UiState` plus lambdas; the matching `*Host` in `:app` wires the ViewModel, state and callbacks.
 
-ViewModels are uniformly `@HiltViewModel` + `@Inject constructor(ServerDataRegistry)`, reading `dataSets.active`. One thing that will waste your time if you go looking: **`feature/insights` is effectively unreachable** — its screen and ViewModel have no route, which is exactly the unfinished screen half of P10. (Its ViewModel is now `@HiltViewModel`, so adding the route will not crash; `audit-viewmodels` keeps it that way.) Only eight of the nine features are destinations.
+ViewModels are uniformly `@HiltViewModel` + `@Inject constructor(ServerDataRegistry)`, reading `dataSets.active`. All nine features are destinations. `feature/insights` is reached from Manage on a server's home screen: Usage, Quick ask and RPC console, with their routes and hosts in `AdminHost.kt` (the screens are stateless, and `audit-viewmodels` keeps each ViewModel `@HiltViewModel`). The usage dashboard has no project control yet, and nothing hides it when the stats route is absent: it shows the error card.
 
 ## Tests
 

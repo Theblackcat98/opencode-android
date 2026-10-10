@@ -2178,7 +2178,7 @@ These are decisions for the project owner. None of them blocks P0.
 1. **Identity.** App name, application ID and license.
 2. **Distribution.** Google Play, F-Droid, GitHub Releases, or all three. This decides whether ML Kit or ZXing ships
    by default.
-3. **Minimum Android version.** Proposed: API 26, Android 8.0.
+3. **Minimum Android version.** Set to API 26, Android 8.0 (`minSdk` in `gradle/libs.versions.toml`); still the owner's to confirm.
 4. **Form-factor priority.** Phone-first with tablet support (proposed), or tablet-first.
 5. **Remote config editing.** Is editing through the experimental `fs.write` route acceptable, or should the app stay
    read-only for file-based definitions?
