@@ -122,6 +122,7 @@
     <string name="plugins_empty">No plugin is enabled.</string>
     <string name="plugins_check">Check for updates</string>
     <string name="plugins_checking">Checking…</string>
+    <string name="plugins_select_to_update">Update %1$s</string>
     <string name="plugins_update">Update selected</string>
     <string name="plugins_update_all">Update all</string>
     <string name="plugins_updating">Updating…</string>

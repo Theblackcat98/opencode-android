@@ -45,7 +45,7 @@
  *
  * Tests: node tools/tui-inject-proxy.test.mjs
  */
-import { mkdirSync } from 'node:fs'
+import { mkdirSync, readFileSync } from 'node:fs'
 import { readFile, readdir, unlink } from 'node:fs/promises'
 import http from 'node:http'
 import { dirname, join, resolve } from 'node:path'
@@ -140,6 +140,11 @@ const SETTINGS = {
     if (!match) throw new UsageError('--deny takes "METHOD /path=status", for example "POST /api/pair=404"')
     options.deny.push({ method: match[1], path: match[2], status: Number(match[3]) })
   },
+  '--stub': (options, value) => {
+    const match = /^([A-Z]+) (\/\S*)=(.+)$/.exec(value)
+    if (!match) throw new UsageError('--stub takes "METHOD /path=file.json", for example "GET /api/plugin=tmp/plugins.json"')
+    options.stub.push({ method: match[1], path: match[2], file: match[3] })
+  },
   '--exit-after': (options, value) => {
     const seconds = Number(value)
     if (value.trim() === '' || !Number.isFinite(seconds) || seconds < 0 || seconds > 2_000_000) {
@@ -151,7 +156,7 @@ const SETTINGS = {
 
 /** Reads the command line, given without `node` and the script path. Throws UsageError on anything it does not accept. */
 export function parseArgs(argv) {
-  const options = { port: DEFAULT_PORT, host: DEFAULT_HOST, target: DEFAULT_TARGET, exitAfter: DEFAULT_EXIT_AFTER, deny: [] }
+  const options = { port: DEFAULT_PORT, host: DEFAULT_HOST, target: DEFAULT_TARGET, exitAfter: DEFAULT_EXIT_AFTER, deny: [], stub: [] }
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index]
     const equals = arg.indexOf('=')
@@ -187,7 +192,7 @@ const logLine = (message) => console.log(`[tui-inject] ${message}`)
  * The proxy, without a listening socket: the caller listens on `server`. Polling of `injectDir` starts at once,
  * and `close()` stops it, ends every event stream and closes the server.
  */
-export function createProxy({ target = DEFAULT_TARGET, injectDir = DEFAULT_INJECT_DIR, pollMs = POLL_MS, log = logLine, deny = [] } = {}) {
+export function createProxy({ target = DEFAULT_TARGET, injectDir = DEFAULT_INJECT_DIR, pollMs = POLL_MS, log = logLine, deny = [], stub = [] } = {}) {
   const upstream = new URL(target)
   const upstreamHost = upstream.hostname.replace(/^\[(.*)\]$/, '$1')
   mkdirSync(injectDir, { recursive: true })
@@ -210,6 +215,14 @@ export function createProxy({ target = DEFAULT_TARGET, injectDir = DEFAULT_INJEC
   function forward(req, res) {
     // A route answered with a fixed status without asking the server, so a client sees a server that lacks it.
     const denied = deny.find((rule) => rule.method === req.method && rule.path === req.url.split('?')[0])
+    const stubbed = stub.find((rule) => rule.method === req.method && rule.path === req.url.split('?')[0])
+    if (stubbed) {
+      // Read at each request, so the file can be edited while the proxy runs.
+      req.resume()
+      res.writeHead(200, { 'content-type': 'application/json' })
+      res.end(readFileSync(stubbed.file))
+      return
+    }
     if (denied) {
       req.resume()
       res.writeHead(denied.status, { 'content-type': 'application/json' })
@@ -387,7 +400,7 @@ async function main(argv) {
     return
   }
 
-  const proxy = createProxy({ target: options.target, deny: options.deny })
+  const proxy = createProxy({ target: options.target, deny: options.deny, stub: options.stub })
   let limit = null
   let stopping = false
   const stop = async (reason, code = 0) => {

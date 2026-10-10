@@ -152,13 +152,14 @@ test('an event the app would drop is refused, and the message names the field', 
 })
 
 test('the command line has defaults, accepts both spellings, and refuses what it cannot use', () => {
-  assert.deepEqual(parseArgs([]), { port: DEFAULT_PORT, host: DEFAULT_HOST, target: DEFAULT_TARGET, exitAfter: DEFAULT_EXIT_AFTER, deny: [] })
+  assert.deepEqual(parseArgs([]), { port: DEFAULT_PORT, host: DEFAULT_HOST, target: DEFAULT_TARGET, exitAfter: DEFAULT_EXIT_AFTER, deny: [], stub: [] })
   assert.deepEqual(parseArgs(['--port', '4300', '--target=http://127.0.0.1:4199/', '--exit-after', '0', '--host=127.0.0.1']), {
     port: 4300,
     host: '127.0.0.1',
     target: 'http://127.0.0.1:4199',
     exitAfter: 0,
     deny: [],
+    stub: [],
   })
   assert.throws(() => parseArgs(['--port', '70000']), UsageError)
   assert.throws(() => parseArgs(['--port', 'abc']), UsageError)
@@ -296,4 +297,10 @@ test('--deny is parsed and a malformed rule is refused', () => {
   const options = parseArgs(['--deny', 'POST /api/pair=404'])
   assert.deepEqual(options.deny, [{ method: 'POST', path: '/api/pair', status: 404 }])
   assert.throws(() => parseArgs(['--deny', 'POST /api/pair']), /--deny takes/)
+})
+
+test('--stub is parsed and a malformed rule is refused', () => {
+  const options = parseArgs(['--stub', 'GET /api/plugin=tmp/plugins.json'])
+  assert.deepEqual(options.stub, [{ method: 'GET', path: '/api/plugin', file: 'tmp/plugins.json' }])
+  assert.throws(() => parseArgs(['--stub', 'GET /api/plugin']), /--stub takes/)
 })

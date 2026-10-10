@@ -28,6 +28,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import dev.opencode.android.core.data.sync.SyncStatus
@@ -189,7 +191,13 @@ private fun PluginRow(
         },
         trailingContent = {
             if (plugin.isUpdatable) {
-                Checkbox(checked = selected, onCheckedChange = { onToggle() }, enabled = enabled)
+                val label = stringResource(R.string.plugins_select_to_update, plugin.name)
+                Checkbox(
+                    checked = selected,
+                    onCheckedChange = { onToggle() },
+                    enabled = enabled,
+                    modifier = Modifier.semantics { contentDescription = label },
+                )
             } else {
                 // Nothing to tick, and the reason is on the row: a built-in, a local plugin or one
                 // that is already current cannot be updated by this route.
