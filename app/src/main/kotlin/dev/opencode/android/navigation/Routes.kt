@@ -1,5 +1,6 @@
 package dev.opencode.android.navigation
 
+import android.os.SystemClock
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
@@ -22,8 +23,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.input.key.isAltPressed
 import androidx.compose.ui.input.key.isCtrlPressed
+import androidx.compose.ui.input.key.isMetaPressed
 import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalUriHandler
@@ -292,6 +296,9 @@ fun OpenCodeApp(
     // server allows, so the server-scoped ones are listed only while there is one.
     var paletteOpen by rememberSaveable { mutableStateOf(false) }
     val activeServerId = serverDataSets.active.collectAsStateWithLifecycle().value?.serverId
+    // The dialog and the leader keys read this one list, so a leader key cannot run a command the palette hides.
+    val paletteOffered = paletteCommands(hasActiveServer = activeServerId != null)
+    val leader = remember { LeaderKeyMachine() }
     val onRunPaletteCommand: (PaletteCommand) -> Unit = { command ->
         when (command.id) {
             PaletteCommandIds.SERVERS -> navController.openShortcutDestination(ShortcutDestination.SERVERS)
@@ -308,7 +315,9 @@ fun OpenCodeApp(
 
     // A key event reaches a handler only when something under the handler has focus, so the root takes focus and
     // Ctrl+P is seen whichever screen is up. It is focused again on closing the palette, because the dialog's
-    // window takes focus while it is open. Only Ctrl+P is consumed; every other key still goes to the focused field.
+    // window takes focus while it is open. Ctrl+P is read before the focused control (onPreviewKeyEvent below), so
+    // it opens the palette whichever control has focus. The leader keys (navigation/LeaderKeys.kt) are read after
+    // it (onKeyEvent below), so a focused text field keeps the Ctrl+X and letters it handles.
     val rootFocus = remember { FocusRequester() }
     LaunchedEffect(paletteOpen) {
         if (!paletteOpen) rootFocus.requestFocus()
@@ -359,8 +368,22 @@ fun OpenCodeApp(
             .focusable()
             .onPreviewKeyEvent { event ->
                 if (!isPaletteShortcut(event.key, event.isCtrlPressed, event.type)) return@onPreviewKeyEvent false
+                leader.cancel()
                 paletteOpen = true
                 true
+            }
+            .onKeyEvent { event ->
+                // Bubble phase: this runs only for a key the focused control did not handle.
+                val step = leader.onKeyEvent(
+                    key = event.key,
+                    type = event.type,
+                    ctrl = event.isCtrlPressed,
+                    altOrMeta = event.isAltPressed || event.isMetaPressed,
+                    nowMillis = SystemClock.uptimeMillis(),
+                    offered = paletteOffered,
+                )
+                if (step is LeaderStep.Run) onRunPaletteCommand(step.command)
+                step != LeaderStep.Ignored
             },
     ) {
         NavHost(
@@ -869,7 +892,7 @@ fun OpenCodeApp(
 
         if (paletteOpen) {
             CommandPaletteDialog(
-                commands = paletteCommands(hasActiveServer = activeServerId != null),
+                commands = paletteOffered,
                 onRun = onRunPaletteCommand,
                 onDismiss = { paletteOpen = false },
             )

@@ -37,7 +37,13 @@ left to do.
   Servers and the server home top bars. It is a search field over what the app can run from here: Servers, New session,
   Usage, Quick ask, RPC console, Pair another device (the last five only while a server is active), Changelog and Event
   inspector. Choosing a row runs it and closes the palette. Built and unit tested for the matching, the shortcut and the
-  list. **Not built:** the palette's keyboard path and dialog were not run on a device, and leader-key combinations are not built.
+  list. **Not run:** the palette's keyboard path and dialog were not run on a device.
+- Leader keys, on a hardware keyboard: Ctrl+X, then one letter within 1.5 s, runs the palette command that letter names:
+  N New session, U Usage, Q Quick ask, R RPC console, P Pair another device, S Servers, C Changelog, E Event inspector.
+  The same availability rule as the palette applies, so a server-scoped command is not run with no server. The palette
+  shows each command's key after its row. The leader is read after the focused control, so a text field keeps the Ctrl+X
+  and letters it handles and Ctrl+X still cuts there. Built and unit tested (`LeaderKeysTest`): the sequence, the timeout,
+  unknown and unoffered letters, and the chords. **Not run:** from a keyboard, on a device (matrix J5).
 - The session event history, in the session menu, replays the log and says when it caught up at `log.synced`. Entry rows were not seen on a device: the dev server replayed none. `SessionLogClient` now reads on the IO dispatcher, and recognises the 2.0.18 server's `{"type":"log.synced"}` frame.
 - The durable session log (`session.log`) as a cold, cancellable `Flow`, with `SseParser` extended to
   keep a frame's `id` and `event` so the `log.synced` end-of-replay is not lost.
@@ -91,7 +97,7 @@ regression.
   [manual test matrix](./MANUAL_TEST_MATRIX.md) and a [release runbook](./RELEASE.md).
 
 **Not built:** the home-screen
-widget, the Inbox shortcut, leader keys, session tabs, the
+widget, the Inbox shortcut, session tabs, the
 adaptive list-detail layouts, the LAN prober and the OpenCode theme import. The phase plan lists all
 of them; this changelog does not claim them.
 
