@@ -13,7 +13,7 @@ Everything a release needs, and an honest statement of what has not been done.
 | The Play Console track progression | **Not run.** No account, no upload. |
 | GitHub Releases | **Not published.** No release was cut. |
 | The manual test matrix | **Not run.** No device, no emulator, no second device. |
-| The Phase 10 screens | **Not built.** The operations are real and tested; nothing puts them on a display. See `docs/CHANGELOG.md`. |
+| The Phase 10 screens | **Mostly not built.** The usage dashboard is reachable from Manage; the operations behind the rest are real and tested, and nothing puts them on a display. See `docs/CHANGELOG.md`. |
 | Version | `0.1.0`, `versionCode` 1 |
 
 **No signed artifact exists.** That is the accurate statement, and nothing in this repository claims
@@ -123,8 +123,8 @@ a debug one.** A release-only crash from a stripped serializer is a common and e
 2. Produce a signed artifact from real signing material.
 3. Run the Play Console track progression: internal, then closed, then production.
 4. Publish the GitHub release.
-5. Build the Phase 10 screens the phase plan lists and this runbook does not have: the insights
-   dashboard, the RPC console, the session-log viewer, the widget, the Quick Settings tile, app
+5. Build the Phase 10 screens the phase plan lists and this runbook does not have: the project control
+   on the usage dashboard, the RPC console, the session-log viewer, the widget, the Quick Settings tile, app
    shortcuts, the command palette and leader keys, session tabs, the adaptive list-detail layouts, the
    LAN prober and the OpenCode theme import. Their data layers are built and tested, so each is a
    screen over something that already works.
