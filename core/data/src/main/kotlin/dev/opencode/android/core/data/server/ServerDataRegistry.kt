@@ -3,6 +3,7 @@ package dev.opencode.android.core.data.server
 import dev.opencode.android.core.data.config.ConfigSchema
 import dev.opencode.android.core.data.connection.ServerConnection
 import dev.opencode.android.core.data.connection.ServerConnectionManager
+import dev.opencode.android.core.data.repository.ServerProfile
 import dev.opencode.android.core.data.repository.ServerRepository
 import dev.opencode.android.core.database.cache.ReadCacheStore
 import dev.opencode.android.core.network.ServerApiFactory
@@ -49,9 +50,21 @@ class ServerDataRegistry @Inject constructor(
     /** The read model of the server being followed, or `null` before one is chosen. */
     val active: StateFlow<ServerDataSet?> = _active.asStateFlow()
 
+    private val _activeProfile = MutableStateFlow<ServerProfile?>(null)
+
+    /**
+     * The profile the followed server was connected with, or `null` before one is chosen.
+     *
+     * A set does not carry its address, because a set outlives an address change, so a screen that
+     * must name the address (a pairing link) reads it here. The id matches [active]'s `serverId`
+     * except for the instant between the two updates.
+     */
+    val activeProfile: StateFlow<ServerProfile?> = _activeProfile.asStateFlow()
+
     init {
         appScope.launch {
             connectionManager.activeConnection.collect { connection ->
+                _activeProfile.value = connection?.serverProfile
                 _active.value = connection?.let { dataSetFor(it) }
                 _active.value?.start()
             }

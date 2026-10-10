@@ -7,6 +7,21 @@ import org.junit.Test
 class PairingLinkTest {
 
     @Test
+    fun aLinkWrittenByLinkForIsReadBackAsTheSameServerAndCode() {
+        val written = PairingLink.linkFor("http://192.168.1.50:4096/", "Xy-_09")
+
+        assertEquals("http://192.168.1.50:4096/auth/connect/Xy-_09", written)
+        assertEquals(PairingLink("http://192.168.1.50:4096", "Xy-_09"), PairingLink.parse(written))
+    }
+
+    @Test
+    fun aPrefixedBaseUrlKeepsItsPrefixThroughLinkFor() {
+        val written = PairingLink.linkFor("https://proxy.example.com/opencode", "abc123")
+
+        assertEquals(PairingLink("https://proxy.example.com/opencode", "abc123"), PairingLink.parse(written))
+    }
+
+    @Test
     fun parsesAnHttpLinkWithAPort() {
         val link = PairingLink.parse("http://192.168.1.50:4096/auth/connect/abc123")
 

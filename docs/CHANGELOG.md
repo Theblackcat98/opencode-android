@@ -41,7 +41,11 @@ left to do.
 - Quick ask (`experimental.generate.text`), with a screen under Manage ("Quick ask"). It takes an optional
   `provider/model`, because a server with no default model refuses the ask without one. The home-screen
   widget and the Quick Settings tile that the plan also names are not built. Pair another device
-  (`POST /api/pair` — capability-gated, because the route is not in the published spec).
+  (`POST /api/pair` — capability-gated, because the route is not in the published spec), with a screen under
+  Manage ("Pair another device"). It mints a code on the first press, never on open, and draws it as a QR
+  code with the link under it, which is the form the app's paste field and a browser's `/auth/connect` take.
+  A server without the route is learned from that press, and the screen then says so instead of offering a
+  button. Not run with a second device.
 
 **TUI control events**, which had payload classes since P0 and no handler: a toast becomes a snackbar
 at the server's own variant, an opt-in "follow desktop" mode mirrors the TUI's session and composer and

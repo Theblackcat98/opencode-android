@@ -23,6 +23,14 @@ data class PairingLink(
         )
 
         /**
+         * The link that redeems [code] at the server behind [baseUrl], in the form [parse] reads back.
+         *
+         * This is what a pairing QR code carries, so the second device's scanner and the app's own paste
+         * field take the same text. A `baseUrl` with a path prefix keeps the prefix.
+         */
+        fun linkFor(baseUrl: String, code: String): String = "${baseUrl.trimEnd('/')}/auth/connect/$code"
+
+        /**
          * Parses a scanned QR payload, a pasted link, or a shared link.
          *
          * Whitespace around the payload is ignored, so a QR code with padding still works, and any

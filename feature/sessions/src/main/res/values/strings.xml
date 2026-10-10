@@ -212,6 +212,7 @@
     <string name="home_manage_usage">Usage</string>
     <string name="home_manage_quick_ask">Quick ask</string>
     <string name="home_manage_rpc">RPC console</string>
+    <string name="home_manage_pair_device">Pair another device</string>
 
     <!--
       A shell command's exit code, beside the output. `%1$s` rather than `%1$d`: the schema models

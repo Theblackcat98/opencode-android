@@ -268,6 +268,7 @@ enum class ManageDestination(@StringRes val labelRes: Int) {
     USAGE(R.string.home_manage_usage),
     QUICK_ASK(R.string.home_manage_quick_ask),
     RPC_CONSOLE(R.string.home_manage_rpc),
+    PAIR_DEVICE(R.string.home_manage_pair_device),
 }
 
 /**
@@ -348,6 +349,11 @@ private fun ManageRow(onManageClick: (ManageDestination) -> Unit, directory: Str
                 label = { Text(stringResource(R.string.home_manage_rpc)) },
                 modifier = Modifier.testTag(HomeTags.MANAGE_RPC),
             )
+            AssistChip(
+                onClick = { onManageClick(ManageDestination.PAIR_DEVICE) },
+                label = { Text(stringResource(R.string.home_manage_pair_device)) },
+                modifier = Modifier.testTag(HomeTags.MANAGE_PAIR_DEVICE),
+            )
         }
     }
 }
@@ -367,6 +373,7 @@ object HomeTags {
     const val MANAGE_USAGE: String = "home:manage-usage"
     const val MANAGE_QUICK_ASK: String = "home:manage-quick-ask"
     const val MANAGE_RPC: String = "home:manage-rpc"
+    const val MANAGE_PAIR_DEVICE: String = "home:manage-pair-device"
 }
 
 @Composable

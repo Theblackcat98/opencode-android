@@ -68,4 +68,16 @@
     <string name="rpc_call">Call</string>
     <string name="rpc_calling">Calling the plugin…</string>
     <string name="rpc_output">Answer</string>
+
+    <!-- Pair another device: one code, drawn as a QR code, for a second client to redeem. -->
+    <string name="pair_help">Anyone who scans this code can add this server to their device. The server makes the code, and it works once.</string>
+    <string name="pair_address">The code names the address this phone uses for the server, so the other device must be able to reach that address.</string>
+    <string name="pair_absent">This server cannot pair another device.</string>
+    <string name="pair_show">Show pairing code</string>
+    <string name="pair_generating">Asking the server for a code…</string>
+    <string name="pair_warning">Show this only to the person who is pairing. Anyone who sees it can add this server until it is used or expires. A new code does not cancel an earlier one.</string>
+    <string name="pair_qr_description">Pairing code as a QR code. Scan it with the other device to add this server.</string>
+    <string name="pair_qr_failed">The QR code could not be drawn. Use the link below on the other device instead.</string>
+    <string name="pair_link_label">Pairing link</string>
+    <string name="pair_new_code">Generate a new code</string>
 </resources>

@@ -40,6 +40,8 @@ import dev.opencode.android.feature.admin.R
 import dev.opencode.android.feature.admin.TemplateSheet
 import dev.opencode.android.feature.insights.InsightsScreen
 import dev.opencode.android.feature.insights.InsightsViewModel
+import dev.opencode.android.feature.insights.PairDeviceScreen
+import dev.opencode.android.feature.insights.PairDeviceViewModel
 import dev.opencode.android.feature.insights.QuickAskScreen
 import dev.opencode.android.feature.insights.QuickAskViewModel
 import dev.opencode.android.feature.insights.RpcConsoleScreen
@@ -398,6 +400,35 @@ fun QuickAskHost(
             onPromptChange = viewModel::setPrompt,
             onModelChange = viewModel::setModel,
             onAsk = viewModel::ask,
+            onDismissError = viewModel::dismissError,
+            modifier = Modifier.padding(padding),
+        )
+    }
+}
+
+/**
+ * Pair another device: one code and its QR, for a second client to redeem. Server-wide, so it takes no
+ * directory: the server mints the code for itself.
+ */
+@Serializable
+data class PairDeviceRoute(val serverId: String? = null)
+
+@Composable
+fun PairDeviceHost(
+    onNavigateBack: () -> Unit,
+    modifier: Modifier = Modifier,
+    viewModel: PairDeviceViewModel = hiltViewModel(),
+) {
+    val state by viewModel.state.collectAsStateWithLifecycle()
+
+    AdminScaffold(
+        title = stringResource(R.string.admin_pair_device_title),
+        modifier = modifier,
+        onNavigateBack = onNavigateBack,
+    ) { padding ->
+        PairDeviceScreen(
+            state = state,
+            onGenerate = viewModel::generate,
             onDismissError = viewModel::dismissError,
             modifier = Modifier.padding(padding),
         )

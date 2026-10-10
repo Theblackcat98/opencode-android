@@ -381,6 +381,9 @@ fun OpenCodeApp(
 
                         ManageDestination.RPC_CONSOLE ->
                             navController.navigate(RpcConsoleRoute(route.serverId))
+
+                        ManageDestination.PAIR_DEVICE ->
+                            navController.navigate(PairDeviceRoute(route.serverId))
                     }
                 },
             )
@@ -754,6 +757,10 @@ fun OpenCodeApp(
 
         composable<RpcConsoleRoute> {
             RpcConsoleHost(onNavigateBack = { navController.popBackStack() })
+        }
+
+        composable<PairDeviceRoute> {
+            PairDeviceHost(onNavigateBack = { navController.popBackStack() })
         }
     }
 }
