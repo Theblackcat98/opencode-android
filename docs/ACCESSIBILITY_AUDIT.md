@@ -61,18 +61,18 @@ at 1.5× are therefore caught in CI for the screens that have a capture.
 in a screenshot can still break at 2.0× in a real layout, because a screenshot does not reflow a
 scrolling list.
 
-### 3. Contrast — **not verified here**
+### 3. Contrast — **partly verified**
 
-No contrast ratio is computed anywhere, and no tool computes one. Material 3's `ColorScheme` roles
-give the pairs their contrast, so the risk is concentrated in two places and both need a device or
-a colour tool rather than a code reading:
+The fallback colour pairs, including the code palette, are computed by `tools/audit-contrast.mjs`.
+The results, and what they do not cover, are in [Computed contrast ratios](#computed-contrast-ratios)
+at the end of this document. Two parts need more than a source read:
 
-- the code typography, which is a fixed palette not drawn from the `ColorScheme` (see §5);
-- the OpenCode theme import, which maps arbitrary user tokens onto a Material scheme and could
-  produce a pair below 4.5:1.
+- dynamic colour, which has no static value and is on by default on Android 12 and later;
+- the OpenCode theme import, which the plan describes but the sources do not contain, so there is
+  nothing to compute yet.
 
-**What a human must do:** compute the contrast of every foreground/background pair the code palette
-and a sample OpenCode theme can produce. Both are finite and checkable offline; nothing here does it.
+**What a human must do:** check the dynamic colour schemes on a device. The source cannot give them a
+value, and nothing in the repository measures them.
 
 ### 4. TalkBack flow — **not verified here**
 
@@ -133,7 +133,7 @@ or a switch.
 | Literal strings in semantics | Verified mechanically, 0 findings |
 | Dynamic type at 1.5× | Verified by screenshot baselines in CI |
 | Dynamic type at 2.0× | Not verified; needs a device |
-| Contrast | Not verified; needs a colour tool and a theme sample |
+| Contrast | Fallback pairs computed (see the end); dynamic colour not computed |
 | TalkBack flow | Not verified; two findings, A-1 and A-2 above |
 | Terminal accessibility | Accepted limitation, with an accessible alternative in the transcript |
 | Reduced motion | Not verified |
@@ -142,9 +142,132 @@ or a switch.
 
 1. Fix **A-1**: a live region on the turn boundary, not on the stream. It is a small change and it
    is the difference between the app being usable and not with a screen reader.
-2. Run the contrast check over the code palette and over a sample imported OpenCode theme. Both are
-   finite sets and can be done offline.
+2. Check the dynamic colour schemes on a device, which `tools/audit-contrast.mjs` cannot compute. The
+   fallback pairs and the code palette are already computed (see the end of this document).
 3. Capture the 1.5× baselines' siblings at 2.0× for the timeline and the composer specifically, which
    are the two that scroll.
 4. Run the app on a device with TalkBack and the largest font size, and record what breaks. That is
    the only way the "not verified" rows above become verified.
+
+## Computed contrast ratios
+
+Computed on 2026-10-10 by `node tools/audit-contrast.mjs`. Its `tools/audit-contrast.test.mjs` passes
+12 tests, including black on white at 21:1, a colour against itself at 1:1, and `#767676` on white at
+4.54:1, which is worked out by hand in the test. The script reads the colours from the Kotlin sources
+and keeps no copy of its own. It computes WCAG 2.x relative luminance and the ratio of each pair, with
+translucent colours composited in sRGB first. It reports and exits 0, like the other audits. It does
+not change any colour.
+
+**Dynamic colour is not covered.** `OpenCodeTheme` uses Material You on Android 12 and later (API 31)
+when `dynamicColor` is true, and `MainActivity` calls it with the default, so most devices get a
+wallpaper-derived scheme. The source has no value for that scheme. Every figure below is for the
+static fallback schemes, `OpenCodeLightColors` and `OpenCodeDarkColors`, which is what Android 11 and
+earlier see. The diff palette and the code blocks take their colours from whichever scheme is active,
+so on a dynamic device they are not these figures.
+
+### What was measured
+
+Each scheme has 72 pairs, each a text or component colour against the background it sits on.
+
+- **Scheme roles.** The core pairs (`onSurface`, `onSurfaceVariant`, `onBackground`, `onPrimary`,
+  `onSecondary`, `onError`, and the `on…Container` pair for primary, secondary and error), plus
+  `onTertiaryContainer`, `onSurfaceVariant` on `surfaceVariant`, the Snackbar pair (`EventInspectorScreen`
+  uses one), and the
+  accent roles the screens use for text or status marks on `surface` (`primary`, `secondary`,
+  `tertiary`, `error`, and `outline` for the disconnected server dot).
+- **Diff palette.** For each row kind (context, selected, added, removed, hunk header): the row's text,
+  line number, marker, and each token colour (keyword, string, number, comment, annotation,
+  punctuation) against the row's background. The token colours are drawn on added and removed rows
+  too, because `highlightedPlain` in `DiffTable.kt` applies them whatever the row kind. They apply only
+  to a file with a highlighted language.
+- **Code blocks and links.** The Markdown code block's label and tokens on `surfaceVariant`, and the
+  link colour `#1A73E8` on `surface`.
+- **File viewer selection.** A selected line's line number on `secondaryContainer`, and its text (see
+  the assumptions below).
+
+### Results
+
+Light scheme: 26 of 72 pairs are below 4.5:1, and 4 are below 3:1. Dark scheme: 20 of 72 are below
+4.5:1, and 2 are below 3:1.
+
+A pair is listed if it is below 4.5:1 in either scheme, and both schemes' ratios are shown. `*` is
+below 4.5:1 and `**` is below 3:1. Ratios are to two decimals.
+
+| Pair | Light | Dark |
+| --- | --- | --- |
+| onSecondary / secondary | 4.11 * | 4.69 |
+| secondary / surface | 3.94 * | 7.10 |
+| outline / surface | 3.31 * | 5.01 |
+| diff gutter on context row | 3.04 * | 4.14 * |
+| diff number on context row | 3.94 * | 7.10 |
+| diff comment on context row | 3.85 * | 5.28 |
+| diff gutter on selected row | 2.77 ** | 3.67 * |
+| diff string on selected row | 3.99 * | 4.48 * |
+| diff number on selected row | 3.13 * | 5.34 |
+| diff comment on selected row | 3.41 * | 4.46 * |
+| diff gutter on added row | 2.87 ** | 2.85 ** |
+| diff string on added row | 4.36 * | 3.05 * |
+| diff number on added row | 3.42 * | 3.64 * |
+| diff comment on added row | 3.57 * | 3.33 * |
+| diff annotation on added row | 5.38 | 3.18 * |
+| diff gutter on removed row | 2.79 ** | 2.97 ** |
+| diff string on removed row | 4.05 * | 3.43 * |
+| diff number on removed row | 3.18 * | 4.09 * |
+| diff comment on removed row | 3.44 * | 3.54 * |
+| diff annotation on removed row | 5.00 | 3.57 * |
+| diff gutter on hunk header | 2.88 ** | 3.65 * |
+| diff string on hunk header | 4.39 * | 4.43 * |
+| diff number on hunk header | 3.45 * | 5.29 |
+| diff comment on hunk header | 3.59 * | 4.43 * |
+| code string on code block | 4.39 * | 4.43 * |
+| code number on code block | 3.45 * | 5.29 |
+| code comment on code block | 3.59 * | 4.43 * |
+| markdown link on surface | 4.32 * | 4.39 * |
+
+- Of the scheme roles, the light scheme fails on `onSecondary`/`secondary` and `secondary`/`surface`
+  as text. `outline`/`surface` is a non-text component, so only its 3:1 verdict applies, and it passes.
+  The dark scheme passes every scheme role.
+- Line numbers are text, so 4.5:1 applies to them. They are below 3:1 on the selected, added, removed
+  and hunk-header rows in light, and on the added and removed rows in dark.
+- In a Markdown code block, string and comment tokens fail 4.5:1 in both schemes, and number tokens
+  fail in light. The link colour fails 4.5:1 in both schemes.
+- Dark annotation tokens on added and removed rows fail 4.5:1 (3.18 and 3.57). Light annotation tokens
+  on the same rows pass.
+
+### Not computed
+
+- **Dynamic colour (Material You, API 31 and later).** See above.
+- **Terminal.** `index.html` sets only the page background, `#101216`. The terminal's foreground and
+  ANSI colours are xterm.js defaults, which are not in the app source.
+- **Colours from the server or the user.** Agent colours (`Pickers.kt`), and project and worktree
+  colours.
+- **Camera-unavailable message.** `QrCodeScannerView` draws `Color.White` text over a `Color.Black` box.
+  A camera view sits in the same box, and what it shows after a failed bind is not in the source, so
+  this pair is not computed.
+- **OpenCode theme import.** The plan describes it, and the sources do not contain it, so no sample
+  theme was computed.
+- **File viewer text.** `TextFileView` sets no colour on its text, so it takes the content colour of a
+  host `Surface` that the file does not show. The script assumes `onSurface` for that host, so that
+  pair is an assumption and not a reading.
+
+### Assumptions the figures depend on
+
+- Context rows sit on `surface`, as `DiffFileCard` and the tool card's `Surface` set it. The split
+  diff in `ReviewScreen` adds no `Surface` of its own, and its host was not traced. It is assumed to be
+  `surface`.
+- The link is measured on `surface`. The transcript's host was not traced.
+- `background` and `surface` have the same values in both fallback schemes, so `onBackground` on
+  `background` gives the same ratio as `onSurface` on `surface`.
+- The light or dark diff variant is chosen by the luminance of `surface` against 0.5, as
+  `DiffColors.of` does.
+
+### What this does not show
+
+- These are ratios of the source colours. Nothing was rendered: no screenshot, device, font weight or
+  font size was checked. A pair that passes 4.5:1 can still read poorly in a small, thin font.
+- The script does not know the size of any text, so it reports both verdicts. Large text needs 3:1,
+  meaning 18 pt, or 14 pt bold. The table does not say which applies to a given use.
+- `TextFileView` in `FileBrowserScreen.kt` draws each line as plain `line.text`.
+  `CodeHighlighter.highlightAll` runs for the file, and the file's doc comment says it is highlighted,
+  but no token colour reaches the screen. The token pairs above therefore do not apply in the file
+  viewer.
