@@ -124,8 +124,8 @@ a debug one.** A release-only crash from a stripped serializer is a common and e
 3. Run the Play Console track progression: internal, then closed, then production.
 4. Publish the GitHub release.
 5. Build the Phase 10 screens the phase plan lists and this runbook does not have: the project control
-   on the usage dashboard, the widget, app
-   shortcuts, the command palette and leader keys, session tabs, the adaptive list-detail layouts, the
+   on the usage dashboard, the widget
+   and leader keys, session tabs, the adaptive list-detail layouts, the
    LAN prober and the OpenCode theme import. Their data layers are built and tested, so each is a
    screen over something that already works.
 6. Fix accessibility finding **A-1** from the audit — a live region on the turn boundary — before
