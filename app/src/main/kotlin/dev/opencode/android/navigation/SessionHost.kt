@@ -200,6 +200,9 @@ fun SessionHost(
     // resume and withdrawn on the way out (plan §6, "Unread model"). Resuming is also when the
     // unseen idle transition is marked, through `SessionViewMarker`.
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { timeline.onScreenResumed() }
+    // Pausing is also leaving the screen: with the app in the background nobody is looking at this session,
+    // and a session marked as open suppresses its permission and question notifications.
+    LifecycleEventEffect(Lifecycle.Event.ON_PAUSE) { timeline.onScreenLeft() }
     DisposableEffect(sessionId) {
         onDispose { timeline.onScreenLeft() }
     }
