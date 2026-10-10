@@ -1,11 +1,9 @@
 package dev.opencode.android.core.network
 
-import java.io.File
-import java.io.InputStream
 import java.security.KeyStore
 import java.security.cert.CertificateException
-import java.security.cert.CertificateFactory
 import java.security.cert.X509Certificate
+import java.util.Collections
 import javax.net.ssl.SSLContext
 import javax.net.ssl.SSLSocketFactory
 import javax.net.ssl.TrustManagerFactory
@@ -106,34 +104,28 @@ class UserAnchoredTrustManager(
 }
 
 /**
- * Reads the user CAs from the platform's user-certificate store.
+ * Reads the user CAs from `AndroidCAStore`, the keystore Android exposes to apps.
  *
- * Android keeps them in `/data/misc/keychain/cacerts-added` as DER files. Reading that directory
- * is not guaranteed on every release, so an unreadable or empty store simply means there are no
- * extra anchors and the platform trust manager stays in charge.
+ * The store lists user-installed certificates under `user:` aliases and the built-in ones under
+ * `system:`. Only the `user:` entries are returned, because the platform trust manager already
+ * covers the rest. The directory these used to be read from, `/data/misc/keychain/cacerts-added`,
+ * is absent on current releases, and the user store under `/data/misc/user` is not readable by an
+ * app. A store that cannot be opened means there are no extra anchors, so the platform trust
+ * manager stays in charge.
  */
 class AndroidUserCertificateSource(
-    private val directory: File = File(USER_CA_DIRECTORY),
+    private val openStore: () -> KeyStore = { KeyStore.getInstance(ANDROID_CA_STORE).apply { load(null, null) } },
 ) : UserCertificateSource {
 
-    override fun certificates(): List<X509Certificate> {
-        val files = runCatching { directory.listFiles() }.getOrNull() ?: return emptyList()
-        val factory = CertificateFactory.getInstance(CERTIFICATE_TYPE)
-        return files
-            .asSequence()
-            .filter { it.isFile && it.length() > 0L }
-            .sortedBy { it.name }
-            .flatMap { file -> runCatching { read(factory, file) }.getOrDefault(emptyList()).asSequence() }
-            .toList()
-    }
-
-    private fun read(factory: CertificateFactory, file: File): Collection<X509Certificate> {
-        val stream: InputStream = file.inputStream()
-        return stream.use { factory.generateCertificates(it).filterIsInstance<X509Certificate>() }
-    }
+    override fun certificates(): List<X509Certificate> = runCatching {
+        val store = openStore()
+        Collections.list(store.aliases())
+            .filter { it.startsWith(USER_ALIAS_PREFIX) }
+            .mapNotNull { store.getCertificate(it) as? X509Certificate }
+    }.getOrDefault(emptyList())
 
     private companion object {
-        const val USER_CA_DIRECTORY = "/data/misc/keychain/cacerts-added"
-        const val CERTIFICATE_TYPE = "X.509"
+        const val ANDROID_CA_STORE = "AndroidCAStore"
+        const val USER_ALIAS_PREFIX = "user:"
     }
 }

@@ -13,6 +13,9 @@ import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import java.security.KeyStore
+import java.security.KeyStoreException
+import java.security.cert.X509Certificate
 import javax.net.ssl.SSLException
 
 /**
@@ -89,6 +92,25 @@ class UserCaTrustTest {
         val failure = runCatching { call(client) }.exceptionOrNull()
 
         assertTrue("Expected a TLS failure, got $failure", failure is SSLException)
+    }
+
+    @Test
+    fun theAndroidSourceReturnsOnlyTheUserAliases() {
+        val systemCa = HeldCertificate.Builder().certificateAuthority(3).commonName("System").build()
+        val store = KeyStore.getInstance(KeyStore.getDefaultType()).apply { load(null, null) }
+        store.setCertificateEntry("system:9f8e7d", systemCa.certificate)
+        store.setCertificateEntry("user:1a2b3c", privateCa.certificate)
+
+        val certificates = AndroidUserCertificateSource { store }.certificates()
+
+        assertEquals(listOf(privateCa.certificate), certificates)
+    }
+
+    @Test
+    fun theAndroidSourceIsEmptyWhenTheStoreCannotBeOpened() {
+        val source = AndroidUserCertificateSource { throw KeyStoreException("no AndroidCAStore") }
+
+        assertEquals(emptyList<X509Certificate>(), source.certificates())
     }
 
     @Test
