@@ -96,7 +96,19 @@ class JsonSchemaValidatorTest {
         assertEquals(1, problems.size)
         assertEquals("/modle", problems.single().path)
         assertEquals("additionalProperties", problems.single().keyword)
-        assertTrue(problems.single().expected.contains("allows"))
+        // The key is forbidden, so the message must say so. "a key this schema allows" read as if the
+        // key were permitted, and the exact text is asserted so that wording cannot drift back.
+        assertEquals("the key \"modle\" is not one this schema allows", problems.single().expected)
+    }
+
+    @Test
+    fun `an unknown key inside a nested object is named in its diagnostic`() {
+        val problems = validator.validate(json("""{"watcher": {"ignroe": []}}"""))
+
+        assertEquals(1, problems.size)
+        assertEquals("/watcher/ignroe", problems.single().path)
+        assertEquals("additionalProperties", problems.single().keyword)
+        assertEquals("the key \"ignroe\" is not one this schema allows", problems.single().expected)
     }
 
     @Test

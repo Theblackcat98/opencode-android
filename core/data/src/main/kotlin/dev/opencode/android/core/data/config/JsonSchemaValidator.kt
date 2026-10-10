@@ -205,8 +205,14 @@ class JsonSchemaValidator(private val schema: JsonObject) {
 
                 additional == null -> Unit
 
+                // `false` forbids the key, so the expected text says the key is not allowed and names it.
                 additional is JsonPrimitive && additional.booleanOrNull == false ->
-                    found += report(childPath, "additionalProperties", "a key this schema allows", describe(value))
+                    found += report(
+                        childPath,
+                        "additionalProperties",
+                        "the key \"$key\" is not one this schema allows",
+                        describe(value),
+                    )
 
                 // A schema rather than a boolean: every named key is checked above and this checks
                 // the rest, which is how `agent`, `command`, `provider` and `mcp` are shaped.
