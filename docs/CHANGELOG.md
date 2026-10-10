@@ -30,7 +30,8 @@ left to do.
 - The durable session log (`session.log`) as a cold, cancellable `Flow`, with `SseParser` extended to
   keep a frame's `id` and `event` so the `log.synced` end-of-replay is not lost.
 - Synthetic notes (`session.synthetic`), wait-until-idle (`experimental.session.wait`), and
-  programmatic permission and form creation, for plugin and workflow testing.
+  programmatic permission and form creation, for plugin and workflow testing. Wait until idle is in
+  the session menu, with a dialog that stops it; the other three have no UI yet.
 - A plugin RPC console surface (`rpc.call`) that refuses an id or method that would break the URL, and
   a viewer for `rpc.<id>.<event>`.
 - Quick ask (`experimental.generate.text`) and pair another device (`POST /api/pair` — capability-gated,

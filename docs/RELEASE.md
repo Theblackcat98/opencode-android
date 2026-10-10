@@ -13,7 +13,7 @@ Everything a release needs, and an honest statement of what has not been done.
 | The Play Console track progression | **Not run.** No account, no upload. |
 | GitHub Releases | **Not published.** No release was cut. |
 | The manual test matrix | **Not run.** No device, no emulator, no second device. |
-| The Phase 10 screens | **Mostly not built.** The usage dashboard is reachable from Manage; the operations behind the rest are real and tested, and nothing puts them on a display. See `docs/CHANGELOG.md`. |
+| The Phase 10 screens | **Mostly not built.** The usage dashboard is reachable from Manage, and wait until idle from the session menu; the operations behind the rest are real and tested, and nothing puts them on a display. See `docs/CHANGELOG.md`. |
 | Version | `0.1.0`, `versionCode` 1 |
 
 **No signed artifact exists.** That is the accurate statement, and nothing in this repository claims
