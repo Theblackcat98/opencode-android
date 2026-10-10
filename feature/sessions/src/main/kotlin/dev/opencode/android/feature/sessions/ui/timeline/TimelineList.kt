@@ -48,6 +48,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
 import dev.opencode.android.core.designsystem.format.Formatters
 import dev.opencode.android.core.designsystem.markdown.MarkdownText
 import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
@@ -268,6 +269,7 @@ private fun AttachmentChip(label: String, isImage: Boolean, data: String) {
         stringResource(R.string.timeline_file_attachment, label)
     }
     val thumbnail = remember(data, isImage) { if (isImage) decodeAttachmentImage(data) else null }
+    var fullSize by remember { mutableStateOf(false) }
     Column {
         thumbnail?.let { bitmap ->
             Image(
@@ -276,17 +278,30 @@ private fun AttachmentChip(label: String, isImage: Boolean, data: String) {
                 contentScale = ContentScale.Fit,
                 modifier = Modifier
                     .padding(top = 4.dp)
-                    .size(160.dp),
+                    .size(160.dp)
+                    .clickable { fullSize = true },
             )
         }
         AssistChip(
-            onClick = {},
+            onClick = { if (thumbnail != null) fullSize = true },
             label = { Text(label, style = MaterialTheme.typography.labelSmall) },
             colors = AssistChipDefaults.assistChipColors(),
             modifier = Modifier
                 .padding(top = 4.dp)
                 .semantics { contentDescription = description },
         )
+    }
+    if (fullSize && thumbnail != null) {
+        Dialog(onDismissRequest = { fullSize = false }) {
+            Image(
+                bitmap = thumbnail,
+                contentDescription = description,
+                contentScale = ContentScale.Fit,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { fullSize = false },
+            )
+        }
     }
 }
 
