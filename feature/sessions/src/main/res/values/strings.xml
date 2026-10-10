@@ -76,6 +76,7 @@
     <string name="timeline_attachment_one">1 attachment</string>
     <string name="timeline_image_attachment">Image attachment %1$s</string>
     <string name="timeline_file_attachment">File %1$s</string>
+    <string name="timeline_attachment_no_preview">This attachment has no preview in the app.</string>
     <string name="timeline_agents_mentioned">Agents: %1$s</string>
     <string name="timeline_skills_attached">Skills: %1$s</string>
 

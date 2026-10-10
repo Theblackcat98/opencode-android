@@ -44,7 +44,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -81,7 +83,16 @@ fun TimelineList(
     contentPadding: PaddingValues = PaddingValues(12.dp),
     onOpenChangedFile: ((String) -> Unit)? = null,
     messageActions: (@Composable (String) -> Unit)? = null,
+    /**
+     * Whether a turn is in flight. Only when none is does the newest turn-end divider announce itself.
+     *
+     * Every turn's divider is composed on load and again each time its row scrolls back into view, so a
+     * live region on each would have a screen reader read out the whole history. The newest divider is
+     * the only one that can be the turn that just ended, so it is the only one that carries the region.
+     */
+    sessionRunning: Boolean = false,
 ) {
+    val announcedTurnEnd = if (sessionRunning) null else messages.lastOrNull { it is SessionMessage.Idle }?.id
     LazyColumn(
         state = listState,
         modifier = modifier.fillMaxWidth(),
@@ -96,7 +107,11 @@ fun TimelineList(
             key = { it.stableKey() },
         ) { message ->
             Column {
-                TimelineMessageItem(message, onOpenChangedFile = onOpenChangedFile)
+                TimelineMessageItem(
+                    message,
+                    onOpenChangedFile = onOpenChangedFile,
+                    announceTurnEnd = message.id == announcedTurnEnd,
+                )
                 // The per-message actions row belongs to the message and not to a card, so a
                 // message with no action simply renders nothing extra.
                 messageActions?.invoke(message.id)
@@ -165,6 +180,8 @@ fun TimelineMessageItem(
      * destination to offer passes.
      */
     onOpenChangedFile: ((String) -> Unit)? = null,
+    /** Whether this divider is the turn that just ended and should be announced; see [TimelineList]. */
+    announceTurnEnd: Boolean = false,
 ) {
     when (message) {
         is SessionMessage.User -> UserMessageCard(message, modifier)
@@ -196,7 +213,7 @@ fun TimelineMessageItem(
 
         is SessionMessage.Compaction -> CompactionCard(message, modifier)
 
-        is SessionMessage.Idle -> IdleDivider(message, modifier)
+        is SessionMessage.Idle -> IdleDivider(message, modifier, announceTurnEnd)
 
         is SessionMessage.AgentSwitched -> AgentSwitchMarker(message, modifier)
 
@@ -270,6 +287,8 @@ private fun AttachmentChip(label: String, isImage: Boolean, data: String) {
     }
     val thumbnail = remember(data, isImage) { if (isImage) decodeAttachmentImage(data) else null }
     var fullSize by remember { mutableStateOf(false) }
+    // A chip with nothing to show says why under itself, and a second tap takes that line back away.
+    var noPreview by remember { mutableStateOf(false) }
     Column {
         thumbnail?.let { bitmap ->
             Image(
@@ -283,13 +302,27 @@ private fun AttachmentChip(label: String, isImage: Boolean, data: String) {
             )
         }
         AssistChip(
-            onClick = { if (thumbnail != null) fullSize = true },
+            onClick = {
+                if (thumbnail != null) {
+                    fullSize = true
+                } else {
+                    noPreview = !noPreview
+                }
+            },
             label = { Text(label, style = MaterialTheme.typography.labelSmall) },
             colors = AssistChipDefaults.assistChipColors(),
             modifier = Modifier
                 .padding(top = 4.dp)
                 .semantics { contentDescription = description },
         )
+        if (noPreview) {
+            Text(
+                text = stringResource(R.string.timeline_attachment_no_preview),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 4.dp),
+            )
+        }
     }
     if (fullSize && thumbnail != null) {
         Dialog(onDismissRequest = { fullSize = false }) {
@@ -569,7 +602,7 @@ private fun CompactionCard(message: SessionMessage.Compaction, modifier: Modifie
 }
 
 @Composable
-private fun IdleDivider(message: SessionMessage.Idle, modifier: Modifier = Modifier) {
+private fun IdleDivider(message: SessionMessage.Idle, modifier: Modifier = Modifier, announceTurnEnd: Boolean = false) {
     val outcomeDescription = stringResource(message.outcome.labelRes())
     Column(
         modifier = modifier
@@ -580,6 +613,11 @@ private fun IdleDivider(message: SessionMessage.Idle, modifier: Modifier = Modif
         HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
         Text(
             text = stringResource(message.outcome.labelRes()),
+            modifier = if (announceTurnEnd) {
+                Modifier.semantics { liveRegion = LiveRegionMode.Polite }
+            } else {
+                Modifier
+            },
             style = MaterialTheme.typography.labelSmall,
             color = when (message.outcome) {
                 Outcome.Failed -> MaterialTheme.colorScheme.error

@@ -156,6 +156,8 @@ fun SessionScreen(
                     modifier = Modifier.fillMaxSize(),
                     onOpenChangedFile = onOpenChangedFile,
                     messageActions = messageActions,
+                    // A retry is still the same turn, so only a settled session announces its turn end.
+                    sessionRunning = state.activity != SessionActivityUi.Idle,
                 )
                 if (state.activity is SessionActivityUi.Running) {
                     LinearProgressIndicator(modifier = Modifier.fillMaxWidth().align(Alignment.TopCenter))
