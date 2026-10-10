@@ -83,6 +83,7 @@ class ExecutionFieldEchoTest {
                 onForceRemove = {},
                 onCancelRemove = {},
                 onMoveSession = null,
+                onDismissError = {},
             )
         }
     }

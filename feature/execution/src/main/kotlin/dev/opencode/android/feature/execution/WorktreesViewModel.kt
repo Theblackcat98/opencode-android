@@ -7,6 +7,7 @@ import dev.opencode.android.core.data.action.toActionError
 import dev.opencode.android.core.data.execution.WorktreeRemoval
 import dev.opencode.android.core.data.execution.WorktreeState
 import dev.opencode.android.core.data.server.ServerDataRegistry
+import dev.opencode.android.core.data.server.ServerDataSet
 import dev.opencode.android.core.model.Delivery
 import dev.opencode.android.core.model.Project
 import dev.opencode.android.core.model.WorktreeDirectory
@@ -60,16 +61,20 @@ data class ResolvedRow(
  * deciding how a queued prompt is delivered during a move is a change the user did not ask for.
  */
 @HiltViewModel
-class WorktreesViewModel @Inject constructor(
-    private val dataSets: ServerDataRegistry,
+class WorktreesViewModel(
+    private val active: StateFlow<ServerDataSet?>,
 ) : ViewModel() {
+
+    /** Hilt's constructor: the read model of the server being followed. */
+    @Inject
+    constructor(dataSets: ServerDataRegistry) : this(dataSets.active)
 
     private val _state = MutableStateFlow(WorktreesUiState())
     val state: StateFlow<WorktreesUiState> = _state.asStateFlow()
 
     /** Binds the panel to a project and reads its worktree inventory. */
     fun open(projectID: String) {
-        val set = dataSets.active.value ?: return
+        val set = active.value ?: return
         _state.value = WorktreesUiState(projectID = projectID, loading = true)
         set.execution.worktrees.start(projectID)
         viewModelScope.launch {
@@ -113,7 +118,7 @@ class WorktreesViewModel @Inject constructor(
      * path, and a client that invented one would send the user to a directory that does not exist.
      */
     fun create() {
-        val set = dataSets.active.value ?: return
+        val set = active.value ?: return
         val state = _state.value
         val projectID = state.projectID ?: return
         _state.value = state.copy(creating = true, error = null, notice = null)
@@ -125,21 +130,24 @@ class WorktreesViewModel @Inject constructor(
                 name = state.draftName.takeIf { it.isNotBlank() },
             )
             val error = result.exceptionOrNull()?.toActionError()
+            // The drafts are cleared only when the server accepted them. A refusal keeps what the user typed,
+            // so they can correct the ref or name and send it again without retyping all three fields.
+            val accepted = error == null
             _state.value = _state.value.copy(
                 creating = false,
                 error = error?.message,
                 notice = result.getOrNull()?.directory,
-                draftFrom = "",
-                draftBranch = "",
-                draftName = "",
+                draftFrom = if (accepted) "" else _state.value.draftFrom,
+                draftBranch = if (accepted) "" else _state.value.draftBranch,
+                draftName = if (accepted) "" else _state.value.draftName,
             )
-            if (error == null) refresh()
+            if (accepted) refresh()
         }
     }
 
     /** `worktree.refresh`: rediscovers and reconciles. */
     fun refresh() {
-        val set = dataSets.active.value ?: return
+        val set = active.value ?: return
         val projectID = _state.value.projectID ?: return
         viewModelScope.launch {
             val error = set.execution.worktreeCommands.refresh(projectID).exceptionOrNull()?.toActionError()
@@ -165,7 +173,7 @@ class WorktreesViewModel @Inject constructor(
      * second button sends `force = true`.
      */
     fun remove() {
-        val set = dataSets.active.value ?: return
+        val set = active.value ?: return
         val projectID = _state.value.projectID ?: return
         val target = _state.value.removeTarget ?: return
         viewModelScope.launch {
@@ -191,7 +199,7 @@ class WorktreesViewModel @Inject constructor(
 
     /** The second attempt, with `force = true`, after the user has been told what is at stake. */
     fun forceRemove() {
-        val set = dataSets.active.value ?: return
+        val set = active.value ?: return
         val projectID = _state.value.projectID ?: return
         val target = _state.value.removeTarget ?: return
         viewModelScope.launch {
@@ -216,7 +224,7 @@ class WorktreesViewModel @Inject constructor(
      * queue to a steer would change what happens to a prompt the user has already sent.
      */
     fun moveSession(sessionID: String, directory: String, delivery: Delivery? = null) {
-        val set = dataSets.active.value ?: return
+        val set = active.value ?: return
         viewModelScope.launch {
             val error = set.execution.moveSession(sessionID, directory, delivery).exceptionOrNull()?.toActionError()
             _state.value = _state.value.copy(
@@ -228,6 +236,11 @@ class WorktreesViewModel @Inject constructor(
 
     fun dismissNotice() {
         _state.value = _state.value.copy(notice = null, error = null)
+    }
+
+    /** Clears the failure the panel shows, and leaves any drafts the user has typed alone. */
+    fun dismissError() {
+        _state.value = _state.value.copy(error = null)
     }
 }
 

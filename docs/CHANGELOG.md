@@ -71,6 +71,13 @@ of them; this changelog does not claim them.
 
 ### Fixed
 
+- **Worktree failures were invisible, and a refused create cleared the form (issue #7).** The worktree
+  panel never rendered its error, so a refused create looked like nothing had happened. The server's
+  `WorktreeError` body has a `name` and no `_tag`, so it decoded as "Unknown error" and the server's reason
+  was lost. Now the reason is shown with a dismiss action, and the three draft fields are kept on a refusal
+  and cleared only when the server accepts the create. The branch, ref and name fields are not renamed
+  (that is still open).
+
 Found by driving the app against a live server on an emulator, which no test had done:
 
 - **Typing lost characters.** The composer, the new-session fields, and the two search boxes copied the

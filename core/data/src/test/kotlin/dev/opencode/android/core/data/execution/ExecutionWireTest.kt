@@ -1,5 +1,7 @@
 package dev.opencode.android.core.data.execution
 
+import dev.opencode.android.core.data.action.ActionErrorKind
+import dev.opencode.android.core.model.ApiError
 import dev.opencode.android.core.model.PtySize
 import dev.opencode.android.core.model.SessionTerminalRead
 import dev.opencode.android.core.model.WorktreeDirectory
@@ -171,6 +173,28 @@ class ExecutionWireTest {
         // `from`, `branch` and `directory` are omitted rather than null so the server's own defaults
         // decide the path — a null would be an explicit "there is no branch" to some servers.
         assertEquals("""{"projectID":"prj_1","name":"a"}""", lastBody("/api/worktree"))
+    }
+
+    @Test
+    fun `a create refused with a WorktreeError says why, in the server's own words`() = runTest {
+        // Issue 7: the refusal is `{name, data}`, not `{_tag, message}`. It used to come out as "Unknown error",
+        // which is the reason the panel showed nothing the user could act on.
+        statuses["/api/worktree"] = 400
+        bodies["/api/worktree"] =
+            """{"name":"WorktreeError","data":{"message":"branch feature/x does not exist"}}"""
+
+        val failure = WorktreeCommands(api).create(projectID = "prj_1", from = "feature/x").exceptionOrNull()
+        assertTrue("was $failure", failure is ActionFailure)
+        val error = (failure as ActionFailure).error
+
+        assertEquals("branch feature/x does not exist", error.message)
+        assertEquals("branch feature/x does not exist", error.serverMessage)
+        assertEquals(ApiError.WorktreeError(message = "branch feature/x does not exist"), error.apiError)
+        assertEquals(ActionErrorKind.INVALID_REQUEST, error.kind)
+        assertEquals(400, error.httpStatus)
+        // Only the filled-in field went out, and it went as a create.
+        assertTrue(requests.last().startsWith("POST /api/worktree"))
+        assertEquals("""{"projectID":"prj_1","from":"feature/x"}""", lastBody("/api/worktree"))
     }
 
     @Test

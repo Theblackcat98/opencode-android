@@ -139,6 +139,7 @@ class ExecutionScreenshotTest {
             onForceRemove = {},
             onCancelRemove = {},
             onMoveSession = {},
+            onDismissError = {},
         )
     }
 
@@ -156,6 +157,7 @@ class ExecutionScreenshotTest {
             onForceRemove = {},
             onCancelRemove = {},
             onMoveSession = {},
+            onDismissError = {},
         )
     }
 

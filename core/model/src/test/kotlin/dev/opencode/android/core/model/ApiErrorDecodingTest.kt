@@ -84,6 +84,28 @@ class ApiErrorDecodingTest {
     }
 
     @Test
+    fun decodesTheWorktreeEnvelopeWithItsMessageAndForceHint() {
+        // A worktree refusal has no `_tag`: it is `{name, data}`. It used to decode as Unrecognized, whose
+        // message is read from a top-level `message` the body does not have, so the user saw "Unknown error".
+        val raw = """{"name":"WorktreeError","data":{"message":"uncommitted changes","forceRequired":true}}"""
+        val error = OpenCodeJson.decodeFromString<ApiError>(raw)
+
+        assertEquals(ApiError.WorktreeError(message = "uncommitted changes", forceRequired = true), error)
+        assertEquals("uncommitted changes", error.message)
+
+        val reEncoded = OpenCodeJson.encodeToString(ApiError.serializer(), error)
+        assertEquals(error, OpenCodeJson.decodeFromString<ApiError>(reEncoded))
+    }
+
+    @Test
+    fun aNamedEnvelopeThatIsNotAWorktreeErrorStaysUnrecognized() {
+        val raw = """{"name":"SomethingElse","data":{"message":"x"}}"""
+        val error = OpenCodeJson.decodeFromString<ApiError>(raw)
+
+        assertTrue(error is ApiError.Unrecognized)
+    }
+
+    @Test
     fun fallsBackToUnrecognizedOnUnknownTag() {
         val raw = """{"_tag":"CosmicRayInterferenceError","message":"Bit flip detected","cpuCore":3}"""
         val error = OpenCodeJson.decodeFromString<ApiError>(raw)

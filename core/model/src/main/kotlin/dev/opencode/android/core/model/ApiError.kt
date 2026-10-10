@@ -7,6 +7,8 @@ import dev.opencode.android.core.model.json.variant
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.booleanOrNull
 
 /**
  * A JSON error response: `{_tag, message, ...}` (features doc §37). Unrecognized tags decode to
@@ -129,6 +131,25 @@ sealed interface ApiError {
     @Serializable
     data class RpcInternal(override val message: String, val type: String, val data: JsonElement? = null) : ApiError
 
+    /**
+     * The worktree routes' refusal, `{"name":"WorktreeError","data":{"message":…,"forceRequired":…}}`.
+     *
+     * **It has no `_tag`, so it reaches the client through the fallback, not a variant.** Without that path
+     * it decoded as [Unrecognized], whose message is read from a top-level `message` the body does not have,
+     * and the screen said "Unknown error" for a refusal that carried the server's reason. [forceRequired] is
+     * the server's hint that `force` would succeed; the removal path reads the same body through
+     * [WorktreeFailure], which is the typed decode the worktree commands use.
+     *
+     * The variant registration below exists so that a value re-encodes and decodes to itself under the
+     * `_tag` every other error uses.
+     */
+    @Serializable
+    data class WorktreeError(
+        override val message: String,
+        val name: String = WorktreeFailure.WORKTREE_ERROR_NAME,
+        val forceRequired: Boolean? = null,
+    ) : ApiError
+
     /** A tag this client does not know, or a body without `_tag`. */
     data class Unrecognized(override val discriminator: String?, override val raw: JsonObject) :
         ApiError,
@@ -140,7 +161,7 @@ sealed interface ApiError {
 internal object ApiErrorSerializer : DiscriminatedUnionSerializer<ApiError>(
     serialName = "dev.opencode.android.ApiError",
     discriminator = "_tag",
-    unknown = ApiError::Unrecognized,
+    unknown = ::unrecognizedApiError,
     variants = listOf(
         variant("UnauthorizedError", ApiError.Unauthorized.serializer()),
         variant("ForbiddenError", ApiError.Forbidden.serializer()),
@@ -172,5 +193,25 @@ internal object ApiErrorSerializer : DiscriminatedUnionSerializer<ApiError>(
         variant("ShellNotFoundError", ApiError.ShellNotFound.serializer()),
         variant("RpcError", ApiError.Rpc.serializer()),
         variant("RpcInternalError", ApiError.RpcInternal.serializer()),
+        variant("WorktreeError", ApiError.WorktreeError.serializer()),
     ),
 )
+
+/**
+ * The fallback for a body with no `_tag` this client knows.
+ *
+ * Only the worktree envelope is given a typed answer here. It is recognised by its `name` and its `data`
+ * object, and only when `data.message` is a string; anything else stays [ApiError.Unrecognized] with its raw
+ * body, as before.
+ */
+private fun unrecognizedApiError(discriminator: String?, raw: JsonObject): ApiError {
+    val data = raw["data"] as? JsonObject
+    val message = data?.stringOrNull("message")
+    if (discriminator == null && raw.stringOrNull("name") == WorktreeFailure.WORKTREE_ERROR_NAME && message != null) {
+        return ApiError.WorktreeError(
+            message = message,
+            forceRequired = (data["forceRequired"] as? JsonPrimitive)?.booleanOrNull,
+        )
+    }
+    return ApiError.Unrecognized(discriminator, raw)
+}

@@ -108,6 +108,7 @@
     <string name="worktrees_move_session">Move a session here</string>
     <string name="worktrees_empty">No worktrees for this project.</string>
     <string name="worktrees_strategy">Strategy: %1$s</string>
+    <string name="worktrees_failed">Worktree change failed: %1$s</string>
 
     <!-- Project settings -->
     <string name="project_settings_title">Project settings</string>

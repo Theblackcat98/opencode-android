@@ -115,10 +115,12 @@ fun Throwable.toActionError(): ActionError {
         // and routing it to [kindOf]'s `else` branch made every such answer look like a `500`: a `404`
         // from a server that omits or renames the error tag became `SERVER`, which is not a failure —
         // it is what capability detection reads as "the route is missing". So an unrecognised body falls
-        // through to the status, and only a *recognised* body is allowed to override it.
+        // through to the status, and only a *recognised* body is allowed to override it. A `WorktreeError` has no
+        // `_tag` for [kindOf] to switch on, so it takes the status too, which is the 400 the spec gives it.
         val kind = when {
-            decoded == null -> kindOfStatus(code())
-            decoded is ApiError.Unrecognized -> kindOfStatus(code())
+            decoded == null || decoded is ApiError.Unrecognized || decoded is ApiError.WorktreeError ->
+                kindOfStatus(code())
+
             else -> kindOf(decoded)
         }
         return ActionError(

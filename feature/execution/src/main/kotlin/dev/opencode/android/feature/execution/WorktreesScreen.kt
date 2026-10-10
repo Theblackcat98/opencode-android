@@ -11,6 +11,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DriveFileMove
 import androidx.compose.material.icons.filled.Refresh
@@ -60,6 +61,7 @@ fun WorktreesScreen(
     onForceRemove: () -> Unit,
     onCancelRemove: () -> Unit,
     onMoveSession: ((String) -> Unit)?,
+    onDismissError: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier.fillMaxSize()) {
@@ -119,6 +121,21 @@ fun WorktreesScreen(
                     text = stringResource(R.string.worktrees_create),
                     modifier = Modifier.padding(start = 8.dp),
                 )
+            }
+            // Every failure the panel's writes produce lands in state.error, so it is shown here, next to the
+            // form the user is correcting, until they dismiss it. The drafts are kept beside it on a refusal.
+            state.error?.let { error ->
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = stringResource(R.string.worktrees_failed, error),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.weight(1f).testTag(WorktreeTags.ERROR),
+                    )
+                    IconButton(onClick = onDismissError) {
+                        Icon(Icons.Filled.Close, stringResource(R.string.action_close))
+                    }
+                }
             }
         }
 
@@ -234,4 +251,5 @@ object WorktreeTags {
     const val ROW: String = "worktrees-row-"
     const val CREATE: String = "worktrees-create"
     const val FORCE: String = "worktrees-force"
+    const val ERROR: String = "worktrees-error"
 }

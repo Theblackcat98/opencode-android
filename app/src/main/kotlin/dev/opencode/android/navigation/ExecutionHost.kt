@@ -207,6 +207,7 @@ fun WorktreesHost(
             onForceRemove = viewModel::forceRemove,
             onCancelRemove = viewModel::cancelRemove,
             onMoveSession = sessionId?.let { id -> { directory -> viewModel.moveSession(id, directory) } },
+            onDismissError = viewModel::dismissError,
             modifier = Modifier.padding(padding),
         )
     }
