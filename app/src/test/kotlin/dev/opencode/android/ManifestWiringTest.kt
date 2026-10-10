@@ -99,6 +99,22 @@ class ManifestWiringTest {
         assertEquals(1, declarations(app, "application").size)
     }
 
+    @Test
+    fun `the app is not backed up, and the rules file the manifest names exists`() {
+        // The session database, the credentials and the cached transcripts must not leave the phone
+        // through a backup or a device transfer. allowBackup="false" is the switch; fullBackupContent is
+        // the Android 11-and-earlier setting, and dataExtractionRules is the one a reference has to
+        // resolve for, so the file it names is asserted to exist.
+        val application = declarations(app, "application").single()
+        assertEquals("false", application.getAttribute("android:allowBackup"))
+        assertEquals("false", application.getAttribute("android:fullBackupContent"))
+        assertEquals("@xml/data_extraction_rules", application.getAttribute("android:dataExtractionRules"))
+        assertTrue(
+            "the rules file the manifest names is missing",
+            java.io.File("src/main/res/xml/data_extraction_rules.xml").exists(),
+        )
+    }
+
     // ------------------------------------------------------------------ xml
 
     private companion object {
