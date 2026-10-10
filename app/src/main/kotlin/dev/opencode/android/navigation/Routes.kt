@@ -73,6 +73,7 @@ import dev.opencode.android.feature.sessions.ui.HomeRoute
 import dev.opencode.android.feature.sessions.ui.ManageDestination
 import dev.opencode.android.feature.sessions.ui.PendingRequestsViewModel
 import dev.opencode.android.feature.sessions.ui.SessionListRoute
+import dev.opencode.android.feature.sessions.ui.SessionTabUi
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -80,6 +81,7 @@ import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.serialization.Serializable
 import javax.inject.Inject
+import dev.opencode.android.feature.sessions.R as SessionsR
 
 /** The server registry, and the app's start destination. */
 @Serializable
@@ -296,6 +298,15 @@ fun OpenCodeApp(
     // server allows, so the server-scoped ones are listed only while there is one.
     var paletteOpen by rememberSaveable { mutableStateOf(false) }
     val activeServerId = serverDataSets.active.collectAsStateWithLifecycle().value?.serverId
+    // The session tabs of this app run (SessionTabs.kt). They are kept across a rotation. Their titles come from the
+    // active server's session store, which the inbox reads too, so a tab never fetches a session of its own.
+    var sessionTabs by rememberSaveable(stateSaver = sessionTabsSaver) { mutableStateOf(SessionTabs()) }
+    // Built once, not per composition: a flow operator run in composition restarts its collection each time.
+    val sessionInfoFlow = remember(serverDataSets) {
+        serverDataSets.active.flatMapLatest { set -> set?.sessions?.info ?: emptyFlow() }
+    }
+    val sessionInfo by sessionInfoFlow.collectAsStateWithLifecycle(initialValue = emptyMap())
+    val untitledSession = stringResource(SessionsR.string.session_title_untitled)
     // The dialog and the leader keys read this one list, so a leader key cannot run a command the palette hides.
     val paletteOffered = paletteCommands(hasActiveServer = activeServerId != null)
     val leader = remember { LeaderKeyMachine() }
@@ -531,11 +542,22 @@ fun OpenCodeApp(
                 // opens the session in, and the one the review below this session hands its comments and
                 // attachments to (see `ReviewRoute`), so nothing in the graph holds a second, unopened one.
                 val composer = hiltViewModel<ComposerViewModel>(entry)
+                // The server this session is on: the route's, or the active one, which is the one the screen reads.
+                val server = route.serverId ?: activeServerId
+                val current = server?.let { OpenSessionTab(it, route.sessionId) }
+                // Showing a session lists it as a tab. A listed one stays where it is, so a rotation does not reorder it.
+                LaunchedEffect(current) {
+                    current?.let { sessionTabs = sessionTabs.opened(it) }
+                }
+                val tabsOnServer = server?.let { sessionTabs.onServer(it) }.orEmpty()
                 SessionHost(
                     sessionId = route.sessionId,
                     composer = composer,
                     onNavigateBack = { navController.popBackStack() },
-                    onSessionDeleted = { navController.popBackStack() },
+                    onSessionDeleted = {
+                        if (current != null) sessionTabs = sessionTabs.forgotten(current)
+                        navController.popBackStack()
+                    },
                     // The composer's client commands: `/sessions` and `/new` navigate, and the
                     // composition root is the only place that knows this graph.
                     onOpenSessionList = {
@@ -606,6 +628,44 @@ fun OpenCodeApp(
                     // A fork is a new session id, so the graph navigates to it rather than the screen
                     // re-rendering the one it is on. The view model publishes the id once.
                     onForked = { sessionId -> navController.navigate(SessionRoute(route.serverId, sessionId)) },
+                    tabs = tabsOnServer.map { tab ->
+                        SessionTabUi(
+                            id = tab.sessionId,
+                            title = sessionInfo[tab.sessionId]?.title?.takeIf { it.isNotBlank() } ?: untitledSession,
+                            selected = tab == current,
+                        )
+                    },
+                    onSelectTab = { sessionId ->
+                        // The session on screen is not navigated to again: that would pop it and build it afresh.
+                        if (server != null && sessionId != route.sessionId) {
+                            navController.navigate(SessionRoute(server, sessionId)) {
+                                popUpTo(SessionRoute(route.serverId, route.sessionId)) { inclusive = true }
+                                launchSingleTop = true
+                            }
+                        }
+                    },
+                    onCloseTab = { sessionId ->
+                        if (server != null) {
+                            val closing = sessionTabs.closed(OpenSessionTab(server, sessionId), current)
+                            sessionTabs = closing.tabs
+                            // Closing a tab that is not on screen only removes it. Closing the one on screen moves on.
+                            when (closing) {
+                                is TabClose.Stay -> Unit
+
+                                is TabClose.Open -> navController.navigate(
+                                    SessionRoute(closing.next.serverId, closing.next.sessionId),
+                                ) {
+                                    popUpTo(SessionRoute(route.serverId, route.sessionId)) { inclusive = true }
+                                    launchSingleTop = true
+                                }
+
+                                is TabClose.Home -> navController.navigate(HomeRoute(closing.serverId)) {
+                                    popUpTo(SessionRoute(route.serverId, route.sessionId)) { inclusive = true }
+                                    launchSingleTop = true
+                                }
+                            }
+                        }
+                    },
                 )
             }
 

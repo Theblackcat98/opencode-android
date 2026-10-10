@@ -87,6 +87,13 @@ fun SessionScreen(
      * supplies it, and `{}` draws nothing on a build that does not offer it.
      */
     subagentSlot: @Composable () -> Unit = {},
+    /**
+     * The open sessions of the active server, drawn under the top bar when there are two or more.
+     * See [SessionTabStrip].
+     */
+    tabs: List<SessionTabUi> = emptyList(),
+    onSelectTab: (String) -> Unit = {},
+    onCloseTab: (String) -> Unit = {},
 ) {
     val listState = rememberLazyListState()
     val atBottom by remember {
@@ -139,6 +146,7 @@ fun SessionScreen(
         },
     ) { padding ->
         Column(modifier = Modifier.padding(padding).fillMaxSize()) {
+            SessionTabStrip(tabs = tabs, onSelect = onSelectTab, onClose = onCloseTab)
             state.retry?.let { retry ->
                 RetryBanner(retry = retry, now = state.now, onOpenLink = onOpenLink)
             }

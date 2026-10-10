@@ -51,6 +51,7 @@ import dev.opencode.android.feature.sessions.ui.SessionLogViewModel
 import dev.opencode.android.feature.sessions.ui.SessionManagementViewModel
 import dev.opencode.android.feature.sessions.ui.SessionMenuRow
 import dev.opencode.android.feature.sessions.ui.SessionScreen
+import dev.opencode.android.feature.sessions.ui.SessionTabUi
 import dev.opencode.android.feature.sessions.ui.SessionViewModel
 import dev.opencode.android.feature.sessions.ui.SyntheticNoteDialog
 import dev.opencode.android.feature.sessions.ui.UserMessageActions
@@ -101,6 +102,14 @@ fun SessionHost(
     onOpenSessionPermissions: (String?, String) -> Unit = { _, _ -> },
     onOpenSessionInstructions: () -> Unit = {},
     onForked: (String) -> Unit = {},
+    /**
+     * The session tabs drawn above the timeline: the open sessions of the active server, the one on screen selected.
+     *
+     * The graph decides what they are and what a tap does (see [SessionTabs]); this screen only shows them.
+     */
+    tabs: List<SessionTabUi> = emptyList(),
+    onSelectTab: (String) -> Unit = {},
+    onCloseTab: (String) -> Unit = {},
     modifier: Modifier = Modifier,
     timeline: SessionViewModel = hiltViewModel(),
     /**
@@ -266,6 +275,9 @@ fun SessionHost(
         onFollowChange = timeline::setFollowing,
         onOpenLink = { uriHandler.openUri(it) },
         modifier = modifier,
+        tabs = tabs,
+        onSelectTab = onSelectTab,
+        onCloseTab = onCloseTab,
         requestSlot = { RequestDock(requests = composerState.requests, actions = requestActions) },
         onOpenChangedFile = { path -> onOpenReview(path) },
         subagentSlot = {

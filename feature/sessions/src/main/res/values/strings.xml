@@ -232,4 +232,12 @@
       throws on the ones the server can actually send.
     -->
     <string name="timeline_tool_exit">exit %1$s</string>
+
+    <!--
+      An open session in the tab strip, read as one line by TalkBack. `%1$s` is the session's title, `%2$d` the tab's
+      place and `%3$d` how many tabs there are. The selected form adds the state, so the strip does not have to.
+    -->
+    <string name="session_tab_label">%1$s, tab %2$d of %3$d</string>
+    <string name="session_tab_label_selected">%1$s, tab %2$d of %3$d, selected</string>
+    <string name="session_tab_close">Close tab %1$s</string>
 </resources>
