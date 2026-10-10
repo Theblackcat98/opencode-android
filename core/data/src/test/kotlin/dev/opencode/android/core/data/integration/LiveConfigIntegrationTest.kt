@@ -428,6 +428,11 @@ class LiveConfigIntegrationTest {
             "the location must be gone right after the eviction, among $after",
             after.none { it.directory == workDirectory },
         )
+        // `documents` does not ask the server again for a value this client already holds (`SyncedResource.sync`
+        // loads only a missing or stale value), so the first call above left it current and a plain second call
+        // never reaches the server. A forced sync is the request the app makes when a reconnect or a resync marks
+        // the value stale, and it is what must bring the evicted location back.
+        surface.entries(workDirectory).sync(force = true)
         val reread = surface.documents(workDirectory)
         assertTrue("a re-read must answer again", reread.failure == null)
         assertTrue(
