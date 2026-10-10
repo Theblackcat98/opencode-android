@@ -1,5 +1,6 @@
 package dev.opencode.android.core.data.config
 
+import kotlinx.serialization.json.JsonObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -109,6 +110,24 @@ class JsonSchemaValidatorTest {
         assertEquals("/watcher/ignroe", problems.single().path)
         assertEquals("additionalProperties", problems.single().keyword)
         assertEquals("the key \"ignroe\" is not one this schema allows", problems.single().expected)
+    }
+
+    @Test
+    fun `a false schema allows no value, and its diagnostic says so`() {
+        // `false` is a schema that every value fails. Its message used to read "a value this schema allows",
+        // which says the reverse, so the exact text is asserted to keep that wording from coming back. The key
+        // is only checked when it is present, so an absent key is still valid.
+        val tree = json("""{"properties": {"retired": false}}""") as JsonObject
+        val validator = JsonSchemaValidator(tree)
+
+        val problems = validator.validate(json("""{"retired": "anything"}"""))
+
+        assertEquals(1, problems.size)
+        assertEquals("/retired", problems.single().path)
+        assertEquals("schema", problems.single().keyword)
+        assertEquals("no value is allowed here", problems.single().expected)
+        assertEquals("a string of 8 characters", problems.single().found)
+        assertTrue(validator.isValid(json("""{}""")))
     }
 
     @Test

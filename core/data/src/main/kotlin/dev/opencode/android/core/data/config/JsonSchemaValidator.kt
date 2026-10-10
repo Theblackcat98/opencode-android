@@ -102,7 +102,8 @@ class JsonSchemaValidator(private val schema: JsonObject) {
             // accepts everything; the vendored file uses the object form throughout, so both are
             // honoured rather than assumed away.
             is JsonPrimitive -> if (rule.booleanOrNull == false) {
-                found += report(path, "schema", "a value this schema allows", describe(node))
+                // `false` allows nothing, so the expected text says that no value is allowed at this point.
+                found += report(path, "schema", "no value is allowed here", describe(node))
             }
 
             else -> Unit
