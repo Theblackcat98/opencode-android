@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Static launcher shortcuts for the launcher activity (matrix J10).
+
+  Each one is an explicit intent to MainActivity with an action of this app's own. MainActivity reads
+  the action in onCreate and onNewIntent and routes it (see LauncherShortcuts in MainActivity.kt).
+
+  **No targetPackage.** Manifest placeholders such as `${applicationId}` are substituted in
+  AndroidManifest.xml, not here, so the placeholder would stay literal text. The debug and fdroid flavors
+  change the application id, so a hard-coded package would fail on them. With no package named, the
+  component is left to the publishing app. That is the one part not yet run on a device.
+-->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <shortcut
+        android:shortcutId="servers"
+        android:enabled="true"
+        android:shortcutShortLabel="@string/shortcut_servers_short"
+        android:shortcutLongLabel="@string/shortcut_servers_long">
+        <intent
+            android:action="dev.opencode.android.action.SHORTCUT_SERVERS"
+            android:targetClass="dev.opencode.android.MainActivity" />
+    </shortcut>
+
+    <shortcut
+        android:shortcutId="new_session"
+        android:enabled="true"
+        android:shortcutShortLabel="@string/shortcut_new_session_short"
+        android:shortcutLongLabel="@string/shortcut_new_session_long">
+        <intent
+            android:action="dev.opencode.android.action.SHORTCUT_NEW_SESSION"
+            android:targetClass="dev.opencode.android.MainActivity" />
+    </shortcut>
+
+</shortcuts>

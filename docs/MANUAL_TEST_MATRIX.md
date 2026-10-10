@@ -160,7 +160,7 @@ Run these with a TUI connected to the same server as a second client.
 | J7 | Session tabs open, switch and close | ✗ fail (not built: no session tabs) |
 | J8 | The widget shows running sessions and pending approvals | ✗ fail (not built: no home-screen widget) |
 | J9 | The Quick Settings tile starts and stops the connection | ✗ fail (not built: no Quick Settings tile) |
-| J10 | App shortcuts from the launcher land on the right screen | ✗ fail (not built as specified: the only launcher shortcut is a dynamic "N unread" one from `LauncherBadges`; no static or dynamic New session / Servers / Inbox shortcuts exist) |
+| J10 | App shortcuts from the launcher land on the right screen | ✓ pass (in part). `dumpsys shortcut` lists `servers` and `new_session` as manifest shortcuts. Firing their actions with `am start -a …SHORTCUT_SERVERS` and `…SHORTCUT_NEW_SESSION` landed on the Servers list and on the New session sheet. **Not tested:** a real long-press on the launcher icon, a cold start, or a shortcut tapped while the app is open (`MainActivity` has no `launchMode`, so it may open a second instance). There is no Inbox shortcut, which the row names. The "N unread" dynamic shortcut still exists |
 
 ## K. Accessibility
 

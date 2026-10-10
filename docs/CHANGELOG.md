@@ -27,6 +27,7 @@ left to do.
 - The usage dashboard, reached from Manage ("Usage") on a server's home screen. It shows the totals,
   the activity heatmap, the streak and the per-model rows, with the date range and per-tool detail
   switchable. It has no project control yet, though the view model has the setter for one.
+- Static launcher shortcuts for Servers and New session, opened by an intent action in `MainActivity`; checked by firing the actions, not by tapping the launcher.
 - The session event history, in the session menu, replays the log and says when it caught up at `log.synced`. Entry rows were not seen on a device: the dev server replayed none. `SessionLogClient` now reads on the IO dispatcher, and recognises the 2.0.18 server's `{"type":"log.synced"}` frame.
 - The durable session log (`session.log`) as a cold, cancellable `Flow`, with `SseParser` extended to
   keep a frame's `id` and `event` so the `log.synced` end-of-replay is not lost.
@@ -65,7 +66,7 @@ regression.
   [manual test matrix](./MANUAL_TEST_MATRIX.md) and a [release runbook](./RELEASE.md).
 
 **Not built:** the home-screen
-widget, the Quick Settings tile, app shortcuts, the command palette and leader keys, session tabs, the
+widget, the Quick Settings tile, the Inbox shortcut, the command palette and leader keys, session tabs, the
 adaptive list-detail layouts, the LAN prober and the OpenCode theme import. The phase plan lists all
 of them; this changelog does not claim them.
 

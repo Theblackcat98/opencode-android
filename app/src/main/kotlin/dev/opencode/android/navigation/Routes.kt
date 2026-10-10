@@ -21,6 +21,8 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import dev.opencode.android.OpenLocationTarget
 import dev.opencode.android.OpenSessionTarget
+import dev.opencode.android.OpenShortcutTarget
+import dev.opencode.android.ShortcutDestination
 import dev.opencode.android.core.data.server.ServerDataRegistry
 import dev.opencode.android.core.data.server.ServerDataSet
 import dev.opencode.android.core.data.sync.SyncStatus
@@ -221,6 +223,7 @@ fun OpenCodeApp(
     sharedPayload: String? = null,
     openSession: OpenSessionTarget? = null,
     openLocation: OpenLocationTarget? = null,
+    openShortcut: OpenShortcutTarget? = null,
     modifier: Modifier = Modifier,
     navController: NavHostController = rememberNavController(),
     /**
@@ -252,6 +255,21 @@ fun OpenCodeApp(
         val target = openLocation ?: return@LaunchedEffect
         target.serverId?.let { navController.navigate(HomeRoute(it)) { launchSingleTop = true } }
         navController.navigate(ShellsRoute(target.serverId, target.directory)) { launchSingleTop = true }
+    }
+
+    // A launcher shortcut lands on a root screen, so everything above the servers list is popped first and
+    // a shortcut never stacks a copy of a screen the user had open. "New session" is the home's own sheet,
+    // which follows the active server, so it needs no server id: the home with the sheet open on arrival.
+    LaunchedEffect(openShortcut) {
+        val target = openShortcut ?: return@LaunchedEffect
+        val route: Any = when (target.destination) {
+            ShortcutDestination.SERVERS -> ServersRoute
+            ShortcutDestination.NEW_SESSION -> HomeRoute(openNewSession = true)
+        }
+        navController.navigate(route) {
+            popUpTo(ServersRoute) { inclusive = false }
+            launchSingleTop = true
+        }
     }
 
     NavHost(

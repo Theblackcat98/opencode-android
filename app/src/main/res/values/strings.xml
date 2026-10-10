@@ -1,4 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name" translatable="false">OpenCode</string>
+
+    <!-- Static launcher shortcuts, declared in res/xml/shortcuts.xml. -->
+    <string name="shortcut_servers_short">Servers</string>
+    <string name="shortcut_servers_long">Servers</string>
+    <string name="shortcut_new_session_short">New session</string>
+    <string name="shortcut_new_session_long">New session</string>
 </resources>
