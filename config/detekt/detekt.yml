@@ -8,8 +8,8 @@
 # and the rule stops mattering for exactly the code that needed it most. Findings are fixed or the
 # rule is turned off here, with the reason.
 
-build:
-  maxIssues: 0
+# detekt 2.x fails on any finding unless told otherwise, so there is no `build:` block for the
+# zero-findings claim. The 1.x `build.maxIssues` key is rejected by the 2.x schema.
 
 complexity:
   LongParameterList:
@@ -18,12 +18,12 @@ complexity:
     active: false
   LongMethod:
     active: true
-    threshold: 80
+    allowedLines: 80
   TooManyFunctions:
     active: false
   NestedBlockDepth:
     active: true
-    threshold: 6
+    allowedDepth: 6
 
 style:
   MagicNumber:
@@ -37,7 +37,9 @@ style:
   ReturnCount:
     active: true
     max: 4
-  UnusedPrivateMember:
+  UnusedPrivateProperty:
+    active: true
+  UnusedPrivateFunction:
     active: true
   ForbiddenComment:
     active: true
