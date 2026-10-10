@@ -13,6 +13,9 @@
     <string name="insights_range_90_days">90 days</string>
     <string name="insights_range_365_days">Year</string>
 
+    <!-- The first project chip: no project filter, so the figures cover every project the server holds. -->
+    <string name="insights_projects_all">All projects</string>
+
     <string name="insights_totals">Totals</string>
     <string name="insights_sessions">Sessions</string>
     <string name="insights_subagents">Subagents</string>

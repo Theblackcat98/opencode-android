@@ -4,8 +4,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -31,6 +33,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import dev.opencode.android.core.model.Project
 import dev.opencode.android.core.model.SessionStats
 import dev.opencode.android.core.model.SessionStatsTools
 import dev.opencode.android.core.model.TokenUsage
@@ -55,6 +58,7 @@ import java.util.Locale
 fun InsightsScreen(
     state: InsightsUiState,
     onRangeChange: (StatsRange) -> Unit,
+    onProjectChange: (String?) -> Unit,
     onToggleToolDetail: (Boolean) -> Unit,
     onDismissError: () -> Unit,
     modifier: Modifier = Modifier,
@@ -77,6 +81,10 @@ fun InsightsScreen(
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         item { RangePicker(state.range, onRangeChange) }
+        // No row without projects: a single "All projects" chip would filter nothing.
+        if (state.projects.isNotEmpty()) {
+            item { ProjectPicker(state.projects, state.project, onProjectChange) }
+        }
 
         if (state.loading && stats == null) {
             item {
@@ -122,6 +130,39 @@ private fun RangePicker(current: StatsRange, onChange: (StatsRange) -> Unit) {
         }
     }
 }
+
+/**
+ * The project filter: "All projects", then one chip per project the server knows.
+ *
+ * **A wrapping row, not a scrolling one.** A chip scrolled off the edge is one a screen reader user may never
+ * reach, so every project is on the screen at once. Each chip is a `FilterChip`, so it carries the same selected
+ * state as the range chips above it, and the chip's value is the project's id, which is what the request sends.
+ */
+@Composable
+private fun ProjectPicker(projects: List<Project>, selected: String?, onChange: (String?) -> Unit) {
+    // A FilterChip is 32 dp tall and does not reach the 48 dp target on its own, so the minimum is set here.
+    val target = Modifier.defaultMinSize(minHeight = 48.dp)
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        FilterChip(
+            selected = selected == null,
+            onClick = { onChange(null) },
+            label = { Text(stringResource(R.string.insights_projects_all)) },
+            modifier = target,
+        )
+        for (project in projects) {
+            FilterChip(
+                selected = project.id == selected,
+                onClick = { onChange(project.id) },
+                label = { Text(project.label()) },
+                modifier = target,
+            )
+        }
+    }
+}
+
+/** What a chip calls a project: the name the user gave it, or the last segment of its path. */
+private fun Project.label(): String = name?.takeIf { it.isNotBlank() }
+    ?: canonical.trimEnd('/').substringAfterLast('/').ifEmpty { canonical }
 
 @Composable
 private fun TotalsCard(stats: SessionStats) {

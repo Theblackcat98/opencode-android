@@ -1,14 +1,20 @@
 package dev.opencode.android.feature.insights
 
+import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotSelected
+import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.unit.dp
 import dev.opencode.android.core.data.action.ActionError
 import dev.opencode.android.core.data.action.ActionErrorKind
 import dev.opencode.android.core.data.capability.RouteAvailability
 import dev.opencode.android.core.model.ModelRef
+import dev.opencode.android.core.model.Project
 import dev.opencode.android.core.model.SessionStats
 import dev.opencode.android.core.model.SessionStatsTools
 import dev.opencode.android.core.model.TokenUsage
@@ -73,11 +79,18 @@ class InsightsScreenContentTest {
         ),
     )
 
-    private fun show(state: InsightsUiState) {
+    private val projects = listOf(
+        Project(id = "prj_1", canonical = "/work/app", name = "app", time = Project.Time(1, 1, 1), sandboxes = emptyList()),
+        // No name, so the chip calls it by the last segment of its path.
+        Project(id = "prj_2", canonical = "/work/site", time = Project.Time(1, 1, 1), sandboxes = emptyList()),
+    )
+
+    private fun show(state: InsightsUiState, onProject: (String?) -> Unit = {}) {
         compose.setContent {
             InsightsScreen(
                 state = state,
                 onRangeChange = {},
+                onProjectChange = onProject,
                 onToggleToolDetail = {},
                 onDismissError = {},
             )
@@ -211,6 +224,43 @@ class InsightsScreenContentTest {
         compose.onNodeWithText("This server does not have the usage statistics route.").assertIsDisplayed()
         compose.onAllNodesWithText("Totals").assertCountEquals(0)
         compose.onAllNodesWithText("Activity").assertCountEquals(0)
+    }
+
+    @Test
+    fun `the project row selects the project the figures are filtered to`() {
+        show(InsightsUiState(stats = stats(), projects = projects, project = "prj_2"))
+
+        compose.onNodeWithText("All projects").assertIsNotSelected()
+        compose.onNodeWithText("app").assertIsNotSelected()
+        compose.onNodeWithText("site").assertIsSelected()
+    }
+
+    @Test
+    fun `choosing a project reports its id, and All projects reports no project`() {
+        val chosen = mutableListOf<String?>()
+        show(InsightsUiState(stats = stats(), projects = projects), onProject = { chosen += it })
+
+        compose.onNodeWithText("app").performClick()
+        compose.onNodeWithText("All projects").performClick()
+
+        assertEquals(listOf<String?>("prj_1", null), chosen)
+    }
+
+    /** A chip is the only control on the row, so it has to be as easy to hit as a button. */
+    @Test
+    fun `each project chip is at least 48 dp tall`() {
+        show(InsightsUiState(stats = stats(), projects = projects))
+
+        compose.onNodeWithText("All projects").assertHeightIsAtLeast(48.dp)
+        compose.onNodeWithText("app").assertHeightIsAtLeast(48.dp)
+        compose.onNodeWithText("site").assertHeightIsAtLeast(48.dp)
+    }
+
+    @Test
+    fun `no project row when the server knows no projects`() {
+        show(InsightsUiState(stats = stats()))
+
+        compose.onAllNodesWithText("All projects").assertCountEquals(0)
     }
 
     @Test

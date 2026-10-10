@@ -6,13 +6,19 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.opencode.android.core.data.action.ActionError
 import dev.opencode.android.core.data.capability.RouteAvailability
 import dev.opencode.android.core.data.server.ServerDataRegistry
+import dev.opencode.android.core.data.server.ServerDataSet
+import dev.opencode.android.core.model.Project
 import dev.opencode.android.core.model.SessionStats
 import dev.opencode.android.core.model.SessionStatsTools
 import dev.opencode.android.core.model.ToolDetailMode
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import java.time.ZoneId
 import javax.inject.Inject
@@ -46,6 +52,9 @@ data class StatsRange(
 data class InsightsUiState(
     val loading: Boolean = false,
     val range: StatsRange = StatsRange.Default,
+    /** The projects the active server knows, for the project row. Empty until the server's list has loaded. */
+    val projects: List<Project> = emptyList(),
+    /** The id of the project the figures are filtered to, or `null` for every project. */
     val project: String? = null,
     val timezone: String = ZoneId.systemDefault().id,
     val tools: ToolDetailMode = ToolDetailMode.Summary,
@@ -78,14 +87,29 @@ data class InsightsUiState(
  * when the user opens it.
  */
 @HiltViewModel
-class InsightsViewModel @Inject constructor(
-    private val dataSets: ServerDataRegistry,
+class InsightsViewModel(
+    private val active: StateFlow<ServerDataSet?>,
 ) : ViewModel() {
+
+    /** Hilt's constructor: the read model of the server being followed. */
+    @Inject
+    constructor(dataSets: ServerDataRegistry) : this(dataSets.active)
 
     private val _state = MutableStateFlow(InsightsUiState())
     val state: StateFlow<InsightsUiState> = _state.asStateFlow()
 
     private var inFlight: Job? = null
+
+    init {
+        // The list is the active server's own `project.list`, read through its set and not fetched a second
+        // time here. When the server changes, the list follows the new set.
+        val projects: Flow<List<Project>> = active.flatMapLatest { set ->
+            set?.projects?.state?.map { it.value.orEmpty() } ?: flowOf(emptyList())
+        }
+        viewModelScope.launch {
+            projects.collect { list -> _state.value = _state.value.copy(projects = list) }
+        }
+    }
 
     fun open() = refresh()
 
@@ -97,7 +121,7 @@ class InsightsViewModel @Inject constructor(
      * a cancel is the only thing that stops a slow query from winning a race it lost.
      */
     fun refresh() {
-        val set = dataSets.active.value ?: return
+        val set = active.value ?: return
         inFlight?.cancel()
         inFlight = viewModelScope.launch {
             val current = _state.value
@@ -127,6 +151,12 @@ class InsightsViewModel @Inject constructor(
         refresh()
     }
 
+    /**
+     * Filters the figures to one project by its id, or to every project with `null`, and re-queries.
+     *
+     * The id is what the request carries, so the chip the user picked and the query the server answers
+     * cannot disagree. Choosing the project already selected sends nothing.
+     */
     fun setProject(project: String?) {
         if (_state.value.project == project) return
         _state.value = _state.value.copy(project = project)

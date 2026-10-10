@@ -26,7 +26,11 @@ left to do.
   switched-off column into a zero.
 - The usage dashboard, reached from Manage ("Usage") on a server's home screen. It shows the totals,
   the activity heatmap, the streak and the per-model rows, with the date range and per-tool detail
-  switchable. It has no project control yet, though the view model has the setter for one.
+  switchable.
+- A project row on the usage dashboard, above its cards: "All projects", then each project the active server knows.
+  Choosing one re-queries the statistics with that project's id. Built and unit tested: the view model reads the list
+  from the server's data set and re-queries on each choice, and the chips are 48 dp targets. Not seen changing numbers
+  on a device (matrix H2).
 - Static launcher shortcuts for Servers and New session, opened by an intent action in `MainActivity`; checked by firing the actions, not by tapping the launcher.
 - A Quick Settings tile that starts and stops the connection service (matrix J9). It is lit while the service runs, and a tap starts or stops it through the same launcher as the app. The tile's state and the policy behind its taps are unit tested; the tile was not seen in the shade or tapped on a device.
 - A command palette, opened by Ctrl+P on a hardware keyboard or by the Search icon, labelled "Command palette", in the

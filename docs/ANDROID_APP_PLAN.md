@@ -1945,8 +1945,8 @@ falling back to `Unknown`, which would have taken the event connection down over
 **Scope, stated plainly.** The *wire and state* half of this phase is built and tested: the nine
 operations are declared, called, capability-gated and covered by tests over real HTTP, and the TUI
 control events are handled and wired to the surfaces that read them. The *screen* half is mostly not
-built. The usage dashboard is the exception: it is reachable from Manage ("Usage") and has no project
-control yet. Wait until idle is reachable from the session menu, and Quick ask and the RPC console are
+built. The usage dashboard is the exception: it is reachable from Manage ("Usage") and has a project row above its
+cards, built and unit tested but not seen changing numbers on a device (matrix H2). Wait until idle is reachable from the session menu, and Quick ask and the RPC console are
 reachable from Manage. The session event history is reachable from the session menu. The Quick Settings tile is built and unit tested but not exercised on a device (matrix J9). There is no home-screen widget,
 no leader keys, no session tabs, no adaptive
 list-detail layouts, no LAN prober and no OpenCode theme import. Everything in the feature list above

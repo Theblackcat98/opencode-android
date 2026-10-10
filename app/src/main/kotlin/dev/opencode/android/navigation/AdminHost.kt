@@ -371,6 +371,7 @@ fun UsageHost(
         InsightsScreen(
             state = state,
             onRangeChange = viewModel::setRange,
+            onProjectChange = viewModel::setProject,
             onToggleToolDetail = viewModel::setToolDetail,
             onDismissError = viewModel::dismissError,
             modifier = Modifier.padding(padding),
