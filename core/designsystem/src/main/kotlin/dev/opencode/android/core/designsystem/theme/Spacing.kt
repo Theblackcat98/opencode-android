@@ -6,7 +6,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 /**
- * Consistent spatial rhythm scale for OpenCode.
+ * Consistent spatial rhythm scale for Developer Terminal Canvas.
+ * Built around a 4px (0.25rem) base rhythm.
  */
 @Immutable
 data class OpenCodeSpacing(
@@ -17,6 +18,11 @@ data class OpenCodeSpacing(
     val lg: Dp = 16.dp,
     val xl: Dp = 24.dp,
     val xxl: Dp = 32.dp,
+    val gutter: Dp = 16.dp,
+    val gutterTablet: Dp = 24.dp,
+    val marginMobile: Dp = 16.dp,
+    val marginTablet: Dp = 24.dp,
+    val marginDesktop: Dp = 32.dp,
 )
 
 val LocalOpenCodeSpacing = staticCompositionLocalOf { OpenCodeSpacing() }

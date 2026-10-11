@@ -252,11 +252,13 @@ export function diffColours({ mapping, darkSurfaceBelow }, roles, vals) {
 export function parseMarkdownColours(source) {
   const block = source.match(/fun CodeBlock\([\s\S]*?Surface\([\s\S]*?color = MaterialTheme\.colorScheme\.(\w+),/)
   const label = source.match(/codeTypography\.small\.copy\(color = MaterialTheme\.colorScheme\.(\w+)\)/)
-  const link = source.match(/is MarkdownInline\.Link[\s\S]*?Color\(\s*(0x[0-9a-fA-F]{6,8})\s*\)/)
+  const linkLiteral = source.match(/is MarkdownInline\.Link[\s\S]*?Color\(\s*(0x[0-9a-fA-F]{6,8})\s*\)/)
+  const linkRole = source.match(/val linkColor = MaterialTheme\.colorScheme\.(\w+)/)
   return {
     codeBlockRole: block?.[1] ?? null,
     labelRole: label?.[1] ?? null,
-    link: link ? parseArgb(link[1]) : null,
+    linkRole: linkRole?.[1] ?? null,
+    link: linkLiteral ? parseArgb(linkLiteral[1]) : null,
   }
 }
 
@@ -316,7 +318,8 @@ function measureScheme(scheme, roles, ctx, out) {
     }
   }
 
-  measure(scheme, 'markdown link on surface', { name: 'link', colour: ctx.markdown.link }, { name: 'surface', colour: surface }, out)
+  const linkColour = ctx.markdown.link ?? (ctx.markdown.linkRole ? roles.get(ctx.markdown.linkRole) : null)
+  measure(scheme, 'markdown link on surface', { name: 'link', colour: linkColour }, { name: 'surface', colour: surface }, out)
 
   // The file viewer marks a selected line with secondaryContainer. Its line number is onSurfaceVariant,
   // which is set in FileBrowserScreen. Its text sets no colour, so the content colour of the host

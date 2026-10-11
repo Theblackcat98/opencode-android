@@ -73,15 +73,12 @@ data class DiffColors(
          */
         @Composable
         fun of(scheme: androidx.compose.material3.ColorScheme = MaterialTheme.colorScheme): DiffColors = DiffColors(
-            // Green against red is what every diff a reader has seen looks like, and it is what the CLI
-            // draws. The theme's tertiary is violet, which sat next to the error container as two pinks and
-            // made the two sides of a replacement hard to tell apart.
             added = if (scheme.surface.luminance() < DARK_SURFACE) ADDED_DARK else ADDED_LIGHT,
             removed = scheme.errorContainer,
             context = Color.Transparent,
             addedStrong = if (scheme.surface.luminance() < DARK_SURFACE) ON_ADDED_DARK else ON_ADDED_LIGHT,
             removedStrong = scheme.onErrorContainer,
-            hunkHeader = scheme.surfaceVariant,
+            hunkHeader = scheme.surfaceContainerHighest,
             keyword = scheme.primary,
             string = scheme.tertiary,
             number = scheme.secondary,
@@ -90,7 +87,7 @@ data class DiffColors(
             punctuation = scheme.onSurfaceVariant,
             marker = scheme.onSurfaceVariant,
             plain = scheme.onSurface,
-            gutter = scheme.onSurfaceVariant.copy(alpha = 0.6f),
+            gutter = scheme.onSurfaceVariant.copy(alpha = 0.7f),
             selection = scheme.primary.copy(alpha = 0.16f),
         )
     }

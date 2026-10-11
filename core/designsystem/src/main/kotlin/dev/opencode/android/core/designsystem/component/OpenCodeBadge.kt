@@ -14,16 +14,17 @@ import androidx.compose.ui.text.TextStyle
 import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
 
 /**
- * Reusable badge indicator for counts, status, and tags.
+ * Reusable micro badge indicator for status, counts, tags, and commit hashes:
+ * 6dp rounded corners, 8dp horizontal / 2dp vertical padding, and monospace text.
  */
 @Composable
 fun OpenCodeBadge(
     text: String,
     modifier: Modifier = Modifier,
-    containerColor: Color = MaterialTheme.colorScheme.primaryContainer,
-    contentColor: Color = MaterialTheme.colorScheme.onPrimaryContainer,
+    containerColor: Color = MaterialTheme.colorScheme.surfaceContainerHighest,
+    contentColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
     shape: Shape = OpenCodeThemeExtras.shapes.badge,
-    style: TextStyle = MaterialTheme.typography.labelSmall,
+    style: TextStyle = OpenCodeThemeExtras.code.small,
 ) {
     Box(
         modifier = modifier

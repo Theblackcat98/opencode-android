@@ -1,5 +1,6 @@
 package dev.opencode.android.feature.composer.ui
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
@@ -28,6 +29,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -52,6 +54,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.opencode.android.core.data.composer.Completion
 import dev.opencode.android.core.designsystem.text.TextSync
+import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
 import dev.opencode.android.core.model.Delivery
 import dev.opencode.android.feature.composer.R
 
@@ -141,7 +144,14 @@ fun ComposerBar(
             field = TextFieldValue(adopted, TextRange(adopted.length))
         }
     }
-    Surface(modifier = modifier.fillMaxWidth(), tonalElevation = 3.dp) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        shape = OpenCodeThemeExtras.shapes.sheet,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        shadowElevation = 0.dp,
+        tonalElevation = 0.dp,
+    ) {
         Column(Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
             // A server with no usable model cannot start a turn, and a composer that silently does
             // nothing is the worst way to learn that. The plan's empty state says how to fix it;
@@ -170,6 +180,8 @@ fun ComposerBar(
                     )
                 },
                 modifier = Modifier.fillMaxWidth(),
+                textStyle = if (state.shellMode) OpenCodeThemeExtras.code.body else LocalTextStyle.current,
+                shape = OpenCodeThemeExtras.shapes.button,
                 maxLines = 6,
                 enabled = !state.sending,
             )
