@@ -125,6 +125,18 @@
       border-color: #38bdf8 !important;
       box-shadow: 0 0 8px rgba(56, 189, 248, 0.5);
     }
+    .btn-lightbox {
+      transition: all 0.15s ease-in-out;
+    }
+    .btn-lightbox:hover {
+      transform: translateX(4px);
+      background: rgba(30, 58, 138, 0.4);
+      border-color: #38bdf8;
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.2);
+    }
+    #lightbox-img {
+      transition: opacity 0.15s ease-in-out;
+    }
     .badge {
       display: inline-flex;
       align-items: center;
@@ -305,14 +317,20 @@
   <!-- Lightbox Modal for Screenshots -->
   <div id="lightbox" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden items-center justify-center p-6" onclick="closeLightbox(event)">
     <div class="bg-gray-900 border border-gray-700 max-w-4xl w-full max-h-[90vh] rounded-2xl overflow-hidden shadow-2xl flex flex-col md:flex-row" onclick="event.stopPropagation()">
-      <div class="md:w-1/2 bg-black flex items-center justify-center p-4 max-h-[70vh] md:max-h-none overflow-auto">
+      <div id="lightbox-img-container" class="md:w-1/2 bg-black flex items-center justify-center p-4 max-h-[70vh] md:max-h-none overflow-auto">
         <img id="lightbox-img" src="" alt="Screenshot" class="max-h-full max-w-full rounded-lg object-contain shadow-md" />
       </div>
-      <div class="md:w-1/2 p-6 flex flex-col justify-between overflow-y-auto">
+      <div id="lightbox-content" class="md:w-1/2 p-6 flex flex-col justify-between overflow-y-auto">
         <div>
           <div class="flex items-center justify-between mb-3">
-            <span id="lightbox-badge" class="badge bg-blue-900/60 text-blue-300 border border-blue-700/50">Module</span>
-            <button onclick="closeLightbox()" class="text-gray-400 hover:text-white p-1 rounded-lg hover:bg-gray-800">
+            <div class="flex items-center gap-2">
+              <button id="lightbox-btn-back" onclick="navigateLightboxBack()" class="hidden items-center gap-1.5 text-xs text-blue-300 hover:text-white px-2.5 py-1 rounded-full bg-blue-950/60 hover:bg-blue-900/80 border border-blue-700/50 transition cursor-pointer" title="Go back to previous screen">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                <span class="font-medium">Back</span>
+              </button>
+              <span id="lightbox-badge" class="badge bg-blue-900/60 text-blue-300 border border-blue-700/50">Module</span>
+            </div>
+            <button onclick="closeLightbox()" class="text-gray-400 hover:text-white p-1 rounded-lg hover:bg-gray-800" title="Close (Esc)">
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
             </button>
           </div>
@@ -320,13 +338,21 @@
           <p id="lightbox-route" class="font-mono text-xs text-blue-400 bg-blue-950/40 p-1.5 rounded border border-blue-900/40 mb-3">Route</p>
           <p id="lightbox-desc" class="text-sm text-gray-300 leading-relaxed mb-4">Description</p>
           <div class="mb-4">
-            <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Outbound Actions & Target Screens</h3>
-            <div id="lightbox-buttons" class="space-y-1.5 max-h-48 overflow-y-auto pr-1"></div>
+            <div class="flex items-center justify-between mb-2">
+              <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Outbound Actions & Target Screens</h3>
+              <span class="text-[10px] text-blue-400 font-medium flex items-center gap-1">
+                <span>Click action to navigate</span>
+                <span>→</span>
+              </span>
+            </div>
+            <div id="lightbox-buttons" class="space-y-1.5 max-h-52 overflow-y-auto pr-1"></div>
           </div>
         </div>
-        <div class="pt-4 border-t border-gray-800 flex justify-end">
-          <button onclick="zoomToNode(currentLightboxNodeId); closeLightbox();" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-medium transition shadow-md">
-            Center on Canvas
+        <div class="pt-4 border-t border-gray-800 flex items-center justify-between">
+          <span class="text-[11px] text-gray-500">Tip: Press Esc to close</span>
+          <button onclick="zoomToNode(currentLightboxNodeId); closeLightbox();" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-medium transition shadow-md flex items-center gap-1.5 cursor-pointer">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/></svg>
+            <span>Center on Canvas</span>
           </button>
         </div>
       </div>
@@ -424,6 +450,15 @@
       panY = rect.height / 2 - (node.pos.y + 260) * scale;
       updateTransform();
       highlightCard(nodeId);
+    }
+
+    function highlightCard(nodeId) {
+      document.querySelectorAll('.screen-card').forEach(c => c.classList.remove('highlighted'));
+      const card = document.getElementById(`card-${nodeId}`);
+      if (card) {
+        card.classList.add('highlighted');
+        setTimeout(() => card.classList.remove('highlighted'), 2500);
+      }
     }
 
     // Render Nodes onto Canvas
@@ -818,31 +853,99 @@
     }
 
     // Lightbox Modal
-    function openLightbox(nodeId) {
-      currentLightboxNodeId = nodeId;
+    let lightboxHistory = [];
+
+    function openLightbox(nodeId, pushHistory = true) {
       const node = NODES.find(n => n.id === nodeId);
       if (!node) return;
 
-      document.getElementById('lightbox-img').src = node.thumbData;
+      if (pushHistory && currentLightboxNodeId && currentLightboxNodeId !== nodeId) {
+        lightboxHistory.push(currentLightboxNodeId);
+      }
+      currentLightboxNodeId = nodeId;
+
+      const backBtn = document.getElementById('lightbox-btn-back');
+      if (backBtn) {
+        if (lightboxHistory.length > 0) {
+          backBtn.classList.remove('hidden');
+          backBtn.classList.add('flex');
+          const prevId = lightboxHistory[lightboxHistory.length - 1];
+          const prevNode = NODES.find(n => n.id === prevId);
+          backBtn.title = prevNode ? `Back to ${prevNode.title}` : 'Back';
+        } else {
+          backBtn.classList.add('hidden');
+          backBtn.classList.remove('flex');
+        }
+      }
+
+      const img = document.getElementById('lightbox-img');
+      img.style.opacity = '0.3';
+      img.src = node.thumbData;
+      img.alt = node.title;
+      setTimeout(() => { img.style.opacity = '1'; }, 50);
+
       document.getElementById('lightbox-title').textContent = node.title;
       document.getElementById('lightbox-route').textContent = node.route;
       document.getElementById('lightbox-desc').textContent = node.desc;
-      document.getElementById('lightbox-badge').textContent = node.module;
+      
+      const badge = document.getElementById('lightbox-badge');
+      badge.textContent = `${node.module} • ${node.categoryName || node.category}`;
+      const headerColorClass = 
+        node.category === 'servers' ? 'text-blue-400 border-blue-500/30 bg-blue-950/40' :
+        node.category === 'sessions' ? 'text-emerald-400 border-emerald-500/30 bg-emerald-950/40' :
+        node.category === 'dev_tools' ? 'text-amber-400 border-amber-500/30 bg-amber-950/40' :
+        node.category === 'manage' ? 'text-purple-400 border-purple-500/30 bg-purple-950/40' :
+        'text-rose-400 border-rose-500/30 bg-rose-950/40';
+      badge.className = `badge ${headerColorClass}`;
 
       const buttonsList = document.getElementById('lightbox-buttons');
-      buttonsList.innerHTML = node.buttons.map(btn => `
-        <div class="flex items-center justify-between p-2 rounded-lg bg-gray-800/80 border border-gray-700/60 text-xs">
-          <div class="flex items-center gap-2">
-            <span class="w-2 h-2 rounded-full ${btn.type === 'back' ? 'bg-gray-400' : 'bg-blue-400'}"></span>
-            <span class="text-gray-200 font-medium">${btn.label}</span>
-          </div>
-          <span class="font-mono text-blue-400 text-[11px]">→ ${btn.target}</span>
-        </div>
-      `).join('');
+      if (!node.buttons || node.buttons.length === 0) {
+        buttonsList.innerHTML = `<div class="p-3 text-center text-xs text-gray-500 bg-gray-800/40 rounded-lg">No outbound actions</div>`;
+      } else {
+        buttonsList.innerHTML = node.buttons.map(btn => {
+          const targetNode = NODES.find(n => n.id === btn.target);
+          const targetTitle = targetNode ? targetNode.title : btn.target;
+          const isBack = btn.type === 'back';
+          const dotColor = isBack ? 'bg-amber-400' : 'bg-blue-400';
+          const targetColor = isBack ? 'text-amber-400 group-hover:text-amber-300' : 'text-blue-400 group-hover:text-blue-300';
+          return `
+            <div 
+              class="btn-lightbox flex items-center justify-between p-2.5 rounded-lg bg-gray-800/80 hover:bg-gray-700/90 border border-gray-700/60 hover:border-blue-500/70 text-xs cursor-pointer select-none group shadow-sm"
+              onclick="openLightbox('${btn.target}')"
+              title="Switch enlarged view to ${targetTitle}"
+            >
+              <div class="flex items-center gap-2.5 truncate pr-2">
+                <span class="w-2 h-2 rounded-full ${dotColor} flex-shrink-0 group-hover:scale-125 transition-transform"></span>
+                <div class="truncate">
+                  <span class="text-gray-200 font-medium group-hover:text-white transition-colors">${btn.label}</span>
+                  ${btn.action ? `<span class="hidden sm:inline text-[10px] text-gray-500 group-hover:text-gray-400 ml-1.5 font-mono">(${btn.action})</span>` : ''}
+                </div>
+              </div>
+              <div class="flex items-center gap-1.5 font-mono ${targetColor} text-[11px] flex-shrink-0">
+                <span class="group-hover:translate-x-0.5 transition-transform">→</span>
+                <span class="font-semibold">${targetTitle}</span>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      // Reset scroll position of containers
+      const contentContainer = document.getElementById('lightbox-content');
+      if (contentContainer) contentContainer.scrollTop = 0;
+      const imgContainer = document.getElementById('lightbox-img-container');
+      if (imgContainer) imgContainer.scrollTop = 0;
+      buttonsList.scrollTop = 0;
 
       const lightbox = document.getElementById('lightbox');
       lightbox.classList.remove('hidden');
       lightbox.classList.add('flex');
+    }
+
+    function navigateLightboxBack() {
+      if (lightboxHistory.length === 0) return;
+      const prevId = lightboxHistory.pop();
+      openLightbox(prevId, false);
     }
 
     function closeLightbox(e) {
@@ -850,11 +953,23 @@
       const lightbox = document.getElementById('lightbox');
       lightbox.classList.add('hidden');
       lightbox.classList.remove('flex');
+      lightboxHistory = [];
+      const backBtn = document.getElementById('lightbox-btn-back');
+      if (backBtn) {
+        backBtn.classList.add('hidden');
+        backBtn.classList.remove('flex');
+      }
     }
 
     // Keyboard shortcuts
     window.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') closeLightbox();
+      if (e.key === 'Backspace' && document.getElementById('lightbox').classList.contains('flex') && e.target.tagName !== 'INPUT') {
+        if (lightboxHistory.length > 0) {
+          e.preventDefault();
+          navigateLightboxBack();
+        }
+      }
       if (e.key === '+' || e.key === '=') zoomBy(1.15);
       if (e.key === '-') zoomBy(0.85);
       if (e.key === '0') resetView();
