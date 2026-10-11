@@ -32,6 +32,7 @@ enum class ToolCardKind(@StringRes val labelRes: Int) {
     SUBAGENT(R.string.tool_subagent),
     QUESTION(R.string.tool_question),
     EXECUTE(R.string.tool_execute),
+    TODO(R.string.tool_todo),
     GENERIC(R.string.tool_generic),
     ;
 
@@ -51,6 +52,7 @@ enum class ToolCardKind(@StringRes val labelRes: Int) {
             "task", "subagent", "agent" -> SUBAGENT
             "question", "ask" -> QUESTION
             "execute", "run" -> EXECUTE
+            "todowrite", "todoread", "todo" -> TODO
             else -> GENERIC
         }
 
@@ -83,7 +85,15 @@ data class ToolCard(
     val changedFiles: List<String> = emptyList(),
     /** What an edit, write or patch changed, drawn from the tool's own arguments; `null` for other tools. */
     val diff: ToolDiff? = null,
+    /** A to-do tool's list, from its `todos` argument; `null` for other tools. */
+    val todos: List<TodoItem>? = null,
 ) {
+    /** True while the call has not finished, which is when its row stays open on its own. */
+    val inFlight: Boolean get() = status is ToolStatus.Running || status is ToolStatus.Streaming
+
+    /** The child session a subagent call started, which its row opens. */
+    val childSession: String? get() = if (kind == ToolCardKind.SUBAGENT) detail?.takeIf { it.isNotBlank() } else null
+
     /**
      * Why the call failed, straight from the server's `state.error.message`, or `null` when it did not fail.
      *
@@ -142,7 +152,31 @@ fun AssistantContent.Tool.toCard(): ToolCard {
         changedFiles = dev.opencode.android.core.data.review.ChangedFiles
             .fromToolMetadata(completed?.metadata ?: error?.metadata),
         diff = toolDiffOf(kind, input),
+        todos = if (kind == ToolCardKind.TODO) todosOf(rawInput()) else null,
     )
+}
+
+/** One entry of a to-do list. [status] is the server's word for it (`pending`, `in_progress`, `completed`…). */
+data class TodoItem(val content: String, val status: String) {
+    val done: Boolean get() = status == "completed" || status == "done"
+    val active: Boolean get() = status == "in_progress"
+}
+
+private fun AssistantContent.Tool.rawInput(): Map<String, kotlinx.serialization.json.JsonElement> = when (val current = state) {
+    is ToolState.Running -> current.input
+    is ToolState.Completed -> current.input
+    is ToolState.Error -> current.input
+    else -> emptyMap()
+}
+
+/** The `todos` argument, read leniently: an entry without text is dropped, one without a status is pending. */
+private fun todosOf(input: Map<String, kotlinx.serialization.json.JsonElement>): List<TodoItem>? {
+    val list = input["todos"] as? kotlinx.serialization.json.JsonArray ?: return null
+    return list.mapNotNull { entry ->
+        val item = entry as? kotlinx.serialization.json.JsonObject ?: return@mapNotNull null
+        val content = item.stringOrNull("content") ?: item.stringOrNull("text") ?: return@mapNotNull null
+        TodoItem(content = content, status = item.stringOrNull("status") ?: "pending")
+    }
 }
 
 /** The single most identifying argument of a tool, which is what the card's title line shows. */
@@ -163,6 +197,8 @@ private fun subjectOf(kind: ToolCardKind, input: Map<String, String>): String? =
     ToolCardKind.WEBSEARCH -> input["query"]
 
     ToolCardKind.SKILL -> input["name"] ?: input["skill"]
+
+    ToolCardKind.TODO -> null
 
     ToolCardKind.SUBAGENT -> input["description"] ?: input["prompt"]
 
@@ -192,7 +228,7 @@ private fun detailOf(
 
     ToolCardKind.READ, ToolCardKind.GLOB, ToolCardKind.GREP -> completed?.textOutput
 
-    ToolCardKind.SKILL -> null
+    ToolCardKind.SKILL, ToolCardKind.TODO -> null
 
     // A failure's message is [ToolCard.failure], drawn for every kind, so it is not repeated here as output.
     ToolCardKind.GENERIC -> completed?.textOutput

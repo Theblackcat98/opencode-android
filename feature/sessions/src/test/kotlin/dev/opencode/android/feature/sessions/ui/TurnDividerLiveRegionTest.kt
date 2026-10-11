@@ -3,6 +3,7 @@ package dev.opencode.android.feature.sessions.ui
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import dev.opencode.android.core.designsystem.theme.OpenCodeTheme
@@ -26,6 +27,9 @@ import org.robolectric.annotation.GraphicsMode
  * dividers, because every divider is composed again on load and on scroll, and a live region on each
  * would read the whole history aloud. The fixture has one older turn that finished and one newer turn
  * that failed, so the two cases are told apart by their text.
+ *
+ * A turn that finished normally draws no divider at all; only the newest one keeps an invisible node, so the
+ * announcement survives the divider being taken off the screen.
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -43,10 +47,10 @@ class TurnDividerLiveRegionTest {
     }
 
     @Test
-    fun anOlderDividerIsNotALiveRegionEvenWhenNoTurnIsRunning() {
+    fun anOlderSucceededTurnDrawsNothingToAnnounce() {
         show(sessionRunning = false)
 
-        assertNull(liveRegionOf(R.string.divider_turn_succeeded))
+        compose.onNode(hasContentDescription(string(R.string.divider_turn_succeeded))).assertDoesNotExist()
     }
 
     @Test
@@ -54,14 +58,25 @@ class TurnDividerLiveRegionTest {
         show(sessionRunning = true)
 
         assertNull(liveRegionOf(R.string.divider_turn_failed))
-        assertNull(liveRegionOf(R.string.divider_turn_succeeded))
+        compose.onNode(hasContentDescription(string(R.string.divider_turn_succeeded))).assertDoesNotExist()
     }
 
-    private fun show(sessionRunning: Boolean) {
+    @Test
+    fun theNewestSucceededTurnIsStillAnnouncedWithoutDrawingADivider() {
+        show(sessionRunning = false, newest = "succeeded")
+
+        compose.onNodeWithText(string(R.string.divider_turn_succeeded)).assertDoesNotExist()
+        val node = compose.onNode(hasContentDescription(string(R.string.divider_turn_succeeded))).fetchSemanticsNode()
+        assertEquals(LiveRegionMode.Polite, node.config.getOrNull(SemanticsProperties.LiveRegion))
+    }
+
+    private fun string(id: Int): String = RuntimeEnvironment.getApplication().getString(id)
+
+    private fun show(sessionRunning: Boolean, newest: String = "failed") {
         val messages = listOf(
             TimelineFixtures.userMessage(),
-            TimelineFixtures.idle("succeeded"),
-            TimelineFixtures.idle("failed"),
+            TimelineFixtures.idle(if (newest == "failed") "succeeded" else "failed"),
+            TimelineFixtures.idle(newest),
         )
         compose.setContent {
             OpenCodeTheme(darkTheme = false, dynamicColor = false) {

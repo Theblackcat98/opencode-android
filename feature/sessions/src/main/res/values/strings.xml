@@ -43,6 +43,7 @@
     <string name="session_context_gauge">Context %1$d%% of %2$s tokens</string>
     <string name="session_cost">Cost %1$s</string>
     <string name="session_toggle_follow">Follow the latest message</string>
+    <string name="session_open_review">Review changes</string>
     <string name="session_jump_to_latest">Jump to the latest message</string>
     <string name="session_loading_older">Loading earlier messages</string>
     <string name="session_start_of_history">Start of the conversation</string>
@@ -89,6 +90,17 @@
     <string name="tool_subagent">Subagent</string>
     <string name="tool_question">Question</string>
     <string name="tool_execute">Execute</string>
+    <string name="timeline_thought_for">Thought for %1$s</string>
+    <string name="tool_todo">To-do list</string>
+    <string name="tool_todo_progress">To-do · %1$d of %2$d done</string>
+    <plurals name="tool_group_title">
+        <item quantity="one">Ran %1$d tool</item>
+        <item quantity="other">Ran %1$d tools</item>
+    </plurals>
+    <string name="tool_diff_stat">+%1$d −%2$d</string>
+    <string name="tool_output_show_all">Show all %1$d lines</string>
+    <string name="tool_output_show_less">Show less</string>
+    <string name="tool_open_child_session">Open the subagent\'s session</string>
     <string name="tool_unknown">Unknown tool %1$s</string>
     <string name="tool_running">Running</string>
     <string name="tool_streaming">Preparing</string>
@@ -137,7 +149,7 @@
 
     <!-- Session management -->
     <string name="action_dismiss">Dismiss</string>
-    <string name="session_menu">Session actions</string>
+    <string name="session_menu">Session tools</string>
     <string name="session_rename">Rename</string>
     <string name="session_rename_hint">Session title</string>
     <string name="session_rename_save">Save</string>
@@ -155,8 +167,6 @@
     <string name="session_attention">Notifications and auto-approve</string>
     <string name="session_history">History, export and context</string>
     <string name="session_wait_idle">Wait until idle</string>
-    <string name="session_follow_desktop_on">Follow the desktop TUI: on</string>
-    <string name="session_follow_desktop_off">Follow the desktop TUI: off</string>
     <string name="session_follow_desktop_explain">When on, selecting a session in the TUI opens it here. Off by default.</string>
     <string name="session_wait_idle_title">Waiting for this session</string>
     <string name="session_wait_idle_body">This waits until the session\'s current turn ends. It changes nothing on the server, and stopping the wait only ends this request.</string>
@@ -260,4 +270,14 @@
     <string name="settings_edit_server">Edit server</string>
     <string name="settings_event_inspector">Event inspector</string>
     <string name="settings_changelog">What\'s new</string>
+    <!-- The session tools sheet. -->
+    <string name="session_section_workspace">Workspace</string>
+    <string name="session_section_session">Session</string>
+    <string name="session_section_project">Project</string>
+    <string name="session_section_advanced">Advanced</string>
+    <string name="session_follow_desktop">Follow the desktop</string>
+    <string name="session_tool_review">Review</string>
+    <string name="session_tool_files">Files</string>
+    <string name="session_tool_needs_directory">Waiting for the session\'s directory</string>
+    <string name="session_tool_needs_project">Waiting for the session\'s project</string>
 </resources>

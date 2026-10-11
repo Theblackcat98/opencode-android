@@ -120,6 +120,19 @@ class ComposerLayoutTest {
     }
 
     @Test
+    fun theActionsThatLeftTheBarAreEachOneTapBehindPlus() {
+        show()
+        state = idle()
+        compose.waitForIdle()
+        for (id in SHEET_ACTIONS) compose.onNodeWithText(string(id)).assertDoesNotExist()
+
+        compose.onNodeWithContentDescription(string(ComposerR.string.composer_more_actions)).performClick()
+        compose.waitForIdle()
+
+        for (id in SHEET_ACTIONS) compose.onNodeWithText(string(id)).assertExists()
+    }
+
+    @Test
     fun sendingShowsAProgressStateAndDoesNotAnswerTaps() {
         show()
         state = idle().copy(sending = true)
@@ -452,15 +465,18 @@ class ComposerLayoutTest {
     private companion object {
         const val COMPOSER = "composer"
 
-        /** The seven icon buttons of the row, in the order the row lays them out. */
-        val ICONS = listOf(
+        /** The icon buttons on the bar itself: the + that opens the composer's actions. */
+        val ICONS = listOf(ComposerR.string.composer_more_actions)
+
+        /** The actions behind +, which used to be seven icons on the bar. */
+        val SHEET_ACTIONS = listOf(
             ComposerR.string.composer_attach,
             ComposerR.string.composer_add_skill,
+            ComposerR.string.composer_editor,
             ComposerR.string.composer_history_older,
             ComposerR.string.composer_history_newer,
             ComposerR.string.composer_stash,
             ComposerR.string.composer_stash_pop,
-            ComposerR.string.composer_editor,
         )
     }
 }

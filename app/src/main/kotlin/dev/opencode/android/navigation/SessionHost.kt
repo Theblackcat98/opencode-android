@@ -1,7 +1,17 @@
 package dev.opencode.android.navigation
 
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.Dvr
+import androidx.compose.material.icons.automirrored.outlined.Rule
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.outlined.AccountTree
+import androidx.compose.material.icons.outlined.Difference
+import androidx.compose.material.icons.outlined.FolderOpen
+import androidx.compose.material.icons.outlined.ForkRight
+import androidx.compose.material.icons.outlined.Keyboard
+import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.Terminal
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -26,6 +36,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.opencode.android.core.data.catalog.ModelCatalog
+import dev.opencode.android.core.designsystem.format.Formatters
 import dev.opencode.android.core.model.PermissionReply
 import dev.opencode.android.feature.composer.ui.AgentPickerSheet
 import dev.opencode.android.feature.composer.ui.ComposerBar
@@ -52,6 +63,7 @@ import dev.opencode.android.feature.sessions.ui.SessionManagementViewModel
 import dev.opencode.android.feature.sessions.ui.SessionMenuRow
 import dev.opencode.android.feature.sessions.ui.SessionScreen
 import dev.opencode.android.feature.sessions.ui.SessionTabUi
+import dev.opencode.android.feature.sessions.ui.SessionToolTile
 import dev.opencode.android.feature.sessions.ui.SessionViewModel
 import dev.opencode.android.feature.sessions.ui.SyntheticNoteDialog
 import dev.opencode.android.feature.sessions.ui.UserMessageActions
@@ -84,6 +96,8 @@ fun SessionHost(
     onOpenSessionList: () -> Unit = {},
     onNewSession: () -> Unit = {},
     onOpenReview: (String?) -> Unit = {},
+    /** The session's file browser, from the tools sheet's Files tile. */
+    onOpenFiles: () -> Unit = {},
     onOpenShells: (String) -> Unit = {},
     onOpenTerminal: (String, String?) -> Unit = { _, _ -> },
     onOpenSubagents: () -> Unit = {},
@@ -280,6 +294,8 @@ fun SessionHost(
         onCloseTab = onCloseTab,
         requestSlot = { RequestDock(requests = composerState.requests, actions = requestActions) },
         onOpenChangedFile = { path -> onOpenReview(path) },
+        onOpenReview = { onOpenReview(null) },
+        onOpenSession = { childId -> onOpenChild(childId) },
         subagentSlot = {
             SubagentStrip(
                 state = strip,
@@ -444,15 +460,38 @@ fun SessionHost(
                 actionsOpen = false
                 experimentalOpen = true
             },
-            executionSlot = {
-                ExecutionMenuRows(
+            contextLabel = if (state.contextLimit > 0) {
+                stringResource(
+                    SessionsR.string.session_context_gauge,
+                    state.contextPercent,
+                    Formatters.tokens(state.contextLimit),
+                )
+            } else {
+                null
+            },
+            workspaceSlot = {
+                WorkspaceTiles(
                     directory = state.directory.orEmpty(),
                     projectId = state.projectId,
+                    onOpenReview = {
+                        actionsOpen = false
+                        onOpenReview(null)
+                    },
+                    onOpenFiles = {
+                        actionsOpen = false
+                        onOpenFiles()
+                    },
                     onOpenShells = onOpenShells,
                     onOpenTerminal = onOpenTerminal,
                     onOpenSubagents = onOpenSubagents,
                     onOpenWorktrees = onOpenWorktrees,
                     onOpenSessionTerminals = onOpenSessionTerminals,
+                )
+            },
+            projectSlot = {
+                ProjectRows(
+                    directory = state.directory.orEmpty(),
+                    projectId = state.projectId,
                     onOpenProjectSettings = onOpenProjectSettings,
                     onOpenSessionPermissions = onOpenSessionPermissions,
                     onOpenSessionInstructions = onOpenSessionInstructions,
@@ -607,75 +646,92 @@ private fun RevertConfirmationDialog(
 }
 
 /**
- * Phase 7's rows in the session's overflow menu (plan §6, "Subagents, shells, terminals and
- * worktrees").
+ * The workspace tiles of the session's tools sheet: the review, the files, and Phase 7's panels (plan §6, "Subagents,
+ * shells, terminals and worktrees").
  *
- * **They are here, in the app module, because the sessions feature may not import the execution
- * feature.** The menu is the session screen's own sheet and the panels are another feature's, so the
- * composition root is the only place that can hold both — the same arrangement Phase 5 used for the
- * composer's client commands and Phase 6 for the review.
+ * **They are here, in the app module, because the sessions feature may not import the execution or review
+ * features.** The sheet is the session screen's own and the panels are other features', so the composition root is
+ * the only place that can hold both.
  *
- * **The location rows are disabled without a location.** Shells and terminals are location-scoped and a
- * session that has not loaded its projection yet has no directory; offering the row and answering with
- * an empty one would open a panel for the server's working directory, which is a different checkout
- * and therefore a different set of commands.
+ * **The location tiles are disabled without a location, and say so.** Shells and terminals are location-scoped and a
+ * session that has not loaded its projection yet has no directory; offering the tile and answering with an empty one
+ * would open a panel for the server's working directory, which is a different checkout.
  */
 @Composable
-private fun ExecutionMenuRows(
+private fun WorkspaceTiles(
     directory: String,
     projectId: String?,
+    onOpenReview: () -> Unit,
+    onOpenFiles: () -> Unit,
     onOpenShells: (String) -> Unit,
     onOpenTerminal: (String, String?) -> Unit,
     onOpenSubagents: () -> Unit,
     onOpenWorktrees: (String) -> Unit,
     onOpenSessionTerminals: () -> Unit,
+) {
+    val needsDirectory = stringResource(SessionsR.string.session_tool_needs_directory)
+    val needsProject = stringResource(SessionsR.string.session_tool_needs_project)
+    SessionToolTile(stringResource(SessionsR.string.session_tool_review), Icons.Outlined.Difference, onOpenReview)
+    SessionToolTile(stringResource(SessionsR.string.session_tool_files), Icons.Outlined.FolderOpen, onOpenFiles)
+    SessionToolTile(
+        label = stringResource(SessionsR.string.session_execution_shells),
+        icon = Icons.Outlined.Terminal,
+        onClick = { onOpenShells(directory) },
+        enabled = directory.isNotBlank(),
+        disabledReason = needsDirectory,
+    )
+    SessionToolTile(
+        label = stringResource(SessionsR.string.session_execution_terminal),
+        icon = Icons.Outlined.Keyboard,
+        onClick = { onOpenTerminal(directory, null) },
+        enabled = directory.isNotBlank(),
+        disabledReason = needsDirectory,
+    )
+    SessionToolTile(stringResource(SessionsR.string.session_execution_subagents), Icons.Outlined.AccountTree, onOpenSubagents)
+    // A worktree panel is keyed by a project and the route requires one, so the tile is off until the session's
+    // projection has said which project it belongs to.
+    SessionToolTile(
+        label = stringResource(SessionsR.string.session_execution_worktrees),
+        icon = Icons.Outlined.ForkRight,
+        onClick = { projectId?.let(onOpenWorktrees) },
+        enabled = projectId != null,
+        disabledReason = needsProject,
+    )
+    SessionToolTile(
+        stringResource(SessionsR.string.session_execution_session_terminals),
+        Icons.AutoMirrored.Outlined.Dvr,
+        onOpenSessionTerminals,
+    )
+}
+
+/** The project rows of the tools sheet: project settings, and the session's permissions and instructions. */
+@Composable
+private fun ProjectRows(
+    directory: String,
+    projectId: String?,
     onOpenProjectSettings: (String) -> Unit,
     onOpenSessionPermissions: (String?, String) -> Unit,
     onOpenSessionInstructions: () -> Unit,
 ) {
-    SessionMenuRow(
-        label = stringResource(SessionsR.string.session_execution_subagents),
-        onClick = onOpenSubagents,
-    )
-    SessionMenuRow(
-        label = stringResource(SessionsR.string.session_execution_shells),
-        enabled = directory.isNotBlank(),
-        onClick = { onOpenShells(directory) },
-    )
-    SessionMenuRow(
-        label = stringResource(SessionsR.string.session_execution_terminal),
-        enabled = directory.isNotBlank(),
-        onClick = { onOpenTerminal(directory, null) },
-    )
-    // A worktree panel is keyed by a project and the route requires one, so the row is off until the
-    // session's projection has said which project it belongs to.
-    SessionMenuRow(
-        label = stringResource(SessionsR.string.session_execution_worktrees),
-        enabled = projectId != null,
-        onClick = { projectId?.let(onOpenWorktrees) },
-    )
-    SessionMenuRow(
-        label = stringResource(SessionsR.string.session_execution_session_terminals),
-        onClick = onOpenSessionTerminals,
-    )
-    // Project settings are `project.update`, and the start command in them is what a terminal's quick
-    // action runs — so the settings sit next to the terminal row rather than in a settings app the user
-    // would have to go and find.
+    // Project settings are `project.update`, and the start command in them is what a terminal's quick action runs.
     SessionMenuRow(
         label = stringResource(SessionsR.string.session_execution_project_settings),
+        icon = Icons.Outlined.Settings,
         enabled = projectId != null,
         onClick = { projectId?.let(onOpenProjectSettings) },
     )
-    // The permissions panel is location-scoped for the saved approvals and session-scoped for the rules,
-    // so it needs a location to list the project's standing approvals at all.
+    // The permissions panel is location-scoped for the saved approvals and session-scoped for the rules, so it needs
+    // a location to list the project's standing approvals at all.
     SessionMenuRow(
         label = stringResource(SessionsR.string.session_admin_permissions),
+        icon = Icons.Outlined.Lock,
         enabled = directory.isNotBlank(),
         onClick = { onOpenSessionPermissions(projectId, directory) },
     )
     // Instruction entries belong to the session alone, so this row needs nothing from the projection.
     SessionMenuRow(
         label = stringResource(SessionsR.string.session_admin_instructions),
+        icon = Icons.AutoMirrored.Outlined.Rule,
         onClick = onOpenSessionInstructions,
     )
 }

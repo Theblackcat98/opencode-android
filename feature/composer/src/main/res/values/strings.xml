@@ -177,4 +177,5 @@
     <string name="composer_comment_count">%1$d comments go with this prompt</string>
     <string name="composer_comment_on">%1$s:%2$s</string>
     <string name="composer_comment_remove">Remove comment</string>
+    <string name="composer_more_actions">More: attach, skills, history, stash, editor</string>
 </resources>

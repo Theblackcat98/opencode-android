@@ -1,6 +1,8 @@
 package dev.opencode.android.feature.sessions.ui
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,15 +16,20 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.CallSplit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.outlined.Difference
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -35,10 +42,16 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import dev.opencode.android.core.designsystem.component.OpenCodeStatusPill
+import dev.opencode.android.core.designsystem.component.OpenCodeTopAppBar
+import dev.opencode.android.core.designsystem.component.StatusDot
+import dev.opencode.android.core.designsystem.component.StatusKind
 import dev.opencode.android.core.designsystem.format.Formatters
 import dev.opencode.android.feature.sessions.R
 import dev.opencode.android.feature.sessions.ui.timeline.TimelineList
@@ -65,8 +78,12 @@ fun SessionScreen(
     requestSlot: @Composable () -> Unit = {},
     /** The composer and the turn's control buttons, rendered below the timeline. */
     composerSlot: @Composable () -> Unit = {},
-    /** The overflow menu that opens rename, delete and copy. */
+    /** The tools button that opens the session's tools sheet (review, shells, terminal, rename, delete…). */
     menuSlot: @Composable () -> Unit = {},
+    /** The review of what this session changed, one tap from the top bar. Null hides the action. */
+    onOpenReview: (() -> Unit)? = null,
+    /** Opens a subagent's session from its tool row. */
+    onOpenSession: ((String) -> Unit)? = null,
     /** Opens a provider's action link from a retry, such as "usage exceeded, upgrade". */
     onOpenLink: (String) -> Unit = {},
     /**
@@ -117,36 +134,53 @@ fun SessionScreen(
         }
     }
 
+    val title = state.title.ifBlank { stringResource(R.string.session_title_untitled) }
+    val gaugeLabel = if (state.contextLimit > 0) {
+        stringResource(R.string.session_context_gauge, state.contextPercent, Formatters.tokens(state.contextLimit))
+    } else {
+        null
+    }
     Scaffold(
         modifier = modifier,
         topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(
-                            text = state.title.ifBlank { stringResource(R.string.session_title_untitled) },
-                            style = MaterialTheme.typography.titleMedium,
-                        )
-                        Subtitle(state)
+            // One line of title and one of who is answering and how it is going. The context gauge is the bar's own
+            // bottom edge: it was a labelled third row, which made the header taller than two messages.
+            OpenCodeTopAppBar(
+                title = title,
+                onBack = onNavigateBack,
+                backDescription = stringResource(R.string.session_close),
+                subtitle = { Subtitle(state) },
+                progress = gaugeLabel?.let { state.contextPercent / 100f },
+                progressDescription = gaugeLabel,
+                actions = {
+                    if (onOpenReview != null) {
+                        IconButton(onClick = onOpenReview) {
+                            Icon(Icons.Outlined.Difference, contentDescription = stringResource(R.string.session_open_review))
+                        }
                     }
+                    menuSlot()
                 },
-                navigationIcon = { BackButton(onNavigateBack) },
-                actions = { menuSlot() },
             )
         },
         bottomBar = { composerSlot() },
         floatingActionButton = {
-            AnimatedVisibility(visible = !atBottom) {
-                ExtendedFloatingActionButton(
+            AnimatedVisibility(visible = !atBottom, enter = fadeIn(), exit = fadeOut()) {
+                SmallFloatingActionButton(
                     onClick = {
                         onFollowChange(true)
                         if (state.messages.isNotEmpty()) {
                             scope.launch { listState.scrollToItem(jumpTarget) }
                         }
                     },
-                    icon = { Icon(Icons.Filled.KeyboardArrowDown, contentDescription = null) },
-                    text = { Text(stringResource(R.string.session_jump_to_latest)) },
-                )
+                    shape = CircleShape,
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                    contentColor = MaterialTheme.colorScheme.onSurface,
+                ) {
+                    Icon(
+                        Icons.Filled.KeyboardArrowDown,
+                        contentDescription = stringResource(R.string.session_jump_to_latest),
+                    )
+                }
             }
         },
     ) { padding ->
@@ -157,103 +191,62 @@ fun SessionScreen(
             }
             requestSlot()
             subagentSlot()
-            Box(Modifier.weight(1f).fillMaxWidth()) {
-                TimelineList(
-                    messages = state.messages,
-                    loadingOlder = state.paging.loading,
-                    hasMore = state.paging.hasMore,
-                    following = state.following,
-                    onLoadOlder = onLoadOlder,
-                    listState = listState,
-                    contentPadding = PaddingValues(12.dp),
-                    modifier = Modifier.fillMaxSize(),
-                    onOpenChangedFile = onOpenChangedFile,
-                    messageActions = messageActions,
-                    // A retry is still the same turn, so only a settled session announces its turn end.
-                    sessionRunning = state.activity != SessionActivityUi.Idle,
-                )
-                if (state.activity is SessionActivityUi.Running) {
-                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth().align(Alignment.TopCenter))
-                }
-            }
+            TimelineList(
+                messages = state.messages,
+                loadingOlder = state.paging.loading,
+                hasMore = state.paging.hasMore,
+                following = state.following,
+                onLoadOlder = onLoadOlder,
+                listState = listState,
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+                modifier = Modifier.weight(1f).fillMaxWidth(),
+                onOpenChangedFile = onOpenChangedFile,
+                messageActions = messageActions,
+                onOpenSession = onOpenSession,
+                // A retry is still the same turn, so only a settled session announces its turn end.
+                sessionRunning = state.activity != SessionActivityUi.Idle,
+            )
         }
     }
 }
 
-/** Title, agent, model, context gauge and cost: everything the plan's header carries. */
+/**
+ * Who is answering and how it is going, on one line: a fork marker, the agent, the model, the turn's state and
+ * the cost. Everything that does not fit is ellipsized, and the whole line is one description for a screen reader.
+ */
 @Composable
 private fun Subtitle(state: SessionUiState) {
-    Column {
-        state.forkedAt?.let { boundary ->
-            // A fork's origin is the server's own `Session.fork` boundary. Saying so matters
-            // because a copy is indistinguishable from a session that happened to be short, and
-            // a user who forked to try something does not know which of the two they are in.
-            Text(
-                text = stringResource(R.string.session_forked_from, boundary),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            state.agent?.let { agent ->
-                Text(
-                    text = agent,
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.SemiBold,
-                )
-            }
-            state.model?.let { model ->
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    text = model.variant?.let { "${model.label}#$it" } ?: model.label,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            when (val activity = state.activity) {
-                is SessionActivityUi.Running -> CircularProgressIndicator(
-                    modifier = Modifier.size(12.dp),
-                    strokeWidth = 2.dp,
-                )
+    val forked = state.forkedAt?.let { stringResource(R.string.session_forked_from, it) }
+    val cost = state.cost.takeIf { it > 0.0 }?.let { stringResource(R.string.session_cost, Formatters.cost(it)) }
+    val model = state.model?.let { model -> model.variant?.let { "${model.label}#$it" } ?: model.label }
+    val running = stringResource(R.string.sessions_running_description)
+    val activity = when (val activity = state.activity) {
+        is SessionActivityUi.Running -> running
+        is SessionActivityUi.Retrying -> stringResource(R.string.sessions_retry_attempt, activity.attempt)
+        SessionActivityUi.Idle -> null
+    }
+    val description = listOfNotNull(forked, state.agent, model, activity, cost).joinToString(", ")
+    Row(
+        modifier = Modifier.clearAndSetSemantics { contentDescription = description },
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        when (val activity = state.activity) {
+            is SessionActivityUi.Running -> StatusDot(StatusKind.Running)
 
-                is SessionActivityUi.Retrying -> Text(
-                    text = stringResource(R.string.sessions_retry_attempt, activity.attempt),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.error,
-                )
+            is SessionActivityUi.Retrying -> OpenCodeStatusPill(
+                StatusKind.Retrying,
+                stringResource(R.string.sessions_retry_attempt, activity.attempt),
+            )
 
-                SessionActivityUi.Idle -> Unit
-            }
+            SessionActivityUi.Idle -> Unit
         }
-        if (state.contextLimit > 0) {
-            val gaugeLabel = stringResource(
-                R.string.session_context_gauge,
-                state.contextPercent,
-                Formatters.tokens(state.contextLimit),
-            )
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                LinearProgressIndicator(
-                    progress = { state.contextPercent / 100f },
-                    modifier = Modifier.width(80.dp).height(4.dp),
-                )
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    text = gaugeLabel,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.semantics { contentDescription = gaugeLabel },
-                )
-            }
+        if (forked != null) {
+            Icon(Icons.AutoMirrored.Filled.CallSplit, contentDescription = null, modifier = Modifier.size(14.dp))
         }
-        if (state.cost > 0.0) {
-            val costLabel = stringResource(R.string.session_cost, Formatters.cost(state.cost))
-            Text(
-                text = costLabel,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.semantics { contentDescription = costLabel },
-            )
-        }
+        val line = listOfNotNull(state.agent, model, state.cost.takeIf { it > 0.0 }?.let { Formatters.cost(it) })
+            .joinToString(" · ")
+        Text(text = line, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 

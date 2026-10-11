@@ -7,15 +7,19 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
@@ -23,7 +27,9 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.outlined.Psychology
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Card
@@ -42,6 +48,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -49,8 +56,10 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import dev.opencode.android.core.designsystem.component.OpenCodeAvatar
 import dev.opencode.android.core.designsystem.format.Formatters
 import dev.opencode.android.core.designsystem.markdown.MarkdownText
 import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
@@ -83,6 +92,8 @@ fun TimelineList(
     contentPadding: PaddingValues = PaddingValues(12.dp),
     onOpenChangedFile: ((String) -> Unit)? = null,
     messageActions: (@Composable (String) -> Unit)? = null,
+    /** Opens a subagent's session from its tool row. Null shows the session id instead of a link. */
+    onOpenSession: ((String) -> Unit)? = null,
     /**
      * Whether a turn is in flight. Only when none is does the newest turn-end divider announce itself.
      *
@@ -97,7 +108,7 @@ fun TimelineList(
         state = listState,
         modifier = modifier.fillMaxWidth(),
         contentPadding = contentPadding,
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item(key = "older") {
             OlderMessagesRow(loadingOlder = loadingOlder, hasMore = hasMore, onLoadOlder = onLoadOlder)
@@ -110,20 +121,12 @@ fun TimelineList(
                 TimelineMessageItem(
                     message,
                     onOpenChangedFile = onOpenChangedFile,
+                    onOpenSession = onOpenSession,
                     announceTurnEnd = message.id == announcedTurnEnd,
                 )
                 // The per-message actions row belongs to the message and not to a card, so a
                 // message with no action simply renders nothing extra.
                 messageActions?.invoke(message.id)
-            }
-        }
-        if (following) {
-            item(key = "following") {
-                Text(
-                    text = stringResource(R.string.session_following),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.primary,
-                )
             }
         }
     }
@@ -182,11 +185,12 @@ fun TimelineMessageItem(
     onOpenChangedFile: ((String) -> Unit)? = null,
     /** Whether this divider is the turn that just ended and should be announced; see [TimelineList]. */
     announceTurnEnd: Boolean = false,
+    onOpenSession: ((String) -> Unit)? = null,
 ) {
     when (message) {
         is SessionMessage.User -> UserMessageCard(message, modifier)
 
-        is SessionMessage.Assistant -> AssistantMessageCard(message, modifier, onOpenChangedFile)
+        is SessionMessage.Assistant -> AssistantMessageCard(message, modifier, onOpenChangedFile, onOpenSession)
 
         is SessionMessage.Synthetic -> NoticeCard(
             title = stringResource(R.string.timeline_synthetic),
@@ -225,52 +229,56 @@ fun TimelineMessageItem(
     }
 }
 
+/**
+ * What the user sent, as a bubble on the right. The "You" label is gone from sight, since the side says it, but a
+ * screen reader still hears it first, because it cannot see which side a bubble is on.
+ */
 @Composable
 private fun UserMessageCard(message: SessionMessage.User, modifier: Modifier = Modifier) {
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
-    ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Text(
-                text = stringResource(R.string.timeline_user),
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSecondaryContainer,
-            )
-            Text(text = message.text, style = MaterialTheme.typography.bodyLarge)
-            message.files?.takeIf { it.isNotEmpty() }?.let { files ->
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    text = if (files.size == 1) {
-                        stringResource(R.string.timeline_attachment_one)
-                    } else {
-                        stringResource(R.string.timeline_attachment_count, files.size)
-                    },
-                    style = MaterialTheme.typography.labelSmall,
-                )
-                files.forEach { file ->
-                    AttachmentChip(
-                        label = file.name ?: file.mime,
-                        isImage = file.mime.startsWith("image/"),
-                        data = file.data,
+    val you = stringResource(R.string.timeline_user)
+    BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
+        val bubbleMax = maxWidth * USER_BUBBLE_WIDTH
+        Surface(
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .widthIn(max = bubbleMax)
+                .semantics(mergeDescendants = true) { contentDescription = "$you: ${message.text}" },
+            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+            contentColor = MaterialTheme.colorScheme.onSurface,
+            shape = RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp, bottomStart = 18.dp, bottomEnd = 4.dp),
+        ) {
+            Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
+                Text(text = message.text, style = MaterialTheme.typography.bodyLarge)
+                message.files?.takeIf { it.isNotEmpty() }?.let { files ->
+                    Spacer(Modifier.height(6.dp))
+                    files.forEach { file ->
+                        AttachmentChip(
+                            label = file.name ?: file.mime,
+                            isImage = file.mime.startsWith("image/"),
+                            data = file.data,
+                        )
+                    }
+                }
+                message.agents?.takeIf { it.isNotEmpty() }?.let { agents ->
+                    Text(
+                        text = stringResource(R.string.timeline_agents_mentioned, agents.joinToString(", ") { it.name }),
+                        style = MaterialTheme.typography.labelSmall,
+                        modifier = Modifier.padding(top = 4.dp),
                     )
                 }
-            }
-            message.agents?.takeIf { it.isNotEmpty() }?.let { agents ->
-                Text(
-                    text = stringResource(R.string.timeline_agents_mentioned, agents.joinToString(", ") { it.name }),
-                    style = MaterialTheme.typography.labelSmall,
-                )
-            }
-            message.skills?.takeIf { it.isNotEmpty() }?.let { skills ->
-                Text(
-                    text = stringResource(R.string.timeline_skills_attached, skills.joinToString(", ") { it.name }),
-                    style = MaterialTheme.typography.labelSmall,
-                )
+                message.skills?.takeIf { it.isNotEmpty() }?.let { skills ->
+                    Text(
+                        text = stringResource(R.string.timeline_skills_attached, skills.joinToString(", ") { it.name }),
+                        style = MaterialTheme.typography.labelSmall,
+                    )
+                }
             }
         }
     }
 }
+
+/** How much of the row a user bubble may take, so a short message reads as a reply and not as a banner. */
+private const val USER_BUBBLE_WIDTH = 0.85f
 
 /**
  * An attachment chip, with the image above it when the attachment is one this device can decode.
@@ -338,32 +346,43 @@ private fun AttachmentChip(label: String, isImage: Boolean, data: String) {
     }
 }
 
+/**
+ * What the agent did, full width and without a container: a small header (the agent, the model, how long the step
+ * took), the files the step changed, then its parts in order, with runs of quiet tool calls folded into one row
+ * ([assistantBlocks]).
+ */
 @Composable
 private fun AssistantMessageCard(
     message: SessionMessage.Assistant,
     modifier: Modifier = Modifier,
     onOpenChangedFile: ((String) -> Unit)? = null,
+    onOpenSession: ((String) -> Unit)? = null,
 ) {
-    Column(modifier = modifier.fillMaxWidth()) {
+    val blocks = remember(message.content) { assistantBlocks(message.content) }
+    Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                text = message.agent,
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.SemiBold,
-            )
+            OpenCodeAvatar(key = message.agent, label = message.agent, size = 20.dp)
             Spacer(Modifier.width(8.dp))
             Text(
-                text = message.model.toString(),
+                text = message.agent,
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Spacer(Modifier.width(6.dp))
+            Text(
+                text = message.model.id,
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
             )
-            Spacer(Modifier.weight(1f))
             (message.time.completed ?: 0L).takeIf { it > 0L }?.let { completed ->
                 val ran = completed - message.time.created
                 if (ran > 0) {
                     Text(
                         text = Formatters.duration(ran),
-                        style = MaterialTheme.typography.labelSmall,
+                        style = OpenCodeThemeExtras.code.small,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
@@ -377,50 +396,47 @@ private fun AssistantMessageCard(
                 onOpenFile = onOpenChangedFile,
             )
         }
-        message.content.forEach { part ->
-            when (part) {
-                is AssistantContent.Text -> if (part.text.isNotBlank()) {
-                    MarkdownText(
-                        markdown = part.text,
-                        style = MaterialTheme.typography.bodyLarge,
-                        modifier = Modifier.padding(top = 4.dp),
-                    )
-                }
-
-                is AssistantContent.Reasoning -> ReasoningBlock(part, Modifier.padding(top = 4.dp))
-
-                is AssistantContent.Tool -> {
-                    val card = part.toCard()
-                    ToolCardView(card, Modifier.padding(top = 4.dp))
-                    if (onOpenChangedFile != null) {
-                        ChangedFilesRow(files = card.changedFiles, onOpenFile = onOpenChangedFile)
-                    }
-                }
-
-                is AssistantContent.Unknown -> UnknownTool(part, Modifier.padding(top = 4.dp))
-            }
-        }
-        message.error?.let { error ->
-            StepErrorCard(error, Modifier.padding(top = 4.dp))
-        }
-        message.retry?.let { retry ->
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 4.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer),
-            ) {
-                val now = System.currentTimeMillis()
-                Text(
-                    text = stringResource(
-                        R.string.step_retry_scheduled,
-                        Formatters.duration((retry.at - now).coerceAtLeast(0)),
-                        retry.attempt,
-                    ),
-                    style = MaterialTheme.typography.labelMedium,
-                    modifier = Modifier.padding(8.dp),
+        blocks.forEach { block ->
+            when (block) {
+                is AssistantBlock.Tools -> ToolGroupView(
+                    cards = block.cards,
+                    onOpenChangedFile = onOpenChangedFile,
+                    onOpenSession = onOpenSession,
                 )
+
+                is AssistantBlock.Part -> when (val part = block.part) {
+                    is AssistantContent.Text -> if (part.text.isNotBlank()) {
+                        MarkdownText(markdown = part.text, style = MaterialTheme.typography.bodyLarge)
+                    }
+
+                    is AssistantContent.Reasoning -> ReasoningBlock(part)
+
+                    is AssistantContent.Tool -> ToolCardView(
+                        card = block.card ?: part.toCard(),
+                        onOpenChangedFile = onOpenChangedFile,
+                        onOpenSession = onOpenSession,
+                    )
+
+                    is AssistantContent.Unknown -> UnknownTool(part)
+                }
             }
+        }
+        message.error?.let { error -> StepErrorCard(error) }
+        message.retry?.let { retry ->
+            val now = System.currentTimeMillis()
+            Text(
+                text = stringResource(
+                    R.string.step_retry_scheduled,
+                    Formatters.duration((retry.at - now).coerceAtLeast(0)),
+                    retry.attempt,
+                ),
+                style = MaterialTheme.typography.labelMedium,
+                color = OpenCodeThemeExtras.status.onWarning,
+                modifier = Modifier
+                    .clip(OpenCodeThemeExtras.shapes.chip)
+                    .background(OpenCodeThemeExtras.status.warning)
+                    .padding(horizontal = 10.dp, vertical = 6.dp),
+            )
         }
     }
 }
@@ -437,48 +453,51 @@ fun ReasoningBlock(part: AssistantContent.Reasoning, modifier: Modifier = Modifi
     var expanded by remember(part.id()) { mutableStateOf(false) }
     val duration = (part.time?.completed ?: 0L).takeIf { it > 0L }?.let { it - (part.time?.created ?: it) }
     val toggleLabel = stringResource(if (expanded) R.string.timeline_collapse else R.string.timeline_expand)
-    val reasonLabel = stringResource(R.string.timeline_reasoning)
-    val durationLabel = duration?.let { stringResource(R.string.timeline_reasoning_duration, Formatters.duration(it)) }
-    Card(
-        modifier = modifier
-            .fillMaxWidth()
-            .animateContentSize(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-    ) {
+    val title = duration?.let { stringResource(R.string.timeline_thought_for, Formatters.duration(it)) }
+        ?: stringResource(R.string.timeline_reasoning)
+    Column(modifier = modifier.fillMaxWidth().animateContentSize()) {
         Row(
             modifier = Modifier
-                .fillMaxWidth()
-                .clickable { expanded = !expanded }
-                .padding(8.dp)
-                .semantics { contentDescription = "$reasonLabel, ${durationLabel.orEmpty()}, $toggleLabel" },
+                .clip(OpenCodeThemeExtras.shapes.chip)
+                .clickable(onClickLabel = toggleLabel) { expanded = !expanded }
+                .padding(vertical = 4.dp, horizontal = 2.dp)
+                .semantics(mergeDescendants = true) { contentDescription = "$title, $toggleLabel" },
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(
-                text = stringResource(R.string.timeline_reasoning),
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.SemiBold,
-            )
-            duration?.let {
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    text = stringResource(R.string.timeline_reasoning_duration, Formatters.duration(it)),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            Spacer(Modifier.weight(1f))
             Icon(
-                imageVector = Icons.Filled.ExpandMore,
+                imageVector = Icons.Outlined.Psychology,
                 contentDescription = null,
-                modifier = Modifier.size(20.dp),
+                modifier = Modifier.size(16.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.width(6.dp))
+            Text(
+                text = title,
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Icon(
+                imageVector = if (expanded) Icons.Filled.ExpandMore else Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = null,
+                modifier = Modifier.size(18.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
         if (expanded) {
-            Text(
-                text = part.text,
-                style = OpenCodeThemeExtras.code.small,
-                modifier = Modifier.padding(start = 8.dp, end = 8.dp, bottom = 8.dp),
-            )
+            Row(modifier = Modifier.padding(top = 4.dp).height(IntrinsicSize.Min)) {
+                Box(
+                    Modifier
+                        .width(2.dp)
+                        .fillMaxHeight()
+                        .background(MaterialTheme.colorScheme.outlineVariant),
+                )
+                Text(
+                    text = part.text,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(start = 10.dp),
+                )
+            }
         }
     }
 }
@@ -493,12 +512,16 @@ private fun NoticeCard(
     description: String?,
     modifier: Modifier = Modifier,
 ) {
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-    ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Text(text = title, style = MaterialTheme.typography.labelMedium)
+    Row(modifier = modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
+        Box(
+            Modifier
+                .width(3.dp)
+                .fillMaxHeight()
+                .clip(OpenCodeThemeExtras.shapes.pill)
+                .background(MaterialTheme.colorScheme.tertiary.copy(alpha = 0.6f)),
+        )
+        Column(modifier = Modifier.padding(start = 12.dp, top = 2.dp, bottom = 2.dp)) {
+            Text(text = title, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.tertiary)
             description?.let {
                 Text(
                     text = it,
@@ -515,7 +538,7 @@ private fun NoticeCard(
 private fun ShellMessageCard(message: SessionMessage.Shell, modifier: Modifier = Modifier) {
     Card(
         modifier = modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
             Text(
@@ -574,7 +597,7 @@ private fun CompactionCard(message: SessionMessage.Compaction, modifier: Modifie
     }
     Card(
         modifier = modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
             Text(text = title, style = MaterialTheme.typography.labelMedium)
@@ -602,30 +625,38 @@ private fun CompactionCard(message: SessionMessage.Compaction, modifier: Modifie
     }
 }
 
+/**
+ * The end of a turn.
+ *
+ * **A turn that finished normally draws nothing**: the next bubble is the boundary, and a "Turn finished" rule after
+ * every answer was most of the transcript's chrome. A failed or interrupted turn still says so, as a small caption,
+ * because that is news. Either way the newest one keeps its live region, as an invisible node when there is no text,
+ * so a screen reader is still told the turn ended.
+ */
 @Composable
 private fun IdleDivider(message: SessionMessage.Idle, modifier: Modifier = Modifier, announceTurnEnd: Boolean = false) {
     val outcomeDescription = stringResource(message.outcome.labelRes())
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .semantics { contentDescription = outcomeDescription },
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-        Text(
-            text = stringResource(message.outcome.labelRes()),
-            modifier = if (announceTurnEnd) {
-                Modifier.semantics { liveRegion = LiveRegionMode.Polite }
-            } else {
-                Modifier
-            },
-            style = MaterialTheme.typography.labelSmall,
-            color = when (message.outcome) {
-                Outcome.Failed -> MaterialTheme.colorScheme.error
-                else -> MaterialTheme.colorScheme.onSurfaceVariant
-            },
-        )
-        HorizontalDivider()
+    val live = if (announceTurnEnd) Modifier.semantics { liveRegion = LiveRegionMode.Polite } else Modifier
+    if (message.outcome == Outcome.Failed || message.outcome == Outcome.Interrupted) {
+        val failed = message.outcome == Outcome.Failed
+        Row(
+            modifier = modifier
+                .fillMaxWidth()
+                .semantics { contentDescription = outcomeDescription },
+            horizontalArrangement = Arrangement.Center,
+        ) {
+            Text(
+                text = outcomeDescription,
+                modifier = live
+                    .clip(OpenCodeThemeExtras.shapes.pill)
+                    .background(if (failed) OpenCodeThemeExtras.status.failure else OpenCodeThemeExtras.status.neutral)
+                    .padding(horizontal = 10.dp, vertical = 3.dp),
+                style = MaterialTheme.typography.labelSmall,
+                color = if (failed) OpenCodeThemeExtras.status.onFailure else OpenCodeThemeExtras.status.onNeutral,
+            )
+        }
+    } else if (announceTurnEnd) {
+        Box(modifier.fillMaxWidth().height(1.dp).semantics { contentDescription = outcomeDescription }.then(live))
     }
 }
 
@@ -673,16 +704,17 @@ private fun SwitchMarker(text: String, modifier: Modifier = Modifier) {
         modifier = modifier
             .fillMaxWidth()
             .semantics { contentDescription = text },
-        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center,
     ) {
-        HorizontalDivider(modifier = Modifier.weight(1f))
         Text(
             text = text,
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(horizontal = 8.dp),
+            modifier = Modifier
+                .clip(OpenCodeThemeExtras.shapes.pill)
+                .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                .padding(horizontal = 10.dp, vertical = 3.dp),
         )
-        HorizontalDivider(modifier = Modifier.weight(1f))
     }
 }
 
@@ -719,7 +751,7 @@ fun StepErrorCard(error: dev.opencode.android.core.model.StructuredError, modifi
 fun UnknownMessage(message: SessionMessage.Unknown, modifier: Modifier = Modifier) {
     Card(
         modifier = modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
             Text(
@@ -740,7 +772,7 @@ fun UnknownMessage(message: SessionMessage.Unknown, modifier: Modifier = Modifie
 private fun UnknownTool(part: AssistantContent.Unknown, modifier: Modifier = Modifier) {
     Card(
         modifier = modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
     ) {
         Text(
             text = stringResource(R.string.unknown_tool_type, part.discriminator ?: "?"),

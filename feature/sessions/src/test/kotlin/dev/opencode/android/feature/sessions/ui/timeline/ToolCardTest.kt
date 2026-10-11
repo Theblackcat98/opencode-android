@@ -142,7 +142,7 @@ class ToolCardTest {
     fun `every kind carries the reason of a failure`() {
         val names = listOf(
             "read", "glob", "grep", "edit", "write", "patch",
-            "bash", "webfetch", "websearch", "skill", "task", "question", "execute", "quantum_anneal",
+            "bash", "webfetch", "websearch", "skill", "task", "question", "execute", "todowrite", "quantum_anneal",
         )
         val kinds = names.map { ToolCardKind.of(it) }.toSet()
         assertEquals("the list should cover every kind", ToolCardKind.entries.toSet(), kinds)

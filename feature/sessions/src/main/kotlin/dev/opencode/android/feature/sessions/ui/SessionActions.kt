@@ -1,20 +1,44 @@
 package dev.opencode.android.feature.sessions.ui
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.Article
+import androidx.compose.material.icons.outlined.ContentCopy
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Devices
+import androidx.compose.material.icons.outlined.DriveFileRenameOutline
+import androidx.compose.material.icons.outlined.History
+import androidx.compose.material.icons.outlined.HourglassEmpty
+import androidx.compose.material.icons.outlined.NoteAlt
+import androidx.compose.material.icons.outlined.NotificationsActive
+import androidx.compose.material.icons.outlined.Science
+import androidx.compose.material.icons.outlined.Timeline
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -26,8 +50,17 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
 import dev.opencode.android.feature.sessions.R
 
 /**
@@ -38,7 +71,7 @@ import dev.opencode.android.feature.sessions.R
  * confirmation therefore names the subagents it found, or says there are none, so the user is never
  * surprised by a subtree disappearing.
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun SessionActionsSheet(
     title: String,
@@ -99,48 +132,93 @@ fun SessionActionsSheet(
      */
     onOpenExperimental: (() -> Unit)? = null,
     /**
-     * Phase 7's rows, drawn after this feature's own.
+     * The workspace tiles: review, files, shells, terminal, subagents, worktrees, session terminals ([SessionToolTile]).
      *
-     * A slot for the same reason [onOpenHistory] is a callback: the terminals, shells, worktrees and
-     * subagent tree belong to the execution feature, which the session screen may not import. The app
-     * module supplies the rows and the default draws nothing.
+     * A slot for the same reason [onOpenHistory] is a callback: those panels belong to the review and execution
+     * features, which the session screen may not import. The app module supplies the tiles; the default draws none.
      */
-    executionSlot: @Composable () -> Unit = {},
+    workspaceSlot: @Composable () -> Unit = {},
+    /** The project rows (project settings, permissions, instructions), supplied by the app module like [workspaceSlot]. */
+    projectSlot: @Composable () -> Unit = {},
+    /** The context gauge's words, shown under the title because the top bar draws the gauge without them. */
+    contextLabel: String? = null,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var renaming by remember { mutableStateOf(false) }
     var confirmingDelete by remember { mutableStateOf(false) }
 
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState, modifier = modifier) {
-        Column(
-            Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            Text(stringResource(R.string.session_menu), style = MaterialTheme.typography.titleMedium)
-            Text(title, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-
-            SheetAction(R.string.session_rename) {
-                renaming = true
+        Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(bottom = 24.dp)) {
+            Column(Modifier.padding(horizontal = 24.dp)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                contextLabel?.let {
+                    Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
             }
-            SheetAction(R.string.session_copy_message) {
+
+            SheetSection(R.string.session_section_workspace)
+            FlowRow(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                maxItemsInEachRow = TILES_PER_ROW,
+            ) { workspaceSlot() }
+
+            SheetSection(R.string.session_section_session)
+            SessionMenuRow(stringResource(R.string.session_rename), icon = Icons.Outlined.DriveFileRenameOutline, onClick = {
+                renaming = true
+            })
+            onOpenHistory?.let { open ->
+                SessionMenuRow(stringResource(R.string.session_history), icon = Icons.Outlined.History, onClick = open)
+            }
+            onWaitUntilIdle?.let { wait ->
+                SessionMenuRow(stringResource(R.string.session_wait_idle), icon = Icons.Outlined.HourglassEmpty, onClick = wait)
+            }
+            onToggleFollowDesktop?.let { toggle -> FollowDesktopRow(on = followDesktopOn, onClick = toggle) }
+            if (onOpenAttention != null) {
+                SessionMenuRow(
+                    stringResource(R.string.session_attention),
+                    icon = Icons.Outlined.NotificationsActive,
+                    onClick = onOpenAttention,
+                )
+            }
+            onAddSyntheticNote?.let { add ->
+                SessionMenuRow(stringResource(R.string.session_synthetic_note), icon = Icons.Outlined.NoteAlt, onClick = add)
+            }
+            SessionMenuRow(stringResource(R.string.session_copy_message), icon = Icons.Outlined.ContentCopy, onClick = {
                 onCopyMessage()
                 onDismiss()
-            }
-            SheetAction(R.string.session_copy_transcript) {
+            })
+            SessionMenuRow(stringResource(R.string.session_copy_transcript), icon = Icons.AutoMirrored.Outlined.Article, onClick = {
                 onCopyTranscript()
                 onDismiss()
+            })
+
+            SheetSection(R.string.session_section_project)
+            projectSlot()
+
+            if (onOpenEventHistory != null || onOpenExperimental != null) {
+                SheetSection(R.string.session_section_advanced)
+                onOpenEventHistory?.let { open ->
+                    SessionMenuRow(stringResource(R.string.session_event_history), icon = Icons.Outlined.Timeline, onClick = open)
+                }
+                onOpenExperimental?.let { open ->
+                    SessionMenuRow(stringResource(R.string.session_experimental), icon = Icons.Outlined.Science, onClick = open)
+                }
             }
-            if (onOpenAttention != null) {
-                SheetAction(R.string.session_attention) { onOpenAttention() }
-            }
-            onOpenHistory?.let { open -> SheetAction(R.string.session_history) { open() } }
-            onWaitUntilIdle?.let { wait -> SheetAction(R.string.session_wait_idle) { wait() } }
-            onToggleFollowDesktop?.let { toggle -> FollowDesktopRow(on = followDesktopOn, onClick = toggle) }
-            onAddSyntheticNote?.let { add -> SheetAction(R.string.session_synthetic_note) { add() } }
-            onOpenEventHistory?.let { open -> SheetAction(R.string.session_event_history) { open() } }
-            onOpenExperimental?.let { open -> SheetAction(R.string.session_experimental) { open() } }
-            executionSlot()
-            SheetAction(R.string.session_delete) { confirmingDelete = true }
+
+            HorizontalDivider(Modifier.padding(vertical = 8.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+            SessionMenuRow(
+                label = stringResource(R.string.session_delete),
+                icon = Icons.Outlined.Delete,
+                destructive = true,
+                onClick = { confirmingDelete = true },
+            )
         }
     }
 
@@ -306,47 +384,118 @@ fun SyntheticNoteDialog(
 }
 
 /**
- * The desktop-follow row. Its label is the state the app is in now, so a screen reader hears "on" or "off" before
- * the explanation, and the explanation says what on does.
+ * The desktop-follow row. Its switch is the state the app is in now, so a screen reader hears "on" or "off" with the
+ * label, and the explanation under it says what on does. It stays on the sheet when toggled, so the change is seen.
  */
 @Composable
 private fun FollowDesktopRow(on: Boolean, onClick: () -> Unit) {
-    TextButton(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
-        Column(Modifier.fillMaxWidth()) {
-            Text(stringResource(if (on) R.string.session_follow_desktop_on else R.string.session_follow_desktop_off))
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .toggleable(value = on, role = Role.Switch, onValueChange = { onClick() })
+            .padding(horizontal = 24.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(Icons.Outlined.Devices, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        Spacer(Modifier.width(20.dp))
+        Column(Modifier.weight(1f)) {
+            Text(stringResource(R.string.session_follow_desktop), style = MaterialTheme.typography.bodyLarge)
             Text(
                 stringResource(R.string.session_follow_desktop_explain),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
+        Switch(checked = on, onCheckedChange = null)
     }
 }
 
-/** One row of the sheet. */
 @Composable
-private fun SheetAction(labelRes: Int, onClick: () -> Unit) {
-    TextButton(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
-        Text(stringResource(labelRes), modifier = Modifier.fillMaxWidth())
-    }
+private fun SheetSection(titleRes: Int) {
+    Text(
+        text = stringResource(titleRes),
+        style = MaterialTheme.typography.labelLarge,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 20.dp, bottom = 6.dp).semantics { heading() },
+    )
 }
 
 /**
- * One row of a session's overflow sheet, with an enabled flag.
+ * One row of a session's tools sheet: an icon, a label, and an enabled flag.
  *
- * Public because the app module composes Phase 7's rows into this sheet, and a row the composition
- * root cannot draw is a row the composition root cannot add.
+ * Public because the app module composes the project rows into this sheet, and a row the composition root cannot
+ * draw is a row the composition root cannot add. [destructive] colors it as the one row that cannot be undone.
  */
 @Composable
 fun SessionMenuRow(
     label: String,
     onClick: () -> Unit,
     enabled: Boolean = true,
+    icon: ImageVector? = null,
+    destructive: Boolean = false,
 ) {
-    TextButton(onClick = onClick, enabled = enabled, modifier = Modifier.fillMaxWidth()) {
-        Text(label, modifier = Modifier.fillMaxWidth())
+    val alpha = if (enabled) 1f else DISABLED_ALPHA
+    val tint = if (destructive) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
+            .padding(horizontal = 24.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (icon != null) {
+            Icon(icon, contentDescription = null, tint = tint.copy(alpha = alpha))
+            Spacer(Modifier.width(20.dp))
+        }
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyLarge,
+            color = (if (destructive) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface).copy(alpha = alpha),
+        )
     }
 }
+
+/**
+ * One tile of the sheet's workspace grid. A disabled tile says why under its label ([disabledReason]), because a
+ * greyed-out Shells with no explanation reads as broken rather than as "this session has not loaded its directory".
+ */
+@Composable
+fun SessionToolTile(
+    label: String,
+    icon: ImageVector,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    disabledReason: String? = null,
+) {
+    val alpha = if (enabled) 1f else DISABLED_ALPHA
+    Column(
+        modifier = modifier
+            .width(TILE_WIDTH)
+            .clip(OpenCodeThemeExtras.shapes.card)
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+            .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
+            .semantics(mergeDescendants = true) {
+                if (!enabled && disabledReason != null) stateDescription = disabledReason
+            }
+            .padding(vertical = 12.dp, horizontal = 4.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurface.copy(alpha = alpha))
+        Spacer(Modifier.height(6.dp))
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = alpha),
+            textAlign = TextAlign.Center,
+            maxLines = 2,
+        )
+    }
+}
+
+private const val DISABLED_ALPHA = 0.38f
+private const val TILES_PER_ROW = 4
+private val TILE_WIDTH = 80.dp
 
 /** The back arrow, kept here so the session screen does not carry a bare glyph. */
 @Composable

@@ -1,7 +1,7 @@
 package dev.opencode.android.feature.composer.ui
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -9,12 +9,17 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.AttachFile
 import androidx.compose.material.icons.filled.AutoAwesome
@@ -23,15 +28,23 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.OpenInFull
 import androidx.compose.material.icons.filled.Unarchive
+import androidx.compose.material.icons.outlined.Inbox
+import androidx.compose.material.icons.outlined.Memory
+import androidx.compose.material.icons.outlined.SmartToy
+import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -44,15 +57,20 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.opencode.android.core.data.composer.Completion
+import dev.opencode.android.core.data.composer.PromptIntent
+import dev.opencode.android.core.designsystem.component.OpenCodeChip
 import dev.opencode.android.core.designsystem.text.TextSync
 import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
 import dev.opencode.android.core.model.Delivery
@@ -144,15 +162,14 @@ fun ComposerBar(
             field = TextFieldValue(adopted, TextRange(adopted.length))
         }
     }
+    var actionsOpen by remember { mutableStateOf(false) }
     Surface(
         modifier = modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.surfaceContainer,
-        shape = OpenCodeThemeExtras.shapes.sheet,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        color = MaterialTheme.colorScheme.surface,
         shadowElevation = 0.dp,
         tonalElevation = 0.dp,
     ) {
-        Column(Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
+        Column(Modifier.padding(start = 8.dp, end = 8.dp, top = 6.dp, bottom = 8.dp)) {
             // A server with no usable model cannot start a turn, and a composer that silently does
             // nothing is the worst way to learn that. The plan's empty state says how to fix it;
             // logging in from the phone is Phase 8.
@@ -165,159 +182,69 @@ fun ComposerBar(
             // prompt that was already sent, and why the next send commits first. Above the field, so it is read
             // before the words it explains.
             StagedRevertBanner(state = state, onRedo = onAskRedo, modifier = Modifier.padding(bottom = 8.dp))
-            OutlinedTextField(
-                value = field,
-                onValueChange = { edited: TextFieldValue ->
-                    if (edited.text != field.text) sync.onEdited(edited.text)
-                    field = edited
-                    onTextChange(edited.text, edited.selection.end)
-                },
-                placeholder = {
-                    Text(
-                        stringResource(
-                            if (state.shellMode) R.string.composer_shell_hint else R.string.composer_hint,
-                        ),
-                    )
-                },
-                modifier = Modifier.fillMaxWidth(),
-                textStyle = if (state.shellMode) OpenCodeThemeExtras.code.body else LocalTextStyle.current,
-                shape = OpenCodeThemeExtras.shapes.button,
-                maxLines = 6,
-                enabled = !state.sending,
-            )
             SearchProgress(visible = state.searchingFiles)
             CompletionList(completions = state.completions, onSelect = onSelectCompletion)
             AttachmentChips(attachments = state.attachments, onRemove = onRemoveAttachment)
-            ComposerContextRow(state = state)
-            // The chips get their own line. Sharing one with Stop, Background and send meant the
-            // delivery toggle — the control the plan puts first — sat behind a horizontal scroll and
-            // was clipped by the buttons beside it.
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(top = 4.dp).horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                // The cycle buttons the plan asks for: one tap to the next agent or the next
-                // reasoning effort, without opening a picker.
-                if (state.nextAgent != null) {
-                    AssistChip(
-                        onClick = onCycleAgent,
-                        label = { Text(stringResource(R.string.composer_next_agent)) },
-                    )
-                }
-                state.nextVariant?.takeIf { it != state.variant }?.let { next ->
-                    AssistChip(
-                        onClick = onCycleVariant,
-                        label = { Text(stringResource(R.string.model_variant, next)) },
-                    )
-                }
-                FilterChip(
-                    selected = state.delivery == Delivery.Queue,
-                    onClick = {
-                        onDeliveryChange(
-                            if (state.delivery == Delivery.Queue) Delivery.Steer else Delivery.Queue,
-                        )
-                    },
-                    label = {
-                        Text(
-                            stringResource(
-                                if (state.delivery == Delivery.Queue) {
-                                    R.string.composer_delivery_queue
-                                } else {
-                                    R.string.composer_delivery_steer
-                                },
-                            ),
-                        )
-                    },
-                )
-                FilterChip(
-                    selected = state.resume,
-                    onClick = { onResumeChange(!state.resume) },
-                    label = { Text(stringResource(R.string.composer_resume)) },
-                )
-                state.agent?.let { agent ->
-                    AssistChip(
-                        onClick = onOpenAgentPicker,
-                        label = { Text(agent, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                    )
-                }
-                state.model?.let { model ->
-                    AssistChip(
-                        onClick = onOpenModelPicker,
-                        label = {
-                            Text(
-                                model.variant?.let { "${model.id}#$it" } ?: model.id,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        },
-                    )
-                }
-                if (state.pending.isNotEmpty()) {
-                    AssistChip(
-                        onClick = onOpenInbox,
-                        label = { Text(stringResource(R.string.composer_inbox, state.pending.size)) },
-                        colors = AssistChipDefaults.assistChipColors(
-                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                        ),
-                    )
-                }
+            // What the send will carry, said before it is sent (Phase 5). Only when there is something beyond plain
+            // text to say: "Sends: nothing yet" under an empty box was a line of chrome on every screen.
+            if (state.attachments.isNotEmpty() || state.intent.let { it != null && it !is PromptIntent.Prompt }) {
+                ComposerContextRow(state = state)
             }
-            // Stop and Background have a row of their own, above the buttons and only while a turn runs.
-            // Sharing the send row with them put about 430 dp of buttons on a row a 360 dp phone gives
-            // 336, and Send, laid out last, took the nothing that was left.
+            ContextChips(
+                state = state,
+                onOpenAgentPicker = onOpenAgentPicker,
+                onOpenModelPicker = onOpenModelPicker,
+                onDeliveryChange = onDeliveryChange,
+                onResumeChange = onResumeChange,
+                onOpenInbox = onOpenInbox,
+            )
+            // Stop and Background have a row of their own, above the input and only while a turn runs, so the
+            // input row (and Send under the thumb) never moves when a turn starts or ends.
             if (state.busy) {
                 RunningTurnActions(onInterrupt = { onInterrupt(false) }, onBackground = onBackground)
             }
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                // At the bottom so Send stays under the thumb whether the icons take one line or two.
+                modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                // At the bottom so + and Send stay level with the last line of a growing box.
                 verticalAlignment = Alignment.Bottom,
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
             ) {
-                // The ergonomics the TUI has on keys are buttons here, because a phone has no up-arrow
-                // to bind and a chip row that scrolls is a row whose last items nobody finds. They wrap
-                // rather than scroll for the same reason: seven 48 dp buttons need 336 dp, Send needs 48
-                // more, and a phone is 320 to 411 dp wide, so on the narrow ones the last icon drops to a
-                // second line beside Send instead of pushing Send off the edge.
-                FlowRow(modifier = Modifier.weight(1f)) {
-                    ComposerAction(
-                        icon = Icons.Filled.AttachFile,
-                        description = stringResource(R.string.composer_attach),
-                        onClick = onAttach,
-                    )
-                    ComposerAction(
-                        icon = Icons.Filled.AutoAwesome,
-                        description = stringResource(R.string.composer_add_skill),
-                        onClick = onOpenSkills,
-                    )
-                    ComposerAction(
-                        icon = Icons.Filled.KeyboardArrowUp,
-                        description = stringResource(R.string.composer_history_older),
-                        onClick = onOlderHistory,
-                    )
-                    ComposerAction(
-                        icon = Icons.Filled.KeyboardArrowDown,
-                        description = stringResource(R.string.composer_history_newer),
-                        onClick = onNewerHistory,
-                    )
-                    ComposerAction(
-                        icon = Icons.Filled.Inventory2,
-                        description = stringResource(R.string.composer_stash),
-                        onClick = onStash,
-                        enabled = state.text.isNotBlank(),
-                    )
-                    ComposerAction(
-                        icon = Icons.Filled.Unarchive,
-                        description = stringResource(R.string.composer_stash_pop),
-                        onClick = onOpenStash,
-                        enabled = state.stash.isNotEmpty(),
-                    )
-                    ComposerAction(
-                        icon = Icons.Filled.OpenInFull,
-                        description = stringResource(R.string.composer_editor),
-                        onClick = onOpenEditor,
-                    )
-                }
+                ComposerAction(
+                    icon = Icons.Filled.Add,
+                    description = stringResource(R.string.composer_more_actions),
+                    onClick = { actionsOpen = true },
+                )
+                OutlinedTextField(
+                    value = field,
+                    onValueChange = { edited: TextFieldValue ->
+                        if (edited.text != field.text) sync.onEdited(edited.text)
+                        field = edited
+                        onTextChange(edited.text, edited.selection.end)
+                    },
+                    placeholder = {
+                        Text(
+                            stringResource(
+                                if (state.shellMode) R.string.composer_shell_hint else R.string.composer_hint,
+                            ),
+                        )
+                    },
+                    modifier = Modifier.weight(1f),
+                    textStyle = if (state.shellMode) OpenCodeThemeExtras.code.body else LocalTextStyle.current,
+                    // Shell mode is a command line: no autocorrect and no capitalisation rewriting what was typed.
+                    keyboardOptions = if (state.shellMode) {
+                        KeyboardOptions(autoCorrectEnabled = false, capitalization = KeyboardCapitalization.None)
+                    } else {
+                        KeyboardOptions(capitalization = KeyboardCapitalization.Sentences)
+                    },
+                    shape = RoundedCornerShape(24.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                    ),
+                    maxLines = 6,
+                    enabled = !state.sending,
+                )
                 SendButton(
                     enabled = state.canSend,
                     sending = state.sending,
@@ -328,6 +255,21 @@ fun ComposerBar(
             }
         }
     }
+    if (actionsOpen) {
+        ComposerActionsSheet(
+            state = state,
+            onDismiss = { actionsOpen = false },
+            onAttach = onAttach,
+            onOpenSkills = onOpenSkills,
+            onOlderHistory = onOlderHistory,
+            onNewerHistory = onNewerHistory,
+            onStash = onStash,
+            onOpenStash = onOpenStash,
+            onOpenEditor = onOpenEditor,
+            onCycleAgent = onCycleAgent,
+            onCycleVariant = onCycleVariant,
+        )
+    }
     // A dialog window of its own, so where it is composed does not matter to the layout above.
     if (state.confirmingRedo) {
         RedoConfirmationDialog(
@@ -337,6 +279,137 @@ fun ComposerBar(
         )
     }
 }
+
+/**
+ * Who answers and how the prompt is delivered, as one scrolling row of chips above the box: the agent and the model
+ * open their pickers, and while a turn runs, Steer/Queue and Resume say what a send does to it. The inbox chip is
+ * there only when something is queued.
+ */
+@Composable
+private fun ContextChips(
+    state: ComposerUiState,
+    onOpenAgentPicker: () -> Unit,
+    onOpenModelPicker: () -> Unit,
+    onDeliveryChange: (Delivery) -> Unit,
+    onResumeChange: (Boolean) -> Unit,
+    onOpenInbox: () -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 4.dp, vertical = 2.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        state.agent?.let { agent ->
+            OpenCodeChip(label = agent, icon = Icons.Outlined.SmartToy, onClick = onOpenAgentPicker)
+        }
+        state.model?.let { model ->
+            OpenCodeChip(
+                label = model.variant?.let { "${model.id} · $it" } ?: model.id,
+                icon = Icons.Outlined.Memory,
+                onClick = onOpenModelPicker,
+            )
+        }
+        if (state.busy) {
+            val queued = state.delivery == Delivery.Queue
+            OpenCodeChip(
+                label = stringResource(if (queued) R.string.composer_delivery_queue else R.string.composer_delivery_steer),
+                selected = true,
+                onClick = { onDeliveryChange(if (queued) Delivery.Steer else Delivery.Queue) },
+            )
+            OpenCodeChip(
+                label = stringResource(R.string.composer_resume),
+                selected = state.resume,
+                onClick = { onResumeChange(!state.resume) },
+            )
+        }
+        if (state.pending.isNotEmpty()) {
+            OpenCodeChip(
+                label = stringResource(R.string.composer_inbox, state.pending.size),
+                icon = Icons.Outlined.Inbox,
+                selected = true,
+                onClick = onOpenInbox,
+            )
+        }
+    }
+}
+
+/**
+ * Everything the TUI has on keys, behind the composer's + button: attach, skills, history, stash, the full editor,
+ * and the agent and variant cycles. They were a row of seven unlabelled icons under the box; here each one has its
+ * name, and the box gets the room back.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ComposerActionsSheet(
+    state: ComposerUiState,
+    onDismiss: () -> Unit,
+    onAttach: () -> Unit,
+    onOpenSkills: () -> Unit,
+    onOlderHistory: () -> Unit,
+    onNewerHistory: () -> Unit,
+    onStash: () -> Unit,
+    onOpenStash: () -> Unit,
+    onOpenEditor: () -> Unit,
+    onCycleAgent: () -> Unit,
+    onCycleVariant: () -> Unit,
+) {
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(Modifier.padding(bottom = 24.dp)) {
+            val run: (() -> Unit) -> () -> Unit = { action ->
+                {
+                    onDismiss()
+                    action()
+                }
+            }
+            SheetAction(Icons.Filled.AttachFile, stringResource(R.string.composer_attach), run(onAttach))
+            SheetAction(Icons.Filled.AutoAwesome, stringResource(R.string.composer_add_skill), run(onOpenSkills))
+            SheetAction(Icons.Filled.OpenInFull, stringResource(R.string.composer_editor), run(onOpenEditor))
+            HorizontalDivider(Modifier.padding(vertical = 4.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+            SheetAction(Icons.Filled.KeyboardArrowUp, stringResource(R.string.composer_history_older), run(onOlderHistory))
+            SheetAction(Icons.Filled.KeyboardArrowDown, stringResource(R.string.composer_history_newer), run(onNewerHistory))
+            SheetAction(
+                Icons.Filled.Inventory2,
+                stringResource(R.string.composer_stash),
+                run(onStash),
+                enabled = state.text.isNotBlank(),
+            )
+            SheetAction(
+                Icons.Filled.Unarchive,
+                stringResource(R.string.composer_stash_pop),
+                run(onOpenStash),
+                enabled = state.stash.isNotEmpty(),
+            )
+            if (state.nextAgent != null || state.nextVariant?.let { it != state.variant } == true) {
+                HorizontalDivider(Modifier.padding(vertical = 4.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+            }
+            // The cycle buttons the plan asks for: one tap to the next agent or the next reasoning effort.
+            if (state.nextAgent != null) {
+                SheetAction(Icons.Outlined.SmartToy, stringResource(R.string.composer_next_agent), run(onCycleAgent))
+            }
+            state.nextVariant?.takeIf { it != state.variant }?.let { next ->
+                SheetAction(Icons.Outlined.Tune, stringResource(R.string.model_variant, next), run(onCycleVariant))
+            }
+        }
+    }
+}
+
+@Composable
+private fun SheetAction(icon: ImageVector, label: String, onClick: () -> Unit, enabled: Boolean = true) {
+    val alpha = if (enabled) 1f else DISABLED_ALPHA
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
+            .padding(horizontal = 24.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = alpha))
+        Spacer(Modifier.width(20.dp))
+        Text(label, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface.copy(alpha = alpha))
+    }
+}
+
+private const val DISABLED_ALPHA = 0.38f
 
 /**
  * Stop and Background, for as long as a turn runs.
@@ -366,7 +439,7 @@ private fun RunningTurnActions(onInterrupt: () -> Unit, onBackground: () -> Unit
  */
 @Composable
 private fun ComposerAction(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: ImageVector,
     description: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
