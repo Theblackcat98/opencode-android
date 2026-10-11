@@ -1,5 +1,8 @@
 package dev.opencode.android.feature.execution
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -19,9 +22,11 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -36,6 +41,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -45,7 +51,10 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import dev.opencode.android.core.designsystem.component.OpenCodeStatusPill
+import dev.opencode.android.core.designsystem.component.StatusKind
 import dev.opencode.android.core.designsystem.text.SyncedTextField
+import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
 import dev.opencode.android.core.model.ShellStatus
 
 /**
@@ -76,29 +85,13 @@ fun ShellsScreen(
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier.fillMaxSize()) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            SyncedTextField(
-                value = state.draft,
-                onValueChange = onDraftChange,
-                label = { Text(stringResource(R.string.shells_command)) },
-                singleLine = true,
-                modifier = Modifier.weight(1f),
-            )
-            IconButton(onClick = onRun, enabled = state.canRun) {
-                Icon(Icons.Filled.Add, stringResource(R.string.shells_run))
-            }
-        }
-
         if (state.rows.isEmpty()) {
             EmptyShells(Modifier.weight(1f))
         } else {
             LazyColumn(
-                modifier = Modifier.weight(1f).testTag(TAG_LIST),
-                contentPadding = PaddingValues(vertical = 4.dp),
+                modifier = Modifier.weight(if (state.open != null) LIST_WEIGHT_WITH_OUTPUT else 1f).testTag(TAG_LIST),
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 items(state.rows, key = { it.id }) { row ->
                     ShellRowItem(
@@ -107,7 +100,6 @@ fun ShellsScreen(
                         onOpen = { onOpen(row.id) },
                         onKill = { onRequestKill(row.id) },
                     )
-                    HorizontalDivider()
                 }
             }
             state.open?.let { row ->
@@ -116,6 +108,25 @@ fun ShellsScreen(
                     onClose = onClose,
                     modifier = Modifier.weight(1f),
                 )
+            }
+        }
+        // The command line is docked at the bottom, like the session's composer: it is the one control on the
+        // screen a thumb reaches for, and the list and the output above it are what it produces.
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            SyncedTextField(
+                value = state.draft,
+                onValueChange = onDraftChange,
+                label = { Text(stringResource(R.string.shells_command)) },
+                singleLine = true,
+                textStyle = OpenCodeThemeExtras.code.body,
+                modifier = Modifier.weight(1f),
+            )
+            FilledIconButton(onClick = onRun, enabled = state.canRun) {
+                Icon(Icons.Filled.PlayArrow, stringResource(R.string.shells_run))
             }
         }
     }
@@ -184,68 +195,47 @@ private fun ShellRowItem(
     onOpen: () -> Unit,
     onKill: () -> Unit,
 ) {
-    ListItem(
-        headlineContent = {
+    val scheme = MaterialTheme.colorScheme
+    // The open row is the one the pane below shows, so it says so: a list of identical-looking rows over a pane
+    // that belongs to one of them is a pane whose command the reader has to guess.
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(OpenCodeThemeExtras.shapes.card)
+            .background(if (open) scheme.secondaryContainer.copy(alpha = 0.35f) else scheme.surfaceContainerLow)
+            .border(
+                1.dp,
+                if (open) scheme.secondary.copy(alpha = 0.6f) else scheme.outlineVariant.copy(alpha = 0.5f),
+                OpenCodeThemeExtras.shapes.card,
+            )
+            .clickable(onClickLabel = stringResource(R.string.shells_show_output), onClick = onOpen)
+            .semantics { selected = open }
+            .testTag(TAG_ROW + row.id)
+            .padding(start = 12.dp, top = 8.dp, bottom = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(
                 text = row.info.command,
-                fontFamily = FontFamily.Monospace,
+                style = OpenCodeThemeExtras.code.body,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.semantics { contentDescription = row.info.command },
             )
-        },
-        supportingContent = {
-            Text(
-                text = shellStatusLabel(row),
-                style = MaterialTheme.typography.bodySmall,
+            val kind = when {
+                row.isRunning -> StatusKind.Running
+                row.isFailed -> StatusKind.Failure
+                else -> StatusKind.Success
+            }
+            OpenCodeStatusPill(
+                kind = kind,
+                label = shellStatusLabel(row),
+                modifier = if (row.isRunning) Modifier.testTag(TAG_RUNNING) else Modifier,
             )
-        },
-        leadingContent = {
-            if (row.isRunning) {
-                CircularProgressIndicator(
-                    modifier = Modifier.width(24.dp).testTag(TAG_RUNNING),
-                    strokeWidth = 2.dp,
-                )
-            } else {
-                StatusDot(row)
-            }
-        },
-        trailingContent = {
-            IconButton(onClick = onKill) {
-                Icon(Icons.Filled.Close, stringResource(R.string.shells_kill))
-            }
-        },
-        // The open row is the one the pane below shows, so it says so: a list of identical-looking rows
-        // over a pane that belongs to one of them is a pane whose command the reader has to guess.
-        colors = ListItemDefaults.colors(
-            containerColor = if (open) {
-                MaterialTheme.colorScheme.secondaryContainer
-            } else {
-                MaterialTheme.colorScheme.surface
-            },
-        ),
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClickLabel = stringResource(R.string.shells_show_output), onClick = onOpen)
-            .semantics { selected = open }
-            .testTag(TAG_ROW + row.id),
-    )
-}
-
-@Composable
-private fun StatusDot(row: ShellRow) {
-    val label = shellStatusLabel(row)
-    val colour = when {
-        row.isRunning -> MaterialTheme.colorScheme.primary
-        row.isFailed -> MaterialTheme.colorScheme.error
-        else -> MaterialTheme.colorScheme.outline
-    }
-    Surface(
-        modifier = Modifier.width(12.dp).heightIn(min = 12.dp),
-        color = colour,
-        shape = MaterialTheme.shapes.small,
-    ) {
-        Text(text = "", modifier = Modifier.semantics { contentDescription = label })
+        }
+        IconButton(onClick = onKill) {
+            Icon(Icons.Filled.Close, stringResource(R.string.shells_kill), tint = scheme.onSurfaceVariant)
+        }
     }
 }
 
@@ -315,15 +305,15 @@ fun ShellOutputPane(
             )
         }
         Surface(
-            modifier = Modifier.fillMaxWidth().weight(1f).padding(top = 4.dp),
-            color = MaterialTheme.colorScheme.surfaceVariant,
-            shape = MaterialTheme.shapes.small,
+            modifier = Modifier.fillMaxWidth().weight(1f).padding(top = 4.dp, bottom = 4.dp),
+            color = MaterialTheme.colorScheme.surfaceContainerLowest,
+            shape = OpenCodeThemeExtras.shapes.codeBlock,
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
         ) {
             SelectionContainer {
                 Text(
                     text = output.text.ifEmpty { stringResource(R.string.shells_no_output) },
-                    style = MaterialTheme.typography.bodySmall,
-                    fontFamily = FontFamily.Monospace,
+                    style = OpenCodeThemeExtras.code.small,
                     modifier = Modifier
                         .padding(8.dp)
                         .verticalScroll(rememberScrollState())
@@ -366,6 +356,9 @@ object ExecutionTags {
     const val TRUNCATED: String = "shells-truncated"
     const val OUTPUT_ERROR: String = "shells-output-error"
 }
+
+/** The list's share of the height while an output is open: the output is what is being read, so it gets more. */
+private const val LIST_WEIGHT_WITH_OUTPUT = 0.6f
 
 private val TAG_LIST = ExecutionTags.LIST
 private val TAG_ROW = ExecutionTags.ROW

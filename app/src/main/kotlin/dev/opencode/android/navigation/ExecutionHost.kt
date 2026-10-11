@@ -23,6 +23,8 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.opencode.android.core.data.terminal.TerminalInput
+import dev.opencode.android.core.designsystem.component.OpenCodeTopAppBar
+import dev.opencode.android.core.designsystem.format.Formatters
 import dev.opencode.android.feature.execution.R
 import dev.opencode.android.feature.execution.SessionTerminalsPane
 import dev.opencode.android.feature.execution.SessionTerminalsViewModel
@@ -64,7 +66,13 @@ fun ShellsHost(
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
-        topBar = { ExecutionTopBar(title = state.directory ?: directory, onNavigateBack = onNavigateBack) },
+        topBar = {
+            ExecutionTopBar(
+                title = stringResource(R.string.shells_title),
+                subtitle = Formatters.directoryTail(state.directory ?: directory),
+                onNavigateBack = onNavigateBack,
+            )
+        },
     ) { padding ->
         ShellsScreen(
             state = state,
@@ -107,7 +115,13 @@ fun TerminalHost(
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
-        topBar = { ExecutionTopBar(title = directory, onNavigateBack = onNavigateBack) },
+        topBar = {
+            ExecutionTopBar(
+                title = stringResource(R.string.terminal_title),
+                subtitle = Formatters.directoryTail(directory),
+                onNavigateBack = onNavigateBack,
+            )
+        },
     ) { padding ->
         TerminalScreen(
             state = state,
@@ -151,7 +165,8 @@ fun SubagentsHost(
         modifier = modifier.fillMaxSize(),
         topBar = {
             ExecutionTopBar(
-                title = state.parentTitle ?: sessionId,
+                title = stringResource(R.string.subagents_title),
+                subtitle = state.parentTitle ?: sessionId,
                 onNavigateBack = onNavigateBack,
             )
         },
@@ -190,7 +205,8 @@ fun WorktreesHost(
         modifier = modifier.fillMaxSize(),
         topBar = {
             ExecutionTopBar(
-                title = state.projectName ?: projectId,
+                title = stringResource(R.string.worktrees_title),
+                subtitle = state.projectName ?: projectId,
                 onNavigateBack = onNavigateBack,
             )
         },
@@ -246,24 +262,13 @@ fun SessionTerminalsHost(
     }
 }
 
-@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+/** The execution screens' bar: what the screen is, and which checkout, project or session it is about. */
 @Composable
-private fun ExecutionTopBar(title: String, onNavigateBack: () -> Unit) {
-    TopAppBar(
-        title = {
-            Text(
-                text = title,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        },
-        navigationIcon = {
-            IconButton(onClick = onNavigateBack) {
-                Icon(
-                    Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = stringResource(R.string.action_back),
-                )
-            }
-        },
+private fun ExecutionTopBar(title: String, onNavigateBack: () -> Unit, subtitle: String? = null) {
+    OpenCodeTopAppBar(
+        title = title,
+        onBack = onNavigateBack,
+        backDescription = stringResource(R.string.action_back),
+        subtitle = subtitle?.let { { Text(it, maxLines = 1, overflow = TextOverflow.Ellipsis) } },
     )
 }

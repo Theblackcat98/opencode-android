@@ -194,6 +194,13 @@ data class ReviewRoute(
 )
 
 /**
+ * The session's file browser, full screen. Like [ReviewRoute] it hands what it produces (attached files) to the
+ * session's composer, so it is only offered while that session is on the back stack under it.
+ */
+@Serializable
+data class FilesRoute(val serverId: String? = null, val sessionId: String)
+
+/**
  * The shell panel of one checkout (features doc §30).
  *
  * The directory is the whole identity: shells are location-scoped, so a panel without one could not
@@ -705,6 +712,21 @@ fun OpenCodeApp(
                     }
                 }
 
+                composable<FilesRoute> { entry ->
+                    val route = entry.toRoute<FilesRoute>()
+                    // The session's composer, from the session's entry under this one, for the reason `ReviewRoute` takes it.
+                    val sessionEntry = remember(entry) { navController.sessionEntryOf(route.serverId, route.sessionId) }
+                    if (sessionEntry == null) {
+                        LaunchedEffect(entry) { navController.popBackStack() }
+                    } else {
+                        FilesHost(
+                            sessionId = route.sessionId,
+                            composer = hiltViewModel<ComposerViewModel>(sessionEntry),
+                            onNavigateBack = { navController.popBackStack() },
+                        )
+                    }
+                }
+
                 composable<ReviewRoute> { entry ->
                     val route = entry.toRoute<ReviewRoute>()
                     // The review is opened from a session, and what it produces (comments, attached files) is that
@@ -1160,10 +1182,12 @@ private fun NewSessionHost(
  * with no session (`sessionId` is null) or whose session is gone has no composer to give its comments and
  * attachments to.
  */
-private fun NavHostController.sessionEntryOf(route: ReviewRoute): NavBackStackEntry? {
-    val sessionId = route.sessionId ?: return null
-    return runCatching { getBackStackEntry(SessionRoute(route.serverId, sessionId)) }.getOrNull()
-}
+private fun NavHostController.sessionEntryOf(route: ReviewRoute): NavBackStackEntry? =
+    route.sessionId?.let { sessionEntryOf(route.serverId, it) }
+
+/** The back-stack entry of session [sessionId], or `null` when it is not on the stack. */
+private fun NavHostController.sessionEntryOf(serverId: String?, sessionId: String): NavBackStackEntry? =
+    runCatching { getBackStackEntry(SessionRoute(serverId, sessionId)) }.getOrNull()
 
 /**
  * The flow a catalog screen reads before the app is following a server.

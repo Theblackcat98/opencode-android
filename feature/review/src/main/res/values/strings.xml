@@ -15,6 +15,9 @@
     <string name="review_no_location">This project has no directory to diff against.</string>
 
     <!-- Review: navigation -->
+    <string name="review_view_options">View options</string>
+    <string name="review_previous_hunk_short">Prev hunk</string>
+    <string name="review_next_hunk_short">Next hunk</string>
     <string name="review_next_file">Next file</string>
     <string name="review_previous_file">Previous file</string>
     <string name="review_next_hunk">Next hunk</string>

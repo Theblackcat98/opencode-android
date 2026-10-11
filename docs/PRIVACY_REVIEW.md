@@ -24,6 +24,7 @@ a user who will let the app manage MCP servers has not said they want the server
 | Cached sessions and messages | Room | No — they are a cache of what the server already has |
 | Passwords and 30-day tokens | `SecureCredentialStore` | **Yes** — Android Keystore AES-GCM |
 | Drafts, favorites, prompt history | Room | No |
+| The projects on each server's home, the last session on screen, the Settings project | DataStore (`project_preferences`), keyed by server id | No — project and session ids the server already knows; nothing leaves the device |
 | Notification action payloads | `Intent` extras, transient | No — see below |
 
 The credential row is the only one that matters, and it is the one that is encrypted.

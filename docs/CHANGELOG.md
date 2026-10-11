@@ -18,6 +18,40 @@ left to do.
 
 ### Added
 
+- **Home lists only the projects a user added**, each as a group with its five newest root sessions, separated by
+  whitespace rather than cards. "Add project" offers the server's other projects (the server registers one for every
+  directory it is asked about, so its list is a history, not a choice); "Remove from home" takes one off without
+  touching the server. A session created in a project adds it. The list is the client's, per server, in a new
+  `project_preferences` DataStore (`ProjectPreferences`). Tapping a project's "All" opens the session list filtered to
+  it; before this, tapping a project card passed the project id as a server id. Built and unit tested
+  (`HomeStateTest`, screenshots `home`, `home-empty`, `home-add-project`); not seen on a device (matrix J11).
+- **A bottom bar with Home, Chat and Settings** on a server's three top-level screens, hidden on pushed screens and
+  while the keyboard is up. Chat opens the session last on screen, then the newest root session, then an empty state
+  with New session. Settings holds what the home's fourteen-item overflow menu and its second copy as chips held,
+  grouped (Server, Integrations, Configuration, Insights, Maintenance, App), with a project row that decides the
+  checkout the checkout-scoped pages use; it was always the first project the server listed. Not seen on a device
+  (matrix J11, J12).
+- **The session screen, redrawn as a conversation.** The user's messages are bubbles on the right; the agent's are
+  full width under a one-line header. Tool calls are compact rows that open on tap, and a run of calls that finished
+  cleanly folds into one "Ran N tools" row. A failed call is never folded and starts open, so its reason is on screen
+  without a tap (`AssistantBlocksTest`). Reasoning is one "Thought for 4s" line. A to-do tool is drawn as a checklist.
+  A normal turn end draws nothing; a failed or interrupted one keeps a caption, and the newest end is still announced
+  (see the accessibility audit, A-1). The top bar is one line of title and one of agent, model and cost, with the
+  context gauge as its bottom edge and a Review action. The composer is a chip row (agent, model, and Steer/Queue and
+  Resume while a turn runs) over one input row (+, the box, Send); attach, skills, history, stash and the editor
+  moved behind +. The overflow menu became a grouped tools sheet with a workspace grid (Review, Files, Shells,
+  Terminal, Subagents, Worktrees, Session terminals). Not seen on a device (matrix J13).
+- **The sub-screens share one top bar** (title, and the checkout, project or session it is about). Review has a
+  file selector ("1 of 3 · ReviewViewModel.kt") and labelled previous and next hunk and file at the bottom; wrap and
+  split moved into a menu. The file browser is a full-screen page (`FilesRoute`), reached from Review and from the
+  tools sheet's Files tile, and hands attachments to the session's own composer like the review does. Shells draw
+  each command as a card with a status pill over a larger output pane, with the command line docked at the bottom.
+  The subagent tree has depth guides, avatars and a running pill.
+- **The brand palette is the default.** `OpenCodeTheme` no longer uses Material You dynamic color unless asked, so
+  devices on Android 12+ draw the palette in `design.md`. Every screenshot baseline was re-recorded.
+- New design-system components: `OpenCodeTopAppBar`, `OpenCodeStatusPill`, `OpenCodeChip`, `OpenCodeAvatar`,
+  `OpenCodeAccordionRow`, `OpenCodeNavigationBar`, semantic status colors, and a code block header with a copy button.
+
 **The remaining nine operations**, all declared, wired and tested over real HTTP:
 
 - Usage statistics (`experimental.session.stats`) with the range, project, time zone and tool-detail

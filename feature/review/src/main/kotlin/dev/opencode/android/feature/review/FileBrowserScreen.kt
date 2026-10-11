@@ -3,6 +3,7 @@ package dev.opencode.android.feature.review
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.text.format.Formatter
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -11,6 +12,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -32,6 +34,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -57,6 +60,7 @@ import dev.opencode.android.core.data.composer.FileReadResult
 import dev.opencode.android.core.data.composer.LineRange
 import dev.opencode.android.core.designsystem.code.CodeHighlighter
 import dev.opencode.android.core.designsystem.code.CodeLanguage
+import dev.opencode.android.core.designsystem.component.OpenCodeTopAppBar
 import dev.opencode.android.core.model.FileSystemEntry
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -69,10 +73,14 @@ import kotlinx.coroutines.withContext
  * normalizes a path, because a joined path is a path the server never offered and the P2 rule is
  * that a path it gave is the path we send.
  *
- * **The viewer is a first-class part of this sheet, not a row's side effect.** A reviewer who opens
- * a file is reading it; a sheet that lists names and then offers three buttons has made the user
- * open a file and then not shown it. So the content, with line numbers and highlighting, is the
- * bottom half of the sheet, and the actions sit under it.
+ * **The viewer is a first-class part of this screen, not a row's side effect.** A reviewer who opens
+ * a file is reading it; a list of names that then offers three buttons has made the user open a file
+ * and then not shown it. So the content, with line numbers and highlighting, takes most of the screen
+ * under the list, and the actions sit under it.
+ *
+ * **A full screen, not a sheet.** It was a bottom sheet over the review, so a file was read in the
+ * lower half of a sheet that was itself most of a phone: a few lines of code at a time. It is now a
+ * page of its own with the path in the top bar, reached from the review and from the session's tools.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -101,9 +109,27 @@ fun FileBrowserScreen(
     searchResults: List<FileSystemEntry> = emptyList(),
     onSearchChange: (String) -> Unit = {},
 ) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    ModalBottomSheet(onDismissRequest = onNavigateBack, sheetState = sheetState, modifier = modifier) {
+    BackHandler(onBack = onNavigateBack)
+    Scaffold(
+        modifier = modifier.fillMaxSize(),
+        topBar = {
+            OpenCodeTopAppBar(
+                title = stringResource(R.string.files_title),
+                onBack = onNavigateBack,
+                backDescription = stringResource(R.string.action_dismiss),
+                subtitle = {
+                    Text(
+                        text = content?.path ?: path?.takeIf { it.isNotBlank() } ?: directory.orEmpty(),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                },
+            )
+        },
+    ) { padding ->
         FileBrowserContent(
+            modifier = Modifier.padding(padding).fillMaxSize(),
+            showPath = false,
             directory = directory,
             path = path,
             entries = entries,
@@ -161,6 +187,9 @@ fun FileBrowserContent(
     onWrite: (FileReadResult, String) -> Unit = { _, _ -> },
     selection: LineSelection? = null,
     onSelectionChange: (LineSelection) -> Unit = {},
+    modifier: Modifier = Modifier,
+    /** The path as a heading; the full screen shows it in its top bar instead. */
+    showPath: Boolean = true,
 ) {
     // The range the user is selecting is a value the caller can hold, not a `remember` buried in
     // this composable: a selection a test cannot set is a selection no baseline can photograph, and
@@ -174,15 +203,17 @@ fun FileBrowserContent(
         onSelectionChange(next)
     }
 
-    Column(modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp)) {
-        Text(
-            text = path?.takeIf { it.isNotBlank() } ?: directory.orEmpty(),
-            style = MaterialTheme.typography.titleSmall,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
-        HorizontalDivider()
+    Column(modifier = modifier.fillMaxWidth().padding(bottom = 8.dp)) {
+        if (showPath) {
+            Text(
+                text = path?.takeIf { it.isNotBlank() } ?: directory.orEmpty(),
+                style = MaterialTheme.typography.titleSmall,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            HorizontalDivider()
+        }
 
         // `fs.find` quick open. It is a field rather than a second list because the server's search
         // is scoped to the location and returns paths relative to it, so a hit cannot be joined
@@ -268,11 +299,12 @@ fun FileBrowserContent(
 
         if (content != null) {
             HorizontalDivider()
+            // The file is what is being read, so it gets twice the list's share of the height.
             FileContent(
                 file = content,
                 selection = current,
                 onSelectLine = select,
-                modifier = Modifier.weight(1f, fill = false),
+                modifier = Modifier.weight(2f, fill = false),
             )
             FileActions(
                 file = content,

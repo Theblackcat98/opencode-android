@@ -94,6 +94,12 @@ it is not. This needs `liveRegion = LiveRegionMode.Polite` on the status line, a
 how often — a `text.delta` storm announced per frame would be unusable, so it belongs on the turn
 boundary (`session.execution.succeeded`, `permission.asked`), not on the stream.
 
+*Update, session redesign:* a turn that finished normally no longer draws a "Turn finished" divider. The newest turn
+end keeps its polite live region on an invisible node carrying the outcome as its description, so the announcement
+survives the divider leaving the screen; a failed or interrupted turn still draws a caption, which carries the region
+itself. `TurnDividerLiveRegionTest` covers the three cases. Tool rows are single `toggleable` nodes that announce
+their expanded state, and the user's bubble is read as "You: …" because a screen reader cannot see which side it is on.
+
 **Finding A-2.** The keyboard-shortcut layer added in this phase (Ctrl+P for the command palette,
 leader-key combinations) is a *visible* feature and has no non-keyboard equivalent yet: a
 switch-access or switch-scan user cannot reach it. The commands themselves are reachable through

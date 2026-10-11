@@ -65,8 +65,6 @@ fun ReviewHost(
     review: ReviewViewModel = hiltViewModel(),
 ) {
     val state by review.state.collectAsStateWithLifecycle()
-    val files by review.files.collectAsStateWithLifecycle()
-    val context = LocalContext.current
 
     LaunchedEffect(sessionId) { review.open(sessionId) }
     LaunchedEffect(initialPath) { initialPath?.let(review::openFile) }
@@ -118,52 +116,108 @@ fun ReviewHost(
     }
 
     if (state.filesOpen) {
-        FileBrowserScreen(
-            directory = state.directory,
-            path = files.path,
-            entries = files.sorted,
-            reading = files.reading,
-            content = files.content,
-            loading = files.loading,
-            error = files.error,
-            canEdit = state.editingUsable,
-            writing = state.writing,
-            writeNotice = state.writeNotice?.let { outcome ->
-                when (outcome) {
-                    WriteOutcome.SwitchedOff -> stringResource(ReviewR.string.files_edit_off)
-                    is WriteOutcome.Failed -> stringResource(ReviewR.string.files_edit_failed, outcome.message)
-                    is WriteOutcome.Success -> stringResource(ReviewR.string.files_edit_saved, outcome.path)
-                }
-            },
-            searchQuery = state.searchQuery,
-            searchResults = state.searchResults,
-            onSearchChange = review::searchFiles,
-            onEnter = { entry -> review.listFiles(entry.path) },
-            onUp = review::goUp,
-            onRead = review::readFile,
-            onAttach = { file ->
-                composer.attachServerFile(file.path, file.label, file.mime.orEmpty())
+        FilesPanel(
+            review = review,
+            composer = composer,
+            onClose = review::toggleFiles,
+            onAttached = {
                 review.toggleFiles()
                 onAttached()
             },
-            onAttachLines = { file, range ->
-                composer.attachServerFileWithRange(file.path, file.label, file.mime.orEmpty(), range)
-                review.toggleFiles()
-                onAttached()
-            },
-            // A binary cannot be previewed, so the two offers are different: one hands the bytes to
-            // another app, the other puts them somewhere the user chose. Both need a real file, and
-            // the only URI this app may hand out is one its own `FileProvider` owns — the bytes
-            // arrive in memory and never touch storage, so they are written to the cache here.
-            onShare = { file ->
-                shareFile(context, file, download = false)
-                onShareFile(file)
-            },
-            onDownload = { file -> shareFile(context, file, download = true) },
-            onWrite = review::writeFile,
-            onNavigateBack = review::toggleFiles,
+            onShareFile = onShareFile,
         )
     }
+}
+
+/**
+ * The session's file browser as a destination of its own, reached from the session's tools sheet.
+ *
+ * It is the review's browser with the review left out: the same view model opened on the session (which is what
+ * gives it the checkout to list), shown at once, and closed by going back. **[composer] is required, as it is on
+ * [ReviewHost]**: an attached file has to reach the box of the session the user came from, and a default here
+ * would build a composer no session was opened in.
+ */
+@Composable
+fun FilesHost(
+    sessionId: String,
+    composer: ComposerViewModel,
+    onNavigateBack: () -> Unit,
+    modifier: Modifier = Modifier,
+    review: ReviewViewModel = hiltViewModel(),
+) {
+    val state by review.state.collectAsStateWithLifecycle()
+    LaunchedEffect(sessionId) { review.open(sessionId) }
+    // The browser lists the session's checkout, which `open` has just resolved; opening it before that would list
+    // nothing.
+    LaunchedEffect(state.directory) {
+        if (state.directory != null && !state.filesOpen) review.toggleFiles()
+    }
+    FilesPanel(
+        review = review,
+        composer = composer,
+        onClose = onNavigateBack,
+        onAttached = onNavigateBack,
+        modifier = modifier,
+    )
+}
+
+/** The file browser wired to a review view model and a session's composer; shared by the review and [FilesHost]. */
+@Composable
+private fun FilesPanel(
+    review: ReviewViewModel,
+    composer: ComposerViewModel,
+    onClose: () -> Unit,
+    onAttached: () -> Unit,
+    modifier: Modifier = Modifier,
+    onShareFile: (FileReadResult) -> Unit = {},
+) {
+    val state by review.state.collectAsStateWithLifecycle()
+    val files by review.files.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    FileBrowserScreen(
+        directory = state.directory,
+        path = files.path,
+        entries = files.sorted,
+        reading = files.reading,
+        content = files.content,
+        loading = files.loading,
+        error = files.error,
+        canEdit = state.editingUsable,
+        writing = state.writing,
+        writeNotice = state.writeNotice?.let { outcome ->
+            when (outcome) {
+                WriteOutcome.SwitchedOff -> stringResource(ReviewR.string.files_edit_off)
+                is WriteOutcome.Failed -> stringResource(ReviewR.string.files_edit_failed, outcome.message)
+                is WriteOutcome.Success -> stringResource(ReviewR.string.files_edit_saved, outcome.path)
+            }
+        },
+        searchQuery = state.searchQuery,
+        searchResults = state.searchResults,
+        onSearchChange = review::searchFiles,
+        onEnter = { entry -> review.listFiles(entry.path) },
+        onUp = review::goUp,
+        onRead = review::readFile,
+        onAttach = { file ->
+            composer.attachServerFile(file.path, file.label, file.mime.orEmpty())
+            onAttached()
+        },
+        onAttachLines = { file, range ->
+            composer.attachServerFileWithRange(file.path, file.label, file.mime.orEmpty(), range)
+            onAttached()
+        },
+        // A binary cannot be previewed, so the two offers are different: one hands the bytes to
+        // another app, the other puts them somewhere the user chose. Both need a real file, and
+        // the only URI this app may hand out is one its own `FileProvider` owns — the bytes
+        // arrive in memory and never touch storage, so they are written to the cache here.
+        onShare = { file ->
+            shareFile(context, file, download = false)
+            onShareFile(file)
+        },
+        onDownload = { file -> shareFile(context, file, download = true) },
+        onWrite = review::writeFile,
+        onNavigateBack = onClose,
+        modifier = modifier,
+    )
 }
 
 /**

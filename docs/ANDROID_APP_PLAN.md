@@ -153,13 +153,14 @@ Principles:
 ### 4.3 Information architecture
 
 - **Servers**: onboarding, pairing, registry, and a per-server status page.
-- **Home** (per server): projects, recent sessions, running sessions, and a pending-requests inbox that gathers
-  approvals and questions across all sessions.
+- **Home** (per server): the projects the user added (an app-side list; the server's own list is every directory it
+  was asked about), each with its newest sessions, and a pending-requests inbox that gathers approvals and questions
+  across all sessions. A bottom bar switches between Home, Chat (the session last on screen) and Settings.
 - **Session**: a top bar (title, agent, model and variant, status, context gauge, cost), the timeline, a request dock,
   and the composer. Secondary panes are Review, Files, Terminal, Shells, Subagents and Info. They are tabs or a bottom
   sheet on phones and side panes on tablets.
-- **Manage** (per server): accounts and providers, models, MCP, plugins, agents, commands and skills, permissions,
-  configuration, stats and maintenance.
+- **Manage** (per server), the Settings tab: accounts and providers, models, MCP, plugins, agents, commands and skills,
+  permissions, configuration, stats and maintenance, scoped to a project the user picks.
 - **App settings**: appearance, notifications, background behavior, security (app lock), experimental features.
 
 ---
@@ -1945,9 +1946,9 @@ falling back to `Unknown`, which would have taken the event connection down over
 **Scope, stated plainly.** The *wire and state* half of this phase is built and tested: the nine
 operations are declared, called, capability-gated and covered by tests over real HTTP, and the TUI
 control events are handled and wired to the surfaces that read them. The *screen* half is mostly not
-built. The usage dashboard is the exception: it is reachable from Manage ("Usage") and has a project row above its
+built. The usage dashboard is the exception: it is reachable from Settings ("Usage") and has a project row above its
 cards, built and unit tested but not seen changing numbers on a device (matrix H2). Wait until idle is reachable from the session menu, and Quick ask and the RPC console are
-reachable from Manage. The session event history is reachable from the session menu. The Quick Settings tile is built and unit tested but not exercised on a device (matrix J9). The home-screen widget is
+reachable from Settings. The session event history is reachable from the session menu. The Quick Settings tile is built and unit tested but not exercised on a device (matrix J9). The home-screen widget is
 built and unit tested but not placed on a home screen (matrix J8). Session tabs are built and unit tested, and are not
 seen on a device (matrix J7). The session list beside a session on windows at least 840 dp wide is built and unit tested, and is not seen on a
 tablet (matrix J1-J3). There is no OpenCode theme import. The LAN prober is built and unit tested, as the opt-in

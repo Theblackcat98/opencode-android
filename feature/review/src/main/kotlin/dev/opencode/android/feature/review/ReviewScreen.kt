@@ -5,7 +5,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -16,20 +18,28 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.AltRoute
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.AccountTree
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Comment
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DoneAll
+import androidx.compose.material.icons.filled.FirstPage
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.InsertDriveFile
+import androidx.compose.material.icons.filled.LastPage
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
@@ -39,15 +49,21 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
@@ -60,6 +76,8 @@ import dev.opencode.android.core.data.review.ParsedFile
 import dev.opencode.android.core.data.review.ReviewComment
 import dev.opencode.android.core.data.review.ReviewScope
 import dev.opencode.android.core.designsystem.code.CodeLanguage
+import dev.opencode.android.core.designsystem.component.OpenCodeChip
+import dev.opencode.android.core.designsystem.component.OpenCodeTopAppBar
 import dev.opencode.android.core.designsystem.diff.DiffColors
 import dev.opencode.android.core.designsystem.diff.DiffPair
 import dev.opencode.android.core.designsystem.diff.DiffRow
@@ -67,6 +85,7 @@ import dev.opencode.android.core.designsystem.diff.DiffRowKind
 import dev.opencode.android.core.designsystem.diff.DiffRowView
 import dev.opencode.android.core.designsystem.diff.DiffTable
 import dev.opencode.android.core.designsystem.diff.SplitDiffTable
+import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
 
 /**
  * The review screen: the scope picker, the VCS header, the file tree, and the diff.
@@ -104,86 +123,65 @@ fun ReviewScreen(
     onRemoveComment: (Int) -> Unit = {},
 ) {
     val colors = DiffColors.of()
+    var menuOpen by remember { mutableStateOf(false) }
     Column(modifier = modifier.fillMaxSize()) {
-        TopAppBar(
-            title = { Text(stringResource(R.string.review_title)) },
-            navigationIcon = {
-                IconButton(onClick = onNavigateBack) {
-                    Icon(
-                        Icons.AutoMirrored.Filled.KeyboardArrowLeft,
-                        contentDescription = stringResource(R.string.action_dismiss),
-                    )
-                }
-            },
+        OpenCodeTopAppBar(
+            title = stringResource(R.string.review_title),
+            onBack = onNavigateBack,
+            backDescription = stringResource(R.string.action_dismiss),
+            subtitle = { Text(vcsSummary(state), maxLines = 1, overflow = TextOverflow.Ellipsis) },
             actions = {
-                // The two lists a review is read by: the files the agent changed, and the server's
-                // own filesystem. Both are actions on the bar rather than tabs, because neither
-                // replaces the diff — they sit over it, and the diff is what is behind them.
-                IconButton(onClick = onOpenTree) {
-                    Icon(Icons.Filled.AccountTree, stringResource(R.string.review_file_tree))
-                }
+                // The two lists a review is read by: the files the agent changed, and the server's own filesystem.
+                // Both are actions on the bar rather than tabs, because neither replaces the diff.
                 IconButton(onClick = onOpenFiles) {
                     Icon(Icons.Filled.Folder, stringResource(R.string.files_open))
                 }
-                // The comments are the one thing a review produces that leaves the screen, so they get
-                // a badge rather than a row: the count is the number of things that will go with the
-                // next prompt, and a reviewer needs it without opening anything.
+                // The comments are the one thing a review produces that leaves the screen, so they get a badge:
+                // the count is the number of things that will go with the next prompt.
                 if (state.comments.isNotEmpty()) {
-                    BadgedBox(badge = { Badge { Text(state.comments.size.toString()) } }) {
-                        IconButton(onClick = onOpenComments) {
-                            Icon(
-                                Icons.Filled.Comment,
-                                stringResource(R.string.review_comment_count, state.comments.size),
-                            )
+                    IconButton(onClick = onOpenComments) {
+                        BadgedBox(badge = { Badge { Text(state.comments.size.toString()) } }) {
+                            Icon(Icons.Filled.Comment, stringResource(R.string.review_comment_count, state.comments.size))
                         }
+                    }
+                }
+                Box {
+                    IconButton(onClick = { menuOpen = true }) {
+                        Icon(Icons.Filled.MoreVert, stringResource(R.string.review_view_options))
+                    }
+                    DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.review_toggle_wrap)) },
+                            trailingIcon = { Checkbox(checked = state.wrap, onCheckedChange = null) },
+                            onClick = { onToggleWrap(!state.wrap) },
+                        )
+                        val split = state.split
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    stringResource(
+                                        if (split != null) R.string.review_toggle_split else R.string.review_split_unavailable,
+                                    ),
+                                )
+                            },
+                            // The honest offer on a screen that cannot split is to say so rather than a toggle that
+                            // would do nothing.
+                            enabled = split != null,
+                            trailingIcon = { if (split != null) Checkbox(checked = split, onCheckedChange = null) },
+                            onClick = { if (split != null) onToggleSplit(!split) },
+                        )
                     }
                 }
             },
         )
 
-        ScopeRow(state = state, onSelectScope = onSelectScope)
-
-        VcsHeader(state = state, onOpenBasePicker = onOpenBasePicker)
+        ScopeRow(state = state, onSelectScope = onSelectScope, onOpenBasePicker = onOpenBasePicker)
 
         if (state.loading) {
             LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
         }
 
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            Text(
-                text = state.currentFile?.displayLabel() ?: stringResource(R.string.review_file_tree),
-                style = MaterialTheme.typography.titleSmall,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f),
-            )
-            if (state.hasSeveralFiles) {
-                IconButton(onClick = onPreviousFile) {
-                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, stringResource(R.string.review_previous_file))
-                }
-                IconButton(onClick = onNextFile) {
-                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, stringResource(R.string.review_next_file))
-                }
-            }
-            IconButton(onClick = onPreviousHunk) {
-                Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, stringResource(R.string.review_previous_hunk))
-            }
-            IconButton(onClick = onNextHunk) {
-                Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, stringResource(R.string.review_next_hunk))
-            }
-        }
-
-        ReviewedProgress(state = state, onToggleReviewed = onToggleReviewed)
-
-        ViewToggles(
-            state = state,
-            onToggleWrap = onToggleWrap,
-            onToggleSplit = onToggleSplit,
-        )
+        FileSelector(state = state, onOpenTree = onOpenTree, onToggleReviewed = onToggleReviewed)
 
         if (state.isEmpty) {
             Text(
@@ -200,6 +198,14 @@ fun ReviewScreen(
             colors = colors,
             onSelectLines = onSelectLines,
             modifier = Modifier.weight(1f),
+        )
+
+        ReviewNavigationBar(
+            severalFiles = state.hasSeveralFiles,
+            onPreviousFile = onPreviousFile,
+            onNextFile = onNextFile,
+            onPreviousHunk = onPreviousHunk,
+            onNextHunk = onNextHunk,
         )
     }
 
@@ -336,106 +342,137 @@ fun FileTreeContent(
 
 /** The four scopes, as a row of chips, which is the TUI's `/diff` picker (features doc §38). */
 @Composable
-private fun ScopeRow(state: ReviewUiState, onSelectScope: (ReviewScope) -> Unit) {
+private fun ScopeRow(state: ReviewUiState, onSelectScope: (ReviewScope) -> Unit, onOpenBasePicker: () -> Unit) {
     LazyRow(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+        contentPadding = PaddingValues(horizontal = 12.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         items(state.scopes, key = { it.id }) { scope ->
-            FilterChip(
+            OpenCodeChip(
+                label = stringResource(scope.labelRes()),
                 selected = scope == state.scope,
                 onClick = { onSelectScope(scope) },
-                label = { Text(stringResource(scope.labelRes())) },
+            )
+        }
+        // The base is what "committed" and "all" are measured against, so it sits with the scopes it changes.
+        item(key = "base") {
+            OpenCodeChip(
+                label = state.effectiveBase
+                    ?.let { stringResource(R.string.review_base, it) }
+                    ?: stringResource(R.string.review_base_unknown),
+                icon = Icons.AutoMirrored.Filled.AltRoute,
+                mono = true,
+                onClick = onOpenBasePicker,
             )
         }
     }
 }
 
-/** The branch, the changed-file count and the review base, which is what `vcs.get` and `vcs.status` say. */
+/** The branch and how many files changed, which is what `vcs.get` and `vcs.status` say, as the bar's subtitle. */
 @Composable
-fun VcsHeader(state: ReviewUiState, onOpenBasePicker: () -> Unit) {
-    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp)) {
-        Text(
-            text = if (state.vcs.isRepository) {
-                stringResource(R.string.review_branch, state.branch ?: stringResource(R.string.review_branch_unknown))
-            } else {
-                stringResource(R.string.review_not_a_repository)
-            },
-            style = MaterialTheme.typography.labelLarge,
-        )
-        if (state.vcs.isRepository) {
-            Text(
-                text = stringResource(R.string.review_changed_files, state.vcs.files.size),
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        AssistChip(
-            onClick = onOpenBasePicker,
-            label = {
-                Text(
-                    state.effectiveBase
-                        ?.let { stringResource(R.string.review_base, it) }
-                        ?: stringResource(R.string.review_base_unknown),
-                )
-            },
-        )
-    }
+private fun vcsSummary(state: ReviewUiState): String = if (state.vcs.isRepository) {
+    listOf(
+        state.branch ?: stringResource(R.string.review_branch_unknown),
+        stringResource(R.string.review_changed_files, state.vcs.files.size),
+    ).joinToString(" · ")
+} else {
+    stringResource(R.string.review_not_a_repository)
 }
 
-/** The review's own progress, which is device state and never sent to the server. */
+/**
+ * Which file is on screen, as one button that opens the changed-files list ("2 / 5 · ReviewViewModel.kt"), and
+ * the reviewed checkbox for it with the review's progress. It replaced a row of four unlabelled arrows.
+ */
 @Composable
-private fun ReviewedProgress(state: ReviewUiState, onToggleReviewed: () -> Unit) {
-    if (state.files.isEmpty()) return
+private fun FileSelector(state: ReviewUiState, onOpenTree: () -> Unit, onToggleReviewed: () -> Unit) {
+    val file = state.currentFile
+    val index = file?.let { current -> state.files.indexOfFirst { it.file == current.file } } ?: -1
     Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+        modifier = Modifier.fillMaxWidth().padding(start = 12.dp, end = 4.dp, bottom = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Checkbox(checked = state.currentReviewed, onCheckedChange = { onToggleReviewed() })
-        Text(
-            text = if (state.complete) {
+        Surface(
+            onClick = onOpenTree,
+            shape = OpenCodeThemeExtras.shapes.button,
+            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+            modifier = Modifier.weight(1f),
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (index >= 0 && state.files.size > 1) {
+                    Text(
+                        text = stringResource(R.string.review_file_position, index + 1, state.files.size),
+                        style = OpenCodeThemeExtras.code.small,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(Modifier.size(8.dp))
+                }
+                Text(
+                    text = file?.displayLabel() ?: stringResource(R.string.review_file_tree),
+                    style = OpenCodeThemeExtras.code.body,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
+                )
+                Icon(
+                    Icons.Filled.ArrowDropDown,
+                    contentDescription = stringResource(R.string.review_file_tree),
+                )
+            }
+        }
+        if (state.files.isNotEmpty()) {
+            val progress = if (state.complete) {
                 stringResource(R.string.review_complete)
             } else {
                 stringResource(R.string.review_progress, state.files.size - state.remaining, state.files.size)
-            },
-            style = MaterialTheme.typography.labelMedium,
-            modifier = Modifier.weight(1f),
-        )
+            }
+            Row(
+                modifier = Modifier
+                    .toggleable(value = state.currentReviewed, role = Role.Checkbox, onValueChange = { onToggleReviewed() })
+                    .semantics(mergeDescendants = true) { contentDescription = progress }
+                    .padding(start = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Checkbox(checked = state.currentReviewed, onCheckedChange = null, modifier = Modifier.padding(12.dp))
+            }
+        }
     }
 }
 
-/** The wrap and split toggles, with split offered only where the layout can honour it. */
+/**
+ * Moving through a review, labelled and at the bottom where the thumb is: previous and next hunk in the middle,
+ * previous and next file at the ends, the way a reader steps through a diff.
+ */
 @Composable
-private fun ViewToggles(
-    state: ReviewUiState,
-    onToggleWrap: (Boolean) -> Unit,
-    onToggleSplit: (Boolean) -> Unit,
+private fun ReviewNavigationBar(
+    severalFiles: Boolean,
+    onPreviousFile: () -> Unit,
+    onNextFile: () -> Unit,
+    onPreviousHunk: () -> Unit,
+    onNextHunk: () -> Unit,
 ) {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        FilterChip(
-            selected = state.wrap,
-            onClick = { onToggleWrap(!state.wrap) },
-            label = { Text(stringResource(R.string.review_toggle_wrap)) },
-        )
-        val split = state.split
-        if (split != null) {
-            FilterChip(
-                selected = split,
-                onClick = { onToggleSplit(!split) },
-                label = { Text(stringResource(R.string.review_toggle_split)) },
-            )
-        } else {
-            // The honest offer on a screen that cannot split is to say so rather than show a toggle
-            // that would do nothing.
-            Text(
-                text = stringResource(R.string.review_split_unavailable),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+    Surface(color = MaterialTheme.colorScheme.surfaceContainerLow) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 2.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            IconButton(onClick = onPreviousFile, enabled = severalFiles) {
+                Icon(Icons.Filled.FirstPage, stringResource(R.string.review_previous_file))
+            }
+            TextButton(onClick = onPreviousHunk, modifier = Modifier.weight(1f)) {
+                Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = null)
+                Text(stringResource(R.string.review_previous_hunk_short))
+            }
+            TextButton(onClick = onNextHunk, modifier = Modifier.weight(1f)) {
+                Text(stringResource(R.string.review_next_hunk_short))
+                Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)
+            }
+            IconButton(onClick = onNextFile, enabled = severalFiles) {
+                Icon(Icons.Filled.LastPage, stringResource(R.string.review_next_file))
+            }
         }
     }
 }
