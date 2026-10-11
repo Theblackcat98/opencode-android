@@ -175,20 +175,20 @@ class ExecutionServer(
     }
 
     fun close() {
-        // WebSocket.close() starts an asynchronous close handshake. Immediately shutting down MockWebServer
-        // can race that handshake and leave its task queue alive until MockWebServer's shutdown timeout.
-        // The test harness has no protocol work left to preserve at teardown, so cancel each peer to release
-        // the server-side socket deterministically instead of waiting for the client to acknowledge a close.
-        // A peer whose upgrade never finished holds no handshake, and RealWebSocket.cancel() NPEs on it.
+        // Stop the client's reconnect supervision first: with it alive, any peer we
+        // close is replaced by a fresh socket and MockWebServer's task queue never
+        // idles (observed as "Gave up waiting for queue to shut down"). Then close
+        // each peer gracefully — an abrupt cancel makes the client reconnect, and
+        // peers whose upgrade never finished throw on close, which is fine here.
+        scope.cancel()
         val openPeers = synchronized(peers) { peers.toList() }
         openPeers.forEach { peer ->
             try {
-                peer.cancel()
+                peer.close(1000, "test over")
             } catch (_: Throwable) {
                 // Nothing this peer owns needs releasing if the upgrade never completed.
             }
         }
-        scope.cancel()
         server.close()
     }
 
