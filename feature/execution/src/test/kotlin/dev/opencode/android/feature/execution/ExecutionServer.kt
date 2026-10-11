@@ -179,8 +179,15 @@ class ExecutionServer(
         // can race that handshake and leave its task queue alive until MockWebServer's shutdown timeout.
         // The test harness has no protocol work left to preserve at teardown, so cancel each peer to release
         // the server-side socket deterministically instead of waiting for the client to acknowledge a close.
+        // A peer whose upgrade never finished holds no handshake, and RealWebSocket.cancel() NPEs on it.
         val openPeers = synchronized(peers) { peers.toList() }
-        openPeers.forEach { it.cancel() }
+        openPeers.forEach { peer ->
+            try {
+                peer.cancel()
+            } catch (_: Throwable) {
+                // Nothing this peer owns needs releasing if the upgrade never completed.
+            }
+        }
         scope.cancel()
         server.close()
     }
