@@ -6,9 +6,12 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -199,14 +202,28 @@ fun DiffRowView(
         verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
     ) {
         if (showGutter) {
-            Text(
-                text = "${row.oldNumber ?: ""}\t${row.newNumber ?: ""}",
-                style = gutterStyle(),
-                color = colors.gutter,
-                textAlign = TextAlign.End,
+            Row(
                 modifier = Modifier.width(GUTTER_WIDTH).padding(end = 4.dp),
-                maxLines = 1,
-            )
+                horizontalArrangement = Arrangement.End,
+            ) {
+                Text(
+                    text = row.oldNumber?.toString() ?: "",
+                    style = gutterStyle(),
+                    color = colors.gutter,
+                    textAlign = TextAlign.End,
+                    modifier = Modifier.weight(1f),
+                    maxLines = 1,
+                )
+                Spacer(Modifier.width(4.dp))
+                Text(
+                    text = row.newNumber?.toString() ?: "",
+                    style = gutterStyle(),
+                    color = colors.gutter,
+                    textAlign = TextAlign.End,
+                    modifier = Modifier.weight(1f),
+                    maxLines = 1,
+                )
+            }
         }
         Text(
             text = row.marker.toString(),
@@ -251,6 +268,27 @@ private fun highlightedPlain(
     plainColor: Color,
 ): AnnotatedString {
     if (language == CodeLanguage.PLAIN_TEXT) return AnnotatedString(text)
+    if (text.contains('\n')) {
+        val lines = CodeHighlighter.highlightAll(text, language)
+        return buildAnnotatedString {
+            lines.forEachIndexed { i, line ->
+                if (i > 0) append("\n")
+                var at = 0
+                line.tokens.forEach { token ->
+                    val value = line.text.substring(
+                        token.start.coerceAtMost(line.text.length),
+                        token.end.coerceAtMost(line.text.length),
+                    )
+                    if (token.start > at) {
+                        append(line.text.substring(at, token.start.coerceAtMost(line.text.length)))
+                    }
+                    withStyle(SpanStyle(color = colorOf(token.kind, colors, plainColor))) { append(value) }
+                    at = token.end
+                }
+                if (at < line.text.length) append(line.text.substring(at))
+            }
+        }
+    }
     val line = CodeHighlighter.highlight(text, language)
     return buildAnnotatedString {
         var at = 0
@@ -343,8 +381,8 @@ fun SplitDiffTable(
     colors: DiffColors = DiffColors.of(),
     language: CodeLanguage = CodeLanguage.PLAIN_TEXT,
 ) {
-    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(0.dp)) {
-        pairs.forEach { pair ->
+    LazyColumn(modifier = modifier, verticalArrangement = Arrangement.spacedBy(0.dp)) {
+        itemsIndexed(pairs, key = { index, _ -> index }) { _, pair ->
             Row(modifier = Modifier.fillMaxWidth()) {
                 Box(modifier = Modifier.weight(1f)) {
                     pair.left?.let {

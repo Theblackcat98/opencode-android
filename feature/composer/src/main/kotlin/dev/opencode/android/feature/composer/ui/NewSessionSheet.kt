@@ -7,6 +7,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -445,8 +447,14 @@ fun DirectoryBrowser(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             } else {
-                state.entries.forEach { entry ->
-                    BrowserRow(entry) { onEnter(entry.path) }
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f, fill = false),
+                ) {
+                    items(state.entries, key = { it.path }) { entry ->
+                        BrowserRow(entry) { onEnter(entry.path) }
+                    }
                 }
             }
             Button(onClick = onUse, modifier = Modifier.fillMaxWidth()) {

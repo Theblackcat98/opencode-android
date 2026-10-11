@@ -1,5 +1,6 @@
 package dev.opencode.android.navigation
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -7,7 +8,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -23,6 +24,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
@@ -53,6 +60,7 @@ fun CommandPaletteDialog(
     val labels = commands.associateWith { stringResource(it.labelRes) }
     val matches = filterCommands(commands, query) { labels.getValue(it) }
     val focusRequester = remember { FocusRequester() }
+    var selectedIndex by remember(matches) { mutableStateOf(0) }
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -70,10 +78,50 @@ fun CommandPaletteDialog(
             Column(modifier = Modifier.padding(16.dp)) {
                 OutlinedTextField(
                     value = query,
-                    onValueChange = { query = it },
+                    onValueChange = {
+                        query = it
+                        selectedIndex = 0
+                    },
                     label = { Text(stringResource(R.string.palette_search_label)) },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth().focusRequester(focusRequester),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .focusRequester(focusRequester)
+                        .onPreviewKeyEvent { event ->
+                            if (event.type == KeyEventType.KeyDown) {
+                                when (event.key) {
+                                    Key.DirectionDown -> {
+                                        if (matches.isNotEmpty()) {
+                                            selectedIndex = (selectedIndex + 1).coerceAtMost(matches.size - 1)
+                                            true
+                                        } else {
+                                            false
+                                        }
+                                    }
+
+                                    Key.DirectionUp -> {
+                                        if (matches.isNotEmpty()) {
+                                            selectedIndex = (selectedIndex - 1).coerceAtLeast(0)
+                                            true
+                                        } else {
+                                            false
+                                        }
+                                    }
+
+                                    Key.Enter -> {
+                                        matches.getOrNull(selectedIndex)?.let {
+                                            onRun(it)
+                                            onDismiss()
+                                            true
+                                        } ?: false
+                                    }
+
+                                    else -> false
+                                }
+                            } else {
+                                false
+                            }
+                        },
                 )
                 if (matches.isEmpty()) {
                     Text(
@@ -84,10 +132,27 @@ fun CommandPaletteDialog(
                     )
                 }
                 LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 480.dp)) {
-                    items(matches, key = { it.id }) { command ->
+                    itemsIndexed(matches, key = { _, command -> command.id }) { index, command ->
+                        val isSelected = index == selectedIndex
+                        val containerColor = if (isSelected) {
+                            MaterialTheme.colorScheme.secondaryContainer
+                        } else {
+                            Color.Transparent
+                        }
+                        val contentColor = if (isSelected) {
+                            MaterialTheme.colorScheme.onSecondaryContainer
+                        } else {
+                            MaterialTheme.colorScheme.onSurface
+                        }
+                        val hintColor = if (isSelected) {
+                            MaterialTheme.colorScheme.onSecondaryContainer
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        }
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
+                                .background(color = containerColor, shape = MaterialTheme.shapes.small)
                                 .clickable {
                                     onRun(command)
                                     onDismiss()
@@ -99,7 +164,7 @@ fun CommandPaletteDialog(
                             Text(
                                 text = labels.getValue(command),
                                 style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.onSurface,
+                                color = contentColor,
                                 modifier = Modifier.weight(1f),
                             )
                             // The leader-key mnemonic, so the palette shows the key that runs the same command.
@@ -107,7 +172,7 @@ fun CommandPaletteDialog(
                                 Text(
                                     text = stringResource(R.string.palette_leader_hint, letter),
                                     style = MaterialTheme.typography.labelLarge,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    color = hintColor,
                                     modifier = Modifier.padding(start = 16.dp),
                                 )
                             }

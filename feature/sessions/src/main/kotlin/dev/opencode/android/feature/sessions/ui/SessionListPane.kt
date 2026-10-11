@@ -130,7 +130,6 @@ fun SessionListPane(
 
 @Composable
 private fun SessionListRow(session: RecentSessionUi, selected: Boolean, onSelect: (String) -> Unit) {
-    // The spoken label names the state, so TalkBack reads the row as "<title>, selected" when it is the one on screen.
     val label = if (selected) {
         stringResource(R.string.session_pane_label_selected, session.title)
     } else {

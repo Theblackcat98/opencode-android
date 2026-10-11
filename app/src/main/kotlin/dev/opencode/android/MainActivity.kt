@@ -69,9 +69,9 @@ class MainActivity : ComponentActivity() {
         coordinator.start()
         serviceLauncher.start()
 
-        sharedPayload = sharedPayloadOf(intent)
-        openSession = openSessionOf(intent)
-        openLocation = openLocationOf(intent)
+        sharedPayload = if (savedInstanceState == null) sharedPayloadOf(intent) else null
+        openSession = if (savedInstanceState == null) openSessionOf(intent) else null
+        openLocation = if (savedInstanceState == null) openLocationOf(intent) else null
         // Read only on a fresh launch. After a configuration change the intent is still the shortcut's, and
         // reading it again would send the user back to the screen the shortcut opened in the first place.
         openShortcut = if (savedInstanceState == null) shortcutOf(intent) else null

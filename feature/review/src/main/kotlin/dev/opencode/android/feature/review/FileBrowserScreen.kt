@@ -1,10 +1,12 @@
 package dev.opencode.android.feature.review
 
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.text.format.Formatter
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -36,6 +38,7 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -55,6 +58,8 @@ import dev.opencode.android.core.data.composer.LineRange
 import dev.opencode.android.core.designsystem.code.CodeHighlighter
 import dev.opencode.android.core.designsystem.code.CodeLanguage
 import dev.opencode.android.core.model.FileSystemEntry
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /**
  * The file browser: `fs.list` navigation and `fs.read` viewing (plan §6, "File browser").
@@ -193,20 +198,13 @@ fun FileBrowserContent(
         // them as well would offer two answers to "which files" and put "this directory is empty"
         // under a search that found something.
         val searching = searchQuery.isNotBlank()
-        if (searching) {
-            if (searchResults.isEmpty()) {
-                Text(
-                    text = stringResource(R.string.files_no_results),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-                )
-            } else {
-                searchResults.forEach { hit ->
-                    FileRow(entry = hit, reading = reading) { onRead(hit) }
-                }
-            }
-            HorizontalDivider()
+        if (searching && searchResults.isEmpty()) {
+            Text(
+                text = stringResource(R.string.files_no_results),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+            )
         }
 
         if (path != null && path.isNotBlank()) {
@@ -251,11 +249,15 @@ fun FileBrowserContent(
         // Both `remember` their position: a `fs.read` replaces the content, and a list that jumped
         // back to the top on every read would make browsing and then opening a file unusable.
         val listState = rememberLazyListState()
-        if (!searching) {
-            LazyColumn(
-                modifier = Modifier.weight(1f, fill = content == null),
-                state = listState,
-            ) {
+        LazyColumn(
+            modifier = Modifier.weight(1f, fill = content == null),
+            state = listState,
+        ) {
+            if (searching) {
+                items(searchResults, key = { it.path }) { hit ->
+                    FileRow(entry = hit, reading = reading) { onRead(hit) }
+                }
+            } else {
                 items(entries, key = { it.path }) { entry ->
                     FileRow(entry = entry, reading = reading) {
                         if (entry.isDirectory) onEnter(entry) else onRead(entry)
@@ -424,10 +426,20 @@ private fun TextFileView(
 ) {
     val language = remember(file.path) { CodeLanguage.ofPath(file.path) }
     val window = remember(file) { file.firstLines(VIEWER_MAX_LINES, VIEWER_MAX_LINE_CHARS) }
-    val lines = remember(window) { CodeHighlighter.highlightAll(window.lines.joinToString("\n"), language) }
+    val lines by produceState(emptyList(), window, language) {
+        value = withContext(Dispatchers.Default) {
+            CodeHighlighter.highlightAll(window.lines.joinToString("\n"), language)
+        }
+    }
+    val codeScrollState = rememberScrollState()
     Column(modifier = modifier.fillMaxWidth()) {
         if (file.truncated) TruncationNotice(file)
-        LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = VIEWER_MAX_HEIGHT)) {
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(max = VIEWER_MAX_HEIGHT)
+                .horizontalScroll(codeScrollState),
+        ) {
             items(lines, key = { it.number }) { line ->
                 val selected = selection.contains(line.number)
                 Row(
@@ -508,8 +520,10 @@ private fun ImageFileView(
         )
         return
     }
-    val bitmap = remember(file) {
-        runCatching { BitmapFactory.decodeByteArray(file.bytes, 0, file.bytes.size) }.getOrNull()
+    val bitmap by produceState<Bitmap?>(null, file) {
+        value = withContext(Dispatchers.Default) {
+            runCatching { BitmapFactory.decodeByteArray(file.bytes, 0, file.bytes.size) }.getOrNull()
+        }
     }
     if (bitmap == null) {
         Text(
@@ -527,11 +541,13 @@ private fun ImageFileView(
             .padding(8.dp),
         contentAlignment = Alignment.Center,
     ) {
-        Image(
-            bitmap = bitmap.asImageBitmap(),
-            contentDescription = file.label,
-            modifier = Modifier.fillMaxWidth(),
-        )
+        bitmap?.let {
+            Image(
+                bitmap = it.asImageBitmap(),
+                contentDescription = file.label,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
     }
 }
 

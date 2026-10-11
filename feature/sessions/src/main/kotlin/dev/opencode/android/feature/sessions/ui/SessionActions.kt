@@ -121,7 +121,6 @@ fun SessionActionsSheet(
 
             SheetAction(R.string.session_rename) {
                 renaming = true
-                onDismiss()
             }
             SheetAction(R.string.session_copy_message) {
                 onCopyMessage()
@@ -152,7 +151,10 @@ fun SessionActionsSheet(
                 onRename(it)
                 onDismiss()
             },
-            onDismiss = { renaming = false },
+            onDismiss = {
+                renaming = false
+                onDismiss()
+            },
         )
     }
 

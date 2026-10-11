@@ -275,7 +275,6 @@ fun AnswerChips(answers: List<String>, modifier: Modifier = Modifier) {
                         style = MaterialTheme.typography.labelSmall,
                     )
                 },
-                modifier = Modifier.width(0.dp),
             )
         }
     }

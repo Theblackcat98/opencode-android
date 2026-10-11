@@ -182,31 +182,36 @@ private fun AttachmentChip(attachment: AttachmentDraft, onRemove: () -> Unit) {
     val range = attachment.range?.toSuffix()
     val remove = stringResource(R.string.composer_attachment_remove, attachment.label)
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .semantics(mergeDescendants = true) {
-                contentDescription = listOfNotNull(attachment.label, kind, range, size).joinToString(". ")
-            },
+        modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(
-            text = attachment.kind.glyph(),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Spacer(Modifier.width(8.dp))
-        Column(Modifier.weight(1f)) {
+        Row(
+            modifier = Modifier
+                .weight(1f)
+                .semantics(mergeDescendants = true) {
+                    contentDescription = listOfNotNull(attachment.label, kind, range, size).joinToString(". ")
+                },
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             Text(
-                text = listOfNotNull(attachment.label, range).joinToString(" "),
+                text = attachment.kind.glyph(),
                 style = MaterialTheme.typography.bodyMedium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Text(
-                text = listOfNotNull(kind, size).joinToString(" · "),
-                style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            Spacer(Modifier.width(8.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    text = listOfNotNull(attachment.label, range).joinToString(" "),
+                    style = MaterialTheme.typography.bodyMedium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = listOfNotNull(kind, size).joinToString(" · "),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
         IconButton(onClick = onRemove, modifier = Modifier.size(48.dp)) {
             Icon(Icons.Filled.Close, contentDescription = remove)

@@ -35,7 +35,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -76,9 +78,15 @@ fun SessionListScreen(
 ) {
     val listState = rememberLazyListState()
     val searchDescription = stringResource(R.string.sessions_search_description)
-    val lastIndex = state.rows.lastIndex
-    LaunchedEffect(lastIndex, state.paging.hasMore) {
-        if (lastIndex >= 0 && lastIndex >= state.rows.size - PREFETCH_DISTANCE && state.paging.hasMore) {
+    val shouldLoadMore by remember {
+        derivedStateOf {
+            val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
+            val total = listState.layoutInfo.totalItemsCount
+            lastVisible >= 0 && total > 0 && lastVisible >= total - PREFETCH_DISTANCE
+        }
+    }
+    LaunchedEffect(shouldLoadMore, state.paging.hasMore, state.paging.loading) {
+        if (shouldLoadMore && state.paging.hasMore && !state.paging.loading) {
             onLoadMore()
         }
     }

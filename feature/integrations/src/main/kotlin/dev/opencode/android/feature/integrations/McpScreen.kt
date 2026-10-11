@@ -432,19 +432,22 @@ fun McpResourceSheetContent(
     onAttach: (McpResource) -> Unit,
     onClose: () -> Unit,
 ) {
-    Column(
+    LazyColumn(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
-            .verticalScroll(rememberScrollState())
             .padding(bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        Text(stringResource(R.string.mcp_resources), style = MaterialTheme.typography.titleLarge)
-        if (resources.isEmpty() && templates.isEmpty()) {
-            EmptyNote(stringResource(R.string.mcp_resources_empty))
+        item {
+            Text(stringResource(R.string.mcp_resources), style = MaterialTheme.typography.titleLarge)
         }
-        resources.forEach { resource ->
+        if (resources.isEmpty() && templates.isEmpty()) {
+            item {
+                EmptyNote(stringResource(R.string.mcp_resources_empty))
+            }
+        }
+        items(resources, key = { it.uri }) { resource ->
             ListItem(
                 headlineContent = { Text(resource.name) },
                 supportingContent = {
@@ -473,7 +476,7 @@ fun McpResourceSheetContent(
             )
             HorizontalDivider()
         }
-        templates.forEach { template ->
+        items(templates, key = { it.uriTemplate }) { template ->
             ListItem(
                 headlineContent = { Text(template.name) },
                 supportingContent = {
@@ -486,7 +489,9 @@ fun McpResourceSheetContent(
             )
             HorizontalDivider()
         }
-        TextButton(onClick = onClose) { Text(stringResource(R.string.connect_cancel)) }
+        item {
+            TextButton(onClick = onClose) { Text(stringResource(R.string.connect_cancel)) }
+        }
     }
 }
 

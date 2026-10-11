@@ -22,6 +22,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -361,7 +362,7 @@ private fun OptionRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .selectable(selected = selected, enabled = enabled, role = null, onClick = onSelect)
+            .selectable(selected = selected, enabled = enabled, role = Role.RadioButton, onClick = onSelect)
             .padding(vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -378,7 +379,7 @@ private fun OptionRow(
 /** A cancel affordance, which for a question is the same as dismissing it. */
 @Composable
 fun FormCancelButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
-    TextButton(onClick = onClick, modifier = modifier.clearAndSetSemantics { }) {
+    TextButton(onClick = onClick, modifier = modifier) {
         Text(stringResource(R.string.form_cancel))
     }
 }
@@ -393,7 +394,9 @@ fun ConsentRow(
     modifier: Modifier = Modifier,
 ) {
     Row(
-        modifier = modifier.fillMaxWidth().selectable(selected = checked, enabled = enabled, onClick = onToggle),
+        modifier = modifier
+            .fillMaxWidth()
+            .selectable(selected = checked, enabled = enabled, role = Role.Checkbox, onClick = onToggle),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Checkbox(checked = checked, onCheckedChange = null, enabled = enabled)

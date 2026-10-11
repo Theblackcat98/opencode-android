@@ -4,6 +4,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
@@ -62,53 +64,63 @@ fun ModelPickerSheet(
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp),
             )
-            // Favorites and recents first, and only while a search is not narrowing the catalog:
-            // pinning a model is a standing choice, so it should not be a section a search hides.
-            if (search.isBlank()) {
-                PinnedSection(
-                    title = stringResource(R.string.model_favorites),
-                    refs = favorites,
-                    groups = groups,
-                    selected = selected,
-                    onSelect = onSelect,
-                    onSelectVariant = onSelectVariant,
-                    onToggleFavorite = onToggleFavorite,
-                )
-                PinnedSection(
-                    title = stringResource(R.string.model_recents),
-                    refs = recents,
-                    groups = groups,
-                    selected = selected,
-                    onSelect = onSelect,
-                    onSelectVariant = onSelectVariant,
-                    onToggleFavorite = onToggleFavorite,
-                )
-            }
             if (groups.isEmpty()) {
                 ModelEmptyState(query = search)
                 return@Column
             }
-            groups.forEach { group ->
-                ModelSectionHeader(group.providerID)
-                group.entries.forEach { entry ->
-                    val ref = entry.ref
-                    val variants = ModelCatalog.variantsOf(entry.info).map { it.id }
-                    ModelRow(
-                        name = entry.info.name,
-                        ref = ref,
-                        supportsTools = entry.supportsTools,
-                        supportsImages = entry.supportsImageInput,
-                        contextTokens = entry.info.limit.context,
-                        inputCost = entry.inputCost,
-                        outputCost = entry.outputCost,
-                        selected = selected?.id == ref.id && selected.providerID == ref.providerID,
-                        isFavorite = entry.isFavorite,
-                        variants = variants,
-                        activeVariant = selected?.variant,
-                        onSelect = { onSelect(ref) },
-                        onSelectVariant = { variant -> onSelectVariant(ref, variant) },
-                        onToggleFavorite = { onToggleFavorite(ref) },
-                    )
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f, fill = false),
+            ) {
+                if (search.isBlank()) {
+                    item(key = "section:favorites") {
+                        PinnedSection(
+                            title = stringResource(R.string.model_favorites),
+                            refs = favorites,
+                            groups = groups,
+                            selected = selected,
+                            onSelect = onSelect,
+                            onSelectVariant = onSelectVariant,
+                            onToggleFavorite = onToggleFavorite,
+                        )
+                    }
+                    item(key = "section:recents") {
+                        PinnedSection(
+                            title = stringResource(R.string.model_recents),
+                            refs = recents,
+                            groups = groups,
+                            selected = selected,
+                            onSelect = onSelect,
+                            onSelectVariant = onSelectVariant,
+                            onToggleFavorite = onToggleFavorite,
+                        )
+                    }
+                }
+                groups.forEach { group ->
+                    item(key = "header:${group.providerID}") {
+                        ModelSectionHeader(group.providerID)
+                    }
+                    items(group.entries, key = { "${group.providerID}:${it.ref.id}" }) { entry ->
+                        val ref = entry.ref
+                        val variants = ModelCatalog.variantsOf(entry.info).map { it.id }
+                        ModelRow(
+                            name = entry.info.name,
+                            ref = ref,
+                            supportsTools = entry.supportsTools,
+                            supportsImages = entry.supportsImageInput,
+                            contextTokens = entry.info.limit.context,
+                            inputCost = entry.inputCost,
+                            outputCost = entry.outputCost,
+                            selected = selected?.id == ref.id && selected.providerID == ref.providerID,
+                            isFavorite = entry.isFavorite,
+                            variants = variants,
+                            activeVariant = selected?.variant,
+                            onSelect = { onSelect(ref) },
+                            onSelectVariant = { variant -> onSelectVariant(ref, variant) },
+                            onToggleFavorite = { onToggleFavorite(ref) },
+                        )
+                    }
                 }
             }
         }

@@ -261,7 +261,7 @@ private fun ExecutionTopBar(title: String, onNavigateBack: () -> Unit) {
             IconButton(onClick = onNavigateBack) {
                 Icon(
                     Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = null,
+                    contentDescription = stringResource(R.string.action_back),
                 )
             }
         },

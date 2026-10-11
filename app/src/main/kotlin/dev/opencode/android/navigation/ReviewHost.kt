@@ -132,6 +132,7 @@ fun ReviewHost(
                 when (outcome) {
                     WriteOutcome.SwitchedOff -> stringResource(ReviewR.string.files_edit_off)
                     is WriteOutcome.Failed -> stringResource(ReviewR.string.files_edit_failed, outcome.message)
+                    is WriteOutcome.Success -> stringResource(ReviewR.string.files_edit_saved, outcome.path)
                 }
             },
             searchQuery = state.searchQuery,

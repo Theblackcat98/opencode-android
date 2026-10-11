@@ -43,6 +43,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -484,6 +485,15 @@ private fun DiffBody(
     } else {
         val rows = remember(file.key, state.position.hunk) { file.unifiedRows() }
         val listState = rememberLazyListState()
+        val targetHunk = state.position.hunk
+        LaunchedEffect(targetHunk, file.key) {
+            if (targetHunk > 0) {
+                val targetIndex = rows.indexOfFirst { it.key.contains(":h$targetHunk:") }
+                if (targetIndex >= 0) {
+                    listState.animateScrollToItem(targetIndex)
+                }
+            }
+        }
         LazyColumn(state = listState, modifier = modifier.fillMaxWidth()) {
             file.unparsed.forEach { line ->
                 item(key = "unparsed:$line") {

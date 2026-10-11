@@ -230,8 +230,6 @@ private fun ServerListItem(
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .clickable(onClick = onHome)
-            .semantics(mergeDescendants = true) { contentDescription = itemDescription }
             .testTag(ServersTags.item(server.id)),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
@@ -244,24 +242,32 @@ private fun ServerListItem(
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            HealthStatusDot(health = server.health)
-            Spacer(modifier = Modifier.width(12.dp))
+            Row(
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable(onClick = onHome)
+                    .semantics(mergeDescendants = true) { contentDescription = itemDescription },
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                HealthStatusDot(health = server.health)
+                Spacer(modifier = Modifier.width(12.dp))
 
-            Column(modifier = Modifier.weight(1f)) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    Text(text = server.name, style = MaterialTheme.typography.titleMedium)
-                    if (server.isDefault) DefaultServerBadge()
-                    if (server.isCleartext) UnencryptedBadge()
+                Column(modifier = Modifier.weight(1f)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Text(text = server.name, style = MaterialTheme.typography.titleMedium)
+                        if (server.isDefault) DefaultServerBadge()
+                        if (server.isCleartext) UnencryptedBadge()
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = server.baseUrl,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = server.baseUrl,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
             }
 
             Box {

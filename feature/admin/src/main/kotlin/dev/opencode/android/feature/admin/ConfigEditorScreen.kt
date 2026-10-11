@@ -300,7 +300,7 @@ fun WriteOutcomeCard(outcome: WriteOutcome, onDismiss: () -> Unit) {
     Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
         Text(text = outcome.summary, style = MaterialTheme.typography.bodyMedium)
         outcome.diagnostics.forEach { DiagnosticRow(diagnostic = it) }
-        TextButton(onClick = onDismiss, modifier = Modifier.semantics { contentDescription = "" }) {
+        TextButton(onClick = onDismiss) {
             Text(stringResource(R.string.admin_dismiss))
         }
     }

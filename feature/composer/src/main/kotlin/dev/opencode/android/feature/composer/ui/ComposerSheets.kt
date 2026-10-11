@@ -20,6 +20,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
@@ -173,25 +174,35 @@ fun SkillPicker(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .selectable(selected = isAttached, onClick = { onToggle(skill.id) })
-                            .padding(horizontal = 16.dp, vertical = 8.dp)
-                            .semantics(mergeDescendants = true) {
-                                contentDescription = "${skill.name}. $description"
-                            },
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Checkbox(checked = isAttached, onCheckedChange = null)
-                        Column(
-                            Modifier
+                        Row(
+                            modifier = Modifier
                                 .weight(1f)
-                                .padding(start = 8.dp),
+                                .selectable(
+                                    selected = isAttached,
+                                    role = Role.Checkbox,
+                                    onClick = { onToggle(skill.id) },
+                                )
+                                .semantics(mergeDescendants = true) {
+                                    contentDescription = "${skill.name}. $description"
+                                },
+                            verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Text(skill.name, style = MaterialTheme.typography.bodyLarge)
-                            Text(
-                                text = description,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
+                            Checkbox(checked = isAttached, onCheckedChange = null)
+                            Column(
+                                Modifier
+                                    .weight(1f)
+                                    .padding(start = 8.dp),
+                            ) {
+                                Text(skill.name, style = MaterialTheme.typography.bodyLarge)
+                                Text(
+                                    text = description,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
                         }
                         TextButton(onClick = { onActivate(skill.id) }) {
                             Text(stringResource(R.string.composer_skill_activate))

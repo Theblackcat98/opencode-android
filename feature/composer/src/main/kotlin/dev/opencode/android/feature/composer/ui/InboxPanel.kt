@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.AssistChip
@@ -49,22 +51,29 @@ fun InboxPanel(
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState, modifier = modifier) {
-        Column(
-            Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 24.dp),
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
+                .padding(bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Text(stringResource(R.string.inbox_title), style = MaterialTheme.typography.titleMedium)
-            if (items.isEmpty()) {
-                Text(
-                    text = stringResource(R.string.inbox_empty),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                return@Column
+            item {
+                Text(stringResource(R.string.inbox_title), style = MaterialTheme.typography.titleMedium)
             }
-            items.forEach { pending ->
-                HorizontalDivider()
-                InboxRow(pending, onCancel, onDeliveryChange)
+            if (items.isEmpty()) {
+                item {
+                    Text(
+                        text = stringResource(R.string.inbox_empty),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            } else {
+                items(items, key = { it.id }) { pending ->
+                    HorizontalDivider()
+                    InboxRow(pending, onCancel, onDeliveryChange)
+                }
             }
         }
     }

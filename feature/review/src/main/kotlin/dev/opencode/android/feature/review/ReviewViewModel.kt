@@ -136,6 +136,9 @@ sealed interface WriteOutcome {
 
     /** The server refused, and this is what it said. */
     data class Failed(val message: String) : WriteOutcome
+
+    /** The server accepted the write and the file was saved. */
+    data class Success(val path: String) : WriteOutcome
 }
 
 /** The comment being written on one line range. */
@@ -301,7 +304,11 @@ class ReviewViewModel @Inject constructor(
             recordCapability(ExperimentalRoute.FS_WRITE, error)
             _state.value = _state.value.copy(
                 writing = false,
-                writeNotice = error?.let { WriteOutcome.Failed(it.message.orEmpty()) },
+                writeNotice = if (error != null) {
+                    WriteOutcome.Failed(error.message.orEmpty())
+                } else {
+                    WriteOutcome.Success(file.label)
+                },
             )
         }
     }

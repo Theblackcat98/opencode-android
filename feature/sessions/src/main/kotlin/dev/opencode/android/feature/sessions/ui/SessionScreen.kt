@@ -111,6 +111,11 @@ fun SessionScreen(
             listState.scrollToItem(jumpTarget)
         }
     }
+    LaunchedEffect(listState.isScrollInProgress) {
+        if (listState.isScrollInProgress && !atBottom && state.following) {
+            onFollowChange(false)
+        }
+    }
 
     Scaffold(
         modifier = modifier,

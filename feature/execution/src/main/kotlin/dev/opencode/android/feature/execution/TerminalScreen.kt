@@ -521,8 +521,8 @@ object TerminalTags {
     const val KEY: String = "terminal-key-"
 }
 
-private val KEY_WIDTH = 46.dp
-private val KEY_HEIGHT = 38.dp
+private val KEY_WIDTH = 48.dp
+private val KEY_HEIGHT = 48.dp
 
 /** The status word a key resolves to, kept as one mapping so a new state cannot miss a string. */
 private fun String.toStatusRes(): Int = when (this) {

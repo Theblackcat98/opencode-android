@@ -310,51 +310,64 @@ class SessionViewModel(
 
     val sessionId: StateFlow<String?> = openSession
 
-    /**
-     * A coarse clock for the retry countdown.
-     *
-     * Ticking once a second is what a countdown needs and is cheap: it is one emission a second on
-     * one flow, and it only matters while a retry is actually scheduled.
-     */
-    private val ticks: Flow<Long> = flow {
-        while (true) {
-            emit(clock())
-            delay(TICK_MILLIS)
-        }
-    }
-
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     val state: StateFlow<SessionUiState> = combine(
         openSession,
         dataSets.active,
         follow,
-        ticks,
-    ) { id, set, following, now ->
-        if (id == null || set == null) return@combine SessionUiState(following = following, now = now)
-        val store: TimelineStore = set.timeline(id)
-        val info = set.sessions.info.value[id]
-        val directory = info?.location?.directory
-        val modelLimit = directory
-            ?.let { set.models(it).value }
-            ?.contextLimitFor(info.model)
-        SessionUiState(
-            title = info?.title?.takeIf(String::isNotBlank) ?: "",
-            agent = info?.agent,
-            model = info?.model?.let { SessionModelUi(it.toString(), it.variant) },
-            cost = info?.cost ?: 0.0,
-            contextUsed = store.lastStepTokens(),
-            contextLimit = modelLimit ?: 0L,
-            activity = set.activityOf(id),
-            retry = set.sessions.status.value[id]?.retryOrNull,
-            now = now,
-            messages = store.state.value.messages,
-            paging = store.paging.value,
-            following = following,
-            serverId = set.serverId,
-            directory = directory,
-            projectId = info?.projectID,
-            forkedAt = (info?.fork as? ForkBoundary.Before)?.messageID
-                ?: (info?.fork as? ForkBoundary.Through)?.messageID,
-        )
+    ) { id, set, following ->
+        Triple(id, set, following)
+    }.flatMapLatest { (id, set, following) ->
+        if (id == null || set == null) {
+            flowOf(SessionUiState(following = following, now = clock()))
+        } else {
+            val store: TimelineStore = set.timeline(id)
+            set.sessions.status.map { statuses ->
+                statuses[id]?.retryOrNull
+            }.flatMapLatest { retry ->
+                val tickFlow = if (retry != null) {
+                    flow {
+                        while (true) {
+                            emit(clock())
+                            delay(TICK_MILLIS)
+                        }
+                    }
+                } else {
+                    flowOf(clock())
+                }
+                combine(
+                    store.state,
+                    store.paging,
+                    set.sessions.info,
+                    tickFlow,
+                ) { timelineState, pagingState, infos, now ->
+                    val info = infos[id]
+                    val directory = info?.location?.directory
+                    val modelLimit = directory
+                        ?.let { set.models(it).value }
+                        ?.contextLimitFor(info?.model)
+                    SessionUiState(
+                        title = info?.title?.takeIf(String::isNotBlank) ?: "",
+                        agent = info?.agent,
+                        model = info?.model?.let { SessionModelUi(it.toString(), it.variant) },
+                        cost = info?.cost ?: 0.0,
+                        contextUsed = store.lastStepTokens(),
+                        contextLimit = modelLimit ?: 0L,
+                        activity = set.activityOf(id),
+                        retry = retry,
+                        now = now,
+                        messages = timelineState.messages,
+                        paging = pagingState,
+                        following = following,
+                        serverId = set.serverId,
+                        directory = directory,
+                        projectId = info?.projectID,
+                        forkedAt = (info?.fork as? ForkBoundary.Before)?.messageID
+                            ?: (info?.fork as? ForkBoundary.Through)?.messageID,
+                    )
+                }
+            }
+        }
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),

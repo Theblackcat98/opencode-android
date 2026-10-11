@@ -20,11 +20,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextLinkStyles
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.withLink
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import dev.opencode.android.core.designsystem.R
@@ -168,37 +172,39 @@ private fun MarkdownBlock.textOrEmpty(): String = when (this) {
 @Composable
 private fun Table(block: MarkdownBlock.Table, style: androidx.compose.ui.text.TextStyle) {
     val scroll = rememberScrollState()
-    Row(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
             .horizontalScroll(scroll),
     ) {
-        block.header.forEachIndexed { column, cell ->
-            val alignment = block.alignment.getOrNull(column) ?: ColumnAlignment.LEFT
-            Text(
-                text = annotate(parseInline(cell.plainText()), style),
-                style = style.copy(
-                    fontWeight = FontWeight.SemiBold,
-                    textAlign = alignment.toTextAlign(),
-                ),
-                modifier = Modifier
-                    .width(160.dp)
-                    .padding(horizontal = 6.dp, vertical = 2.dp),
-            )
-        }
-    }
-    HorizontalDivider()
-    block.rows.forEach { row ->
-        Row(modifier = Modifier.fillMaxWidth()) {
-            row.forEachIndexed { column, cell ->
+        Row {
+            block.header.forEachIndexed { column, cell ->
                 val alignment = block.alignment.getOrNull(column) ?: ColumnAlignment.LEFT
                 Text(
                     text = annotate(parseInline(cell.plainText()), style),
-                    style = style.copy(textAlign = alignment.toTextAlign()),
+                    style = style.copy(
+                        fontWeight = FontWeight.SemiBold,
+                        textAlign = alignment.toTextAlign(),
+                    ),
                     modifier = Modifier
                         .width(160.dp)
                         .padding(horizontal = 6.dp, vertical = 2.dp),
                 )
+            }
+        }
+        HorizontalDivider()
+        block.rows.forEach { row ->
+            Row {
+                row.forEachIndexed { column, cell ->
+                    val alignment = block.alignment.getOrNull(column) ?: ColumnAlignment.LEFT
+                    Text(
+                        text = annotate(parseInline(cell.plainText()), style),
+                        style = style.copy(textAlign = alignment.toTextAlign()),
+                        modifier = Modifier
+                            .width(160.dp)
+                            .padding(horizontal = 6.dp, vertical = 2.dp),
+                    )
+                }
             }
         }
     }
@@ -267,22 +273,33 @@ fun rememberParsedMarkdown(markdown: String): List<MarkdownBlock> = remember(mar
 private fun annotate(
     inlines: List<MarkdownInline>,
     style: androidx.compose.ui.text.TextStyle,
-): AnnotatedString = buildAnnotatedString {
-    inlines.forEach { inline ->
-        when (inline) {
-            is MarkdownInline.Text -> append(inline.text)
+): AnnotatedString {
+    val linkColor = MaterialTheme.colorScheme.primary
+    return buildAnnotatedString {
+        inlines.forEach { inline ->
+            when (inline) {
+                is MarkdownInline.Text -> append(inline.text)
 
-            is MarkdownInline.Emphasis -> withStyle(
-                if (inline.strong) SpanStyle(fontWeight = FontWeight.Bold) else SpanStyle(fontStyle = FontStyle.Italic),
-            ) { append(inline.text) }
+                is MarkdownInline.Emphasis -> withStyle(
+                    if (inline.strong) SpanStyle(fontWeight = FontWeight.Bold) else SpanStyle(fontStyle = FontStyle.Italic),
+                ) { append(inline.text) }
 
-            is MarkdownInline.Code -> withStyle(SpanStyle(fontFamily = OpenCodeThemeExtras.code.body.fontFamily)) {
-                append(inline.text)
+                is MarkdownInline.Code -> withStyle(SpanStyle(fontFamily = OpenCodeThemeExtras.code.body.fontFamily)) {
+                    append(inline.text)
+                }
+
+                is MarkdownInline.Link -> withLink(
+                    LinkAnnotation.Url(
+                        url = inline.url,
+                        styles = TextLinkStyles(
+                            style = SpanStyle(
+                                color = linkColor,
+                                textDecoration = TextDecoration.Underline,
+                            ),
+                        ),
+                    ),
+                ) { append(inline.text) }
             }
-
-            is MarkdownInline.Link -> withStyle(
-                SpanStyle(color = Color(0xFF1A73E8)),
-            ) { append(inline.text) }
         }
     }
 }

@@ -58,6 +58,7 @@ import dev.opencode.android.core.model.SessionRevert
 import dev.opencode.android.core.model.SkillInfo
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -1409,6 +1410,8 @@ class ComposerViewModel(
         }
     }
 
+    private var draftJob: Job? = null
+
     /**
      * Saves the unsent text, debounced.
      *
@@ -1420,7 +1423,8 @@ class ComposerViewModel(
         val serverId = active.value?.serverId ?: return
         val session = sessionID.value ?: return
         val text = local.value.text
-        viewModelScope.launch {
+        draftJob?.cancel()
+        draftJob = viewModelScope.launch {
             delay(DRAFT_DEBOUNCE_MILLIS)
             memory.setDraft(serverId, session, text)
         }

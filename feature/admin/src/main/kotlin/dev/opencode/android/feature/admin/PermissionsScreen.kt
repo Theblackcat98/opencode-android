@@ -311,11 +311,7 @@ private fun SavedPermissionRow(permission: SavedPermission, onRemove: () -> Unit
         trailingContent = {
             TextButton(
                 onClick = onRemove,
-                modifier = Modifier
-                    .testTag(AdminTags.removeSaved(permission.id))
-                    .semantics {
-                        contentDescription = ""
-                    },
+                modifier = Modifier.testTag(AdminTags.removeSaved(permission.id)),
             ) { Text(stringResource(R.string.admin_saved_remove)) }
         },
         modifier = Modifier.testTag(AdminTags.savedPermission(permission.id)),

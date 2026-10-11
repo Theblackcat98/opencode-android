@@ -201,9 +201,6 @@ fun AttentionSettingsContent(
             ListItem(
                 headlineContent = { Text(stringResource(AttentionChannelSpec.of(channel).nameRes)) },
                 supportingContent = { Text(stringResource(AttentionChannelSpec.of(channel).descriptionRes)) },
-                modifier = Modifier.semantics {
-                    contentDescription = ""
-                },
                 trailingContent = {
                     TextButton(onClick = { onOpenChannelSettings(channel) }) {
                         Text(stringResource(R.string.settings_channel_manage))
@@ -326,10 +323,8 @@ private fun SwitchRow(
                 checked = checked,
                 onCheckedChange = onChange,
                 enabled = enabled,
-                modifier = Modifier.clearAndSetSemantics { },
             )
         },
-        modifier = Modifier.semantics { contentDescription = "$label. $description" },
     )
 }
 

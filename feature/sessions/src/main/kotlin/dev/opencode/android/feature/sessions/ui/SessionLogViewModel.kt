@@ -69,8 +69,10 @@ class SessionLogViewModel @Inject constructor(
         _state.value = SessionLogUiState(replaying = true)
         job = viewModelScope.launch {
             try {
+                val accumulator = mutableListOf<SessionLogEntry>()
                 set.insights.readSessionLog(sessionID).collect { entry ->
-                    _state.value = _state.value.copy(entries = _state.value.entries + entry)
+                    accumulator.add(entry)
+                    _state.value = _state.value.copy(entries = accumulator.toList())
                 }
                 // The client ends the flow when it reaches log.synced and does not emit that frame, so a
                 // flow that completes without an error is a replay that caught up.

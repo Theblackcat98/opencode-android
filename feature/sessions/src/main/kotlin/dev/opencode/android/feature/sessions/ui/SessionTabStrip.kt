@@ -102,7 +102,6 @@ private fun SessionTab(
     onSelect: (String) -> Unit,
     onClose: (String) -> Unit,
 ) {
-    // The spoken label names the position and the state, so TalkBack reads the tab as one line.
     val label = if (tab.selected) {
         stringResource(R.string.session_tab_label_selected, tab.title, position, count)
     } else {

@@ -410,10 +410,11 @@ private fun AssistantMessageCard(
                     .padding(top = 4.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer),
             ) {
+                val now = System.currentTimeMillis()
                 Text(
                     text = stringResource(
                         R.string.step_retry_scheduled,
-                        Formatters.duration((retry.at - retry.at).coerceAtLeast(0)),
+                        Formatters.duration((retry.at - now).coerceAtLeast(0)),
                         retry.attempt,
                     ),
                     style = MaterialTheme.typography.labelMedium,
@@ -433,7 +434,7 @@ private fun AssistantMessageCard(
  */
 @Composable
 fun ReasoningBlock(part: AssistantContent.Reasoning, modifier: Modifier = Modifier) {
-    var expanded by remember(part.id(), part.text.length) { mutableStateOf(false) }
+    var expanded by remember(part.id()) { mutableStateOf(false) }
     val duration = (part.time?.completed ?: 0L).takeIf { it > 0L }?.let { it - (part.time?.created ?: it) }
     val toggleLabel = stringResource(if (expanded) R.string.timeline_collapse else R.string.timeline_expand)
     val reasonLabel = stringResource(R.string.timeline_reasoning)

@@ -31,7 +31,11 @@ fun OpenCodeTheme(
 
         else -> OpenCodeLightColors
     }
-    CompositionLocalProvider(LocalCodeTypography provides CodeTypography()) {
+    CompositionLocalProvider(
+        LocalCodeTypography provides CodeTypography(),
+        LocalOpenCodeSpacing provides OpenCodeSpacing(),
+        LocalOpenCodeShapes provides OpenCodeShapes(),
+    ) {
         MaterialTheme(
             colorScheme = colorScheme,
             typography = OpenCodeTypography,
@@ -46,4 +50,14 @@ object OpenCodeThemeExtras {
         @Composable
         @ReadOnlyComposable
         get() = LocalCodeTypography.current
+
+    val spacing: OpenCodeSpacing
+        @Composable
+        @ReadOnlyComposable
+        get() = LocalOpenCodeSpacing.current
+
+    val shapes: OpenCodeShapes
+        @Composable
+        @ReadOnlyComposable
+        get() = LocalOpenCodeShapes.current
 }
