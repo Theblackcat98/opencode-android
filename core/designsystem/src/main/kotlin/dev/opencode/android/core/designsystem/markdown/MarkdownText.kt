@@ -1,23 +1,31 @@
 package dev.opencode.android.core.designsystem.markdown
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.LinkAnnotation
@@ -237,22 +245,46 @@ fun CodeBlock(
     val resolved = CodeLanguage.ofTag(language)
     val colors = DiffColors.of()
     val scroll = rememberScrollState()
+    val clipboard = LocalClipboardManager.current
     Surface(
-        modifier = modifier,
-        color = MaterialTheme.colorScheme.surfaceVariant,
-        shape = RoundedCornerShape(8.dp),
+        modifier = modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surfaceContainerLowest,
+        shape = OpenCodeThemeExtras.shapes.codeBlock,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)),
     ) {
-        Column(modifier = Modifier.padding(8.dp)) {
-            if (language != null) {
+        Column {
+            // The header: language on the left, copy on the right. Copying a code block was a
+            // long-press-select-drag on a horizontally scrolling text, which is close to impossible on a phone.
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                    .padding(start = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 Text(
-                    text = language,
+                    text = (language ?: stringResource(R.string.md_code_plain)).uppercase(),
                     style = codeTypography.small.copy(color = MaterialTheme.colorScheme.onSurfaceVariant),
+                    modifier = Modifier.weight(1f),
                 )
+                IconButton(
+                    onClick = { clipboard.setText(AnnotatedString(code.trimEnd('\n'))) },
+                    modifier = Modifier.size(36.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.ContentCopy,
+                        contentDescription = stringResource(R.string.md_code_copy),
+                        modifier = Modifier.size(18.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
             Text(
                 text = highlighted(code.trimEnd('\n'), resolved, colors),
                 style = codeTypography.body,
-                modifier = Modifier.horizontalScroll(scroll),
+                modifier = Modifier
+                    .horizontalScroll(scroll)
+                    .padding(12.dp),
             )
         }
     }

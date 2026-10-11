@@ -123,13 +123,67 @@ class TimelineScreenshotTest {
     @Test
     fun home() = capture("home") {
         HomeScreen(
-            projects = TimelineFixtures.projects(),
-            rows = TimelineFixtures.sessionListState().rows,
+            state = TimelineFixtures.homeState(),
             serverName = "Development server",
-            loading = false,
-            onProjectClick = {},
+            pendingRequests = 2,
             onSessionClick = {},
-            onAllSessionsClick = {},
+            onProjectSessionsClick = {},
+            onSwitchServer = {},
+            onOpenCommandPalette = {},
+        )
+    }
+
+    @Test
+    fun homeDark() = capture("home-dark", dark = true) {
+        HomeScreen(
+            state = TimelineFixtures.homeState(),
+            serverName = "Development server",
+            onSessionClick = {},
+            onProjectSessionsClick = {},
+            onSwitchServer = {},
+        )
+    }
+
+    @Test
+    fun homeWithNoProjects() = capture("home-empty") {
+        HomeScreen(
+            state = TimelineFixtures.homeState().copy(groups = emptyList()),
+            serverName = "Development server",
+            onSessionClick = {},
+            onProjectSessionsClick = {},
+        )
+    }
+
+    @Test
+    fun homeAddProjectSheet() = capture("home-add-project") {
+        HomeScreen(
+            state = TimelineFixtures.homeState(),
+            serverName = "Development server",
+            onSessionClick = {},
+            onProjectSessionsClick = {},
+            initialAddOpen = true,
+        )
+    }
+
+    @Test
+    fun settings() = capture("settings") {
+        SettingsScreen(
+            state = SettingsUiState(
+                serverName = "Development server",
+                projects = TimelineFixtures.projects(),
+                selectedProject = TimelineFixtures.projects().first(),
+            ),
+            onSelectProject = {},
+            onOpen = {},
+        )
+    }
+
+    @Test
+    fun settingsWithNoProject() = capture("settings-no-project", dark = true) {
+        SettingsScreen(
+            state = SettingsUiState(serverName = "Development server"),
+            onSelectProject = {},
+            onOpen = {},
         )
     }
 

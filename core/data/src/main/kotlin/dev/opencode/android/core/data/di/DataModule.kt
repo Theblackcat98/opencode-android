@@ -12,8 +12,10 @@ import dev.opencode.android.core.data.composer.ComposerMemory
 import dev.opencode.android.core.data.composer.DataStoreComposerMemory
 import dev.opencode.android.core.data.preferences.DataStoreExperimentalPreferences
 import dev.opencode.android.core.data.preferences.DataStoreModelPreferences
+import dev.opencode.android.core.data.preferences.DataStoreProjectPreferences
 import dev.opencode.android.core.data.preferences.ExperimentalPreferences
 import dev.opencode.android.core.data.preferences.ModelPreferences
+import dev.opencode.android.core.data.preferences.ProjectPreferences
 import dev.opencode.android.core.data.repository.DefaultServerRepository
 import dev.opencode.android.core.data.repository.ServerRepository
 import dev.opencode.android.core.data.security.AndroidKeystoreCredentialStore
@@ -77,6 +79,16 @@ object DataModule {
     fun provideModelPreferences(
         @ApplicationContext context: Context,
     ): ModelPreferences = DataStoreModelPreferences(context)
+
+    /**
+     * The projects on the home screen and the last session on screen, per server. The client's, for the
+     * same reason favourite models are: the server's project list is every directory it was ever asked about.
+     */
+    @Provides
+    @Singleton
+    fun provideProjectPreferences(
+        @ApplicationContext context: Context,
+    ): ProjectPreferences = DataStoreProjectPreferences(context)
 
     /**
      * Mute, quiet hours, the idle grace period and auto-approve (plan §6, Phase 4).

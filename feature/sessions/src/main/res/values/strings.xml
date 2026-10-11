@@ -3,24 +3,11 @@
 
     <!-- Home -->
     <string name="home_title">Sessions</string>
-    <string name="home_projects">Projects</string>
-    <string name="home_running">Running now</string>
-    <string name="home_recent">Recent</string>
-    <string name="home_all_sessions">All sessions</string>
     <string name="home_subagents">%1$d subagents</string>
     <string name="home_subagent">1 subagent</string>
-    <string name="home_empty_title">No sessions yet</string>
-    <string name="home_empty_subtitle">Start one from the computer, or with opencode, and it appears here.</string>
-    <string name="home_no_server">Choose a server to see its sessions.</string>
-    <string name="home_project_sessions">Sessions in %1$s</string>
-    <string name="home_vcs">%1$s repository</string>
-    <string name="home_canonical_directory">Canonical directory %1$s</string>
     <string name="home_requests_title">Waiting for you</string>
     <string name="home_requests_waiting">%1$d permissions and questions need an answer</string>
-    <string name="home_requests_waiting_short">%1$d</string>
     <string name="home_new_session">New session</string>
-    <string name="home_back">Servers</string>
-    <string name="home_more">More</string>
     <string name="home_command_palette">Command palette</string>
 
     <!-- Session list -->
@@ -208,7 +195,6 @@
 
     <!-- The plan's "Manage" section (plan §4.3). -->
 
-    <string name="home_manage">Manage this server</string>
     <string name="home_manage_accounts">Accounts</string>
     <string name="home_manage_providers">Providers</string>
     <string name="home_manage_mcp">MCP</string>
@@ -243,4 +229,35 @@
     <string name="session_pane_title">Sessions</string>
     <string name="session_pane_label_selected">%1$s, selected</string>
     <string name="session_pane_empty">No sessions yet.</string>
+    <!-- The home: added projects, each with its sessions. -->
+    <string name="home_empty_projects_title">No projects yet</string>
+    <string name="home_empty_projects_subtitle">Add a project this server already knows, or start a new session and its project appears here.</string>
+    <string name="home_add_project">Add project</string>
+    <string name="home_add_project_hint">Projects this server has opened. Adding one puts it on your home screen; nothing changes on the server.</string>
+    <string name="home_project_no_sessions">No sessions in this project yet</string>
+    <string name="home_see_all">All %1$d</string>
+    <string name="home_all">All</string>
+    <string name="home_project_options">Options for %1$s</string>
+    <string name="home_remove_project">Remove from home</string>
+    <string name="home_switch_server">Switch server</string>
+    <string name="home_running_short">running</string>
+
+    <!-- The Chat tab, when there is no session to open. -->
+    <string name="chat_empty_title">No conversations yet</string>
+    <string name="chat_empty_subtitle">Start a session and it opens here. The Chat tab always returns to the last one you had open.</string>
+
+    <!-- The Settings tab. -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_project_scope">Project</string>
+    <string name="settings_project_none">Add a project on the home screen to manage its accounts, providers and configuration.</string>
+    <string name="settings_section_server">Server</string>
+    <string name="settings_section_integrations">Integrations</string>
+    <string name="settings_section_configuration">Configuration</string>
+    <string name="settings_section_insights">Insights</string>
+    <string name="settings_section_maintenance">Maintenance</string>
+    <string name="settings_section_app">App</string>
+    <string name="settings_server_status">Server status</string>
+    <string name="settings_edit_server">Edit server</string>
+    <string name="settings_event_inspector">Event inspector</string>
+    <string name="settings_changelog">What\'s new</string>
 </resources>

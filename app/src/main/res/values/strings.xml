@@ -31,4 +31,8 @@
     <string name="palette_event_inspector">Event inspector</string>
     <!-- The leader-key mnemonic shown after a palette row (navigation/LeaderKeys.kt). %1$s is the letter that follows Ctrl+X. -->
     <string name="palette_leader_hint">Ctrl+X %1$s</string>
+    <!-- The bottom bar's three tabs. -->
+    <string name="tab_home">Home</string>
+    <string name="tab_chat">Chat</string>
+    <string name="tab_settings">Settings</string>
 </resources>

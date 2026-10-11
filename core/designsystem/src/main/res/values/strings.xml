@@ -9,4 +9,7 @@
     -->
     <string name="md_bullet_marker" translatable="false">•  </string>
     <string name="md_number_marker" translatable="false">1.  </string>
+    <!-- The code block header: the label when a fence names no language, and the copy button. -->
+    <string name="md_code_plain">text</string>
+    <string name="md_code_copy">Copy code</string>
 </resources>

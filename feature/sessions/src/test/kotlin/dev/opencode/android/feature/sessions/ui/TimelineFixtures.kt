@@ -382,6 +382,27 @@ object TimelineFixtures {
         now = 1_000_000,
     )
 
+    /** Rows across two projects, plus a subagent the home must leave out. */
+    fun homeRows(): List<SessionRow> = sessionListState().rows + listOf(
+        row("ses_other", "Bump the Gradle wrapper", updated = 600, project = "project-2"),
+        row("ses_child", "Subagent: read the reducer", updated = 1_100, parent = "ses_running"),
+    )
+
+    fun homeState(): HomeUiState = HomeUiState(
+        serverId = "server-1",
+        groups = homeGroups(projects(), listOf("project-1", "project-2"), homeRows(), limit = 3),
+        available = listOf(
+            Project(
+                id = "project-3",
+                canonical = "/home/dev/scratchpad",
+                name = null,
+                time = Project.Time(created = 1, updated = 5, active = 5),
+                sandboxes = emptyList(),
+            ),
+        ),
+        now = 1_000_000,
+    )
+
     fun sessionState(): SessionUiState = SessionUiState(
         title = "Refactor the timeline reducer",
         agent = "build",
@@ -407,10 +428,13 @@ object TimelineFixtures {
         cost: Double = 0.0,
         tokens: Long = 0,
         children: Int = 0,
+        project: String = "project-1",
+        parent: String? = null,
     ): SessionRow = SessionRow(
         session = dev.opencode.android.core.model.SessionInfo(
             id = id,
-            projectID = "project-1",
+            projectID = project,
+            parentID = parent,
             agent = "build",
             model = ModelRef("text", "fake", "default"),
             cost = cost,

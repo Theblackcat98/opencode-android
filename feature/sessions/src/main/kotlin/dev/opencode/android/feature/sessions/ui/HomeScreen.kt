@@ -1,11 +1,10 @@
 package dev.opencode.android.feature.sessions.ui
 
-import androidx.annotation.StringRes
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -14,30 +13,36 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.CreateNewFolder
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.AssistChip
+import androidx.compose.material.icons.outlined.Inbox
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -45,142 +50,83 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import dev.opencode.android.core.data.server.SessionActivity
 import dev.opencode.android.core.data.server.SessionRow
+import dev.opencode.android.core.designsystem.component.OpenCodeAvatar
+import dev.opencode.android.core.designsystem.component.OpenCodeEmptyState
+import dev.opencode.android.core.designsystem.component.OpenCodeStatusPill
+import dev.opencode.android.core.designsystem.component.StatusKind
 import dev.opencode.android.core.designsystem.format.Formatters
+import dev.opencode.android.core.designsystem.format.relativeTimeDescription
+import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
 import dev.opencode.android.core.model.Project
 import dev.opencode.android.feature.sessions.R
 
 /**
- * The per-server home: projects, what is running now, and the most recent sessions (plan §4.3).
+ * The per-server home: the projects the user added, each with its newest sessions (plan §4.3).
  *
- * "All sessions" is a link rather than a tab, because the list screen is the same list with a
- * filter the home has not set; duplicating it would be two implementations of one thing.
+ * **Only added projects.** The server registers a project for every directory it is asked about, so its list
+ * is a history (scratch directories, a home directory, a path typed once), not the user's work. The home shows
+ * the projects the user put here, separated by whitespace rather than boxed in cards, and "Add project" offers
+ * the rest of the server's list. A session created in a project adds it, so the first session fills the home.
+ *
+ * **No Manage menu.** The server's settings moved to the Settings tab of the bottom bar; the home is for work.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
-    projects: List<Project>,
-    rows: List<SessionRow>,
+    state: HomeUiState,
     serverName: String?,
-    loading: Boolean,
-    onProjectClick: (String) -> Unit,
     onSessionClick: (String) -> Unit,
-    onAllSessionsClick: () -> Unit,
+    onProjectSessionsClick: (String) -> Unit,
     modifier: Modifier = Modifier,
     /** How many permissions and questions are waiting across every session (plan §4.3). */
     pendingRequests: Int = 0,
     onNewSessionClick: () -> Unit = {},
     onPendingRequestsClick: () -> Unit = {},
-    /**
-     * The plan's "Manage" destinations for this server (plan §4.3).
-     *
-     * **An action row rather than a drawer, because every one of them is per-checkout.** The
-     * accounts, providers, MCP, plugin and web-search screens are all location-scoped, and the home
-     * screen is the one place that knows which checkout the session list is showing. A row of
-     * labelled buttons carries that and is reachable in one tap; a nested navigation menu would need
-     * a directory the home screen does not have.
-     *
-     * The defaults are empty so this stays a pure addition: a caller that has nothing to route to
-     * gets a row of five buttons that do nothing, which is why [onManageClick] has no default and
-     * the row is only composed when it is non-null.
-     */
-    onManageClick: ((ManageDestination) -> Unit)? = null,
-    manageDirectory: String? = null,
-    /**
-     * Back to the server list.
-     *
-     * The home is where a server's screens start, so it needs a way out that is visible: the system back
-     * gesture is not discoverable, and without an arrow the top bar looked like a root screen that had
-     * nowhere to go.
-     */
-    onBackClick: (() -> Unit)? = null,
-    /**
-     * Opens the command palette. Null hides the action, so a caller without one shows none. This is the touch
-     * route to the palette on a server's home; the Ctrl+P shortcut opens the same one.
-     */
+    onAddProject: (String) -> Unit = {},
+    onRemoveProject: (String) -> Unit = {},
+    /** Back to the server list, from the server name in the top bar. Null makes the name plain text. */
+    onSwitchServer: (() -> Unit)? = null,
+    /** Opens the command palette. Null hides the action. */
     onOpenCommandPalette: (() -> Unit)? = null,
+    /** Opens the add-project sheet as the screen appears, for screenshots of it. */
+    initialAddOpen: Boolean = false,
 ) {
-    var menuOpen by remember { mutableStateOf(false) }
-    val running = rows.filter { it.activity is SessionActivity.Running || it.isRetrying }
-    val recent = rows.take(RECENT_LIMIT)
+    var addOpen by remember { mutableStateOf(initialAddOpen) }
 
     Scaffold(
         modifier = modifier,
         topBar = {
             TopAppBar(
-                title = {
-                    Column {
-                        Text(stringResource(R.string.home_title))
-                        serverName?.let {
-                            Text(
-                                text = it,
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    }
-                },
-                navigationIcon = {
-                    onBackClick?.let { back ->
-                        IconButton(onClick = back) {
-                            Icon(
-                                Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = stringResource(R.string.home_back),
-                            )
-                        }
-                    }
-                },
+                title = { ServerTitle(serverName, onSwitchServer) },
                 actions = {
-                    // The inbox is only there when something is waiting: an always-visible empty
-                    // inbox is a dead end, and a badge is the whole signal the user needs.
+                    // The inbox is only there when something is waiting: an always-visible empty inbox is a dead
+                    // end, and a badge is the whole signal the user needs.
                     if (pendingRequests > 0) {
-                        val label = stringResource(R.string.home_requests_waiting_short, pendingRequests)
-                        TextButton(
-                            onClick = onPendingRequestsClick,
-                            modifier = Modifier.semantics { contentDescription = label },
-                        ) {
-                            Text(label, color = MaterialTheme.colorScheme.error)
-                        }
-                    }
-                    if (onOpenCommandPalette != null) {
-                        val paletteLabel = stringResource(R.string.home_command_palette)
-                        IconButton(onClick = onOpenCommandPalette) {
-                            Icon(Icons.Filled.Search, contentDescription = paletteLabel)
-                        }
-                    }
-                    // The Manage chips sit below every session, so on a busy server they are a long scroll
-                    // away. The same destinations are one tap from here.
-                    if (onManageClick != null && manageDirectory != null) {
-                        IconButton(onClick = { menuOpen = true }) {
-                            Icon(Icons.Filled.MoreVert, contentDescription = stringResource(R.string.home_more))
-                        }
-                        DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                            DropdownMenuItem(
-                                text = { Text(stringResource(R.string.home_all_sessions)) },
-                                onClick = {
-                                    menuOpen = false
-                                    onAllSessionsClick()
-                                },
-                            )
-                            ManageDestination.entries.forEach { destination ->
-                                DropdownMenuItem(
-                                    text = { Text(stringResource(destination.labelRes)) },
-                                    onClick = {
-                                        menuOpen = false
-                                        onManageClick(destination)
-                                    },
-                                )
+                        val label = stringResource(R.string.home_requests_waiting, pendingRequests)
+                        IconButton(onClick = onPendingRequestsClick) {
+                            BadgedBox(badge = { Badge { Text(pendingRequests.toString()) } }) {
+                                Icon(Icons.Outlined.Inbox, contentDescription = label)
                             }
                         }
                     }
+                    if (onOpenCommandPalette != null) {
+                        IconButton(onClick = onOpenCommandPalette) {
+                            Icon(Icons.Filled.Search, contentDescription = stringResource(R.string.home_command_palette))
+                        }
+                    }
                 },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface),
             )
         },
         floatingActionButton = {
@@ -189,362 +135,272 @@ fun HomeScreen(
                 onClick = onNewSessionClick,
                 icon = { Icon(Icons.Filled.Add, contentDescription = null) },
                 text = { Text(newSession) },
-                modifier = Modifier.semantics { contentDescription = newSession },
+                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
             )
         },
     ) { padding ->
-        if (loading && rows.isEmpty()) {
+        if (state.syncing && state.groups.isEmpty()) {
             Box(modifier = Modifier.padding(padding).fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
             }
-            return@Scaffold
-        }
-        if (rows.isEmpty() && projects.isEmpty() && pendingRequests == 0) {
-            EmptyHome(
-                Modifier.padding(padding),
-                onNewSessionClick,
-                onManageClick = onManageClick,
-                manageDirectory = manageDirectory,
+        } else if (state.groups.isEmpty() && pendingRequests == 0) {
+            OpenCodeEmptyState(
+                title = stringResource(R.string.home_empty_projects_title),
+                subtitle = stringResource(R.string.home_empty_projects_subtitle),
+                icon = Icons.Filled.CreateNewFolder,
+                modifier = Modifier.padding(padding).fillMaxSize(),
+                action = {
+                    Button(onClick = { addOpen = true }, enabled = state.available.isNotEmpty()) {
+                        Text(stringResource(R.string.home_add_project))
+                    }
+                },
             )
-            return@Scaffold
-        }
-        LazyColumn(
-            modifier = Modifier.padding(padding).fillMaxSize(),
-            contentPadding = PaddingValues(12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            if (pendingRequests > 0) {
-                item(key = "pending-requests") {
-                    PendingRequestsCard(pendingRequests, onPendingRequestsClick)
-                }
-            }
-            if (projects.isNotEmpty()) {
-                item(key = "projects-header") { SectionHeader(stringResource(R.string.home_projects)) }
-                items(items = projects, key = { "project-${it.id}" }) { project ->
-                    ProjectCard(project, onClick = { onProjectClick(project.id) })
-                }
-            }
-            if (running.isNotEmpty()) {
-                item(key = "running-header") { SectionHeader(stringResource(R.string.home_running)) }
-                items(items = running, key = { "running-${it.id}" }) { row ->
-                    SessionPreview(row, onClick = { onSessionClick(row.id) })
-                }
-            }
-            item(key = "recent-header") {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        text = stringResource(R.string.home_recent),
-                        style = MaterialTheme.typography.titleSmall,
-                        modifier = Modifier.weight(1f),
-                    )
-                    TextButton(onClick = onAllSessionsClick) {
-                        Text(stringResource(R.string.home_all_sessions))
+        } else {
+            LazyColumn(
+                modifier = Modifier.padding(padding).fillMaxSize(),
+                // The bottom padding keeps the last row clear of the floating button.
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp),
+            ) {
+                if (pendingRequests > 0) {
+                    item(key = "pending-requests") {
+                        PendingRequestsCard(pendingRequests, onPendingRequestsClick)
+                        Spacer(Modifier.height(GROUP_GAP))
                     }
                 }
-            }
-            items(items = recent, key = { "recent-${it.id}" }) { row ->
-                SessionPreview(row, onClick = { onSessionClick(row.id) })
-            }
-            if (onManageClick != null && manageDirectory != null) {
-                item(key = "manage") {
-                    ManageRow(onManageClick = onManageClick, directory = manageDirectory)
+                state.groups.forEach { group ->
+                    item(key = "project-${group.project.id}") {
+                        ProjectHeader(
+                            group = group,
+                            onSeeAll = { onProjectSessionsClick(group.project.id) },
+                            onRemove = { onRemoveProject(group.project.id) },
+                        )
+                    }
+                    if (group.sessions.isEmpty()) {
+                        item(key = "project-${group.project.id}-empty") {
+                            Text(
+                                text = stringResource(R.string.home_project_no_sessions),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(start = 44.dp, top = 4.dp, bottom = 4.dp),
+                            )
+                        }
+                    }
+                    items(items = group.sessions, key = { "session-${it.id}" }) { row ->
+                        HomeSessionRow(row, now = state.now, onClick = { onSessionClick(row.id) })
+                    }
+                    item(key = "project-${group.project.id}-gap") { Spacer(Modifier.height(GROUP_GAP)) }
+                }
+                if (state.available.isNotEmpty()) {
+                    item(key = "add-project") {
+                        TextButton(onClick = { addOpen = true }, modifier = Modifier.testTag(HomeTags.ADD_PROJECT)) {
+                            Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.size(8.dp))
+                            Text(stringResource(R.string.home_add_project))
+                        }
+                    }
                 }
             }
         }
     }
-}
 
-/**
- * The "Manage" destinations of plan §4.3, as one row.
- *
- * **Phase 8 delivered five and Phase 9 five more**, which is the whole of the plan's list except stats
- * and adaptive layout: "accounts and providers, models, MCP, plugins, agents, commands and skills,
- * permissions, configuration, stats and maintenance". Stats are P10, so this row now has ten chips and
- * a `FlowRow` that wraps — which is why the chips are named for their destination rather than grouped
- * into sub-screens, and why a user on a small phone sees all ten without a second level.
- */
-enum class ManageDestination(@StringRes val labelRes: Int) {
-    ACCOUNTS(R.string.home_manage_accounts),
-    PROVIDERS(R.string.home_manage_providers),
-    MCP(R.string.home_manage_mcp),
-    PLUGINS(R.string.home_manage_plugins),
-    WEB_SEARCH(R.string.home_manage_web_search),
-    CONFIGURATION(R.string.home_manage_configuration),
-    AGENTS(R.string.home_manage_agents),
-    DEFINITIONS(R.string.home_manage_definitions),
-    PERMISSIONS(R.string.home_manage_permissions),
-    MAINTENANCE(R.string.home_manage_maintenance),
-    USAGE(R.string.home_manage_usage),
-    QUICK_ASK(R.string.home_manage_quick_ask),
-    RPC_CONSOLE(R.string.home_manage_rpc),
-    PAIR_DEVICE(R.string.home_manage_pair_device),
-}
-
-/**
- * The Manage row, and the reason it is a row of buttons rather than a nested screen.
- *
- * **Each button names a checkout's own state**, and the strings are the plan's own section names
- * ("accounts and providers, models, MCP, plugins, agents, commands and skills, permissions,
- * configuration, stats and maintenance"). Only stats is absent, because it is P10 — so there is no chip
- * a user can press and get nothing, which was the reason the P8 row stopped at five.
- */
-@Composable
-private fun ManageRow(onManageClick: (ManageDestination) -> Unit, directory: String) {
-    Column(modifier = Modifier.padding(top = 8.dp)) {
-        SectionHeader(stringResource(R.string.home_manage))
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            AssistChip(
-                onClick = { onManageClick(ManageDestination.ACCOUNTS) },
-                label = { Text(stringResource(R.string.home_manage_accounts)) },
-                modifier = Modifier.testTag(HomeTags.MANAGE_ACCOUNTS),
-            )
-            AssistChip(
-                onClick = { onManageClick(ManageDestination.PROVIDERS) },
-                label = { Text(stringResource(R.string.home_manage_providers)) },
-                modifier = Modifier.testTag(HomeTags.MANAGE_PROVIDERS),
-            )
-            AssistChip(
-                onClick = { onManageClick(ManageDestination.MCP) },
-                label = { Text(stringResource(R.string.home_manage_mcp)) },
-                modifier = Modifier.testTag(HomeTags.MANAGE_MCP),
-            )
-            AssistChip(
-                onClick = { onManageClick(ManageDestination.PLUGINS) },
-                label = { Text(stringResource(R.string.home_manage_plugins)) },
-                modifier = Modifier.testTag(HomeTags.MANAGE_PLUGINS),
-            )
-            AssistChip(
-                onClick = { onManageClick(ManageDestination.WEB_SEARCH) },
-                label = { Text(stringResource(R.string.home_manage_web_search)) },
-                modifier = Modifier.testTag(HomeTags.MANAGE_WEB_SEARCH),
-            )
-            AssistChip(
-                onClick = { onManageClick(ManageDestination.CONFIGURATION) },
-                label = { Text(stringResource(R.string.home_manage_configuration)) },
-                modifier = Modifier.testTag(HomeTags.MANAGE_CONFIGURATION),
-            )
-            AssistChip(
-                onClick = { onManageClick(ManageDestination.AGENTS) },
-                label = { Text(stringResource(R.string.home_manage_agents)) },
-                modifier = Modifier.testTag(HomeTags.MANAGE_AGENTS),
-            )
-            AssistChip(
-                onClick = { onManageClick(ManageDestination.DEFINITIONS) },
-                label = { Text(stringResource(R.string.home_manage_definitions)) },
-                modifier = Modifier.testTag(HomeTags.MANAGE_DEFINITIONS),
-            )
-            AssistChip(
-                onClick = { onManageClick(ManageDestination.PERMISSIONS) },
-                label = { Text(stringResource(R.string.home_manage_permissions)) },
-                modifier = Modifier.testTag(HomeTags.MANAGE_PERMISSIONS),
-            )
-            AssistChip(
-                onClick = { onManageClick(ManageDestination.MAINTENANCE) },
-                label = { Text(stringResource(R.string.home_manage_maintenance)) },
-                modifier = Modifier.testTag(HomeTags.MANAGE_MAINTENANCE),
-            )
-            AssistChip(
-                onClick = { onManageClick(ManageDestination.USAGE) },
-                label = { Text(stringResource(R.string.home_manage_usage)) },
-                modifier = Modifier.testTag(HomeTags.MANAGE_USAGE),
-            )
-            AssistChip(
-                onClick = { onManageClick(ManageDestination.QUICK_ASK) },
-                label = { Text(stringResource(R.string.home_manage_quick_ask)) },
-                modifier = Modifier.testTag(HomeTags.MANAGE_QUICK_ASK),
-            )
-            AssistChip(
-                onClick = { onManageClick(ManageDestination.RPC_CONSOLE) },
-                label = { Text(stringResource(R.string.home_manage_rpc)) },
-                modifier = Modifier.testTag(HomeTags.MANAGE_RPC),
-            )
-            AssistChip(
-                onClick = { onManageClick(ManageDestination.PAIR_DEVICE) },
-                label = { Text(stringResource(R.string.home_manage_pair_device)) },
-                modifier = Modifier.testTag(HomeTags.MANAGE_PAIR_DEVICE),
-            )
-        }
+    if (addOpen) {
+        AddProjectSheet(
+            projects = state.available,
+            onPick = { id ->
+                addOpen = false
+                onAddProject(id)
+            },
+            onDismiss = { addOpen = false },
+        )
     }
 }
 
 /** The tags the home screen's own tests address. */
 object HomeTags {
-    const val MANAGE_ACCOUNTS: String = "home:manage-accounts"
-    const val MANAGE_PROVIDERS: String = "home:manage-providers"
-    const val MANAGE_MCP: String = "home:manage-mcp"
-    const val MANAGE_PLUGINS: String = "home:manage-plugins"
-    const val MANAGE_WEB_SEARCH: String = "home:manage-web-search"
-    const val MANAGE_CONFIGURATION: String = "home:manage-configuration"
-    const val MANAGE_AGENTS: String = "home:manage-agents"
-    const val MANAGE_DEFINITIONS: String = "home:manage-definitions"
-    const val MANAGE_PERMISSIONS: String = "home:manage-permissions"
-    const val MANAGE_MAINTENANCE: String = "home:manage-maintenance"
-    const val MANAGE_USAGE: String = "home:manage-usage"
-    const val MANAGE_QUICK_ASK: String = "home:manage-quick-ask"
-    const val MANAGE_RPC: String = "home:manage-rpc"
-    const val MANAGE_PAIR_DEVICE: String = "home:manage-pair-device"
+    const val ADD_PROJECT: String = "home:add-project"
+    const val PROJECT_MENU: String = "home:project-menu"
 }
 
+/** The server's name as the title, and the way back to the server list when [onSwitchServer] is given. */
 @Composable
-private fun SectionHeader(text: String) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.titleSmall,
-        modifier = Modifier.padding(top = 8.dp),
-    )
-}
-
-/**
- * A project: its name, its VCS, and the directory it is checked out at.
- *
- * The icon is a URL the server serves; Phase 2 shows the name and colour, and the icon becomes a
- * loaded image when the image pipeline lands.
- */
-@Composable
-private fun ProjectCard(project: Project, onClick: () -> Unit) {
-    val label = project.name ?: Formatters.directoryName(project.canonical)
-    val description = buildString {
-        append(label)
-        project.vcs?.let {
-            append(", ")
-            append(stringResource(R.string.home_vcs, it))
-        }
+private fun ServerTitle(serverName: String?, onSwitchServer: (() -> Unit)?) {
+    val name = serverName ?: stringResource(R.string.home_title)
+    val switchLabel = stringResource(R.string.home_switch_server)
+    val clickable = if (onSwitchServer != null) {
+        Modifier
+            .clip(OpenCodeThemeExtras.shapes.button)
+            .clickable(onClickLabel = switchLabel, role = Role.Button, onClick = onSwitchServer)
+    } else {
+        Modifier
     }
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .semantics { contentDescription = description },
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+    Row(
+        modifier = clickable.padding(horizontal = 4.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(
-            modifier = Modifier.padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Box(
-                modifier = Modifier.size(28.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = label.take(1).uppercase(),
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold,
-                )
+        Text(text = name, style = MaterialTheme.typography.titleLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        if (onSwitchServer != null) Icon(Icons.Filled.ArrowDropDown, contentDescription = null)
+    }
+}
+
+/** A project's heading: avatar, name and path, what is running, "See all", and a menu to take it off the home. */
+@Composable
+private fun ProjectHeader(group: ProjectGroup, onSeeAll: () -> Unit, onRemove: () -> Unit) {
+    val project = group.project
+    val label = projectLabel(project)
+    var menuOpen by remember { mutableStateOf(false) }
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        OpenCodeAvatar(key = project.id, label = label, size = 32.dp)
+        Spacer(Modifier.size(12.dp))
+        Column(modifier = Modifier.weight(1f).semantics(mergeDescendants = true) { heading() }) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = Formatters.directoryTail(project.canonical),
+                style = OpenCodeThemeExtras.code.small,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        if (group.total > group.sessions.size) {
+            TextButton(onClick = onSeeAll) { Text(stringResource(R.string.home_see_all, group.total)) }
+        } else if (group.total > 0) {
+            TextButton(onClick = onSeeAll) { Text(stringResource(R.string.home_all)) }
+        }
+        Box {
+            IconButton(onClick = { menuOpen = true }, modifier = Modifier.testTag(HomeTags.PROJECT_MENU)) {
+                Icon(Icons.Filled.MoreVert, contentDescription = stringResource(R.string.home_project_options, label))
             }
-            Spacer(Modifier.width(12.dp))
-            Column {
-                Text(text = label, style = MaterialTheme.typography.bodyLarge)
-                project.vcs?.let {
-                    Text(
-                        text = stringResource(R.string.home_vcs, it),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                Text(
-                    text = stringResource(
-                        R.string.home_canonical_directory,
-                        Formatters.directoryTail(project.canonical),
-                    ),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+            DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.home_remove_project)) },
+                    onClick = {
+                        menuOpen = false
+                        onRemove()
+                    },
                 )
             }
         }
     }
 }
 
+/** One session under its project: title, when and by which agent, and its state. No card, so a group reads as one. */
 @Composable
-private fun SessionPreview(row: SessionRow, onClick: () -> Unit) {
+private fun HomeSessionRow(row: SessionRow, now: Long, onClick: () -> Unit) {
+    val relative = if (now > 0L) Formatters.relativeTime(row.updated, now) else ""
+    val relativeDescription = if (now > 0L) relativeTimeDescription(row.updated, now) else ""
     val badges = buildList {
         if (row.isRunning) add(stringResource(R.string.sessions_running_description))
         if (row.isRetrying) add(stringResource(R.string.sessions_retry_badge))
         if (row.isUnread) add(stringResource(R.string.sessions_unread_description))
     }
-    Card(
+    val description = listOf(row.title, relativeDescription, badges.joinToString(", "))
+        .filter { it.isNotBlank() }
+        .joinToString(". ")
+    Row(
         modifier = Modifier
             .fillMaxWidth()
+            .clip(OpenCodeThemeExtras.shapes.button)
             .clickable(onClick = onClick)
-            .semantics { contentDescription = "${row.title}. ${badges.joinToString(", ")}" },
-        colors = CardDefaults.cardColors(
-            containerColor = if (row.isUnread) {
-                MaterialTheme.colorScheme.secondaryContainer
-            } else {
-                MaterialTheme.colorScheme.surfaceVariant
-            },
-        ),
+            .semantics(mergeDescendants = true) { contentDescription = description }
+            .padding(start = 44.dp, top = 10.dp, bottom = 10.dp, end = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                if (row.isRunning) {
-                    CircularProgressIndicator(modifier = Modifier.size(12.dp), strokeWidth = 2.dp)
-                    Spacer(Modifier.width(8.dp))
-                }
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = row.title,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = if (row.isUnread) FontWeight.SemiBold else FontWeight.Normal,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            val meta = listOfNotNull(relative.takeIf { it.isNotEmpty() }, row.agent).joinToString(" · ")
+            if (meta.isNotEmpty()) {
                 Text(
-                    text = row.title,
-                    style = MaterialTheme.typography.bodyLarge,
-                    modifier = Modifier.weight(1f),
-                )
-            }
-            badges.forEach { badge ->
-                Text(
-                    text = badge,
-                    style = MaterialTheme.typography.labelSmall,
+                    text = meta,
+                    style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
                 )
             }
-            if (row.cost > 0.0 || row.tokens > 0) {
-                Text(
-                    text = stringResource(
-                        R.string.sessions_cost_and_tokens,
-                        Formatters.cost(row.cost),
-                        Formatters.tokens(row.tokens),
-                    ),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
+        }
+        when {
+            row.isRetrying -> OpenCodeStatusPill(StatusKind.Retrying, stringResource(R.string.sessions_retry_badge))
+
+            row.isRunning -> OpenCodeStatusPill(StatusKind.Running, stringResource(R.string.home_running_short))
+
+            row.isUnread -> Box(
+                Modifier
+                    .size(8.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primary),
+            )
         }
     }
 }
 
 /**
- * The empty home.
- *
- * A server with no sessions is a server the user has not started work on, so the empty state offers
- * the one action that starts it rather than only explaining that there is nothing here.
+ * The server's projects that are not on the home yet. Only what the server already knows is offered: the server
+ * registers a project for any directory it is asked about, so a typed path would create one.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun EmptyHome(
-    modifier: Modifier = Modifier,
-    onNewSessionClick: () -> Unit = {},
-    onManageClick: ((ManageDestination) -> Unit)? = null,
-    manageDirectory: String? = null,
-) {
-    Column(
-        modifier = modifier.fillMaxSize().padding(32.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
+private fun AddProjectSheet(projects: List<Project>, onPick: (String) -> Unit, onDismiss: () -> Unit) {
+    ModalBottomSheet(onDismissRequest = onDismiss) {
         Text(
-            text = stringResource(R.string.home_empty_title),
+            text = stringResource(R.string.home_add_project),
             style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
+        )
+        Text(
+            text = stringResource(R.string.home_add_project_hint),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = 24.dp),
         )
         Spacer(Modifier.height(8.dp))
-        Text(
-            text = stringResource(R.string.home_empty_subtitle),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Spacer(Modifier.height(16.dp))
-        Button(onClick = onNewSessionClick) { Text(stringResource(R.string.home_new_session)) }
-        // The Manage row is here too, because a server with no sessions still has accounts to connect
-        // and MCP servers to authenticate — which is the first thing a user does with a fresh server.
-        if (onManageClick != null && manageDirectory != null) {
-            ManageRow(onManageClick = onManageClick, directory = manageDirectory)
+        LazyColumn(contentPadding = PaddingValues(bottom = 24.dp)) {
+            items(items = projects.sortedByDescending { it.time.updated }, key = { it.id }) { project ->
+                val label = projectLabel(project)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(onClickLabel = stringResource(R.string.home_add_project)) { onPick(project.id) }
+                        .padding(horizontal = 24.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    OpenCodeAvatar(key = project.id, label = label, size = 28.dp)
+                    Spacer(Modifier.size(12.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(label, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(
+                            text = Formatters.directoryTail(project.canonical, segments = 3),
+                            style = OpenCodeThemeExtras.code.small,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                    Icon(
+                        Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                HorizontalDivider(
+                    modifier = Modifier.padding(start = 64.dp),
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+                )
+            }
         }
     }
 }
@@ -552,33 +408,36 @@ private fun EmptyHome(
 /**
  * The pending-requests card.
  *
- * The agent is blocked until this is answered, so it is the first thing on the home and not a
- * notification-only feature: a user who is not looking at the session still has to be able to find
- * it (plan §4.3).
+ * The agent is blocked until this is answered, so it is the first thing on the home and not a notification-only
+ * feature: a user who is not looking at the session still has to be able to find it (plan §4.3).
  */
 @Composable
 private fun PendingRequestsCard(count: Int, onClick: () -> Unit) {
     val label = stringResource(R.string.home_requests_waiting, count)
-    Card(
+    Surface(
         modifier = Modifier
             .fillMaxWidth()
+            .clip(OpenCodeThemeExtras.shapes.card)
             .clickable(onClick = onClick)
             .semantics { contentDescription = label },
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+        color = MaterialTheme.colorScheme.errorContainer,
+        contentColor = MaterialTheme.colorScheme.onErrorContainer,
+        shape = OpenCodeThemeExtras.shapes.card,
     ) {
-        Column(Modifier.padding(12.dp)) {
-            Text(
-                text = stringResource(R.string.home_requests_title),
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.onErrorContainer,
-            )
-            Text(
-                text = label,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onErrorContainer,
-            )
+        Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Outlined.Inbox, contentDescription = null)
+            Spacer(Modifier.size(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(text = stringResource(R.string.home_requests_title), style = MaterialTheme.typography.titleSmall)
+                Text(text = label, style = MaterialTheme.typography.bodyMedium)
+            }
+            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)
         }
     }
 }
 
-private const val RECENT_LIMIT = 10
+/** A project's display name: the one the server was given, or its directory's. */
+fun projectLabel(project: Project): String = project.name?.takeIf { it.isNotBlank() } ?: Formatters.directoryName(project.canonical)
+
+/** The whitespace between two projects, which is what separates them instead of a card edge. */
+private val GROUP_GAP = 28.dp

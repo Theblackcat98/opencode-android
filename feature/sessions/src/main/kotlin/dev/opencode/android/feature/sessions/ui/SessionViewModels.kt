@@ -6,6 +6,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.opencode.android.core.data.attention.OpenSessionTracker
 import dev.opencode.android.core.data.attention.SessionViewMarker
 import dev.opencode.android.core.data.connection.ServerConnectionManager
+import dev.opencode.android.core.data.preferences.ProjectPreferences
 import dev.opencode.android.core.data.repository.ServerRepository
 import dev.opencode.android.core.data.server.PagingState
 import dev.opencode.android.core.data.server.ServerDataRegistry
@@ -117,11 +118,21 @@ sealed interface SessionActivityUi {
  * on the right home.
  */
 @HiltViewModel
-class HomeViewModel @Inject constructor(
+class HomeViewModel(
     private val connectionManager: ServerConnectionManager,
     private val servers: ServerRepository,
     private val dataSets: ServerDataRegistry,
+    private val projectPreferences: ProjectPreferences,
+    clock: () -> Long,
 ) : ViewModel() {
+    /** Hilt's constructor: Dagger cannot supply the clock, so the production one is fixed here. */
+    @Inject
+    constructor(
+        connectionManager: ServerConnectionManager,
+        servers: ServerRepository,
+        dataSets: ServerDataRegistry,
+        projectPreferences: ProjectPreferences,
+    ) : this(connectionManager, servers, dataSets, projectPreferences, System::currentTimeMillis)
 
     val serverName: StateFlow<String?> = combine(
         connectionManager.activeConnection,
@@ -131,10 +142,58 @@ class HomeViewModel @Inject constructor(
             ?: profiles.firstOrNull { it.id == connection?.serverProfile?.id }?.name
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), null)
 
+    private val ticks: Flow<Long> = flow {
+        while (true) {
+            emit(clock())
+            delay(TICK_MILLIS)
+        }
+    }
+
+    /**
+     * The projects on the home screen with their sessions.
+     *
+     * Everything follows the active data set, and the added ids are the client's own list for that server, so
+     * switching server switches both at once.
+     */
+    val state: StateFlow<HomeUiState> = dataSets.active
+        .flatMapLatest { set ->
+            if (set == null) {
+                flowOf(HomeUiState())
+            } else {
+                combine(
+                    set.projects.state,
+                    projectPreferences.added(set.serverId),
+                    set.sessions.rows,
+                ) { projects, added, rows ->
+                    val known = projects.value.orEmpty()
+                    HomeUiState(
+                        serverId = set.serverId,
+                        groups = homeGroups(known, added, rows),
+                        available = known.filter { it.id !in added },
+                        syncing = projects.value == null && projects.status !is SyncStatus.Failed,
+                    )
+                }
+            }
+        }
+        .let { home -> combine(home, ticks) { state, now -> state.copy(now = now) } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), HomeUiState())
+
     /** Follows [serverId] and loads its session list. */
     fun select(serverId: String?) {
         serverId?.let { connectionManager.setActiveServer(it) }
         dataSets.active.value?.sessions?.start()
+    }
+
+    /** Puts a project on the home screen. */
+    fun addProject(projectId: String) {
+        val serverId = dataSets.active.value?.serverId ?: return
+        viewModelScope.launch { projectPreferences.add(serverId, projectId) }
+    }
+
+    /** Takes a project off the home screen. Its sessions stay on the server and in "All sessions". */
+    fun removeProject(projectId: String) {
+        val serverId = dataSets.active.value?.serverId ?: return
+        viewModelScope.launch { projectPreferences.remove(serverId, projectId) }
     }
 }
 
@@ -286,6 +345,8 @@ private fun List<SessionRow>.filterBySearch(search: String): List<SessionRow> {
 class SessionViewModel(
     private val dataSets: ServerDataRegistry,
     private val openSessions: OpenSessionTracker,
+    /** Where the bottom bar's Chat tab reads the last session on screen from. */
+    private val projectPreferences: ProjectPreferences,
     clock: () -> Long = System::currentTimeMillis,
 ) : ViewModel() {
     /** Hilt's constructor: Dagger cannot supply the clock, so the production one is fixed here. */
@@ -293,7 +354,8 @@ class SessionViewModel(
     constructor(
         dataSets: ServerDataRegistry,
         openSessions: OpenSessionTracker,
-    ) : this(dataSets, openSessions, System::currentTimeMillis)
+        projectPreferences: ProjectPreferences,
+    ) : this(dataSets, openSessions, projectPreferences, System::currentTimeMillis)
 
     private val follow = MutableStateFlow(true)
     private val openSession = MutableStateFlow<String?>(null)
@@ -380,6 +442,7 @@ class SessionViewModel(
         openSession.value = sessionID
         set.timeline(sessionID).start()
         viewModelScope.launch { set.sessions.loadSession(sessionID) }
+        viewModelScope.launch { projectPreferences.setLastSession(set.serverId, sessionID) }
     }
 
     /**

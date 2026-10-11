@@ -6,6 +6,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.opencode.android.core.data.catalog.AgentCatalog
 import dev.opencode.android.core.data.catalog.ModelCatalog
 import dev.opencode.android.core.data.preferences.ModelPreferences
+import dev.opencode.android.core.data.preferences.ProjectPreferences
 import dev.opencode.android.core.data.server.BrowserState
 import dev.opencode.android.core.data.server.ServerDataRegistry
 import dev.opencode.android.core.data.server.ServerDataSet
@@ -118,13 +119,19 @@ data class NewSessionUiState(
 class NewSessionViewModel(
     private val active: StateFlow<ServerDataSet?>,
     private val modelPreferences: ModelPreferences,
+    /**
+     * The home screen's projects. A session created in a project puts that project on the home screen, so a
+     * fresh install is not an empty home after its first session.
+     */
+    private val projectPreferences: ProjectPreferences,
 ) : ViewModel() {
     /** Hilt's constructor: what this view model reads from the registry is which read model is active. */
     @Inject
     constructor(
         dataSets: ServerDataRegistry,
         modelPreferences: ModelPreferences,
-    ) : this(dataSets.active, modelPreferences)
+        projectPreferences: ProjectPreferences,
+    ) : this(dataSets.active, modelPreferences, projectPreferences)
 
     private val local = MutableStateFlow(LocalState())
     private val choice = MutableStateFlow<LocationChoice?>(null)
@@ -342,6 +349,7 @@ class NewSessionViewModel(
             )
             val error = result.actionErrorOrNull
             if (error == null) {
+                result.getOrNull()?.let { info -> projectPreferences.add(set.serverId, info.projectID) }
                 createdSession.value = result.getOrNull()?.id
                 local.value = local.value.copy(creating = false)
             } else {

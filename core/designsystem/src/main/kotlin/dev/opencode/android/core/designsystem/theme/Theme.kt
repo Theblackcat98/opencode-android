@@ -12,13 +12,15 @@ import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.ui.platform.LocalContext
 
 /**
- * The app theme. Uses Material You dynamic color on Android 12+ unless [dynamicColor] is false,
- * and the [OpenCodePalette] otherwise.
+ * The app theme: the [OpenCodePalette] by default.
+ *
+ * Material You dynamic color is opt-in through [dynamicColor]. It used to be the default, which meant
+ * every device on Android 12+ drew the wallpaper's palette and never showed the one `design.md` specifies.
  */
 @Composable
 fun OpenCodeTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    dynamicColor: Boolean = true,
+    dynamicColor: Boolean = false,
     content: @Composable () -> Unit,
 ) {
     val colorScheme: ColorScheme = when {
@@ -35,6 +37,7 @@ fun OpenCodeTheme(
         LocalCodeTypography provides CodeTypography(),
         LocalOpenCodeSpacing provides OpenCodeSpacing(),
         LocalOpenCodeShapes provides OpenCodeShapes(),
+        LocalOpenCodeStatusColors provides if (darkTheme) DarkStatusColors else LightStatusColors,
     ) {
         MaterialTheme(
             colorScheme = colorScheme,
@@ -60,4 +63,9 @@ object OpenCodeThemeExtras {
         @Composable
         @ReadOnlyComposable
         get() = LocalOpenCodeShapes.current
+
+    val status: OpenCodeStatusColors
+        @Composable
+        @ReadOnlyComposable
+        get() = LocalOpenCodeStatusColors.current
 }

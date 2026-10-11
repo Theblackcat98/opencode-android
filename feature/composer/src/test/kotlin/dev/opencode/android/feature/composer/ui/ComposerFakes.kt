@@ -7,6 +7,7 @@ import androidx.lifecycle.ViewModelStore
 import dev.opencode.android.core.data.composer.ComposerMemory
 import dev.opencode.android.core.data.composer.StashEntry
 import dev.opencode.android.core.data.preferences.ModelPreferences
+import dev.opencode.android.core.data.preferences.ProjectPreferences
 import dev.opencode.android.core.model.ModelRef
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -14,6 +15,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import java.io.InputStream
@@ -51,6 +53,36 @@ object FakeModelPreferences : ModelPreferences {
     override suspend fun markUsed(serverId: String, model: ModelRef) = Unit
 
     override suspend fun toggleFavorite(serverId: String, model: ModelRef) = Unit
+}
+
+/** The home screen's projects, held in memory, so a test can read back what a created session added. */
+class FakeProjectPreferences : ProjectPreferences {
+    val addedIds = MutableStateFlow<Map<String, List<String>>>(emptyMap())
+    private val last = MutableStateFlow<Map<String, String>>(emptyMap())
+    private val settings = MutableStateFlow<Map<String, String>>(emptyMap())
+
+    override fun added(serverId: String): Flow<List<String>> = addedIds.map { it[serverId].orEmpty() }
+
+    override suspend fun add(serverId: String, projectId: String) {
+        val current = addedIds.value[serverId].orEmpty()
+        if (projectId !in current) addedIds.value = addedIds.value + (serverId to current + projectId)
+    }
+
+    override suspend fun remove(serverId: String, projectId: String) {
+        addedIds.value = addedIds.value + (serverId to addedIds.value[serverId].orEmpty() - projectId)
+    }
+
+    override fun lastSession(serverId: String): Flow<String?> = last.map { it[serverId] }
+
+    override suspend fun setLastSession(serverId: String, sessionId: String) {
+        last.value = last.value + (serverId to sessionId)
+    }
+
+    override fun settingsProject(serverId: String): Flow<String?> = settings.map { it[serverId] }
+
+    override suspend fun setSettingsProject(serverId: String, projectId: String) {
+        settings.value = settings.value + (serverId to projectId)
+    }
 }
 
 /** A picker that has nothing to hand over: the view model is built with one, and these tests never attach. */
@@ -95,7 +127,7 @@ class ComposerViewModels : AutoCloseable {
 
     /** The new-session sheet, held in the store for the same reason. */
     fun newSession(server: ComposerServer): NewSessionViewModel = put("new-session-${next++}", NewSessionViewModel::class.java) {
-        NewSessionViewModel(MutableStateFlow(server.set), FakeModelPreferences)
+        NewSessionViewModel(MutableStateFlow(server.set), FakeModelPreferences, FakeProjectPreferences())
     }
 
     /** What a test's `tearDown` calls before `Dispatchers.resetMain()`. */

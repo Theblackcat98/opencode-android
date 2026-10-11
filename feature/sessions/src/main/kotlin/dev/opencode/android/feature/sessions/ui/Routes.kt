@@ -22,53 +22,61 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 fun HomeRoute(
     serverId: String?,
     onSessionClick: (String) -> Unit,
-    onAllSessionsClick: (String) -> Unit,
+    /** A project's "See all": the session list filtered to that project. */
+    onProjectSessionsClick: (String) -> Unit,
     onNewSessionClick: (String) -> Unit,
     onPendingRequestsClick: (String) -> Unit,
-    /**
-     * The plan's "Manage" destinations (plan §4.3, Phase 8).
-     *
-     * **Passed in rather than navigated to here**, because a feature may not import another one and
-     * the app module is what owns the graph. The directory is the home's own project directory,
-     * which is what every one of those screens is scoped by.
-     */
-    onManageClick: ((String, ManageDestination) -> Unit)? = null,
-    onBackClick: (() -> Unit)? = null,
+    onSwitchServer: (() -> Unit)? = null,
     /** The command palette, passed to the home's top bar. Null hides the action. */
     onOpenCommandPalette: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
     viewModel: HomeViewModel = hiltViewModel(),
-    listViewModel: SessionListViewModel = hiltViewModel(),
     requests: PendingRequestsViewModel = hiltViewModel(),
 ) {
-    val state by listViewModel.state.collectAsStateWithLifecycle()
-    val manageDirectory = state.projects.firstOrNull()?.canonical
+    val state by viewModel.state.collectAsStateWithLifecycle()
     val serverName by viewModel.serverName.collectAsStateWithLifecycle()
     val pending by requests.pending.collectAsStateWithLifecycle()
 
     LaunchedEffect(serverId) { viewModel.select(serverId) }
 
     HomeScreen(
-        projects = state.projects,
-        rows = state.rows,
+        state = state,
         serverName = serverName,
-        loading = state.paging.loading || state.syncing,
-        onProjectClick = { onAllSessionsClick(it) },
         onSessionClick = onSessionClick,
-        onAllSessionsClick = { serverId?.let(onAllSessionsClick) },
+        onProjectSessionsClick = onProjectSessionsClick,
         modifier = modifier,
         pendingRequests = pending.size,
         onNewSessionClick = { serverId?.let(onNewSessionClick) },
         onPendingRequestsClick = { serverId?.let(onPendingRequestsClick) },
-        onManageClick = onManageClick?.let { handler ->
-            // A checkout is the scope of every Manage screen, so the first project's canonical
-            // directory is the one the server is working in. With no project there is no checkout to
-            // manage, and the row is simply not composed.
-            { destination: ManageDestination -> handler(manageDirectory.orEmpty(), destination) }
-        },
-        manageDirectory = manageDirectory,
-        onBackClick = onBackClick,
+        onAddProject = viewModel::addProject,
+        onRemoveProject = viewModel::removeProject,
+        onSwitchServer = onSwitchServer,
         onOpenCommandPalette = onOpenCommandPalette,
+    )
+}
+
+/**
+ * The Settings tab, wired to the stores. [onOpen] receives the destination and the directory of the chosen
+ * project, or null when there is none; the app module owns the graph, so it turns the pair into a route.
+ */
+@Composable
+fun SettingsRoute(
+    serverId: String?,
+    onOpen: (ManageDestination, String?) -> Unit,
+    modifier: Modifier = Modifier,
+    viewModel: SettingsViewModel = hiltViewModel(),
+    home: HomeViewModel = hiltViewModel(),
+) {
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    val serverName by home.serverName.collectAsStateWithLifecycle()
+
+    LaunchedEffect(serverId) { home.select(serverId) }
+
+    SettingsScreen(
+        state = state.copy(serverName = serverName),
+        onSelectProject = viewModel::selectProject,
+        onOpen = { destination -> onOpen(destination, state.selectedProject?.canonical) },
+        modifier = modifier,
     )
 }
 
