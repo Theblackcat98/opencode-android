@@ -144,16 +144,16 @@ write_config() {
         "apiKey": "fake-key"
       },
       "models": {
-        "probe": { "name": "Fake probe", "limit": { "context": 200000, "output": 4096 }, "cost": { "input": 0, "output": 0 } },
-        "text": { "name": "Fake text", "limit": { "context": 200000, "output": 4096 }, "cost": { "input": 0, "output": 0 } },
-        "reasoning": { "name": "Fake reasoning", "limit": { "context": 200000, "output": 4096 }, "cost": { "input": 0, "output": 0 } },
-        "shell": { "name": "Fake shell", "limit": { "context": 200000, "output": 4096 }, "cost": { "input": 0, "output": 0 } },
-        "edit": { "name": "Fake edit", "limit": { "context": 200000, "output": 4096 }, "cost": { "input": 0, "output": 0 } },
-        "question": { "name": "Fake question", "limit": { "context": 200000, "output": 4096 }, "cost": { "input": 0, "output": 0 } },
-        "subagent": { "name": "Fake subagent", "limit": { "context": 200000, "output": 4096 }, "cost": { "input": 0, "output": 0 } },
-        "error": { "name": "Fake error", "limit": { "context": 200000, "output": 4096 }, "cost": { "input": 0, "output": 0 } },
-        "long": { "name": "Fake long", "limit": { "context": 200000, "output": 4096 }, "cost": { "input": 0, "output": 0 } },
-        "slow": { "name": "Fake slow", "limit": { "context": 200000, "output": 4096 }, "cost": { "input": 0, "output": 0 } }
+        "probe": { "name": "Fake probe", "capabilities": { "tools": true, "input": ["text"], "output": ["text"] }, "limit": { "context": 200000, "output": 4096 }, "cost": { "input": 0, "output": 0 } },
+        "text": { "name": "Fake text", "capabilities": { "tools": true, "input": ["text"], "output": ["text"] }, "limit": { "context": 200000, "output": 4096 }, "cost": { "input": 0, "output": 0 } },
+        "reasoning": { "name": "Fake reasoning", "capabilities": { "tools": true, "input": ["text"], "output": ["text"] }, "limit": { "context": 200000, "output": 4096 }, "cost": { "input": 0, "output": 0 } },
+        "shell": { "name": "Fake shell", "capabilities": { "tools": true, "input": ["text"], "output": ["text"] }, "limit": { "context": 200000, "output": 4096 }, "cost": { "input": 0, "output": 0 } },
+        "edit": { "name": "Fake edit", "capabilities": { "tools": true, "input": ["text"], "output": ["text"] }, "limit": { "context": 200000, "output": 4096 }, "cost": { "input": 0, "output": 0 } },
+        "question": { "name": "Fake question", "capabilities": { "tools": true, "input": ["text"], "output": ["text"] }, "limit": { "context": 200000, "output": 4096 }, "cost": { "input": 0, "output": 0 } },
+        "subagent": { "name": "Fake subagent", "capabilities": { "tools": true, "input": ["text"], "output": ["text"] }, "limit": { "context": 200000, "output": 4096 }, "cost": { "input": 0, "output": 0 } },
+        "error": { "name": "Fake error", "capabilities": { "tools": true, "input": ["text"], "output": ["text"] }, "limit": { "context": 200000, "output": 4096 }, "cost": { "input": 0, "output": 0 } },
+        "long": { "name": "Fake long", "capabilities": { "tools": true, "input": ["text"], "output": ["text"] }, "limit": { "context": 200000, "output": 4096 }, "cost": { "input": 0, "output": 0 } },
+        "slow": { "name": "Fake slow", "capabilities": { "tools": true, "input": ["text"], "output": ["text"] }, "limit": { "context": 200000, "output": 4096 }, "cost": { "input": 0, "output": 0 } }
       }
     }
   }
