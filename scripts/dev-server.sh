@@ -223,7 +223,7 @@ cmd_supervise() {
     printf '%s' "$fake_pid" >"$FAKE_PID_FILE"
 
     HOME="$home" XDG_CONFIG_HOME="$home/.config" OPENCODE_CONFIG_DIR="$home/.config/opencode" \
-        OPENCODE_PASSWORD="$password" OPENCODE_DISABLE_AUTOUPDATE=1 \
+        OPENCODE_PASSWORD="$password" OPENCODE_DISABLE_AUTOUPDATE=1 OPENCODE_DISABLE_MODELS_FETCH=1 \
         "$bin" serve --hostname "$HOST" --port "$SERVER_PORT" --print-logs \
         >>"$STATE_DIR/serve.log" 2>&1 &
     server_pid="$!"
