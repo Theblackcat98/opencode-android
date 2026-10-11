@@ -126,9 +126,6 @@ resolve_bin() {
 write_config() {
     local home="$1"
     mkdir -p "$home/.config/opencode" "$STATE_DIR/work"
-    # V2 shape: `package` (not the V1 `npm`) naming a native runtime package, so the
-    # provider registers from config alone. The V1 form made V2 resolve an npm package
-    # at boot, which is what left `fake` missing from /api/model on cold CI runners.
     cat >"$home/.config/opencode/opencode.jsonc" <<EOF
 {
   "\$schema": "https://opencode.ai/config.json",
@@ -137,23 +134,23 @@ write_config() {
   "small_model": "fake/text",
   "provider": {
     "fake": {
-      "package": "@opencode/ai/providers/openai-compatible",
+      "npm": "@ai-sdk/openai-compatible",
       "name": "Fake",
-      "settings": {
+      "options": {
         "baseURL": "http://$HOST:$FAKE_PORT/v1",
         "apiKey": "fake-key"
       },
       "models": {
-        "probe": { "name": "Fake probe", "capabilities": { "tools": true, "input": ["text"], "output": ["text"] }, "limit": { "context": 200000, "output": 4096 }, "cost": { "input": 0, "output": 0 } },
-        "text": { "name": "Fake text", "capabilities": { "tools": true, "input": ["text"], "output": ["text"] }, "limit": { "context": 200000, "output": 4096 }, "cost": { "input": 0, "output": 0 } },
-        "reasoning": { "name": "Fake reasoning", "capabilities": { "tools": true, "input": ["text"], "output": ["text"] }, "limit": { "context": 200000, "output": 4096 }, "cost": { "input": 0, "output": 0 } },
-        "shell": { "name": "Fake shell", "capabilities": { "tools": true, "input": ["text"], "output": ["text"] }, "limit": { "context": 200000, "output": 4096 }, "cost": { "input": 0, "output": 0 } },
-        "edit": { "name": "Fake edit", "capabilities": { "tools": true, "input": ["text"], "output": ["text"] }, "limit": { "context": 200000, "output": 4096 }, "cost": { "input": 0, "output": 0 } },
-        "question": { "name": "Fake question", "capabilities": { "tools": true, "input": ["text"], "output": ["text"] }, "limit": { "context": 200000, "output": 4096 }, "cost": { "input": 0, "output": 0 } },
-        "subagent": { "name": "Fake subagent", "capabilities": { "tools": true, "input": ["text"], "output": ["text"] }, "limit": { "context": 200000, "output": 4096 }, "cost": { "input": 0, "output": 0 } },
-        "error": { "name": "Fake error", "capabilities": { "tools": true, "input": ["text"], "output": ["text"] }, "limit": { "context": 200000, "output": 4096 }, "cost": { "input": 0, "output": 0 } },
-        "long": { "name": "Fake long", "capabilities": { "tools": true, "input": ["text"], "output": ["text"] }, "limit": { "context": 200000, "output": 4096 }, "cost": { "input": 0, "output": 0 } },
-        "slow": { "name": "Fake slow", "capabilities": { "tools": true, "input": ["text"], "output": ["text"] }, "limit": { "context": 200000, "output": 4096 }, "cost": { "input": 0, "output": 0 } }
+        "probe": { "name": "Fake probe", "tool_call": true, "reasoning": true, "attachment": true, "temperature": true, "limit": { "context": 200000, "output": 4096 }, "modalities": { "input": ["text"], "output": ["text"] }, "cost": { "input": 0, "output": 0 } },
+        "text": { "name": "Fake text", "tool_call": true, "reasoning": true, "attachment": true, "temperature": true, "limit": { "context": 200000, "output": 4096 }, "modalities": { "input": ["text"], "output": ["text"] }, "cost": { "input": 0, "output": 0 } },
+        "reasoning": { "name": "Fake reasoning", "tool_call": true, "reasoning": true, "attachment": true, "temperature": true, "limit": { "context": 200000, "output": 4096 }, "modalities": { "input": ["text"], "output": ["text"] }, "cost": { "input": 0, "output": 0 } },
+        "shell": { "name": "Fake shell", "tool_call": true, "reasoning": true, "attachment": true, "temperature": true, "limit": { "context": 200000, "output": 4096 }, "modalities": { "input": ["text"], "output": ["text"] }, "cost": { "input": 0, "output": 0 } },
+        "edit": { "name": "Fake edit", "tool_call": true, "reasoning": true, "attachment": true, "temperature": true, "limit": { "context": 200000, "output": 4096 }, "modalities": { "input": ["text"], "output": ["text"] }, "cost": { "input": 0, "output": 0 } },
+        "question": { "name": "Fake question", "tool_call": true, "reasoning": true, "attachment": true, "temperature": true, "limit": { "context": 200000, "output": 4096 }, "modalities": { "input": ["text"], "output": ["text"] }, "cost": { "input": 0, "output": 0 } },
+        "subagent": { "name": "Fake subagent", "tool_call": true, "reasoning": true, "attachment": true, "temperature": true, "limit": { "context": 200000, "output": 4096 }, "modalities": { "input": ["text"], "output": ["text"] }, "cost": { "input": 0, "output": 0 } },
+        "error": { "name": "Fake error", "tool_call": true, "reasoning": true, "attachment": true, "temperature": true, "limit": { "context": 200000, "output": 4096 }, "modalities": { "input": ["text"], "output": ["text"] }, "cost": { "input": 0, "output": 0 } },
+        "long": { "name": "Fake long", "tool_call": true, "reasoning": true, "attachment": true, "temperature": true, "limit": { "context": 200000, "output": 4096 }, "modalities": { "input": ["text"], "output": ["text"] }, "cost": { "input": 0, "output": 0 } },
+        "slow": { "name": "Fake slow", "tool_call": true, "reasoning": true, "attachment": true, "temperature": true, "limit": { "context": 200000, "output": 4096 }, "modalities": { "input": ["text"], "output": ["text"] }, "cost": { "input": 0, "output": 0 } }
       }
     }
   }
