@@ -175,10 +175,20 @@ class ExecutionServer(
     }
 
     fun close() {
-        // A socket left open makes `MockWebServer.close()` wait for a queue that never shuts down, which
-        // hides the real failure behind a hang.
-        synchronized(peers) { peers.forEach { it.close(1000, "test over") } }
+        // Stop the client's reconnect supervision first: with it alive, any peer we
+        // close is replaced by a fresh socket and MockWebServer's task queue never
+        // idles (observed as "Gave up waiting for queue to shut down"). Then close
+        // each peer gracefully — an abrupt cancel makes the client reconnect, and
+        // peers whose upgrade never finished throw on close, which is fine here.
         scope.cancel()
+        val openPeers = synchronized(peers) { peers.toList() }
+        openPeers.forEach { peer ->
+            try {
+                peer.close(1000, "test over")
+            } catch (_: Throwable) {
+                // Nothing this peer owns needs releasing if the upgrade never completed.
+            }
+        }
         server.close()
     }
 
