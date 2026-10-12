@@ -21,17 +21,22 @@ import kotlinx.coroutines.withTimeoutOrNull
 import java.io.InputStream
 
 /**
- * The composer's on-device memory with nothing in it but one saved draft.
+ * The composer's on-device memory with simple drafts or a controlled draft flow.
  *
- * The draft is what `open` ends with — it restores it after the catalogs have been asked for — so a test
- * that gives the box a draft can tell, from the state alone, that `open` has finished.
+ * Ordinary tests use the restored draft to tell, from the state alone, that `open` has finished; race tests
+ * can hold the same read until the test releases it.
  */
-class FakeComposerMemory(private val draft: String = "") : ComposerMemory {
+class FakeComposerMemory(
+    private val draft: String = "",
+    private val drafts: Map<Pair<String, String>, String> = emptyMap(),
+    private val draftProvider: ((String, String) -> Flow<String>)? = null,
+) : ComposerMemory {
     override fun history(serverId: String): Flow<List<String>> = flowOf(emptyList())
 
     override fun stash(serverId: String): Flow<List<StashEntry>> = flowOf(emptyList())
 
-    override fun draft(serverId: String, sessionId: String): Flow<String> = flowOf(draft)
+    override fun draft(serverId: String, sessionId: String): Flow<String> =
+        draftProvider?.invoke(serverId, sessionId) ?: flowOf(drafts[serverId to sessionId] ?: draft)
 
     override suspend fun setDraft(serverId: String, sessionId: String, text: String) = Unit
 
@@ -116,11 +121,12 @@ class ComposerViewModels : AutoCloseable {
     fun composer(
         server: ComposerServer,
         draft: String = "",
+        memory: ComposerMemory = FakeComposerMemory(draft),
     ): ComposerViewModel = put("composer-${next++}", ComposerViewModel::class.java) {
         ComposerViewModel(
             active = MutableStateFlow(server.set),
             modelPreferences = FakeModelPreferences,
-            memory = FakeComposerMemory(draft),
+            memory = memory,
             attachmentReader = AttachmentReader(NoImages),
         )
     }

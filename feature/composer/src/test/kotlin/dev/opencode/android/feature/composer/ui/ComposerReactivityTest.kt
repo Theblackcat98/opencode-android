@@ -6,13 +6,17 @@ import dev.opencode.android.core.model.CommandInfo
 import dev.opencode.android.core.model.Delivery
 import dev.opencode.android.core.model.InboxItem
 import dev.opencode.android.core.model.UserPromptPayload
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import kotlinx.coroutines.yield
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -24,9 +28,10 @@ import org.junit.Test
 /**
  * The composer's state follows the stores it is projected from, instead of reading them once.
  *
- * **Every test opens the session first and waits for it to finish, then changes a store and asserts on
- * the state with nothing else touched.** That order is the whole point. `open` ends by restoring the
- * draft, which writes the view model's own state and so recomputes the projection once, after the
+ * **Most tests open the session first and wait for it to finish, then change a store and assert on
+ * the state with nothing else touched.** The explicit race test holds two draft reads open to exercise
+ * the opposite order. In the ordinary tests, `open` ends by restoring the draft, which writes the view
+ * model's own state and so recomputes the projection once, after the
  * catalogs it asked for have answered — a test that let `open` do the loading would pass against a view
  * model that never follows anything. A store that changes *after* `open` is what a reconnect resync, a
  * `model.updated` event, a session starting to run and a permission arriving all are, and each of those
@@ -65,6 +70,75 @@ class ComposerReactivityTest {
 
         assertTrue(composer.state.value.hasAnyModel)
         assertEquals(listOf("text"), composer.state.value.models.map { it.id })
+    }
+
+    @Test
+    fun `drafts restore independently when the same composer opens another session`() = runTest {
+        val secondSession = "ses_2"
+        server.session(secondSession)
+        val memory = FakeComposerMemory(
+            drafts = mapOf(
+                (server.set.serverId to server.sessionID) to "draft A",
+                (server.set.serverId to secondSession) to "draft B",
+            ),
+        )
+        val composer = viewModels.composer(server, memory = memory)
+
+        composer.open(server.sessionID)
+        val sessionA = composer.state.await("session A's draft") {
+            it.sessionID == server.sessionID && it.text == "draft A"
+        }
+        assertEquals("draft A", sessionA.text)
+
+        composer.open(secondSession)
+        assertEquals("session A's text clears before session B restores", "", composer.state.value.text)
+        val sessionB = composer.state.await("session B's draft") {
+            it.sessionID == secondSession && it.text == "draft B"
+        }
+        assertEquals("draft B", sessionB.text)
+    }
+
+    @Test
+    fun `late draft from an earlier session cannot replace an edited active draft`() = runTest {
+        val secondSession = "ses_2"
+        server.session(secondSession)
+        val sessionAStarted = CompletableDeferred<Unit>()
+        val releaseSessionA = CompletableDeferred<String>()
+        val sessionBStarted = CompletableDeferred<Unit>()
+        val releaseSessionB = CompletableDeferred<String>()
+        val memory = FakeComposerMemory(
+            draftProvider = { _, sessionID ->
+                when (sessionID) {
+                    server.sessionID -> flow {
+                        sessionAStarted.complete(Unit)
+                        emit(releaseSessionA.await())
+                    }
+
+                    secondSession -> flow {
+                        sessionBStarted.complete(Unit)
+                        emit(releaseSessionB.await())
+                    }
+
+                    else -> flowOf("")
+                }
+            },
+        )
+        val composer = viewModels.composer(server, memory = memory)
+
+        composer.open(server.sessionID)
+        sessionAStarted.await()
+        composer.open(secondSession)
+        sessionBStarted.await()
+
+        composer.setText("typed in session B")
+        releaseSessionB.complete("saved draft B")
+        yield()
+        assertEquals("typed in session B", composer.state.value.text)
+
+        releaseSessionA.complete("late draft A")
+        yield()
+        assertEquals(secondSession, composer.state.value.sessionID)
+        assertEquals("typed in session B", composer.state.value.text)
     }
 
     @Test
