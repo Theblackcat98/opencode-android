@@ -11,21 +11,26 @@
 # After it runs, it prints the ANDROID_HOME to export and writes local.properties
 # (sdk.dir=...) in the repository root when that file does not exist yet.
 #
-# Keep PLATFORM and BUILD_TOOLS in sync with build-logic (compileSdk) and the
-# Android Gradle Plugin's default build-tools version.
+# Keep BUILD_TOOLS in sync with the Android Gradle Plugin's default build-tools version.
 set -euo pipefail
 
-# cmdline-tools 20.0. Later releases (23.0+) turn sdkmanager into a shim that downloads
-# a separate "Android CLI" with metrics enabled; 20.0 is the last plain sdkmanager.
-CMDLINE_TOOLS_BUILD="14742923"
-CMDLINE_TOOLS_VERSION="20.0"
-CMDLINE_TOOLS_SHA1="48833c34b761c10cb20bcd16582129395d121b27"
-PLATFORM="${ANDROID_PLATFORM:-android-37}"
+# Pin command-line tools 23.0: its sdkmanager compatibility shim sees the current SDK
+# repository metadata used for API 37. The shim downloads Android CLI, so give it an
+# isolated HOME with metrics disabled (via the documented .androidrc option).
+CMDLINE_TOOLS_BUILD="16111833"
+CMDLINE_TOOLS_VERSION="23.0"
+CMDLINE_TOOLS_SHA1="e025545c62a8e64c7559119566a569fb1dec5f60"
 BUILD_TOOLS="${ANDROID_BUILD_TOOLS:-36.0.0}"
 EXTRA_PACKAGES="${ANDROID_EXTRA_PACKAGES:-}"
 
-SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-$HOME/android-sdk}}"
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+COMPILE_SDK="${ANDROID_COMPILE_SDK:-$(sed -n 's/^compileSdk = "\([0-9][0-9]*\)"$/\1/p' "$REPO_ROOT/gradle/libs.versions.toml")}"
+if [[ -z "$COMPILE_SDK" ]]; then
+  printf '[setup-android-sdk] could not read compileSdk from gradle/libs.versions.toml\n' >&2
+  exit 1
+fi
+PLATFORM="${ANDROID_PLATFORM:-android-${COMPILE_SDK}.0}"
+SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-$HOME/android-sdk}}"
 
 log() { printf '[setup-android-sdk] %s\n' "$*" >&2; }
 
@@ -51,6 +56,17 @@ need curl
 need unzip
 need java
 
+# Android CLI reads this per-user file; isolate it so the bootstrap neither enables metrics nor
+# overwrites a developer's existing CLI preferences.
+CLI_HOME="$(mktemp -d)"
+printf '%s\n' '--no-metrics' >"$CLI_HOME/.androidrc"
+tmp=""
+cleanup() {
+  if [[ -n "$tmp" ]]; then rm -rf "$tmp"; fi
+  rm -rf "$CLI_HOME"
+}
+trap cleanup EXIT
+
 mkdir -p "$SDK"
 SDKMANAGER="$SDK/cmdline-tools/latest/bin/sdkmanager"
 
@@ -59,9 +75,8 @@ installed_version() {
 }
 
 if [[ ! -x "$SDKMANAGER" || "$(installed_version)" != "$CMDLINE_TOOLS_VERSION" ]]; then
-  log "installing command-line tools (build $CMDLINE_TOOLS_BUILD) into $SDK"
+  log "installing command-line tools $CMDLINE_TOOLS_VERSION (build $CMDLINE_TOOLS_BUILD) into $SDK"
   tmp="$(mktemp -d)"
-  trap 'rm -rf "$tmp"' EXIT
   zip="$tmp/cmdline-tools.zip"
   url="https://dl.google.com/android/repository/commandlinetools-linux-${CMDLINE_TOOLS_BUILD}_latest.zip"
   retry curl -fsSL --retry 3 -o "$zip" "$url"
@@ -92,14 +107,14 @@ for pkg in "${packages[@]}"; do
 done
 
 # Accept licenses every time: cheap, and it keeps AGP's on-demand downloads working.
-# `yes` exits with SIGPIPE once sdkmanager stops reading, so ignore its status.
+# `yes` exits with SIGPIPE once the manager stops reading, so ignore its status.
 set +o pipefail
-yes 2>/dev/null | "$SDKMANAGER" --sdk_root="$SDK" --licenses >/dev/null
+yes 2>/dev/null | env HOME="$CLI_HOME" "$SDKMANAGER" --sdk_root="$SDK" --licenses >/dev/null
 set -o pipefail
 
 if (( ${#missing[@]} > 0 )); then
   log "installing: ${missing[*]}"
-  retry "$SDKMANAGER" --sdk_root="$SDK" --install "${missing[@]}" >/dev/null
+  retry env HOME="$CLI_HOME" "$SDKMANAGER" --sdk_root="$SDK" --install "${missing[@]}" >/dev/null
 fi
 
 for pkg in "${packages[@]}"; do
@@ -107,7 +122,7 @@ for pkg in "${packages[@]}"; do
 done
 
 if [[ ! -f "$REPO_ROOT/local.properties" ]]; then
-  printf 'sdk.dir=%s\n' "$SDK" > "$REPO_ROOT/local.properties"
+  printf 'sdk.dir=%s\n' "$SDK" >"$REPO_ROOT/local.properties"
   log "wrote $REPO_ROOT/local.properties"
 fi
 
@@ -116,7 +131,7 @@ if [[ -n "${GITHUB_ENV:-}" ]]; then
   {
     echo "ANDROID_HOME=$SDK"
     echo "ANDROID_SDK_ROOT=$SDK"
-  } >> "$GITHUB_ENV"
+  } >>"$GITHUB_ENV"
 fi
 
 log "Android SDK ready at $SDK"
