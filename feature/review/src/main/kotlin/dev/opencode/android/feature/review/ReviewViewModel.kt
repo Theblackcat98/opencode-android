@@ -26,11 +26,13 @@ import dev.opencode.android.core.data.review.ReviewedFiles
 import dev.opencode.android.core.data.server.FileBrowserState
 import dev.opencode.android.core.data.server.ReviewState
 import dev.opencode.android.core.data.server.ServerDataRegistry
+import dev.opencode.android.core.data.server.ServerDataSet
 import dev.opencode.android.core.data.server.SessionContextInspector
 import dev.opencode.android.core.data.server.VcsState
 import dev.opencode.android.core.model.FileSystemEntry
 import dev.opencode.android.core.model.SessionRevert
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -197,6 +199,8 @@ class ReviewViewModel @Inject constructor(
 
     private val local = MutableStateFlow(LocalState())
     private val _state = MutableStateFlow(ReviewUiState())
+    private var loadJob: Job? = null
+    private val loadGeneration = ReviewLoadGeneration()
 
     /** The published review. */
     val state: StateFlow<ReviewUiState> = _state.asStateFlow()
@@ -320,6 +324,25 @@ class ReviewViewModel @Inject constructor(
 
     private val set get() = dataSets.active.value
 
+    private data class ReviewLoadRequest(
+        val generation: Long,
+        val set: ServerDataSet,
+        val sessionID: String?,
+        val session: dev.opencode.android.core.model.SessionInfo?,
+        val scope: ReviewScope,
+        val baseOverride: String?,
+        val directory: String?,
+    )
+
+    private fun ReviewLoadRequest.isCurrent(): Boolean =
+        loadGeneration.isCurrent(generation) &&
+            dataSets.active.value === set &&
+            local.value.sessionID == sessionID &&
+            local.value.scope == scope &&
+            local.value.baseOverride == baseOverride &&
+            _state.value.sessionID == sessionID &&
+            _state.value.directory == directory
+
     /** Binds the review to a session, or to a directory when there is no session. */
     fun open(sessionID: String?) {
         local.value = local.value.copy(sessionID = sessionID)
@@ -352,20 +375,37 @@ class ReviewViewModel @Inject constructor(
         val set = set ?: return
         val review = set.review
         val session = local.value.sessionID?.let { id -> set.sessions.info.value[id] }
+        val request = ReviewLoadRequest(
+            generation = loadGeneration.next(),
+            set = set,
+            sessionID = local.value.sessionID,
+            session = session,
+            scope = local.value.scope,
+            baseOverride = local.value.baseOverride,
+            directory = _state.value.directory,
+        )
+        loadJob?.cancel()
         _state.value = _state.value.copy(loading = true, error = null)
-        viewModelScope.launch {
-            val error = review.load(session = session, scope = local.value.scope, base = local.value.baseOverride)
-            val directory = session?.location?.directory
+        loadJob = viewModelScope.launch {
+            val error = review.load(
+                session = request.session,
+                scope = request.scope,
+                base = request.baseOverride,
+            )
+            if (!request.isCurrent()) return@launch
+            val directory = request.directory
             if (directory != null) {
                 withContext(Dispatchers.Default) {
-                    set.vcs(directory).refresh()
-                    set.vcs(directory).loadBase()
+                    request.set.vcs(directory).refresh()
+                    request.set.vcs(directory).loadBase()
                 }
-                fold(set.vcs(directory).state.value)
+                if (!request.isCurrent()) return@launch
+                foldVcs(request.set.vcs(directory).state.value)
             }
+            if (!request.isCurrent()) return@launch
             _state.value = _state.value.copy(loading = false, error = error)
             fold(review.state.value)
-            foldComments()
+            foldComments(request.set)
         }
     }
 
@@ -594,14 +634,14 @@ class ReviewViewModel @Inject constructor(
         _state.value = _state.value.copy(vcs = vcs, branches = vcs.branches)
     }
 
-    private fun foldComments() {
-        val comments = set?.review?.comments?.value.orEmpty()
-        val staged = set?.revertCommands?.state?.value?.staged
+    private fun foldComments(serverSet: ServerDataSet? = set) {
+        val comments = serverSet?.review?.comments?.value.orEmpty()
+        val staged = serverSet?.revertCommands?.state?.value?.staged
         _state.value = _state.value.copy(
             comments = comments,
             stagedRevert = staged,
             restoredFiles = staged?.let(RevertPlan::restoredFiles).orEmpty(),
-            capabilities = set?.review?.capabilities?.value.orEmpty(),
+            capabilities = serverSet?.review?.capabilities?.value.orEmpty(),
         )
     }
 
@@ -627,3 +667,14 @@ const val VIEWER_MAX_LINES: Int = 2_000
  * this many characters are ever lexed.
  */
 const val VIEWER_MAX_LINE_CHARS: Int = 2_000
+
+internal class ReviewLoadGeneration {
+    private var current = 0L
+
+    fun next(): Long {
+        current += 1
+        return current
+    }
+
+    fun isCurrent(generation: Long): Boolean = generation == current
+}
