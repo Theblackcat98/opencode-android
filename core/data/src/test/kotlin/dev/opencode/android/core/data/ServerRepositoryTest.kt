@@ -11,6 +11,7 @@ import dev.opencode.android.core.data.repository.DefaultServerRepository
 import dev.opencode.android.core.data.repository.ServerHealth
 import dev.opencode.android.core.data.repository.ServerRepository
 import dev.opencode.android.core.data.security.InMemoryCredentialStore
+import dev.opencode.android.core.data.security.SecureCredentialStore
 import dev.opencode.android.core.database.OpenCodeDatabase
 import dev.opencode.android.core.network.PairingClient
 import dev.opencode.android.core.network.PairingLink
@@ -37,7 +38,7 @@ import org.junit.runner.RunWith
 class ServerRepositoryTest {
 
     private lateinit var db: OpenCodeDatabase
-    private lateinit var credentialStore: InMemoryCredentialStore
+    private lateinit var credentialStore: FailingCredentialStore
     private lateinit var credentialCache: ServerCredentialCache
     private lateinit var repository: ServerRepository
     private lateinit var server: MockWebServer
@@ -48,7 +49,7 @@ class ServerRepositoryTest {
         db = Room.inMemoryDatabaseBuilder(context, OpenCodeDatabase::class.java)
             .allowMainThreadQueries()
             .build()
-        credentialStore = InMemoryCredentialStore()
+        credentialStore = FailingCredentialStore()
         credentialCache = ServerCredentialCache()
         val client = OkHttpClient()
         val apiFactory = ServerApiFactory(client)
@@ -84,6 +85,25 @@ class ServerRepositoryTest {
             assertNotNull(current)
             assertEquals(id, current!!.id)
         }
+    }
+
+    @Test
+    fun credentialWriteFailureDoesNotInsertManualServerOrReplaceDefault() = runTest {
+        val existingId = repository.addServer("Existing", "http://localhost:4096", "existing-pass")
+        val newBaseUrl = server.url("/").toString().trimEnd('/')
+        server.enqueue(MockResponse.Builder().code(200).body(serverInfoJson(newBaseUrl)).build())
+        credentialStore.failNextSaveAfterWrite = true
+
+        val outcome = repository.addManualServer("New", newBaseUrl, "new-pass", isDefault = true)
+
+        assertEquals(AddServerErrorType.SERVER_ERROR, (outcome as AddServerOutcome.Failure).errorType)
+        assertEquals(listOf(existingId), repository.getAllServers().map { it.id })
+        assertTrue(repository.getServer(existingId)!!.isDefault)
+        assertEquals("existing-pass", repository.getCredential(existingId))
+        val attemptedId = credentialStore.lastSavedServerId
+        assertNotNull(attemptedId)
+        assertNull(repository.getCredential(attemptedId!!))
+        assertFalse(credentialCache.holds(newBaseUrl))
     }
 
     @Test
@@ -154,6 +174,35 @@ class ServerRepositoryTest {
         assertTrue(updated.trustUserCertificates)
         assertTrue("The new address must be the one that authenticates", credentialCache.holds("http://localhost:4098"))
         assertFalse("The old address must not keep the token", credentialCache.holds("http://localhost:4096"))
+    }
+
+    @Test
+    fun credentialWriteFailureRestoresTheEditedProfileDefaultAndCredential() = runTest {
+        val defaultId = repository.addServer("Default", "http://localhost:4096", "default-pass")
+        val existingId = repository.addServer("Secondary", "http://localhost:4097", "old-pass")
+        val newBaseUrl = server.url("/new").toString().trimEnd('/')
+        server.enqueue(MockResponse.Builder().code(200).body(serverInfoJson(newBaseUrl)).build())
+        credentialStore.failNextSaveAfterWrite = true
+
+        val outcome = repository.editAndValidateServer(
+            id = existingId,
+            name = "Renamed",
+            baseUrl = newBaseUrl,
+            password = "new-pass",
+            isDefault = true,
+            trustUserCertificates = true,
+        )
+
+        assertEquals(AddServerErrorType.SERVER_ERROR, (outcome as AddServerOutcome.Failure).errorType)
+        val unchanged = repository.getServer(existingId)!!
+        assertEquals("Secondary", unchanged.name)
+        assertEquals("http://localhost:4097", unchanged.baseUrl)
+        assertFalse(unchanged.isDefault)
+        assertFalse(unchanged.trustUserCertificates)
+        assertEquals("old-pass", repository.getCredential(existingId))
+        assertTrue(repository.getServer(defaultId)!!.isDefault)
+        assertTrue(credentialCache.holds("http://localhost:4097"))
+        assertFalse(credentialCache.holds(newBaseUrl))
     }
 
     @Test
@@ -396,4 +445,30 @@ class ServerRepositoryTest {
 
     private fun serverInfoJson(baseUrl: String) =
         """{"version":"2.0.18","pid":4321,"urls":["$baseUrl"],"paths":{"tmp":"/tmp"}}"""
+
+    private class FailingCredentialStore : SecureCredentialStore {
+        private val delegate = InMemoryCredentialStore()
+
+        var failNextSaveAfterWrite = false
+        var lastSavedServerId: String? = null
+
+        override fun getCredential(serverId: String): String? = delegate.getCredential(serverId)
+
+        override fun saveCredential(serverId: String, tokenOrPassword: String) {
+            lastSavedServerId = serverId
+            delegate.saveCredential(serverId, tokenOrPassword)
+            if (failNextSaveAfterWrite) {
+                failNextSaveAfterWrite = false
+                throw IllegalStateException("injected credential write failure")
+            }
+        }
+
+        override fun removeCredential(serverId: String) {
+            delegate.removeCredential(serverId)
+        }
+
+        override fun clearAll() {
+            delegate.clearAll()
+        }
+    }
 }

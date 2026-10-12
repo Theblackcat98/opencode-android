@@ -178,26 +178,30 @@ class DefaultServerRepository(
     ): String = withContext(ioDispatcher) {
         val serverId = UUID.randomUUID().toString()
         val cleanBaseUrl = baseUrl.toServerBaseUrl().trimEnd('/')
-
-        // The first server added is the default, so a fresh install has one to open.
-        val shouldBeDefault = isDefault || serverDao.count() == 0
-
-        if (shouldBeDefault) serverDao.clearDefaultFlags()
-        serverDao.insert(
-            ServerEntity(
-                id = serverId,
-                name = name.trim().ifBlank { cleanBaseUrl },
-                baseUrl = cleanBaseUrl,
-                isDefault = shouldBeDefault,
-                trustUserCertificates = trustUserCertificates,
-                createdAt = now(),
-            ),
+        val savedCredential = credential?.takeIf { it.isNotBlank() }
+        val server = ServerEntity(
+            id = serverId,
+            name = name.trim().ifBlank { cleanBaseUrl },
+            baseUrl = cleanBaseUrl,
+            isDefault = isDefault,
+            trustUserCertificates = trustUserCertificates,
+            createdAt = now(),
         )
 
-        if (!credential.isNullOrBlank()) {
-            saveCredential(serverId, cleanBaseUrl, credential)
-        } else {
+        try {
+            savedCredential?.let { credentialStore.saveCredential(serverId, it) }
+            // The DAO applies first-server/default policy and insert in one Room transaction.
+            serverDao.insertWithDefault(server, makeDefault = isDefault)
+        } catch (error: Throwable) {
+            if (savedCredential != null) rollbackCredentialWrite(serverId, previous = null, error)
+            throw error
+        }
+
+        if (savedCredential == null) {
             setRuntime(serverId, health = null, hasCredential = false)
+        } else {
+            credentialCache.put(cleanBaseUrl, savedCredential)
+            setRuntime(serverId, health = null, hasCredential = true)
         }
         serverId
     }
@@ -214,31 +218,45 @@ class DefaultServerRepository(
         val cleanBaseUrl = baseUrl.toServerBaseUrl().trimEnd('/')
         val addressChanged = cleanBaseUrl != existing.baseUrl
 
-        if (isDefault && !existing.isDefault) serverDao.clearDefaultFlags()
-        if (addressChanged) {
-            // A token belongs to the server it was issued by, and to the address it was issued for.
-            credentialCache.forget(existing.baseUrl)
-        }
-        serverDao.update(
-            existing.copy(
-                name = name.trim().ifBlank { cleanBaseUrl },
-                baseUrl = cleanBaseUrl,
-                isDefault = isDefault,
-                trustUserCertificates = trustUserCertificates,
-            ),
+        val previousCredential = if (credential == null) null else credentialStore.getCredential(id)
+        val updated = existing.copy(
+            name = name.trim().ifBlank { cleanBaseUrl },
+            baseUrl = cleanBaseUrl,
+            isDefault = isDefault,
+            trustUserCertificates = trustUserCertificates,
         )
 
+        try {
+            when {
+                credential == null -> Unit
+
+                // A blank field explicitly clears the stored credential.
+                credential.isBlank() -> credentialStore.removeCredential(id)
+
+                else -> credentialStore.saveCredential(id, credential)
+            }
+            serverDao.updateWithDefault(updated, isDefault = isDefault)
+        } catch (error: Throwable) {
+            if (credential != null) rollbackCredentialWrite(id, previousCredential, error)
+            throw error
+        }
+
+        if (addressChanged) {
+            // Do not invalidate the previous address until both persistent writes have succeeded.
+            credentialCache.forget(existing.baseUrl)
+        }
         when {
             credential == null -> Unit
 
-            // Unchanged: the user did not touch the field.
             credential.isBlank() -> {
-                credentialStore.removeCredential(id)
                 credentialCache.forget(cleanBaseUrl)
                 setRuntime(id, health = null, hasCredential = false)
             }
 
-            else -> saveCredential(id, cleanBaseUrl, credential)
+            else -> {
+                credentialCache.put(cleanBaseUrl, credential)
+                setRuntime(id, health = null, hasCredential = true)
+            }
         }
     }
 
@@ -484,9 +502,25 @@ class DefaultServerRepository(
     }
 
     private suspend fun saveCredential(serverId: String, baseUrl: String, credential: String) {
-        credentialStore.saveCredential(serverId, credential)
+        val previous = credentialStore.getCredential(serverId)
+        try {
+            credentialStore.saveCredential(serverId, credential)
+        } catch (error: Throwable) {
+            rollbackCredentialWrite(serverId, previous, error)
+            throw error
+        }
         credentialCache.put(baseUrl, credential)
         setRuntime(serverId, health = null, hasCredential = true)
+    }
+
+    private fun rollbackCredentialWrite(serverId: String, previous: String?, failure: Throwable) {
+        runCatching {
+            if (previous == null) {
+                credentialStore.removeCredential(serverId)
+            } else {
+                credentialStore.saveCredential(serverId, previous)
+            }
+        }.exceptionOrNull()?.let(failure::addSuppressed)
     }
 
     /**

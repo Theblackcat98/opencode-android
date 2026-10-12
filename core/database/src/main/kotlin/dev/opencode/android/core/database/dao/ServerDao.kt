@@ -38,6 +38,21 @@ interface ServerDao {
     @Update
     suspend fun update(server: ServerEntity)
 
+    /** Inserts a server and applies first-server/default policy atomically. */
+    @Transaction
+    suspend fun insertWithDefault(server: ServerEntity, makeDefault: Boolean) {
+        val shouldBeDefault = makeDefault || count() == 0
+        if (shouldBeDefault) clearDefaultFlags()
+        insert(server.copy(isDefault = shouldBeDefault))
+    }
+
+    /** Updates a profile and its default flag in a single Room transaction. */
+    @Transaction
+    suspend fun updateWithDefault(server: ServerEntity, isDefault: Boolean) {
+        if (isDefault) clearDefaultFlags()
+        update(server.copy(isDefault = isDefault))
+    }
+
     @Query("DELETE FROM servers WHERE id = :id")
     suspend fun deleteById(id: String)
 
