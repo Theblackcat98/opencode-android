@@ -129,9 +129,12 @@ class ComposerServer(
     }
 
     /** The session `session.get` returns, which is what tells the composer where the session lives. */
-    fun session(model: ModelRef? = ModelRef("text", "fake")) {
+    fun session(model: ModelRef? = ModelRef("text", "fake")) = session(sessionID, model)
+
+    /** Adds a second session route to the same server for session-switch tests. */
+    fun session(id: String, model: ModelRef? = ModelRef("text", "fake")) {
         val info = SessionInfo(
-            id = sessionID,
+            id = id,
             projectID = "project-1",
             agent = "build",
             model = model,
@@ -142,9 +145,10 @@ class ComposerServer(
             location = LocationPublicRef(directory),
         )
         answer(
-            "/api/session/$sessionID",
+            "/api/session/$id",
             OpenCodeJson.encodeToString(DataResponse.serializer(SessionInfo.serializer()), DataResponse(info)),
         )
+        answer("/api/session/$id/message", """{"data":[],"cursor":{}}""")
     }
 
     fun models(models: List<ModelInfo>) =

@@ -68,6 +68,32 @@ class ComposerReactivityTest {
     }
 
     @Test
+    fun `drafts restore independently when the same composer opens another session`() = runTest {
+        val secondSession = "ses_2"
+        server.session(secondSession)
+        val memory = FakeComposerMemory(
+            drafts = mapOf(
+                (server.set.serverId to server.sessionID) to "draft A",
+                (server.set.serverId to secondSession) to "draft B",
+            ),
+        )
+        val composer = viewModels.composer(server, memory = memory)
+
+        composer.open(server.sessionID)
+        val sessionA = composer.state.await("session A's draft") {
+            it.sessionID == server.sessionID && it.text == "draft A"
+        }
+        assertEquals("draft A", sessionA.text)
+
+        composer.open(secondSession)
+        assertEquals("session A's text clears before session B restores", "", composer.state.value.text)
+        val sessionB = composer.state.await("session B's draft") {
+            it.sessionID == secondSession && it.text == "draft B"
+        }
+        assertEquals("draft B", sessionB.text)
+    }
+
+    @Test
     fun `the no-model banner clears when the model list loads after the screen has opened`() = runTest {
         server.failing("/api/model")
         val composer = openComposer()

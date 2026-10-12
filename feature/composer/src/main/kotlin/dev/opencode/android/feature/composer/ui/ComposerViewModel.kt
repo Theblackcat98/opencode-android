@@ -298,9 +298,12 @@ class ComposerViewModel(
     private val local = MutableStateFlow(LocalState())
     private val sessionID = MutableStateFlow<String?>(null)
     private val effects = Channel<ComposerEffect>(Channel.BUFFERED)
+    private var openedDraftKey: DraftKey? = null
 
     /** The one-shot actions the composition root carries out. */
     val effect: Flow<ComposerEffect> = effects.receiveAsFlow()
+
+    private data class DraftKey(val serverId: String, val sessionID: String)
 
     private data class LocalState(
         val text: String = "",
@@ -318,7 +321,7 @@ class ComposerViewModel(
         val historyCursor: HistoryCursor = HistoryCursor(),
         val sideQuestion: SideQuestion? = null,
         val compacting: Boolean = false,
-        val loadedDraft: Boolean = false,
+        val loadedDraftFor: DraftKey? = null,
         val reviewComments: List<ReviewComment> = emptyList(),
         val reverting: Boolean = false,
         val confirmingRedo: Boolean = false,
@@ -568,6 +571,12 @@ class ComposerViewModel(
      */
     fun open(sessionID: String) {
         val set = active.value ?: return
+        val draftKey = DraftKey(set.serverId, sessionID)
+        if (openedDraftKey != draftKey) {
+            val current = local.value
+            local.value = LocalState(delivery = current.delivery, resume = current.resume)
+            openedDraftKey = draftKey
+        }
         this.sessionID.value = sessionID
         set.timeline(sessionID).start()
         viewModelScope.launch {
@@ -1431,11 +1440,12 @@ class ComposerViewModel(
     }
 
     private fun restoreDraft(directory: String, session: String) {
-        if (local.value.loadedDraft) return
         val serverId = active.value?.serverId ?: return
+        val draftKey = DraftKey(serverId, session)
+        if (local.value.loadedDraftFor == draftKey) return
         viewModelScope.launch {
             val draft = memory.draft(serverId, session).first()
-            local.value = local.value.copy(text = draft, cursor = draft.length, loadedDraft = true)
+            local.value = local.value.copy(text = draft, cursor = draft.length, loadedDraftFor = draftKey)
             refresh()
         }
     }
