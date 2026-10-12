@@ -91,16 +91,31 @@ class ShellsViewModel(
 
     private val poller = ShellOutputPoller()
     private var collector: Job? = null
+    private var panelBinding = 0
 
     /** Binds the panel to a location and publishes it as the one being watched. */
     fun openPanel(directory: String) {
         val set = active.value ?: return
+        val binding = ++panelBinding
+        val directoryChanged = _state.value.directory != null && _state.value.directory != directory
         // The open command survives a resume: `openPanel` also runs on `ON_RESUME`, and resetting the
         // pane there would close the output a user backgrounded a build to read. The draft is not kept,
         // because a half-typed command that outlives the screen is worse than one that has to be typed
         // again.
-        val openID = _state.value.openID
-        _state.value = _state.value.copy(directory = directory, openID = openID)
+        if (directoryChanged) {
+            stopFollowing()
+            poller.reset()
+        }
+        val openID = if (directoryChanged) null else _state.value.openID
+        _state.value = _state.value.copy(
+            directory = directory,
+            rows = if (directoryChanged) emptyList() else _state.value.rows,
+            openID = openID,
+            draft = if (directoryChanged) "" else _state.value.draft,
+            killTarget = if (directoryChanged) null else _state.value.killTarget,
+            running = if (directoryChanged) false else _state.value.running,
+            error = if (directoryChanged) null else _state.value.error,
+        )
         openLocations.set(directory)
         set.execution.open(directory)
         // Opening the panel is what "the user has seen these commands' output" means, so the
@@ -110,6 +125,7 @@ class ShellsViewModel(
         collector?.cancel()
         collector = viewModelScope.launch {
             set.execution.at(directory).shells.collect { shells ->
+                if (panelBinding != binding || _state.value.directory != directory) return@collect
                 _state.value = _state.value.copy(rows = shells.map { decorate(ShellRow(it)) })
                 shells.firstOrNull { it.id == _state.value.openID }?.let(::noteEnd)
             }
@@ -136,7 +152,9 @@ class ShellsViewModel(
         set.execution.open(directory)
         val openID = _state.value.openID ?: return
         val output = poller.state()
-        if (!poller.isPolling && !(output.exited && output.caughtUp)) startPolling(openID)
+        if (!poller.isPolling && !(output.exited && output.caughtUp)) {
+            startPolling(openID, directory, panelBinding)
+        }
         refreshStatus(openID)
     }
 
@@ -154,18 +172,21 @@ class ShellsViewModel(
     fun run() {
         val state = _state.value
         val directory = state.directory ?: return
+        val binding = panelBinding
         val set = active.value ?: return
         if (!state.canRun) return
         _state.value = state.copy(running = true, error = null)
         viewModelScope.launch {
             val result = set.execution.commands.runShell(directory, state.draft.trim())
             val error = result.exceptionOrNull()?.toActionError()
-            _state.value = _state.value.copy(
-                running = false,
-                error = error?.message,
-                draft = if (error == null) "" else _state.value.draft,
-            )
-            result.getOrNull()?.let { openCommand(it.id) }
+            if (panelBinding == binding && _state.value.directory == directory) {
+                _state.value = _state.value.copy(
+                    running = false,
+                    error = error?.message,
+                    draft = if (error == null) "" else _state.value.draft,
+                )
+                result.getOrNull()?.let { shell -> openCommand(shell.id) }
+            }
         }
     }
 
@@ -196,18 +217,18 @@ class ShellsViewModel(
         poller.reset()
         // A command the list already says has ended needs one read, not a wait to find that out.
         _state.value.rows.firstOrNull { it.id == shellID }?.info?.let(::noteEnd)
-        startPolling(shellID)
+        startPolling(shellID, _state.value.directory, panelBinding)
         refreshStatus(shellID)
     }
 
     /** Runs the poller from wherever it is, which is the beginning after [follow] and later on a resume. */
-    private fun startPolling(shellID: String) {
-        val directory = _state.value.directory ?: return
+    private fun startPolling(shellID: String, directory: String? = _state.value.directory, binding: Int = panelBinding) {
+        directory ?: return
         poller.start(
             scope = viewModelScope,
             page = { cursor -> readPage(directory, shellID, cursor) },
             status = { readExit(directory, shellID) },
-            onState = { publishRows() },
+            onState = { if (panelBinding == binding && _state.value.directory == directory) publishRows() },
         )
     }
 
@@ -232,9 +253,12 @@ class ShellsViewModel(
     fun refreshStatus(shellID: String) {
         val set = active.value ?: return
         val directory = _state.value.directory ?: return
+        val binding = panelBinding
         viewModelScope.launch {
             val info = set.execution.commands.shell(directory, shellID).getOrNull() ?: return@launch
-            if (_state.value.openID == shellID) noteEnd(info)
+            if (panelBinding == binding && _state.value.directory == directory && _state.value.openID == shellID) {
+                noteEnd(info)
+            }
         }
     }
 
@@ -291,14 +315,17 @@ class ShellsViewModel(
         val directory = state.directory ?: return
         val set = active.value ?: return
         val target = state.killTarget ?: return
+        val binding = panelBinding
         _state.value = state.copy(killTarget = null, running = true)
         viewModelScope.launch {
             val error = set.execution.commands.killShell(directory, target).exceptionOrNull()?.toActionError()
-            _state.value = _state.value.copy(running = false, error = error?.message)
-            if (error == null && _state.value.openID == target) {
-                poller.stop()
-                _state.value = _state.value.copy(openID = null)
-                publishRows()
+            if (panelBinding == binding && _state.value.directory == directory) {
+                _state.value = _state.value.copy(running = false, error = error?.message)
+                if (error == null && _state.value.openID == target) {
+                    poller.stop()
+                    _state.value = _state.value.copy(openID = null)
+                    publishRows()
+                }
             }
         }
     }
