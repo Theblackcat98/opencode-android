@@ -21,7 +21,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -68,24 +67,24 @@ data class DiffColors(
         /**
          * The palette from the theme.
          *
-         * The three backgrounds are *low-alpha washes* of the accent colours rather than solid
-         * fills: a diff shows two colours of text on one background, and a solid fill behind both
-         * sides of a replacement makes the two lines of a change the same colour, which is the one
-         * thing a diff has to distinguish.
+         * The added-row wash is the scheme's tonal container (`primaryContainer`), not a
+         * hard-coded green: a custom or dynamic theme's accent may itself be green, and a fixed
+         * green would clash with it. Annotations use `tertiary` — colouring `@Composable` in
+         * error red read as "this is broken".
          */
         @Composable
         fun of(scheme: androidx.compose.material3.ColorScheme = MaterialTheme.colorScheme): DiffColors = DiffColors(
-            added = if (scheme.surface.luminance() < DARK_SURFACE) ADDED_DARK else ADDED_LIGHT,
+            added = scheme.primaryContainer,
             removed = scheme.errorContainer,
             context = Color.Transparent,
-            addedStrong = if (scheme.surface.luminance() < DARK_SURFACE) ON_ADDED_DARK else ON_ADDED_LIGHT,
+            addedStrong = scheme.onPrimaryContainer,
             removedStrong = scheme.onErrorContainer,
             hunkHeader = scheme.surfaceContainerHighest,
             keyword = scheme.primary,
             string = scheme.tertiary,
             number = scheme.secondary,
             comment = scheme.onSurfaceVariant.copy(alpha = 0.7f),
-            annotation = scheme.error,
+            annotation = scheme.tertiary,
             punctuation = scheme.onSurfaceVariant,
             marker = scheme.onSurfaceVariant,
             plain = scheme.onSurface,
@@ -94,12 +93,6 @@ data class DiffColors(
         )
     }
 }
-
-private const val DARK_SURFACE = 0.5f
-private val ADDED_LIGHT = Color(0xFFD3F2DA)
-private val ON_ADDED_LIGHT = Color(0xFF0A3A18)
-private val ADDED_DARK = Color(0xFF1E4A2A)
-private val ON_ADDED_DARK = Color(0xFFC6EFD0)
 
 /** One line of a diff, as the renderer receives it. */
 data class DiffRow(
@@ -148,16 +141,15 @@ fun DiffTable(
     contentDescription: String? = null,
 ) {
     val horizontal = rememberScrollState()
-    Column(
+    LazyColumn(
         modifier = modifier
             .then(if (wrap) Modifier else Modifier.horizontalScroll(horizontal))
             .semantics { contentDescription?.let { this.contentDescription = it } },
         verticalArrangement = Arrangement.spacedBy(0.dp),
     ) {
-        rows.forEachIndexed { index, row ->
+        itemsIndexed(rows, key = { _, row -> diffRowKey(row) }) { _, row ->
             DiffRowView(
                 row = row,
-                key = index.toString(),
                 colors = colors,
                 wrap = wrap,
                 showGutter = showGutter,
@@ -167,11 +159,25 @@ fun DiffTable(
     }
 }
 
+/**
+ * A row's stable identity: its line numbers on each side of the diff. An insertion or deletion
+ * above shifts list indices but never a row's own numbers, so a row keeps its key — and its
+ * remembered highlight — while the list around it changes.
+ */
+private fun diffRowKey(row: DiffRow): String =
+    "${row.kind}:${row.oldNumber}:${row.newNumber}:${row.text.hashCode()}"
+
+/** A split pair's identity from its two halves; either half may be absent. */
+private fun diffPairKey(pair: DiffPair): String {
+    val left = pair.left?.let(::diffRowKey) ?: "-"
+    val right = pair.right?.let(::diffRowKey) ?: "-"
+    return "L$left|R$right"
+}
+
 /** One row: the gutter, the marker, and the highlighted text. */
 @Composable
 fun DiffRowView(
     row: DiffRow,
-    key: String,
     colors: DiffColors,
     modifier: Modifier = Modifier,
     wrap: Boolean = false,
@@ -383,13 +389,14 @@ fun SplitDiffTable(
     language: CodeLanguage = CodeLanguage.PLAIN_TEXT,
 ) {
     LazyColumn(modifier = modifier, verticalArrangement = Arrangement.spacedBy(0.dp)) {
-        itemsIndexed(pairs, key = { index, _ -> index }) { _, pair ->
+        // Keyed by each pair's own rows, not by list index: an insertion above must not hand a
+        // row's remembered highlight to the row that slid into its slot.
+        itemsIndexed(pairs, key = { _, pair -> diffPairKey(pair) }) { _, pair ->
             Row(modifier = Modifier.fillMaxWidth()) {
                 Box(modifier = Modifier.weight(1f)) {
                     pair.left?.let {
                         DiffRowView(
                             it,
-                            "l${it.newNumber ?: it.oldNumber}",
                             colors,
                             wrap = wrap,
                             showGutter = showGutter,
@@ -401,7 +408,6 @@ fun SplitDiffTable(
                     pair.right?.let {
                         DiffRowView(
                             it,
-                            "r${it.newNumber ?: it.oldNumber}",
                             colors,
                             wrap = wrap,
                             showGutter = showGutter,

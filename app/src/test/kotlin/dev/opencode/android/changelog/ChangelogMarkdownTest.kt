@@ -97,9 +97,21 @@ class ChangelogMarkdownTest {
     }
 
     @Test
-    fun `emphasis that is split across a wrapped line is still flattened`() {
+    fun `emphasis that is split across a wrapped line is still flattened, and kept as a span`() {
         val blocks = ChangelogMarkdown.parse("This is **not\nshippable** yet.")
-        assertEquals(listOf(ChangelogBlock.Paragraph("This is not shippable yet.")), blocks)
+        assertEquals(
+            listOf(
+                ChangelogBlock.Paragraph(
+                    text = "This is not shippable yet.",
+                    inlines = listOf(
+                        ChangelogInline.Text("This is "),
+                        ChangelogInline.Bold("not shippable"),
+                        ChangelogInline.Text(" yet."),
+                    ),
+                ),
+            ),
+            blocks,
+        )
     }
 
     @Test
