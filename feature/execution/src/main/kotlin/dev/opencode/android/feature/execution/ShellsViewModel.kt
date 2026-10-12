@@ -111,6 +111,10 @@ class ShellsViewModel(
             directory = directory,
             rows = if (directoryChanged) emptyList() else _state.value.rows,
             openID = openID,
+            draft = if (directoryChanged) "" else _state.value.draft,
+            killTarget = if (directoryChanged) null else _state.value.killTarget,
+            running = if (directoryChanged) false else _state.value.running,
+            error = if (directoryChanged) null else _state.value.error,
         )
         openLocations.set(directory)
         set.execution.open(directory)
@@ -175,13 +179,13 @@ class ShellsViewModel(
         viewModelScope.launch {
             val result = set.execution.commands.runShell(directory, state.draft.trim())
             val error = result.exceptionOrNull()?.toActionError()
-            _state.value = _state.value.copy(
-                running = false,
-                error = error?.message,
-                draft = if (error == null) "" else _state.value.draft,
-            )
-            result.getOrNull()?.let { shell ->
-                if (panelBinding == binding && _state.value.directory == directory) openCommand(shell.id)
+            if (panelBinding == binding && _state.value.directory == directory) {
+                _state.value = _state.value.copy(
+                    running = false,
+                    error = error?.message,
+                    draft = if (error == null) "" else _state.value.draft,
+                )
+                result.getOrNull()?.let { shell -> openCommand(shell.id) }
             }
         }
     }
@@ -311,14 +315,17 @@ class ShellsViewModel(
         val directory = state.directory ?: return
         val set = active.value ?: return
         val target = state.killTarget ?: return
+        val binding = panelBinding
         _state.value = state.copy(killTarget = null, running = true)
         viewModelScope.launch {
             val error = set.execution.commands.killShell(directory, target).exceptionOrNull()?.toActionError()
-            _state.value = _state.value.copy(running = false, error = error?.message)
-            if (error == null && _state.value.openID == target) {
-                poller.stop()
-                _state.value = _state.value.copy(openID = null)
-                publishRows()
+            if (panelBinding == binding && _state.value.directory == directory) {
+                _state.value = _state.value.copy(running = false, error = error?.message)
+                if (error == null && _state.value.openID == target) {
+                    poller.stop()
+                    _state.value = _state.value.copy(openID = null)
+                    publishRows()
+                }
             }
         }
     }

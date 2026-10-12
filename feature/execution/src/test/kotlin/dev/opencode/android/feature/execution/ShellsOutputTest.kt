@@ -20,6 +20,8 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 
 /**
  * A command's output reaches the pane: while it runs, when it ends, and after the screen was away.
@@ -116,6 +118,38 @@ class ShellsOutputTest {
         assertFalse(
             server.requests.any { it.contains("/api/shell/sh_1") && it.contains("%2Fwork%2Fother") },
         )
+    }
+
+    @Test
+    fun `switching directory resets draft and kill state and ignores late run completion`() {
+        val requestStarted = CountDownLatch(1)
+        val releaseResponse = CountDownLatch(1)
+        server.beforeAnswer["POST /api/shell"] = {
+            requestStarted.countDown()
+            releaseResponse.await(5, TimeUnit.SECONDS)
+        }
+
+        openPanel()
+        model.setDraft("old command")
+        model.requestKill("old-shell")
+        model.run()
+        scheduler.runCurrent()
+        assertTrue(requestStarted.await(5, TimeUnit.SECONDS))
+
+        openPanel("/work/other")
+        scheduler.runCurrent()
+        assertEquals("/work/other", model.state.value.directory)
+        assertEquals("", model.state.value.draft)
+        assertNull(model.state.value.killTarget)
+
+        model.setDraft("new command")
+        releaseResponse.countDown()
+        repeat(10) {
+            scheduler.advanceTimeBy(STEP_MILLIS)
+            scheduler.runCurrent()
+        }
+        assertEquals("new command", model.state.value.draft)
+        assertNull(model.state.value.openID)
     }
 
     // ------------------------------------------------------------------ F1, as recorded
