@@ -660,8 +660,6 @@ internal fun ReviewScope.labelRes(): Int = when (this) {
     ReviewScope.All -> R.string.review_scope_all
 }
 
-/** The sentence for an empty review, which differs by scope because the reasons differ. */
-@Composable
 /**
  * A failed diff load, which must not look like a clean review. The message is the failure's own
  * words; the retry re-runs the load.
@@ -683,6 +681,8 @@ private fun ReviewLoadError(error: ActionError, onRetry: () -> Unit, modifier: M
     }
 }
 
+/** The sentence for an empty review, which differs by scope because the reasons differ. */
+@Composable
 internal fun emptyMessage(state: ReviewUiState): String = when {
     state.error?.message == REVIEW_STORE_NO_SESSION -> stringResource(R.string.review_no_session)
     state.error?.message == REVIEW_STORE_NO_LOCATION -> stringResource(R.string.review_no_location)
