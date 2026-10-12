@@ -60,6 +60,11 @@ class RequestCenter(
     private val pendingForms = MutableStateFlow<Map<String, FormInfo>>(emptyMap())
     private val directoryOfSession = MutableStateFlow<Map<String, String>>(emptyMap())
 
+    /** Serializes event application with the final assignment of a resync snapshot. */
+    private val stateLock = Any()
+    private val answeredPermissionIDs = mutableSetOf<String>()
+    private val answeredFormIDs = mutableSetOf<String>()
+
     /**
      * The pending requests as the events left them, without the derived sort.
      *
@@ -138,15 +143,29 @@ class RequestCenter(
      * Returns true when the visible requests changed, so a frame's worth of events can be published
      * once instead of once per event.
      */
-    fun apply(event: Event): Boolean {
+    fun apply(event: Event): Boolean = synchronized(stateLock) {
         val payload = event.payload
         rememberSessionDirectory(payload)
-        return when (payload) {
+        when (payload) {
             is PermissionAsked -> upsertPermission(payload.toRequest())
-            is PermissionReplied -> dropPermission(payload.requestID)
+
+            is PermissionReplied -> {
+                answeredPermissionIDs += payload.requestID
+                dropPermission(payload.requestID)
+            }
+
             is FormCreated -> upsertForm(payload.form)
-            is FormReplied -> dropForm(payload.id)
-            is FormCancelled -> dropForm(payload.id)
+
+            is FormReplied -> {
+                answeredFormIDs += payload.id
+                dropForm(payload.id)
+            }
+
+            is FormCancelled -> {
+                answeredFormIDs += payload.id
+                dropForm(payload.id)
+            }
+
             else -> false
         }
     }
@@ -162,14 +181,21 @@ class RequestCenter(
         val permissions = runCatching { api.listPermissionRequests(directory) }.getOrNull()?.data
         val forms = runCatching { api.listForms(directory) }.getOrNull()?.data
         if (permissions == null && forms == null) return
-        val sessions = sessionsIn(directory)
-        if (permissions != null) {
-            _permissions.value = _permissions.value.filterValues { it.sessionID !in sessions } +
-                permissions.associateBy(PermissionRequest::id)
-        }
-        if (forms != null) {
-            pendingForms.value =
-                pendingForms.value.filterValues { it.sessionID !in sessions } + forms.associateBy(FormInfo::id)
+        synchronized(stateLock) {
+            val sessions = sessionsIn(directory)
+            if (permissions != null) {
+                val snapshot = permissions
+                    .filterNot { it.id in answeredPermissionIDs }
+                    .associateBy(PermissionRequest::id)
+                _permissions.value = _permissions.value.filterValues { it.sessionID !in sessions } + snapshot
+            }
+            if (forms != null) {
+                val snapshot = forms
+                    .filterNot { it.id in answeredFormIDs }
+                    .associateBy(FormInfo::id)
+                pendingForms.value =
+                    pendingForms.value.filterValues { it.sessionID !in sessions } + snapshot
+            }
         }
     }
 
@@ -204,10 +230,12 @@ class RequestCenter(
     }
 
     /** Forgets everything, for example when the server is removed. */
-    fun clear() {
+    fun clear() = synchronized(stateLock) {
         _permissions.value = emptyMap()
         pendingForms.value = emptyMap()
         directoryOfSession.value = emptyMap()
+        answeredPermissionIDs.clear()
+        answeredFormIDs.clear()
         perSession.clear()
     }
 
