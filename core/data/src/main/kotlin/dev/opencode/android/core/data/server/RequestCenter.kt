@@ -64,6 +64,7 @@ class RequestCenter(
     private val stateLock = Any()
     private val answeredPermissionIDs = mutableSetOf<String>()
     private val answeredFormIDs = mutableSetOf<String>()
+    private val locationGenerations = mutableMapOf<String?, Long>()
 
     /**
      * The pending requests as the events left them, without the derived sort.
@@ -178,10 +179,12 @@ class RequestCenter(
      * merged into it.
      */
     suspend fun resync(directory: String?) {
+        val generation = synchronized(stateLock) { locationGenerations[directory] ?: 0L }
         val permissions = runCatching { api.listPermissionRequests(directory) }.getOrNull()?.data
         val forms = runCatching { api.listForms(directory) }.getOrNull()?.data
         if (permissions == null && forms == null) return
         synchronized(stateLock) {
+            if (locationGenerations[directory] != generation) return
             val sessions = sessionsIn(directory)
             if (permissions != null) {
                 val snapshot = permissions
@@ -236,6 +239,7 @@ class RequestCenter(
         directoryOfSession.value = emptyMap()
         answeredPermissionIDs.clear()
         answeredFormIDs.clear()
+        locationGenerations.clear()
         perSession.clear()
     }
 
@@ -245,7 +249,8 @@ class RequestCenter(
      * The maps are keyed by request and form id, not by session, so the session set is what has to
      * be resolved first: a request belongs to the location of the session that is waiting on it.
      */
-    fun dropLocation(directory: String) {
+    fun dropLocation(directory: String) = synchronized(stateLock) {
+        locationGenerations[directory] = (locationGenerations[directory] ?: 0L) + 1L
         val sessions = sessionsIn(directory)
         directoryOfSession.value = directoryOfSession.value.filterKeys { it !in sessions }
         _permissions.value = _permissions.value.filterValues { it.sessionID !in sessions }

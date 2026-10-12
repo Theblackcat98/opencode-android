@@ -11,9 +11,11 @@ import dev.opencode.android.core.network.ServerApiFactory
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.JsonPrimitive
+import mockwebserver3.Dispatcher
 import mockwebserver3.MockResponse
 import mockwebserver3.MockWebServer
 import mockwebserver3.RecordedRequest
@@ -26,6 +28,8 @@ import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 
 /**
  * The request center: what the agent is blocked on, and what happens when the user answers
@@ -228,6 +232,43 @@ class RequestCenterTest {
         center.dropLocation("/w")
 
         assertEquals(listOf("per_other"), center.permissions.value.map { it.id })
+    }
+
+    @Test
+    fun `a resync started before location shutdown cannot repopulate its requests`() = runTest {
+        center.apply(sessionCreatedEvent())
+        center.apply(askedEvent(REQUEST))
+        center.apply(formCreatedEvent(FORM))
+        val permissionResponseStarted = CountDownLatch(1)
+        val releasePermissionResponse = CountDownLatch(1)
+        server.dispatcher = object : Dispatcher() {
+            override fun dispatch(request: RecordedRequest): MockResponse {
+                if (request.url.encodedPath == "/api/permission/request") {
+                    permissionResponseStarted.countDown()
+                    check(releasePermissionResponse.await(5, TimeUnit.SECONDS)) {
+                        "the test did not release the in-flight permission resync"
+                    }
+                    return jsonResponse(
+                        200,
+                        """{"location":{"directory":"/w"},"data":[{"id":"${REQUEST.id}","sessionID":"${REQUEST.sessionID}","action":"shell","resources":["echo hello"]}]}""",
+                    )
+                }
+                return jsonResponse(
+                    200,
+                    """{"location":{"directory":"/w"},"data":[{"id":"${FORM.id}","sessionID":"${FORM.sessionID}","title":"Questions","fields":[]}]}""",
+                )
+            }
+        }
+
+        val resync = async(Dispatchers.IO) { center.resync("/w") }
+        assertTrue(permissionResponseStarted.await(5, TimeUnit.SECONDS))
+        center.dropLocation("/w")
+        releasePermissionResponse.countDown()
+        resync.await()
+
+        assertTrue("the shutdown must keep the permission cache cleared", center.permissions.value.isEmpty())
+        assertTrue("the shutdown must keep the form cache cleared", center.forms.value.isEmpty())
+        assertTrue("the global inbox must stay cleared", center.pending.value.isEmpty())
     }
 
     @Test
