@@ -224,6 +224,11 @@ fun CatalogScreen(
     onTabChange: (AdminCatalog) -> Unit,
     onSearchChange: (String) -> Unit,
     modifier: Modifier = Modifier,
+    /**
+     * Re-runs the catalog sync after a failure. The host wires this to the same sync the entry
+     * effect runs; until it does, the retry button is inert.
+     */
+    onReload: () -> Unit = {},
 ) {
     val spacing = OpenCodeThemeExtras.spacing
     Column(modifier = modifier.fillMaxSize()) {
@@ -245,13 +250,17 @@ fun CatalogScreen(
             value = state.search,
             onValueChange = onSearchChange,
             tag = "catalog:search",
+            // The field owns no padding; this screen's root column has none to give.
+            modifier = Modifier.padding(horizontal = spacing.lg),
         )
         HorizontalDivider()
         when (val status = state.currentStatus) {
             is SyncStatus.Failed -> {
                 // A catalog read fails as a raw `Throwable`; the screen reports the class of it rather
                 // than the request, which for these routes would name a directory the user chose.
-                ErrorLine(error = status.error.toActionError(), onDismiss = { })
+                // Dismissing a failed sync would leave the failure on screen with no way back, so the
+                // action is a retry of the sync.
+                ErrorLine(error = status.error.toActionError(), onDismiss = { }, onRetry = onReload)
             }
 
             SyncStatus.Loading -> Row(
@@ -285,36 +294,30 @@ fun CatalogScreen(
 @Composable
 private fun CatalogRowCard(row: CatalogRow) {
     val spacing = OpenCodeThemeExtras.spacing
-    Card(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = spacing.lg, vertical = spacing.xs).testTag(row.tag),
+    AdminCard(
+        title = row.title,
+        modifier = Modifier.padding(horizontal = spacing.lg, vertical = spacing.xs).testTag(row.tag),
     ) {
-        Column(modifier = Modifier.padding(spacing.md), verticalArrangement = Arrangement.spacedBy(spacing.xs)) {
+        row.subtitle?.let {
+            Text(text = it, style = MaterialTheme.typography.bodySmall)
+        }
+        row.facts.forEach { fact ->
+            // The init require guarantees exactly one of the two is set.
+            val value = fact.value ?: stringResource(fact.valueRes!!)
+            Fact(label = stringResource(fact.label), value = value, monospace = true)
+        }
+        row.body?.let { body ->
+            HorizontalDivider(modifier = Modifier.padding(vertical = spacing.xs))
             Text(
-                text = row.title,
-                style = MaterialTheme.typography.titleSmall,
-                modifier = Modifier.semantics { heading() },
+                text = body,
+                style = MaterialTheme.typography.bodySmall,
+                fontFamily = FontFamily.Monospace,
+                // Bounded, so a long system prompt or skill body does not push the rest of the
+                // list off the screen and leave the user with one enormous card.
+                modifier = Modifier
+                    .heightIn(max = 220.dp)
+                    .verticalScroll(rememberScrollState()),
             )
-            row.subtitle?.let {
-                Text(text = it, style = MaterialTheme.typography.bodySmall)
-            }
-            row.facts.forEach { fact ->
-                // The init require guarantees exactly one of the two is set.
-                val value = fact.value ?: stringResource(fact.valueRes!!)
-                Fact(label = stringResource(fact.label), value = value, monospace = true)
-            }
-            row.body?.let { body ->
-                HorizontalDivider(modifier = Modifier.padding(vertical = spacing.xs))
-                Text(
-                    text = body,
-                    style = MaterialTheme.typography.bodySmall,
-                    fontFamily = FontFamily.Monospace,
-                    // Bounded, so a long system prompt or skill body does not push the rest of the
-                    // list off the screen and leave the user with one enormous card.
-                    modifier = Modifier
-                        .heightIn(max = 220.dp)
-                        .verticalScroll(rememberScrollState()),
-                )
-            }
         }
     }
 }

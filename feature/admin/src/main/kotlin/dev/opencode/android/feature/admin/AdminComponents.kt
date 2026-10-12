@@ -2,16 +2,17 @@ package dev.opencode.android.feature.admin
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardColors
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -20,11 +21,11 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.unit.dp
 import dev.opencode.android.core.data.action.ActionError
 import dev.opencode.android.core.data.config.DocumentParseFailure
 import dev.opencode.android.core.data.config.SchemaDiagnostic
 import dev.opencode.android.core.data.config.WritePlan
+import dev.opencode.android.core.designsystem.component.OpenCodeTextButton
 import dev.opencode.android.core.designsystem.text.SyncedTextField
 import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
 
@@ -95,13 +96,13 @@ fun WriteConfirmationDialog(
             }
         },
         confirmButton = {
-            TextButton(
+            OpenCodeTextButton(
                 onClick = onConfirm,
                 modifier = Modifier.testTag(AdminTags.CONFIRM_WRITE),
             ) { Text(stringResource(R.string.admin_confirm)) }
         },
         dismissButton = {
-            TextButton(onClick = onCancel, modifier = Modifier.testTag(AdminTags.CANCEL_WRITE)) {
+            OpenCodeTextButton(onClick = onCancel, modifier = Modifier.testTag(AdminTags.CANCEL_WRITE)) {
                 Text(stringResource(R.string.admin_cancel))
             }
         },
@@ -187,9 +188,17 @@ fun ParseFailureRow(failure: DocumentParseFailure, modifier: Modifier = Modifier
  * **The message is shown but the request is not**, and that is the same rule P8 applied: an
  * `HttpException` carries the request URL, which for this phase would carry a path into a user's home
  * directory, and the class is what decides whether a retry is worth offering.
+ *
+ * When [onRetry] is given, the action is Retry instead of Dismiss: a failed sync is a state, not a
+ * notice, and dismissing it leaves the failure on screen with no way back.
  */
 @Composable
-fun ErrorLine(error: ActionError, onDismiss: () -> Unit, modifier: Modifier = Modifier) {
+fun ErrorLine(
+    error: ActionError,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
+    onRetry: (() -> Unit)? = null,
+) {
     Row(
         modifier = modifier.fillMaxWidth().padding(horizontal = OpenCodeThemeExtras.spacing.lg, vertical = OpenCodeThemeExtras.spacing.sm),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -204,7 +213,11 @@ fun ErrorLine(error: ActionError, onDismiss: () -> Unit, modifier: Modifier = Mo
                 Text(text = error.message, style = MaterialTheme.typography.bodySmall)
             }
         }
-        TextButton(onClick = onDismiss) { Text(stringResource(R.string.admin_dismiss)) }
+        if (onRetry != null) {
+            OpenCodeTextButton(onClick = onRetry) { Text(stringResource(R.string.admin_retry)) }
+        } else {
+            OpenCodeTextButton(onClick = onDismiss) { Text(stringResource(R.string.admin_dismiss)) }
+        }
     }
 }
 
@@ -213,6 +226,9 @@ fun ErrorLine(error: ActionError, onDismiss: () -> Unit, modifier: Modifier = Mo
  *
  * Every value it shows comes from a view model, so it is a [SyncedTextField]: a paste or a fast burst of
  * typing must not be rewound to the echo of an older keystroke.
+ *
+ * The field owns no padding: it used to bake in 16dp horizontally, which double-indented every form
+ * whose container already padded. Callers inset it with their own modifier.
  */
 @Composable
 fun LabelledField(
@@ -240,7 +256,6 @@ fun LabelledField(
         },
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = OpenCodeThemeExtras.spacing.lg, vertical = OpenCodeThemeExtras.spacing.xs)
             .then(if (tag == null) Modifier else Modifier.testTag(tag)),
     )
 }
@@ -288,4 +303,66 @@ internal fun shortPath(path: String, maxSegments: Int = 3): String {
     val segments = path.split('/').filter { it.isNotEmpty() }
     if (segments.size <= maxSegments) return path
     return segments.takeLast(maxSegments).joinToString("/", prefix = "…/")
+}
+
+/**
+ * The one card spec for the admin phase.
+ *
+ * Every admin screen was converging on its own version of the same anatomy — a title over a spaced
+ * column of body rows — with 12dp padding here and `titleSmall` there. This is the canonical one:
+ * 16dp content padding, a `titleMedium` heading, the standard 4dp rhythm between rows. Cards that
+ * need a different container (warnings, errors) pass [colors]; the padding and title treatment stay
+ * identical. Outer margins stay with the caller: a card in a lazy list and a card in a dialog do not
+ * share an inset.
+ */
+@Composable
+fun AdminCard(
+    title: String,
+    modifier: Modifier = Modifier,
+    colors: CardColors = CardDefaults.cardColors(),
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    val spacing = OpenCodeThemeExtras.spacing
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        colors = colors,
+    ) {
+        Column(
+            modifier = Modifier.padding(spacing.lg),
+            verticalArrangement = Arrangement.spacedBy(spacing.xs),
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.semantics { heading() },
+            )
+            content()
+        }
+    }
+}
+
+/**
+ * [AdminCard] with a custom title row, for cards whose heading is more than text (a key name plus a
+ * badge, for example). The padding, rhythm and container contract are identical.
+ */
+@Composable
+fun AdminCard(
+    titleContent: @Composable ColumnScope.() -> Unit,
+    modifier: Modifier = Modifier,
+    colors: CardColors = CardDefaults.cardColors(),
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    val spacing = OpenCodeThemeExtras.spacing
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        colors = colors,
+    ) {
+        Column(
+            modifier = Modifier.padding(spacing.lg),
+            verticalArrangement = Arrangement.spacedBy(spacing.xs),
+        ) {
+            titleContent()
+            content()
+        }
+    }
 }

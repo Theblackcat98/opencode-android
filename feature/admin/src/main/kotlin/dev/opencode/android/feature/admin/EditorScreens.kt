@@ -17,7 +17,6 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -29,6 +28,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import dev.opencode.android.core.data.config.DefinitionKind
+import dev.opencode.android.core.designsystem.component.OpenCodeTextButton
 import dev.opencode.android.core.designsystem.text.SyncedTextField
 import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
 
@@ -212,10 +212,10 @@ fun TemplateSheet(
         },
         confirmButton = {
             val ready = outcome is dev.opencode.android.core.data.config.TemplateOutcome.Ready
-            TextButton(onClick = onApply, enabled = !ready) { Text(stringResource(R.string.admin_template_check)) }
-            TextButton(onClick = onInsert, enabled = ready) { Text(stringResource(R.string.admin_template_insert)) }
+            OpenCodeTextButton(onClick = onApply, enabled = !ready) { Text(stringResource(R.string.admin_template_check)) }
+            OpenCodeTextButton(onClick = onInsert, enabled = ready) { Text(stringResource(R.string.admin_template_insert)) }
         },
-        dismissButton = { TextButton(onClick = onClose) { Text(stringResource(R.string.admin_cancel)) } },
+        dismissButton = { OpenCodeTextButton(onClick = onClose) { Text(stringResource(R.string.admin_cancel)) } },
     )
 }
 
@@ -369,7 +369,7 @@ fun DefinitionScreen(
                     outcome.diagnostics.forEach { DiagnosticRow(diagnostic = it) }
                 }
             },
-            confirmButton = { TextButton(onClick = onDismissOutcome) { Text(stringResource(R.string.admin_dismiss)) } },
+            confirmButton = { OpenCodeTextButton(onClick = onDismissOutcome) { Text(stringResource(R.string.admin_dismiss)) } },
         )
     }
 }

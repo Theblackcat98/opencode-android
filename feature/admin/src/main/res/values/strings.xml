@@ -6,6 +6,8 @@
     <string name="admin_confirm">Confirm</string>
     <string name="admin_cancel">Cancel</string>
     <string name="admin_dismiss">Dismiss</string>
+    <string name="admin_retry">Retry</string>
+    <string name="admin_remove_rule">Remove rule</string>
     <string name="admin_save">Save</string>
     <string name="admin_reload">Reload</string>
     <string name="admin_done">Done</string>

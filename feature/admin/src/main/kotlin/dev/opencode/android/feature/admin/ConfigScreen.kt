@@ -20,13 +20,11 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
@@ -35,6 +33,7 @@ import dev.opencode.android.core.data.config.ConfigKey
 import dev.opencode.android.core.data.config.ConfigRow
 import dev.opencode.android.core.data.config.ConfigSource
 import dev.opencode.android.core.data.config.WritePlan
+import dev.opencode.android.core.designsystem.component.OpenCodeTextButton
 import dev.opencode.android.core.designsystem.text.SyncedTextField
 import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
 
@@ -144,15 +143,14 @@ private fun ConfigToolbar(
     val spacing = OpenCodeThemeExtras.spacing
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = spacing.lg, vertical = spacing.sm)) {
         Row(horizontalArrangement = Arrangement.spacedBy(spacing.sm)) {
-            TextButton(onClick = onReload, enabled = !state.loading) { Text(stringResource(R.string.admin_reload)) }
-            TextButton(
+            OpenCodeTextButton(onClick = onReload, enabled = !state.loading) {
+                Text(stringResource(R.string.admin_reload))
+            }
+            OpenCodeTextButton(
                 onClick = onOpenEditor,
                 enabled = state.writesUsable,
-                modifier = Modifier.semantics {
-                    contentDescription = ""
-                },
             ) { Text(stringResource(R.string.admin_config_editor)) }
-            TextButton(onClick = onOpenDefinitions, enabled = state.writesUsable) {
+            OpenCodeTextButton(onClick = onOpenDefinitions, enabled = state.writesUsable) {
                 Text(stringResource(R.string.admin_definitions))
             }
         }
@@ -226,49 +224,43 @@ private fun ShellCard(
     onShellRequest: () -> Unit,
 ) {
     val spacing = OpenCodeThemeExtras.spacing
-    Card(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = spacing.lg, vertical = spacing.xs),
+    AdminCard(
+        title = stringResource(R.string.admin_shell_title),
+        modifier = Modifier.padding(horizontal = spacing.lg, vertical = spacing.xs),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
         ),
     ) {
-        Column(modifier = Modifier.padding(spacing.md), verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
+        Text(
+            text = stringResource(R.string.admin_shell_help),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        SyncedTextField(
+            value = state.shellChoice ?: state.currentShell.orEmpty(),
+            onValueChange = onShellChange,
+            label = { Text(stringResource(R.string.admin_shell_field)) },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth().testTag(AdminTags.SHELL_FIELD),
+        )
+        if (!state.shellUsable) {
             Text(
-                text = stringResource(R.string.admin_shell_title),
-                style = MaterialTheme.typography.titleSmall,
-                modifier = Modifier.semantics { heading() },
-            )
-            Text(
-                text = stringResource(R.string.admin_shell_help),
+                // Two different reasons, and only the first is the user's to fix: a switch that is off is
+                // turned on in Experimental features, a route the server does not have is not turned on
+                // anywhere, and telling that user to flip a switch they already flipped is a circle.
+                text = stringResource(
+                    if (state.shellAllowed) R.string.admin_shell_absent else R.string.admin_shell_off,
+                ),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            SyncedTextField(
-                value = state.shellChoice ?: state.currentShell.orEmpty(),
-                onValueChange = onShellChange,
-                label = { Text(stringResource(R.string.admin_shell_field)) },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth().testTag(AdminTags.SHELL_FIELD),
-            )
-            if (!state.shellUsable) {
-                Text(
-                    // Two different reasons, and only the first is the user's to fix: a switch that is off is
-                    // turned on in Experimental features, a route the server does not have is not turned on
-                    // anywhere, and telling that user to flip a switch they already flipped is a circle.
-                    text = stringResource(
-                        if (state.shellAllowed) R.string.admin_shell_absent else R.string.admin_shell_off,
-                    ),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            Button(
-                onClick = onShellRequest,
-                enabled = state.shellUsable &&
-                    (state.shellChoice ?: "").trim().isNotEmpty() &&
-                    (state.shellChoice ?: "").trim() != state.currentShell,
-            ) { Text(stringResource(R.string.admin_shell_apply)) }
         }
+        Button(
+            onClick = onShellRequest,
+            enabled = state.shellUsable &&
+                (state.shellChoice ?: "").trim().isNotEmpty() &&
+                (state.shellChoice ?: "").trim() != state.currentShell,
+        ) { Text(stringResource(R.string.admin_shell_apply)) }
     }
 }
 
@@ -283,15 +275,15 @@ private fun ShellCard(
 private fun ConfigKeyCard(row: ConfigRow) {
     val spacing = OpenCodeThemeExtras.spacing
     val key = row.key
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = spacing.lg, vertical = spacing.xs)
-            .testTag(AdminTags.configKey(key.key)),
-    ) {
-        Column(modifier = Modifier.padding(spacing.md), verticalArrangement = Arrangement.spacedBy(spacing.xs)) {
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(text = key.key, style = MaterialTheme.typography.titleSmall, fontFamily = FontFamily.Monospace)
+    AdminCard(
+        titleContent = {
+            Row(horizontalArrangement = Arrangement.spacedBy(spacing.xs)) {
+                Text(
+                    text = key.key,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontFamily = FontFamily.Monospace,
+                    modifier = Modifier.semantics { heading() },
+                )
                 if (key.hidden) {
                     AssistChip(
                         onClick = {},
@@ -300,30 +292,34 @@ private fun ConfigKeyCard(row: ConfigRow) {
                     )
                 }
             }
+        },
+        modifier = Modifier
+            .padding(horizontal = spacing.lg, vertical = spacing.xs)
+            .testTag(AdminTags.configKey(key.key)),
+    ) {
+        Text(
+            text = key.typeName,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        if (row.isReadOnly) {
             Text(
-                text = key.typeName,
+                text = stringResource(R.string.admin_key_read_only),
                 style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = MaterialTheme.colorScheme.tertiary,
             )
-            if (row.isReadOnly) {
-                Text(
-                    text = stringResource(R.string.admin_key_read_only),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.tertiary,
-                )
-            }
-            key.description?.let { description ->
-                Text(text = description, style = MaterialTheme.typography.bodySmall)
-            }
-            key.allowedValues.takeIf { it.isNotEmpty() }?.let { allowed ->
-                Fact(
-                    label = stringResource(R.string.admin_key_one_of),
-                    value = allowed.joinToString(", "),
-                )
-            }
-            EffectiveValue(row = row)
-            SourceList(row = row)
         }
+        key.description?.let { description ->
+            Text(text = description, style = MaterialTheme.typography.bodySmall)
+        }
+        key.allowedValues.takeIf { it.isNotEmpty() }?.let { allowed ->
+            Fact(
+                label = stringResource(R.string.admin_key_one_of),
+                value = allowed.joinToString(", "),
+            )
+        }
+        EffectiveValue(row = row)
+        SourceList(row = row)
     }
 }
 
