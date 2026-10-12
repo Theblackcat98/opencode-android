@@ -99,6 +99,8 @@ fun SessionHost(
     onOpenSessionList: () -> Unit = {},
     /** Opens the command palette: the session screen's touch trigger for it. */
     onOpenCommandPalette: () -> Unit = {},
+    /** Shows a transient message on the graph's snackbar (camera unavailable, etc.). */
+    showSnackbar: (String) -> Unit = {},
     onNewSession: () -> Unit = {},
     onOpenReview: (String?) -> Unit = {},
     /** The session's file browser, from the tools sheet's Files tile. */
@@ -163,28 +165,37 @@ fun SessionHost(
     val uriHandler = LocalUriHandler.current
     val menu = stringResource(R.string.session_menu)
     val search = stringResource(R.string.session_command_palette)
-    var actionsOpen by remember { mutableStateOf(false) }
-    var attentionOpen by remember { mutableStateOf(false) }
-    var historyOpen by remember { mutableStateOf(false) }
-    var experimentalOpen by remember { mutableStateOf(false) }
-    var eventHistoryOpen by remember { mutableStateOf(false) }
-    var syntheticOpen by remember { mutableStateOf(false) }
-    var inboxOpen by remember { mutableStateOf(false) }
-    var agentPickerOpen by remember { mutableStateOf(false) }
-    var modelPickerOpen by remember { mutableStateOf(false) }
-    var skillsOpen by remember { mutableStateOf(false) }
-    var stashOpen by remember { mutableStateOf(false) }
+    var actionsOpen by rememberSaveable { mutableStateOf(false) }
+    var attentionOpen by rememberSaveable { mutableStateOf(false) }
+    var historyOpen by rememberSaveable { mutableStateOf(false) }
+    var experimentalOpen by rememberSaveable { mutableStateOf(false) }
+    var eventHistoryOpen by rememberSaveable { mutableStateOf(false) }
+    var syntheticOpen by rememberSaveable { mutableStateOf(false) }
+    var inboxOpen by rememberSaveable { mutableStateOf(false) }
+    var agentPickerOpen by rememberSaveable { mutableStateOf(false) }
+    var modelPickerOpen by rememberSaveable { mutableStateOf(false) }
+    var skillsOpen by rememberSaveable { mutableStateOf(false) }
+    var stashOpen by rememberSaveable { mutableStateOf(false) }
     var editorOpen by rememberSaveable { mutableStateOf(false) }
-    var attachOpen by remember { mutableStateOf(false) }
+    var attachOpen by rememberSaveable { mutableStateOf(false) }
     var modelSearch by rememberSaveable { mutableStateOf("") }
     // The message an undo is aimed at, held between the menu row and the confirmation (plan §5.2:
     // reverting files is a dangerous action, so it asks).
-    var undoTarget by remember { mutableStateOf<String?>(null) }
+    var undoTarget by rememberSaveable { mutableStateOf<String?>(null) }
 
+    val cameraUnavailableText = stringResource(R.string.session_camera_unavailable)
+    val attachUnavailableText = stringResource(R.string.session_attach_unavailable)
     val pickAttachment = rememberAttachmentPicker(
         onPicked = composer::attachImage,
-        onCameraUnavailable = { attachOpen = false },
-        onSourceUnavailable = { attachOpen = false },
+        // A missing camera or attach source is a dead end the user should hear about, not a silent close.
+        onCameraUnavailable = {
+            attachOpen = false
+            showSnackbar(cameraUnavailableText)
+        },
+        onSourceUnavailable = {
+            attachOpen = false
+            showSnackbar(attachUnavailableText)
+        },
     )
 
     // A fork produced a new session id; the graph is what knows how to open one. Taking it here

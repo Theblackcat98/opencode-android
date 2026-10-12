@@ -38,6 +38,9 @@
     <string name="leader_armed">Ctrl+X: press a letter</string>
     <!-- The session top bar's command-palette button (navigation/SessionHost.kt). -->
     <string name="session_command_palette">Open command palette</string>
+    <!-- The attach sheet's fallbacks (navigation/SessionHost.kt): the device has no camera, or no source to attach from. -->
+    <string name="session_camera_unavailable">Camera unavailable on this device</string>
+    <string name="session_attach_unavailable">Nothing available to attach from</string>
     <!-- The bottom bar's three tabs. -->
     <string name="tab_home">Home</string>
     <string name="tab_chat">Chat</string>

@@ -74,6 +74,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import dev.opencode.android.feature.sessions.R as SessionsR
@@ -409,13 +410,23 @@ fun OpenCodeApp(
     }
 
     // A TUI session selection (`tui.session.select`) opens that session here, but only while the app follows the
-    // desktop. The gate is `followedSessionSelections`, which stops at once when following is turned off. The
-    // session is opened on the active server, so the route takes no server id.
+    // desktop. The gate is `followedSessionSelections`, which stops at once when following is turned off.
+    // The stack is reset to the servers list first, like the notification path: `openTab` assumes every tab
+    // sits directly on a HomeRoute, and pushing SessionRoute with no Home beneath broke that invariant.
     LaunchedEffect(serverDataSets) {
         serverDataSets.active
-            .flatMapLatest { set -> set?.tui?.let(::followedSessionSelections) ?: emptyFlow() }
-            .collect { selection ->
-                navController.navigate(SessionRoute(null, selection.sessionID)) { launchSingleTop = true }
+            .flatMapLatest { set ->
+                val serverId = set?.serverId
+                set?.tui?.let { tui ->
+                    followedSessionSelections(tui).map { selection -> serverId to selection }
+                } ?: emptyFlow()
+            }
+            .collect { (serverId, selection) ->
+                navController.navigate(HomeRoute(serverId)) {
+                    popUpTo(ServersRoute) { inclusive = false }
+                    launchSingleTop = true
+                }
+                navController.navigate(SessionRoute(serverId, selection.sessionID)) { launchSingleTop = true }
             }
     }
 

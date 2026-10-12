@@ -15,6 +15,7 @@
     <shortcut
         android:shortcutId="servers"
         android:enabled="true"
+        android:icon="@drawable/ic_shortcut_servers"
         android:shortcutShortLabel="@string/shortcut_servers_short"
         android:shortcutLongLabel="@string/shortcut_servers_long">
         <intent
@@ -25,6 +26,7 @@
     <shortcut
         android:shortcutId="new_session"
         android:enabled="true"
+        android:icon="@drawable/ic_shortcut_new_session"
         android:shortcutShortLabel="@string/shortcut_new_session_short"
         android:shortcutLongLabel="@string/shortcut_new_session_long">
         <intent

@@ -73,11 +73,13 @@ fun NavGraphBuilder.sessionGraph(deps: NavGraphDeps) {
                         deps.navController.navigate(SessionListRoute(serverId = route.serverId)) { launchSingleTop = true }
                     },
                     onOpenCommandPalette = deps.onOpenCommandPalette,
+                    showSnackbar = deps.showSnackbar,
                     onNewSession = {
                         // `/new`: the new-session flow is a sheet over the home, so this is the home with
-                        // the sheet already open. `popUpTo` the session so Back returns where it was.
+                        // the sheet already open. Pop up to any existing home (inclusive) first: the stack
+                        // below a session usually holds one, and pushing another would stack two homes.
                         deps.navController.navigate(HomeRoute(route.serverId, openNewSession = true)) {
-                            popUpTo(SessionRoute(route.serverId, route.sessionId)) { inclusive = true }
+                            popUpTo(HomeRoute(route.serverId)) { inclusive = true }
                             launchSingleTop = true
                         }
                     },
@@ -123,7 +125,7 @@ fun NavGraphBuilder.sessionGraph(deps: NavGraphDeps) {
                                 serverId = route.serverId,
                                 directory = directory,
                                 projectID = projectId,
-                                sessionID = route.sessionId,
+                                sessionId = route.sessionId,
                             ),
                         ) { launchSingleTop = true }
                     },
@@ -190,6 +192,13 @@ fun NavGraphBuilder.sessionGraph(deps: NavGraphDeps) {
                         listState = deps.sessionListState,
                         onSelect = showInPlace,
                         modifier = Modifier.fillMaxHeight(),
+                        // The pane's empty-state CTA opens the new-session sheet, like `/new`.
+                        onNewSession = {
+                            deps.navController.navigate(HomeRoute(route.serverId, openNewSession = true)) {
+                                popUpTo(HomeRoute(route.serverId)) { inclusive = true }
+                                launchSingleTop = true
+                            }
+                        },
                     )
                     VerticalDivider(modifier = Modifier.fillMaxHeight())
                     sessionScreen(Modifier.weight(1f))

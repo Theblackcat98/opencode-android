@@ -159,7 +159,7 @@ fun NavGraphBuilder.adminGraph(deps: NavGraphDeps) {
             PermissionsHost(
                 directory = route.directory,
                 projectID = route.projectID,
-                sessionID = route.sessionID,
+                sessionId = route.sessionId,
                 onNavigateBack = { deps.navController.popBackStack() },
             )
         }
@@ -167,7 +167,7 @@ fun NavGraphBuilder.adminGraph(deps: NavGraphDeps) {
         composable<InstructionsRoute> { entry ->
             val route = entry.toRoute<InstructionsRoute>()
             InstructionsHost(
-                sessionID = route.sessionID,
+                sessionId = route.sessionId,
                 onNavigateBack = { deps.navController.popBackStack() },
             )
         }
