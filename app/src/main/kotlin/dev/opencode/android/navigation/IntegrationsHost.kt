@@ -4,14 +4,8 @@ import android.content.ActivityNotFoundException
 import android.content.Intent
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -28,6 +22,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.rememberNavController
 import dev.opencode.android.core.data.integrations.IntegrationFlow
 import dev.opencode.android.core.data.integrations.IntegrationFlows
+import dev.opencode.android.core.designsystem.component.OpenCodeTopAppBar
 import dev.opencode.android.core.model.IntegrationInfo
 import dev.opencode.android.core.model.IntegrationMethod
 import dev.opencode.android.feature.integrations.ConnectScreen
@@ -95,6 +90,7 @@ fun ConnectHost(
 
     IntegrationsScaffold(
         title = stringResource(R.string.connect_title),
+        directory = directory,
         modifier = modifier,
         onNavigateBack = onNavigateBack,
     ) { padding ->
@@ -153,6 +149,7 @@ fun McpHost(
 
     IntegrationsScaffold(
         title = stringResource(R.string.mcp_title),
+        directory = directory,
         modifier = modifier,
         onNavigateBack = onNavigateBack,
     ) { padding ->
@@ -196,6 +193,7 @@ fun PluginsHost(
 
     IntegrationsScaffold(
         title = stringResource(R.string.plugins_title),
+        directory = directory,
         modifier = modifier,
         onNavigateBack = onNavigateBack,
     ) { padding ->
@@ -227,6 +225,7 @@ fun ProvidersHost(
 
     IntegrationsScaffold(
         title = stringResource(R.string.providers_title),
+        directory = directory,
         modifier = modifier,
         onNavigateBack = onNavigateBack,
     ) { padding ->
@@ -254,6 +253,7 @@ fun WebSearchHost(
 
     IntegrationsScaffold(
         title = stringResource(R.string.websearch_title),
+        directory = directory,
         modifier = modifier,
         onNavigateBack = onNavigateBack,
     ) { padding ->
@@ -312,10 +312,10 @@ private fun openProvider(context: android.content.Context, url: String) {
 }
 
 /** The Phase 8 top bar, shared by the five screens so they cannot drift apart. */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun IntegrationsScaffold(
     title: String,
+    directory: String,
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier,
     content: @Composable (androidx.compose.foundation.layout.PaddingValues) -> Unit,
@@ -323,13 +323,13 @@ private fun IntegrationsScaffold(
     Scaffold(
         modifier = modifier.fillMaxSize(),
         topBar = {
-            TopAppBar(
-                title = { Text(text = title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.integrations_navigate_back))
-                    }
-                },
+            OpenCodeTopAppBar(
+                title = title,
+                onBack = onNavigateBack,
+                backDescription = stringResource(R.string.integrations_navigate_back),
+                // Every screen behind this scaffold is location-scoped, so the checkout it acts on
+                // is part of the title rather than something the user has to remember.
+                subtitle = { Text(text = directory, maxLines = 1, overflow = TextOverflow.Ellipsis) },
             )
         },
         content = content,

@@ -6,6 +6,7 @@ import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
+import androidx.compose.material3.expressiveMotionScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.ReadOnlyComposable
@@ -46,6 +47,10 @@ fun OpenCodeTheme(
             colorScheme = colorScheme,
             shapes = shapes.toMaterialShapes(),
             typography = OpenCodeTypography,
+            // The motion scheme is a deliberate choice, not the silent default: expressive, per the
+            // M3 Expressive bar the app's design inspiration sets. The choice is recorded in MOTION.md,
+            // with the T-004 caveat that the expressive spatial spring stays off elements read as data.
+            motionScheme = expressiveMotionScheme(),
             content = content,
         )
     }

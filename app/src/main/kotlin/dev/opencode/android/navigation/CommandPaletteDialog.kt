@@ -1,7 +1,6 @@
 package dev.opencode.android.navigation
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -10,6 +9,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
@@ -39,8 +39,6 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.role
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardOptions
@@ -190,11 +188,17 @@ fun CommandPaletteDialog(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .background(color = containerColor, shape = MaterialTheme.shapes.small)
-                                .clickable {
-                                    onRun(command)
-                                    onDismiss()
-                                }
-                                .semantics { role = Role.Button }
+                                // `selectable` rather than `clickable`: the arrow-key selection is state a
+                                // TalkBack user must hear, and this publishes it where `clickable` plus a
+                                // manual role would stay silent about which row is current.
+                                .selectable(
+                                    selected = isSelected,
+                                    onClick = {
+                                        onRun(command)
+                                        onDismiss()
+                                    },
+                                    role = Role.Button,
+                                )
                                 .padding(horizontal = spacing.sm, vertical = spacing.md + spacing.xxs),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {

@@ -177,4 +177,5 @@
       label. Without it a screen reader says nothing and the row looks stuck.
     -->
     <string name="connect_waiting_for_sign_in">Waiting for the sign-in</string>
+    <string name="mcp_resource_attached">Attached to the next prompt</string>
 </resources>
