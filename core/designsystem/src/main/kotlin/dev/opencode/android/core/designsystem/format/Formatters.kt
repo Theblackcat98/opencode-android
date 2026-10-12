@@ -19,7 +19,8 @@ object Formatters {
     fun cost(value: Double): String = when {
         value <= 0.0 -> "$0.00"
         value < 0.01 -> "$" + String.format(Locale.US, "%.4f", value)
-        value < 1000.0 -> "$" + String.format(Locale.US, "%.2f", value)
+        // Round before tiering: $999.999 formats as $1,000, not $1000.00.
+        value < 999.995 -> "$" + String.format(Locale.US, "%.2f", value)
         else -> "$" + String.format(Locale.US, "%,.0f", value)
     }
 
@@ -32,9 +33,11 @@ object Formatters {
     fun tokens(value: Long): String = when {
         value < 0 -> "0"
         value < 1_000 -> value.toString()
-        value < 1_000_000 -> trim(value / 1_000.0) + "k"
-        value < 1_000_000_000 -> trim(value / 1_000_000.0) + "M"
-        else -> trim(value / 1_000_000_000.0) + "B"
+        // Bump the tier when rounding hits 1000: 999_999 is "1M", not "1000k".
+        value < 999_950 -> trim(value / 1_000.0) + "k"
+        value < 999_950_000 -> trim(value / 1_000_000.0) + "M"
+        value < 999_950_000_000 -> trim(value / 1_000_000_000.0) + "B"
+        else -> trim(value / 1_000_000_000_000.0) + "T"
     }
 
     /** A percentage of a limit, clamped, for the context gauge. */
@@ -56,9 +59,14 @@ object Formatters {
         return trim(size) + " " + units[unit]
     }
 
-    /** A duration in milliseconds, as a tool or a reasoning block takes. */
+    /**
+     * A duration in milliseconds, as a tool or a reasoning block takes.
+     *
+     * Unknown or negative durations render as an em dash, not an empty string: callers join this
+     * into meta lines, and an empty string would collapse the separators into a confusing gap.
+     */
     fun duration(millis: Long?): String {
-        if (millis == null || millis < 0) return ""
+        if (millis == null || millis < 0) return "—"
         if (millis < 1_000) return "${millis}ms"
         val seconds = millis / 1_000.0
         if (seconds < 60) return trim(seconds) + "s"

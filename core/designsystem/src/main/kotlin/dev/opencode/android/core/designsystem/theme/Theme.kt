@@ -16,7 +16,8 @@ import androidx.compose.ui.platform.LocalContext
  * The app theme: the [OpenCodePalette] by default.
  *
  * Material You dynamic color is opt-in through [dynamicColor]. It used to be the default, which meant
- * every device on Android 12+ drew the wallpaper's palette and never showed the one `design.md` specifies.
+ * every device on Android 12+ drew the wallpaper's palette and never showed the one the repo-root
+ * `design.md` specifies.
  */
 @Composable
 fun OpenCodeTheme(
@@ -36,16 +37,15 @@ fun OpenCodeTheme(
     }
     // One shape object feeds both the design-system local and the M3 slots, so a component that
     // reads MaterialTheme.shapes and one that reads OpenCodeThemeExtras.shapes cannot disagree.
-    val shapes = OpenCodeShapes()
     CompositionLocalProvider(
-        LocalCodeTypography provides CodeTypography(),
-        LocalOpenCodeSpacing provides OpenCodeSpacing(),
-        LocalOpenCodeShapes provides shapes,
+        LocalCodeTypography provides SharedCodeTypography,
+        LocalOpenCodeSpacing provides SharedOpenCodeSpacing,
+        LocalOpenCodeShapes provides SharedOpenCodeShapes,
         LocalOpenCodeStatusColors provides if (darkTheme) DarkStatusColors else LightStatusColors,
     ) {
         MaterialTheme(
             colorScheme = colorScheme,
-            shapes = shapes.toMaterialShapes(),
+            shapes = SharedOpenCodeShapes.toMaterialShapes(),
             typography = OpenCodeTypography,
             // The motion scheme is a deliberate choice, not the silent default: expressive, per the
             // M3 Expressive bar the app's design inspiration sets. The choice is recorded in MOTION.md,
@@ -55,6 +55,15 @@ fun OpenCodeTheme(
         )
     }
 }
+
+/**
+ * The theme's static allocations, hoisted out of the [OpenCodeTheme] composition so a
+ * recomposition never rebuilds the token objects. The dynamic-color branch still allocates per
+ * composition, but that path is opt-in and rare.
+ */
+private val SharedCodeTypography = CodeTypography()
+private val SharedOpenCodeSpacing = OpenCodeSpacing()
+private val SharedOpenCodeShapes = OpenCodeShapes()
 
 /** Accessors for the design system's additions to [MaterialTheme]. */
 object OpenCodeThemeExtras {

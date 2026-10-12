@@ -20,7 +20,6 @@ import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
 
 /** What a [OpenCodeStatusPill] reports. */
 enum class StatusKind { Running, Retrying, Idle, Success, Failure }
-
 /**
  * A small status badge: a dot (or a spinner while running) and a label, on the state's container color.
  *
@@ -49,7 +48,7 @@ fun OpenCodeStatusPill(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        StatusDot(kind = kind, color = content)
+        OpenCodeStatusDot(kind = kind, color = content)
         Text(
             text = label,
             style = OpenCodeThemeExtras.code.small,
@@ -62,10 +61,10 @@ fun OpenCodeStatusPill(
 
 /** The leading mark of a [OpenCodeStatusPill], usable on its own in a dense row. */
 @Composable
-fun StatusDot(
+fun OpenCodeStatusDot(
     kind: StatusKind,
     modifier: Modifier = Modifier,
-    color: Color = statusContentColor(kind),
+    color: Color = openCodeStatusContentColor(kind),
 ) {
     if (kind == StatusKind.Running || kind == StatusKind.Retrying) {
         CircularProgressIndicator(modifier = modifier.size(8.dp), strokeWidth = 1.5.dp, color = color)
@@ -81,7 +80,7 @@ fun StatusDot(
 
 /** The foreground color for [kind], for marks drawn outside a pill. */
 @Composable
-fun statusContentColor(kind: StatusKind): Color {
+fun openCodeStatusContentColor(kind: StatusKind): Color {
     val colors = OpenCodeThemeExtras.status
     return when (kind) {
         StatusKind.Running -> colors.onRunning

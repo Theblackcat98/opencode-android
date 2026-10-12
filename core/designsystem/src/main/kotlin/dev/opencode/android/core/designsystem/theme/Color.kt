@@ -85,15 +85,6 @@ object OpenCodePalette {
     val OnTertiaryFixedVariant: Color = Color(0xFF54348B)
 
     // Legacy Neutrals (for compatibility)
-    val Ink0: Color = SurfaceContainerLowest
-    val Ink1: Color = SurfaceContainerLow
-    val Ink2: Color = SurfaceContainer
-    val Ink3: Color = SurfaceContainerHigh
-    val Ink4: Color = OutlineVariant
-    val Ink5: Color = Outline
-    val Ink6: Color = OnSurfaceVariant
-    val Ink7: Color = OnSurface
-
     val Paper0: Color = Color(0xFFFFFFFF)
     val Paper1: Color = Color(0xFFFAFAFA)
     val Paper2: Color = Color(0xFFF3F3F3)

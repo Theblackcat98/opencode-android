@@ -48,9 +48,9 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import dev.opencode.android.core.designsystem.component.OpenCodeStatusDot
 import dev.opencode.android.core.designsystem.component.OpenCodeStatusPill
 import dev.opencode.android.core.designsystem.component.OpenCodeTopAppBar
-import dev.opencode.android.core.designsystem.component.StatusDot
 import dev.opencode.android.core.designsystem.component.StatusKind
 import dev.opencode.android.core.designsystem.format.Formatters
 import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
@@ -237,7 +237,7 @@ private fun Subtitle(state: SessionUiState) {
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         when (val activity = state.activity) {
-            is SessionActivityUi.Running -> StatusDot(StatusKind.Running)
+            is SessionActivityUi.Running -> OpenCodeStatusDot(StatusKind.Running)
 
             is SessionActivityUi.Retrying -> OpenCodeStatusPill(
                 StatusKind.Retrying,
