@@ -85,12 +85,12 @@ data class PermissionsRoute(
     val serverId: String? = null,
     val directory: String,
     val projectID: String? = null,
-    val sessionID: String? = null,
+    val sessionId: String? = null,
 )
 
 /** A session's durable instruction entries. */
 @Serializable
-data class InstructionsRoute(val serverId: String? = null, val sessionID: String)
+data class InstructionsRoute(val serverId: String? = null, val sessionId: String)
 
 /** The maintenance screen. */
 @Serializable
@@ -265,14 +265,14 @@ fun CatalogHost(
 fun PermissionsHost(
     directory: String,
     projectID: String?,
-    sessionID: String?,
+    sessionId: String?,
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: PermissionsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
 
-    LaunchedEffect(directory, projectID, sessionID) { viewModel.open(directory, projectID, sessionID) }
+    LaunchedEffect(directory, projectID, sessionId) { viewModel.open(directory, projectID, sessionId) }
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.resume() }
 
     AdminScaffold(
@@ -300,14 +300,14 @@ fun PermissionsHost(
 /** A session's durable instruction entries. */
 @Composable
 fun InstructionsHost(
-    sessionID: String,
+    sessionId: String,
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: InstructionsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
 
-    LaunchedEffect(sessionID) { viewModel.open(sessionID) }
+    LaunchedEffect(sessionId) { viewModel.open(sessionId) }
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.resume() }
 
     AdminScaffold(

@@ -51,6 +51,8 @@ fun SessionListPaneHost(
     listState: LazyListState,
     onSelect: (String) -> Unit,
     modifier: Modifier = Modifier,
+    /** Opens the new-session flow; wires the pane's empty-state CTA when provided. */
+    onNewSession: (() -> Unit)? = null,
 ) {
     // Built once, not per composition: a flow operator run in composition restarts its collection each time.
     val rowsFlow = remember(serverDataSets) {
@@ -75,5 +77,8 @@ fun SessionListPaneHost(
         listState = listState,
         loading = rows == null,
         modifier = modifier,
+        // The empty-state CTA renders only when wired (the sessions P2 added the param); without it
+        // the pane keeps its previous empty treatment.
+        onNewSession = onNewSession,
     )
 }

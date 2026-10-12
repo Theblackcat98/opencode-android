@@ -98,8 +98,10 @@ fun NavGraphBuilder.homeGraph(deps: NavGraphDeps) {
                     }
                 },
                 onNewSession = {
+                    // Pop up to any existing home (inclusive) first: pushing another home on top of
+                    // one would stack two of them.
                     deps.navController.navigate(HomeRoute(route.serverId, openNewSession = true)) {
-                        popUpTo(ChatRoute(route.serverId)) { inclusive = true }
+                        popUpTo(HomeRoute(route.serverId)) { inclusive = true }
                         launchSingleTop = true
                     }
                 },

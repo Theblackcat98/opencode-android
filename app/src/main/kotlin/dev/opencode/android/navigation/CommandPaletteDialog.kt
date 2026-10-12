@@ -9,11 +9,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.SearchOff
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -46,6 +48,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import dev.opencode.android.R
+import dev.opencode.android.core.designsystem.component.OpenCodeEmptyState
 import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
 
 /**
@@ -72,7 +75,14 @@ fun CommandPaletteDialog(
     val labels = commands.associateWith { stringResource(it.labelRes) }
     val matches = filterCommands(commands, query) { labels.getValue(it) }
     val focusRequester = remember { FocusRequester() }
-    var selectedIndex by remember(matches) { mutableStateOf(0) }
+    // Saveable, keyed on the matches: a rotation keeps the position, a new query resets it.
+    var selectedIndex by rememberSaveable(matches) { mutableStateOf(0) }
+    val listState = rememberLazyListState()
+    // Keep the arrow-key selection visible: without this, arrowing past the fold moves state the
+    // user cannot see.
+    LaunchedEffect(selectedIndex) {
+        if (matches.isNotEmpty()) listState.scrollToItem(selectedIndex)
+    }
     // The soft keyboard's action button runs the top match: without an imeAction it does nothing on a phone.
     val runSelected: () -> Unit = {
         matches.getOrNull(selectedIndex)?.let {
@@ -159,14 +169,16 @@ fun CommandPaletteDialog(
                         },
                 )
                 if (matches.isEmpty()) {
-                    Text(
-                        text = stringResource(R.string.palette_no_match),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(vertical = spacing.lg),
+                    OpenCodeEmptyState(
+                        title = stringResource(R.string.palette_no_match),
+                        icon = Icons.Filled.SearchOff,
+                        modifier = Modifier.padding(vertical = spacing.md),
                     )
                 }
-                LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 480.dp)) {
+                LazyColumn(
+                    modifier = Modifier.fillMaxWidth().heightIn(max = 480.dp),
+                    state = listState,
+                ) {
                     itemsIndexed(matches, key = { _, command -> command.id }) { index, command ->
                         val isSelected = index == selectedIndex
                         val containerColor = if (isSelected) {

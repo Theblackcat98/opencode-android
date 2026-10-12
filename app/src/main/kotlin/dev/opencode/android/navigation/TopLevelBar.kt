@@ -62,7 +62,17 @@ fun TopLevelBar(selected: TopLevelTab?, onSelect: (TopLevelTab) -> Unit, modifie
  * Settings returns to the home, and Back from the home returns to the server list.
  */
 fun NavHostController.openTab(tab: TopLevelTab, serverId: String?, current: TopLevelTab?) {
-    if (tab == current) return
+    if (tab == current) {
+        // Re-selecting the active tab pops to its root. The root can be absent: a session opened
+        // directly counts as the Chat tab without a ChatRoute beneath it. Then the pop fails and
+        // the tab opens normally below.
+        val popped = when (tab) {
+            TopLevelTab.HOME -> popBackStack<HomeRoute>(inclusive = false)
+            TopLevelTab.CHAT -> popBackStack<ChatRoute>(inclusive = false)
+            TopLevelTab.SETTINGS -> popBackStack<SettingsRoute>(inclusive = false)
+        }
+        if (popped) return
+    }
     when (tab) {
         TopLevelTab.HOME -> if (!popBackStack<HomeRoute>(inclusive = false)) {
             navigate(HomeRoute(serverId)) { launchSingleTop = true }
