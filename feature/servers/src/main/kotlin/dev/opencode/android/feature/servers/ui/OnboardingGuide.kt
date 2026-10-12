@@ -1,5 +1,6 @@
 package dev.opencode.android.feature.servers.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -116,6 +117,12 @@ private fun GuideStep(
                 fontFamily = FontFamily.Monospace,
                 modifier = Modifier
                     .fillMaxWidth()
+                    // onTertiaryContainer is only legible on tertiaryContainer: the old code drew
+                    // it on the card's surfaceVariant, which breaks contrast in both schemes.
+                    .background(
+                        color = MaterialTheme.colorScheme.tertiaryContainer,
+                        shape = OpenCodeThemeExtras.shapes.codeBlock,
+                    )
                     .padding(OpenCodeThemeExtras.spacing.sm),
                 color = MaterialTheme.colorScheme.onTertiaryContainer,
             )

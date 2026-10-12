@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -29,10 +30,8 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Comment
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DoneAll
-import androidx.compose.material.icons.filled.FirstPage
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.InsertDriveFile
-import androidx.compose.material.icons.filled.LastPage
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Badge
@@ -473,8 +472,10 @@ private fun ReviewNavigationBar(
             modifier = Modifier.fillMaxWidth().padding(horizontal = spacing.xs, vertical = spacing.xxs),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            // File steps use the same chevrons as the hunk steps: FirstPage/LastPage read as
+            // "jump to the ends", not "previous/next".
             IconButton(onClick = onPreviousFile, enabled = severalFiles) {
-                Icon(Icons.Filled.FirstPage, stringResource(R.string.review_previous_file))
+                Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, stringResource(R.string.review_previous_file))
             }
             TextButton(onClick = onPreviousHunk, modifier = Modifier.weight(1f)) {
                 Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = null)
@@ -485,7 +486,7 @@ private fun ReviewNavigationBar(
                 Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)
             }
             IconButton(onClick = onNextFile, enabled = severalFiles) {
-                Icon(Icons.Filled.LastPage, stringResource(R.string.review_next_file))
+                Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, stringResource(R.string.review_next_file))
             }
         }
     }
@@ -742,8 +743,9 @@ private fun FileTreeRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .defaultMinSize(minHeight = 48.dp)
             .background(background)
-            .clickable(enabled = !node.isDirectory) { onOpenFile(node.path) }
+            .clickable(enabled = !node.isDirectory, role = Role.Button) { onOpenFile(node.path) }
             .padding(horizontal = OpenCodeThemeExtras.spacing.md, vertical = OpenCodeThemeExtras.spacing.sm)
             .semantics {
                 contentDescription = if (node.isDirectory) directoryDesc else node.name

@@ -1,6 +1,5 @@
 package dev.opencode.android.feature.servers.ui
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,14 +13,17 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Article
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.BugReport
+import androidx.compose.material.icons.filled.Dns
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
@@ -51,6 +53,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.opencode.android.core.data.repository.ServerHealth
 import dev.opencode.android.core.data.repository.ServerProfile
+import dev.opencode.android.core.designsystem.component.OpenCodeEmptyState
 import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
 import dev.opencode.android.feature.servers.R
 
@@ -228,11 +231,15 @@ private fun ServerListItem(
     val itemDescription = stringResource(R.string.servers_item_description, server.name, server.baseUrl, healthLabel)
     val optionsLabel = stringResource(R.string.servers_options)
 
+    // The whole card is the way into the server: Card's onClick overload gives the ripple
+    // the card's shape and the row button semantics, and the overflow menu's own click wins
+    // over the card's, the way nested clickables do everywhere else.
     Card(
+        onClick = onHome,
         modifier = modifier
             .fillMaxWidth()
             .testTag(ServersTags.item(server.id)),
-        shape = RoundedCornerShape(12.dp),
+        shape = OpenCodeThemeExtras.shapes.card,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
         ),
@@ -240,35 +247,28 @@ private fun ServerListItem(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(OpenCodeThemeExtras.spacing.lg),
+                .padding(OpenCodeThemeExtras.spacing.lg)
+                .semantics(mergeDescendants = true) { contentDescription = itemDescription },
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Row(
-                modifier = Modifier
-                    .weight(1f)
-                    .clickable(onClick = onHome)
-                    .semantics(mergeDescendants = true) { contentDescription = itemDescription },
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                HealthStatusDot(health = server.health)
-                Spacer(modifier = Modifier.width(12.dp))
+            HealthStatusDot(health = server.health)
+            Spacer(modifier = Modifier.width(OpenCodeThemeExtras.spacing.md))
 
-                Column(modifier = Modifier.weight(1f)) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.sm),
-                    ) {
-                        Text(text = server.name, style = MaterialTheme.typography.titleMedium)
-                        if (server.isDefault) DefaultServerBadge()
-                        if (server.isCleartext) UnencryptedBadge()
-                    }
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = server.baseUrl,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+            Column(modifier = Modifier.weight(1f)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.sm),
+                ) {
+                    Text(text = server.name, style = MaterialTheme.typography.titleMedium)
+                    if (server.isDefault) DefaultServerBadge()
+                    if (server.isCleartext) UnencryptedBadge()
                 }
+                Spacer(modifier = Modifier.height(OpenCodeThemeExtras.spacing.xs))
+                Text(
+                    text = server.baseUrl,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
 
             Box {
@@ -332,33 +332,37 @@ private fun ServerListItem(
     }
 }
 
+/**
+ * First-run: the empty state is the app's first impression. The design-system empty state
+ * carries the illustration, title and subtitle; the primary action is a filled Button — a
+ * TextButton undersells the one action that matters; and the onboarding guide below is the
+ * illustrated checklist of what comes next.
+ */
 @Composable
 private fun EmptyServersView(
     onAddServerClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val spacing = OpenCodeThemeExtras.spacing
     Column(
         modifier = modifier
             .fillMaxSize()
-            .padding(OpenCodeThemeExtras.spacing.xl),
+            .verticalScroll(rememberScrollState())
+            .padding(spacing.xl),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Text(
-            text = stringResource(R.string.servers_empty_title),
-            style = MaterialTheme.typography.headlineSmall,
+        OpenCodeEmptyState(
+            title = stringResource(R.string.servers_empty_title),
+            subtitle = stringResource(R.string.servers_empty_subtitle),
+            icon = Icons.Filled.Dns,
+            action = {
+                Button(onClick = onAddServerClick) {
+                    Text(stringResource(R.string.servers_add_server))
+                }
+            },
         )
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(
-            text = stringResource(R.string.servers_empty_subtitle),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(spacing.lg))
         OnboardingGuideCard()
-        Spacer(modifier = Modifier.height(16.dp))
-        TextButton(onClick = onAddServerClick) {
-            Text(stringResource(R.string.servers_add_server))
-        }
     }
 }
