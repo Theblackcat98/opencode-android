@@ -11,6 +11,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -37,11 +38,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import dev.opencode.android.core.data.integrations.McpConfigProblem
 import dev.opencode.android.core.data.sync.SyncStatus
+import dev.opencode.android.core.designsystem.component.OpenCodeEmptyState
+import dev.opencode.android.core.designsystem.component.OpenCodeStatusPill
+import dev.opencode.android.core.designsystem.component.StatusKind
 import dev.opencode.android.core.designsystem.text.SyncedTextField
 import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
 import dev.opencode.android.core.model.McpProtocol
@@ -98,7 +103,12 @@ fun McpScreen(
                         Text(stringResource(R.string.mcp_loading))
                     }
 
-                    else -> if (state.rows.isEmpty()) EmptyNote(stringResource(R.string.mcp_empty))
+                    else -> if (state.rows.isEmpty()) {
+                        OpenCodeEmptyState(
+                            title = stringResource(R.string.mcp_empty),
+                            icon = Icons.Filled.Link,
+                        )
+                    }
                 }
             }
             items(state.rows, key = { it.name }) { server ->
@@ -176,10 +186,17 @@ private fun McpServerView(
             .testTag(IntegrationsTags.server(server.name)),
     ) {
         Text(text = server.name, style = MaterialTheme.typography.titleMedium)
-        Text(
-            text = statusText(server),
-            style = MaterialTheme.typography.bodySmall,
-            color = statusColour(server),
+        OpenCodeStatusPill(
+            kind = when (server.status) {
+                is McpStatus.Connected -> StatusKind.Success
+                is McpStatus.Pending -> StatusKind.Running
+                is McpStatus.Disabled -> StatusKind.Idle
+                is McpStatus.Failed -> StatusKind.Failure
+                is McpStatus.NeedsAuth -> StatusKind.Retrying
+                is McpStatus.Unknown -> StatusKind.Idle
+            },
+            label = statusText(server),
+            modifier = Modifier.padding(top = OpenCodeThemeExtras.spacing.xxs),
         )
         Row(horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.sm)) {
             when {
@@ -223,14 +240,6 @@ private fun statusText(server: McpServer): String = when (val status = server.st
     is McpStatus.Failed -> stringResource(R.string.mcp_status_failed, status.error)
     is McpStatus.NeedsAuth -> stringResource(R.string.mcp_status_needs_auth, status.error)
     is McpStatus.Unknown -> stringResource(R.string.mcp_status_unknown, status.declaredStatus.orEmpty())
-}
-
-/** A failed or `needs_auth` server is the one the user has to act on, so it is the coloured one. */
-@Composable
-private fun statusColour(server: McpServer) = when (server.status) {
-    is McpStatus.Failed, is McpStatus.NeedsAuth -> MaterialTheme.colorScheme.error
-    is McpStatus.Connected -> MaterialTheme.colorScheme.onSurfaceVariant
-    else -> MaterialTheme.colorScheme.onSurfaceVariant
 }
 
 /** The actions under the list: the resource browser and "add a server". */
@@ -356,8 +365,17 @@ fun McpAddSheetContent(
             )
         }
         TimeoutFields(draft = draft, onChange = onChange, invalid = McpConfigProblem.NOT_A_POSITIVE_INTEGER in problems)
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Switch(checked = draft.codemode, onCheckedChange = { onChange(draft.copy(codemode = it)) })
+        // The whole row is the toggle: the label is the tap target, not just the switch, and the
+        // Switch itself is the indicator, not a second control.
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.toggleable(
+                value = draft.codemode,
+                onValueChange = { onChange(draft.copy(codemode = it)) },
+                role = Role.Button,
+            ),
+        ) {
+            Switch(checked = draft.codemode, onCheckedChange = null)
             Text(
                 text = stringResource(R.string.mcp_add_codemode),
                 modifier = Modifier.padding(start = OpenCodeThemeExtras.spacing.md),
@@ -445,7 +463,10 @@ fun McpResourceSheetContent(
         }
         if (resources.isEmpty() && templates.isEmpty()) {
             item {
-                EmptyNote(stringResource(R.string.mcp_resources_empty))
+                OpenCodeEmptyState(
+                    title = stringResource(R.string.mcp_resources_empty),
+                    icon = Icons.Filled.Link,
+                )
             }
         }
         items(resources, key = { it.uri }) { resource ->
