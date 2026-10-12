@@ -31,7 +31,8 @@ class SessionPage(
     private val cache: ReadCacheStore,
     val filter: SessionFilter,
     private val pageSize: Int,
-    private val onSessions: suspend (List<SessionInfo>) -> Unit,
+    private val currentGeneration: () -> Long,
+    private val onSessions: suspend (Long?, List<SessionInfo>) -> Unit,
 ) {
     private var cursor: String? = null
     private val seen = LinkedHashSet<String>()
@@ -44,7 +45,7 @@ class SessionPage(
         key = ResourceKey(serverId, filter.directory),
         name = "session.list(${filter.name()})",
         scope = scope,
-        loader = ::fetch,
+        loader = { fetch(currentGeneration()) },
         onError = { error -> _paging.value = _paging.value.copy(error = error.message) },
     )
 
@@ -65,20 +66,20 @@ class SessionPage(
     }
 
     /** Fetches the next page. A no-op once the server has run out of pages. */
-    suspend fun loadMore() {
+    suspend fun loadMore(generation: Long) {
         if (!firstPage && cursor == null) {
             _paging.value = _paging.value.copy(loading = false, hasMore = false)
             return
         }
         _paging.value = _paging.value.copy(loading = true, error = null)
         try {
-            fetch()
+            fetch(generation)
         } finally {
             _paging.value = _paging.value.copy(loading = false, hasMore = cursor != null)
         }
     }
 
-    private suspend fun fetch(): List<SessionInfo> {
+    private suspend fun fetch(generation: Long? = null): List<SessionInfo> {
         val page = api.listSessions(
             limit = pageSize,
             order = "desc",
@@ -87,11 +88,12 @@ class SessionPage(
             directory = filter.directory,
             cursor = cursor,
         )
+        if (generation != null && generation != currentGeneration()) return emptyList()
         cursor = page.cursor.next
         val fresh = page.data.filter { seen.add(it.id) }
         firstPage = false
         if (fresh.isNotEmpty()) {
-            onSessions(fresh)
+            onSessions(generation, fresh)
             runCatching { cache.writeSessions(serverId, filter.directory, fresh) }
         }
         _paging.value = _paging.value.copy(loading = false, hasMore = cursor != null, error = null)

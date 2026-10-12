@@ -25,6 +25,8 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 
 /**
  * The session list over a real HTTP server: paging, filtering, the badges, and the live events.
@@ -169,6 +171,89 @@ class SessionStoreTest {
         store.setFilter(SessionFilter(projectId = "p2"))
         awaitQuiescent()
         assertEquals(listOf("ses_b"), store.visibleRows.value.map { it.id })
+    }
+
+    @Test
+    fun `outdated filter paging results do not publish into the new filter`() = runBlocking {
+        val store = newStore(pageSize = 2)
+        server.sessions = listOf(
+            sessionFixture("ses_a1", title = "alpha one", updated = 30L),
+            sessionFixture("ses_a2", title = "alpha two", updated = 20L),
+            sessionFixture("ses_a3", title = "alpha three", updated = 10L),
+            sessionFixture("ses_b", title = "beta", updated = 40L),
+        )
+        store.setFilter(SessionFilter(search = "alpha"))
+        awaitQuiescent()
+        assertEquals(listOf("ses_a1", "ses_a2"), store.visibleRows.value.map { it.id })
+
+        val started = CountDownLatch(1)
+        val release = CountDownLatch(1)
+        server.pagedSessionRequestStarted = started
+        server.releasePagedSessionRequest = release
+        store.loadMore()
+        assertTrue("the old filter's page was never started", started.await(STATE_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS))
+
+        store.setFilter(SessionFilter(search = "beta"))
+        awaitState("the new filter request never started") {
+            server.requests().any { it.url.query?.contains("search=beta") == true }
+        }
+        release.countDown()
+        awaitQuiescent()
+
+        assertEquals(listOf("ses_b"), store.visibleRows.value.map { it.id })
+        assertFalse("the old filter page must not change the new paging state", store.paging.value.hasMore)
+        assertFalse("the old filter page must not publish its session", store.info.value.containsKey("ses_a3"))
+    }
+
+    @Test
+    fun `outdated first page does not publish rows or paging state`() = runBlocking {
+        val store = newStore()
+        server.sessions = listOf(
+            sessionFixture("ses_alpha", title = "alpha", updated = 20L),
+            sessionFixture("ses_beta", title = "beta", updated = 10L),
+        )
+        val started = CountDownLatch(1)
+        val release = CountDownLatch(1)
+        server.blockedSessionSearch = "alpha"
+        server.sessionRequestStarted = started
+        server.releaseSessionRequest = release
+
+        store.setFilter(SessionFilter(search = "alpha"))
+        assertTrue("the old filter request was never started", started.await(STATE_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS))
+        store.setFilter(SessionFilter(search = "beta"))
+        awaitState("the new filter request never completed") { store.visibleRows.value.map { it.id } == listOf("ses_beta") }
+        release.countDown()
+        awaitQuiescent()
+
+        assertEquals(listOf("ses_beta"), store.visibleRows.value.map { it.id })
+        assertFalse("the stale first page must not overwrite paging state", store.paging.value.hasMore)
+    }
+
+    @Test
+    fun `overlapping load more calls issue one request and preserve the cursor`() = runBlocking {
+        val store = newStore(pageSize = 1)
+        server.sessions = listOf(
+            sessionFixture("ses_1", updated = 30L),
+            sessionFixture("ses_2", updated = 20L),
+            sessionFixture("ses_3", updated = 10L),
+        )
+        store.start()
+        awaitQuiescent()
+        val started = CountDownLatch(1)
+        val release = CountDownLatch(1)
+        server.pagedSessionRequestStarted = started
+        server.releasePagedSessionRequest = release
+
+        store.loadMore()
+        store.loadMore()
+        assertTrue("the page request was never started", started.await(STATE_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS))
+        delay(100)
+        assertEquals(1, server.requests().count { it.url.query?.contains("cursor=") == true })
+        release.countDown()
+        awaitQuiescent()
+
+        assertEquals(listOf("ses_1", "ses_2"), store.visibleRows.value.map { it.id })
+        assertTrue(store.paging.value.hasMore)
     }
 
     @Test
