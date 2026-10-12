@@ -10,7 +10,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
@@ -257,26 +256,20 @@ private fun MigrationCard(state: MaintenanceUiState) {
 @Composable
 private fun UpdateBanner(version: String) {
     val spacing = OpenCodeThemeExtras.spacing
-    Card(
-        modifier = Modifier.fillMaxWidth().padding(spacing.lg),
+    AdminCard(
+        title = stringResource(R.string.admin_update_title, version),
+        modifier = Modifier.padding(spacing.lg),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.secondaryContainer,
             contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
         ),
     ) {
-        Column(modifier = Modifier.padding(spacing.md), verticalArrangement = Arrangement.spacedBy(spacing.xs)) {
-            Text(
-                text = stringResource(R.string.admin_update_title, version),
-                style = MaterialTheme.typography.titleSmall,
-                modifier = Modifier.semantics { heading() },
-            )
-            Text(text = stringResource(R.string.admin_update_help), style = MaterialTheme.typography.bodySmall)
-            Text(
-                text = UPGRADE_COMMAND,
-                style = MaterialTheme.typography.bodySmall,
-                fontFamily = FontFamily.Monospace,
-            )
-        }
+        Text(text = stringResource(R.string.admin_update_help), style = MaterialTheme.typography.bodySmall)
+        Text(
+            text = UPGRADE_COMMAND,
+            style = MaterialTheme.typography.bodySmall,
+            fontFamily = FontFamily.Monospace,
+        )
     }
 }
 
