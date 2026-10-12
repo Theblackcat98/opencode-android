@@ -183,7 +183,7 @@ val verifyPublishableRelease = tasks.register("verifyPublishableRelease") {
             throw org.gradle.api.GradleException("verifyPublishableRelease requires complete release signing material.")
         }
 
-        val localProperties = java.util.Properties()
+        val localProperties = Properties()
         val localPropertiesFile = project.rootProject.file("local.properties")
         if (localPropertiesFile.isFile) {
             localPropertiesFile.inputStream().use { localProperties.load(it) }
@@ -218,7 +218,10 @@ val verifyPublishableRelease = tasks.register("verifyPublishableRelease") {
             } else {
                 listOf(apksigner.absolutePath, "verify", "--verbose", "--print-certs", apk.absolutePath)
             }
-            project.exec { commandLine(command) }
+            val exitCode = ProcessBuilder(command).inheritIO().start().waitFor()
+            if (exitCode != 0) {
+                throw org.gradle.api.GradleException("apksigner rejected $apk")
+            }
         }
     }
 }
