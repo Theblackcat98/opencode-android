@@ -127,6 +127,16 @@ class EventStreamClientTest {
     }
 
     @Test
+    fun preservesAReverseProxyPathPrefixWhenRequestingTheEventStream() = eventStreamTest {
+        server.enqueue(sseResponse(SERVER_CONNECTED_FRAME))
+        client = newClient(baseUrl = server.url("/opencode/").toString())
+        client.start(scope)
+        awaitConnected()
+
+        assertEquals("/opencode/api/event", server.takeRequest().url.encodedPath)
+    }
+
+    @Test
     fun sendsNoCredentialWhenTheServerHasNoPassword() = eventStreamTest {
         server.enqueue(sseResponse(SERVER_CONNECTED_FRAME))
         client = newClient(credential = null)
@@ -471,6 +481,7 @@ class EventStreamClientTest {
     }
 
     private fun newClient(
+        baseUrl: String = server.url("/").toString(),
         credential: String? = "token",
         watchdogMillis: Long = 30_000,
         watchdogCheckMillis: Long = 100,
@@ -479,7 +490,7 @@ class EventStreamClientTest {
         maxLogEntries: Int = EventStreamClient.DEFAULT_MAX_LOG_ENTRIES,
         connectivityMonitor: NetworkConnectivityMonitor? = null,
     ) = EventStreamClient(
-        baseUrl = server.url("/").toString(),
+        baseUrl = baseUrl,
         credentialProvider = { credential },
         okHttpClient = http,
         connectivityMonitor = connectivityMonitor,

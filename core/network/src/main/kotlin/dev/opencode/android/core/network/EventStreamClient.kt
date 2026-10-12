@@ -465,7 +465,11 @@ class EventStreamClient(
         }
 
         val request = Request.Builder()
-            .url(baseHttpUrl.newBuilder().encodedPath(EVENT_PATH).build())
+            .url(
+                baseHttpUrl.newBuilder()
+                    .encodedPath(baseHttpUrl.encodedPath.trimEnd('/') + EVENT_PATH)
+                    .build(),
+            )
             .header("Accept", "text/event-stream")
             .header("Cache-Control", "no-cache")
             .apply {
