@@ -38,8 +38,25 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import dev.opencode.android.feature.servers.R
+import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
+
+/** Owns the camera resources whose lifetime is shorter than the activity lifecycle. */
+internal class QrCodeScannerResources(
+    private val cameraExecutor: ExecutorService,
+    private val decoder: QrCodeDecoder,
+    private val unbindUseCases: () -> Unit,
+) {
+    val disposed = AtomicBoolean(false)
+
+    fun dispose() {
+        if (!disposed.compareAndSet(false, true)) return
+        unbindUseCases()
+        cameraExecutor.shutdown()
+        decoder.close()
+    }
+}
 
 /**
  * The live camera preview that scans the `opencode pair` QR code.
@@ -63,14 +80,25 @@ fun QrCodeScannerView(
     val lifecycleOwner = LocalLifecycleOwner.current
     val cameraExecutor = remember { Executors.newSingleThreadExecutor() }
     val delivered = remember { AtomicBoolean(false) }
+    val cameraProvider = remember { arrayOfNulls<ProcessCameraProvider>(1) }
+    val previewUseCase = remember { arrayOfNulls<Preview>(1) }
+    val analysisUseCase = remember { arrayOfNulls<ImageAnalysis>(1) }
+    val resources = remember {
+        QrCodeScannerResources(cameraExecutor, decoder) {
+            val provider = cameraProvider[0]
+            val preview = previewUseCase[0]
+            val analysis = analysisUseCase[0]
+            if (provider != null && preview != null && analysis != null) {
+                analysis.clearAnalyzer()
+                provider.unbind(preview, analysis)
+            }
+        }
+    }
     var cameraProblem by remember { mutableStateOf(false) }
     val scannerLabel = stringResource(R.string.qr_scanner_label)
 
     DisposableEffect(Unit) {
-        onDispose {
-            cameraExecutor.shutdown()
-            decoder.close()
-        }
+        onDispose { resources.dispose() }
     }
 
     Box(
@@ -88,8 +116,10 @@ fun QrCodeScannerView(
 
                 val cameraProviderFuture = ProcessCameraProvider.getInstance(ctx)
                 cameraProviderFuture.addListener({
+                    if (resources.disposed.get()) return@addListener
                     val bound = runCatching {
-                        val cameraProvider = cameraProviderFuture.get()
+                        val provider = cameraProviderFuture.get()
+                        if (resources.disposed.get()) return@runCatching
                         val preview = Preview.Builder().build().also {
                             it.surfaceProvider = previewView.surfaceProvider
                         }
@@ -97,17 +127,26 @@ fun QrCodeScannerView(
                             .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                             .build()
                         analysis.setAnalyzer(cameraExecutor) { image ->
-                            analyze(image, decoder, delivered, onQrCodeScanned)
+                            analyze(
+                                image,
+                                decoder,
+                                delivered,
+                                resources.disposed,
+                                onQrCodeScanned,
+                            )
                         }
-                        cameraProvider.unbindAll()
-                        cameraProvider.bindToLifecycle(
+                        provider.unbindAll()
+                        provider.bindToLifecycle(
                             lifecycleOwner,
                             CameraSelector.DEFAULT_BACK_CAMERA,
                             preview,
                             analysis,
                         )
+                        cameraProvider[0] = provider
+                        previewUseCase[0] = preview
+                        analysisUseCase[0] = analysis
                     }
-                    if (bound.isFailure) cameraProblem = true
+                    if (bound.isFailure && !resources.disposed.get()) cameraProblem = true
                 }, ContextCompat.getMainExecutor(ctx))
 
                 previewView
@@ -155,12 +194,13 @@ private fun analyze(
     image: ImageProxy,
     decoder: QrCodeDecoder,
     delivered: AtomicBoolean,
+    disposed: AtomicBoolean,
     onQrCodeScanned: (String) -> Unit,
 ) {
     try {
-        if (delivered.get()) return
+        if (disposed.get() || delivered.get()) return
         decoder.decode(image) { payload ->
-            if (payload.isNotBlank() && delivered.compareAndSet(false, true)) {
+            if (!disposed.get() && payload.isNotBlank() && delivered.compareAndSet(false, true)) {
                 onQrCodeScanned(payload)
             }
         }
