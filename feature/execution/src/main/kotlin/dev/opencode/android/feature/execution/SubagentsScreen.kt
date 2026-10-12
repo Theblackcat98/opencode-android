@@ -315,5 +315,3 @@ object SubagentTags {
     const val IDLE: String = "subagents-idle"
     const val ERROR: String = "subagents-error"
 }
-
-private const val INDENT_DP = 16

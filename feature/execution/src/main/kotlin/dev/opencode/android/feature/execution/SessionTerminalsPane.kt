@@ -366,7 +366,6 @@ object SessionTerminalTags {
     const val TALLER: String = "session-terminals-taller"
     const val SHORTER: String = "session-terminals-shorter"
     const val LIST: String = "session-terminals-list"
-    const val TERMINAL: String = "session-terminals-row-"
     const val SCREEN: String = "session-terminals-screen"
     const val AVAILABILITY: String = "session-terminals-availability"
     const val NOTICE: String = "session-terminals-notice-"

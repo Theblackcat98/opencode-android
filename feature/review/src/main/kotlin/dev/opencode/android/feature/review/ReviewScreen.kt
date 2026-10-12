@@ -116,7 +116,6 @@ fun ReviewScreen(
     onSelectBase: (String?) -> Unit,
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier,
-    contentDescription: String? = null,
     onOpenFiles: () -> Unit = {},
     onOpenTree: () -> Unit = {},
     onOpenComments: () -> Unit = {},

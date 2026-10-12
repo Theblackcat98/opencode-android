@@ -26,7 +26,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import dev.opencode.android.core.data.config.DefinitionKind
 import dev.opencode.android.core.designsystem.component.OpenCodeTextButton
@@ -386,10 +385,4 @@ internal fun kindLabel(kind: DefinitionKind): Int = when (kind) {
     DefinitionKind.COMMAND -> R.string.admin_definition_command
     DefinitionKind.SKILL -> R.string.admin_definition_skill
     DefinitionKind.INSTRUCTIONS -> R.string.admin_definition_instructions
-}
-
-/** A monospace line, for a path or a value the user has to read exactly. */
-@Composable
-internal fun MonoLine(value: String) {
-    Text(text = value, style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace)
 }

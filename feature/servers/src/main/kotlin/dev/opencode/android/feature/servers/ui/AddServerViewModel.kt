@@ -31,8 +31,6 @@ data class AddServerUiState(
     val errorTechnicalDetail: String? = null,
     val addedServerId: String? = null,
 ) {
-    /** The URL field only shows its hint while the user has not typed anything. */
-    val showUrlHint: Boolean get() = manualUrlInput.isEmpty()
 }
 
 /**

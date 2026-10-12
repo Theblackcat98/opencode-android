@@ -1,16 +1,13 @@
 package dev.opencode.android.feature.admin
 
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -415,31 +412,6 @@ private fun SourceList(row: ConfigRow) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-    }
-}
-
-/** The horizontal scroll a long list of chips needs, kept here so the screens agree on its shape. */
-@Composable
-internal fun ChipRow(content: @Composable () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .horizontalScroll(rememberScrollState())
-            .padding(horizontal = OpenCodeThemeExtras.spacing.lg, vertical = OpenCodeThemeExtras.spacing.xs),
-        horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.sm),
-        content = { content() },
-    )
-}
-
-/** The key's own name, for a screen that lists keys rather than rows. */
-@Composable
-internal fun KeyChip(key: ConfigKey, selected: Boolean, onClick: () -> Unit) {
-    FlowRow(modifier = Modifier.padding(OpenCodeThemeExtras.spacing.xxs)) {
-        FilterChip(
-            selected = selected,
-            onClick = onClick,
-            label = { Text(key.key, fontFamily = FontFamily.Monospace) },
-        )
     }
 }
 
