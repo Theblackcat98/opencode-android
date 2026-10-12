@@ -58,7 +58,7 @@ fun OpenCodeAccordionRow(
         Row(
             modifier = header
                 .fillMaxWidth()
-                .defaultMinSize(minHeight = 40.dp)
+                .defaultMinSize(minHeight = 48.dp)
                 .padding(horizontal = 8.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
