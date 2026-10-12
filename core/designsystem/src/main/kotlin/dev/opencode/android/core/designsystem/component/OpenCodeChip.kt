@@ -1,7 +1,7 @@
 package dev.opencode.android.core.designsystem.component
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.layout.minimumInteractiveComponentSize
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
@@ -24,7 +24,7 @@ import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
  * Wraps M3's chip family instead of hand-rolling selection: chips with an [onClick] are
  * [FilterChip]s, so selection exposes checkbox semantics (TalkBack announces the checked
  * state and a checkmark replaces the icon when selected), disabled colors come from the
- * scheme, and the touch target is 48dp through minimum-interactive-size enforcement.
+ * scheme, and the chip is at least 48dp in both dimensions.
  * Chips without [onClick] render the same visuals statically.
  */
 @Composable
@@ -55,7 +55,7 @@ fun OpenCodeChip(
             selected = selected,
             onClick = onClick,
             label = labelContent,
-            modifier = modifier.minimumInteractiveComponentSize(),
+            modifier = modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp),
             enabled = enabled,
             leadingIcon = leadingIcon,
             shape = shapes.chip,
@@ -75,10 +75,11 @@ fun OpenCodeChip(
             ),
         )
     } else {
+        // The static overload has no onClick/enabled: it is display-only, so there is no
+        // disabled state to render.
         AssistChip(
             label = labelContent,
-            modifier = modifier.minimumInteractiveComponentSize(),
-            enabled = enabled,
+            modifier = modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp),
             leadingIcon = leadingIcon,
             shape = shapes.chip,
             colors = AssistChipDefaults.assistChipColors(
