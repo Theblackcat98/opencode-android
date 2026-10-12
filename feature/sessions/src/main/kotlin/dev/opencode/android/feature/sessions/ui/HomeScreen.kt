@@ -19,7 +19,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.CreateNewFolder
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
@@ -41,8 +40,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -64,6 +61,7 @@ import dev.opencode.android.core.data.server.SessionRow
 import dev.opencode.android.core.designsystem.component.OpenCodeAvatar
 import dev.opencode.android.core.designsystem.component.OpenCodeEmptyState
 import dev.opencode.android.core.designsystem.component.OpenCodeStatusPill
+import dev.opencode.android.core.designsystem.component.OpenCodeTopAppBar
 import dev.opencode.android.core.designsystem.component.StatusKind
 import dev.opencode.android.core.designsystem.format.Formatters
 import dev.opencode.android.core.designsystem.format.relativeTimeDescription
@@ -107,8 +105,12 @@ fun HomeScreen(
     Scaffold(
         modifier = modifier,
         topBar = {
-            TopAppBar(
-                title = { ServerTitle(serverName, onSwitchServer) },
+            OpenCodeTopAppBar(
+                title = serverName ?: stringResource(R.string.home_title),
+                // The server name used to be the way back to the server list; the back arrow is the
+                // same affordance at a standard 48dp target, and it keeps the bar on one line.
+                onBack = onSwitchServer,
+                backDescription = stringResource(R.string.home_switch_server),
                 actions = {
                     // The inbox is only there when something is waiting: an always-visible empty inbox is a dead
                     // end, and a badge is the whole signal the user needs.
@@ -126,7 +128,6 @@ fun HomeScreen(
                         }
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface),
             )
         },
         floatingActionButton = {
@@ -220,27 +221,6 @@ fun HomeScreen(
 object HomeTags {
     const val ADD_PROJECT: String = "home:add-project"
     const val PROJECT_MENU: String = "home:project-menu"
-}
-
-/** The server's name as the title, and the way back to the server list when [onSwitchServer] is given. */
-@Composable
-private fun ServerTitle(serverName: String?, onSwitchServer: (() -> Unit)?) {
-    val name = serverName ?: stringResource(R.string.home_title)
-    val switchLabel = stringResource(R.string.home_switch_server)
-    val clickable = if (onSwitchServer != null) {
-        Modifier
-            .clip(OpenCodeThemeExtras.shapes.button)
-            .clickable(onClickLabel = switchLabel, role = Role.Button, onClick = onSwitchServer)
-    } else {
-        Modifier
-    }
-    Row(
-        modifier = clickable.padding(horizontal = OpenCodeThemeExtras.spacing.xs, vertical = OpenCodeThemeExtras.spacing.xs),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(text = name, style = MaterialTheme.typography.titleLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        if (onSwitchServer != null) Icon(Icons.Filled.ArrowDropDown, contentDescription = null)
-    }
 }
 
 /** A project's heading: avatar, name and path, what is running, "See all", and a menu to take it off the home. */
@@ -413,6 +393,7 @@ private fun AddProjectSheet(projects: List<Project>, onPick: (String) -> Unit, o
  */
 @Composable
 private fun PendingRequestsCard(count: Int, onClick: () -> Unit) {
+    val spacing = OpenCodeThemeExtras.spacing
     val label = stringResource(R.string.home_requests_waiting, count)
     Surface(
         modifier = Modifier
@@ -420,13 +401,13 @@ private fun PendingRequestsCard(count: Int, onClick: () -> Unit) {
             .clip(OpenCodeThemeExtras.shapes.card)
             .clickable(onClick = onClick)
             .semantics { contentDescription = label },
-        color = MaterialTheme.colorScheme.errorContainer,
-        contentColor = MaterialTheme.colorScheme.onErrorContainer,
+        color = OpenCodeThemeExtras.status.warning,
+        contentColor = OpenCodeThemeExtras.status.onWarning,
         shape = OpenCodeThemeExtras.shapes.card,
     ) {
-        Row(Modifier.padding(OpenCodeThemeExtras.spacing.lg), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.padding(spacing.lg), verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Outlined.Inbox, contentDescription = null)
-            Spacer(Modifier.size(12.dp))
+            Spacer(Modifier.size(spacing.md))
             Column(Modifier.weight(1f)) {
                 Text(text = stringResource(R.string.home_requests_title), style = MaterialTheme.typography.titleSmall)
                 Text(text = label, style = MaterialTheme.typography.bodyMedium)

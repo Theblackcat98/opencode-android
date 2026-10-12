@@ -35,13 +35,10 @@ import androidx.compose.material.icons.outlined.SmartToy
 import androidx.compose.material.icons.outlined.SwapHoriz
 import androidx.compose.material.icons.outlined.Terminal
 import androidx.compose.material.icons.outlined.Timeline
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -53,6 +50,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.opencode.android.core.designsystem.component.OpenCodeChip
+import dev.opencode.android.core.designsystem.component.OpenCodeTopAppBar
 import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
 import dev.opencode.android.core.model.Project
 import dev.opencode.android.feature.sessions.R
@@ -150,7 +148,6 @@ data class SettingsUiState(
  * listed, which was whichever directory the server saw first. Here it is the one the user picks, remembered per
  * server, and those rows are disabled while there is no project at all.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     state: SettingsUiState,
@@ -162,20 +159,9 @@ fun SettingsScreen(
     Scaffold(
         modifier = modifier,
         topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(stringResource(R.string.settings_title), style = MaterialTheme.typography.titleLarge)
-                        state.serverName?.let {
-                            Text(
-                                text = it,
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface),
+            OpenCodeTopAppBar(
+                title = stringResource(R.string.settings_title),
+                subtitle = state.serverName?.let { name -> { Text(name) } },
             )
         },
     ) { padding ->
