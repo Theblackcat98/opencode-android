@@ -640,6 +640,8 @@ fun SessionHost(
  * It shows the prompt that is about to be rolled back, because "undo" without saying *which turn*
  * is a confirmation of nothing: the user cannot tell a two-turn-old prompt from the last one.
  */
+private const val REVERT_PREVIEW_MAX_CHARS = 280
+
 @Composable
 private fun RevertConfirmationDialog(
     preview: String,
@@ -652,7 +654,7 @@ private fun RevertConfirmationDialog(
         title = { Text(stringResource(SessionsR.string.timeline_revert_here)) },
         text = {
             Text(
-                text = preview.take(280),
+                text = preview.take(REVERT_PREVIEW_MAX_CHARS),
                 style = MaterialTheme.typography.bodyMedium,
                 maxLines = 6,
             )

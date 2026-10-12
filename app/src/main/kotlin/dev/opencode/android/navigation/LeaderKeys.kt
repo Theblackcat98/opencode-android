@@ -21,6 +21,10 @@ const val LEADER_TIMEOUT_MILLIS = 1_500L
 
 /**
  * One leader mnemonic: the key that follows Ctrl+X, the letter the palette shows for it, and the command it runs.
+ *
+ * The palette is the teaching surface for these: every command row shows its leader letter
+ * (see CommandPaletteDialog), so a separate shortcuts screen would duplicate what the user
+ * already sees where they invoke the commands.
  */
 private class Mnemonic(val key: Key, val letter: Char, val commandId: String)
 

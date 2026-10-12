@@ -67,7 +67,6 @@ fun CompletionList(
     ) {
         LazyColumn(
             modifier = Modifier.fillMaxWidth().heightIn(max = MAX_LIST_HEIGHT),
-            verticalArrangement = Arrangement.spacedBy(0.dp),
         ) {
             items(completions, key = { it.key }) { completion ->
                 CompletionRow(completion = completion, onSelect = { onSelect(completion) })

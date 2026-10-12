@@ -129,6 +129,8 @@ fun AddServerScreen(
         ) {
             // In re-pair mode only the paste tab is shown, so the selection is indexed into
             // the visible tabs rather than into the full list.
+            // PrimaryTabRow is deliberate: these tabs are the screen's top-level organization
+            // (three distinct input methods), not sub-categories within one.
             PrimaryTabRow(selectedTabIndex = visibleTabs.indexOf(uiState.selectedTab).coerceAtLeast(0)) {
                 visibleTabs.forEach { tab ->
                     Tab(

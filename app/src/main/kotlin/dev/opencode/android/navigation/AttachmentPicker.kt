@@ -6,7 +6,6 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.AlertDialog
@@ -132,7 +131,7 @@ fun AttachSourceSheet(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(dev.opencode.android.feature.composer.R.string.composer_attach)) },
         text = {
-            Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(0.dp)) {
+            Column(Modifier.fillMaxWidth()) {
                 SourceRow(stringResource(dev.opencode.android.feature.composer.R.string.composer_attach_photo)) {
                     onPick(AttachSource.PHOTO)
                 }
@@ -144,7 +143,7 @@ fun AttachSourceSheet(
                 }
             }
         },
-        confirmButton = {
+        dismissButton = {
             TextButton(onClick = onDismiss) {
                 Text(stringResource(dev.opencode.android.feature.composer.R.string.composer_dismiss))
             }
