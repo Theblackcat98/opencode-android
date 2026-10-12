@@ -481,7 +481,7 @@ fun SendButton(
     val container = if (enabled) {
         MaterialTheme.colorScheme.primaryContainer
     } else {
-        MaterialTheme.colorScheme.surfaceVariant
+        MaterialTheme.colorScheme.surfaceContainerHighest
     }
     val content = if (enabled) {
         MaterialTheme.colorScheme.onPrimaryContainer

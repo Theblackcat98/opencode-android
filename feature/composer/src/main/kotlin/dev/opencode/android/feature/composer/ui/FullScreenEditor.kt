@@ -1,6 +1,7 @@
 package dev.opencode.android.feature.composer.ui
 
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
@@ -22,7 +23,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
@@ -66,7 +66,7 @@ fun FullScreenEditor(
                         TextButton(onClick = { onDone(text) }) {
                             Icon(Icons.Filled.Check, contentDescription = null)
                             Text(
-                                text = stringResource(R.string.composer_send),
+                                text = stringResource(R.string.composer_editor_done),
                                 modifier = Modifier.padding(start = OpenCodeThemeExtras.spacing.sm),
                             )
                         }
@@ -74,7 +74,9 @@ fun FullScreenEditor(
                 )
             },
         ) { insets ->
-            Surface(Modifier.fillMaxSize().padding(insets)) {
+            // The editor runs in its own Dialog window, so the activity's adjustResize does not
+            // reliably apply: without this the keyboard can cover the text being edited.
+            Surface(Modifier.fillMaxSize().padding(insets).imePadding()) {
                 OutlinedTextField(
                     value = text,
                     onValueChange = { edited: String -> text = edited },

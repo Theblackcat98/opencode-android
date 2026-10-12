@@ -20,6 +20,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
@@ -118,14 +119,18 @@ fun ModelRow(
     val spacing = OpenCodeThemeExtras.spacing
     Column(modifier = modifier.fillMaxWidth()) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(start = spacing.md, end = spacing.xs, top = spacing.sm),
+            // The whole header is the tap target, like AgentPicker: the RadioButton is the
+            // indicator, not the control.
+            modifier = Modifier
+                .fillMaxWidth()
+                .selectable(selected = selected, onClick = onSelect, role = Role.RadioButton)
+                .padding(start = spacing.md, end = spacing.xs, top = spacing.sm)
+                .semantics(mergeDescendants = true) {
+                    contentDescription = "$name. $ref"
+                },
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            RadioButton(
-                selected = selected,
-                onClick = onSelect,
-                modifier = Modifier.semantics(mergeDescendants = true) {},
-            )
+            RadioButton(selected = selected, onClick = null)
             Column(Modifier.weight(1f).padding(start = spacing.sm)) {
                 Text(name, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
                 Text(
@@ -193,7 +198,7 @@ fun ModelSectionHeader(text: String, modifier: Modifier = Modifier) {
     Text(
         text = text,
         style = MaterialTheme.typography.labelLarge,
-        color = MaterialTheme.colorScheme.primary,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = modifier.padding(horizontal = OpenCodeThemeExtras.spacing.lg, vertical = OpenCodeThemeExtras.spacing.sm),
     )
 }
