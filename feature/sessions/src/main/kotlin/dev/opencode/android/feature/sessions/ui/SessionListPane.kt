@@ -19,6 +19,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Chat
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -38,6 +41,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import dev.opencode.android.core.designsystem.component.OpenCodeEmptyState
 import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
 import dev.opencode.android.feature.sessions.R
 import kotlinx.coroutines.flow.first
@@ -75,6 +79,10 @@ private val PaneInsetSides = WindowInsetsSides.Start + WindowInsetsSides.Top + W
  *
  * [loading] is whether the rows are still being read: an empty list while loading is a spinner, not "No sessions
  * yet." A list that finished loading and is genuinely empty keeps the empty text.
+ *
+ * [onNewSession] starts a new session from the empty state's CTA. It is nullable because a tap is a navigation and
+ * the features may not navigate; when null the empty state shows no CTA rather than a dead one. The app module wires
+ * it where a new-session destination exists.
  */
 @Composable
 fun SessionListPane(
@@ -84,6 +92,7 @@ fun SessionListPane(
     listState: LazyListState,
     loading: Boolean = false,
     modifier: Modifier = Modifier,
+    onNewSession: (() -> Unit)? = null,
     /**
      * The system bars and cutout the pane keeps clear of. Nothing above the pane pads for them (the navigation graph
      * does not, and each screen pads itself), so the pane takes the same `safeDrawing` default the session screen's
@@ -133,10 +142,17 @@ fun SessionListPane(
                     )
                 }
             } else {
-                Text(
-                    text = stringResource(R.string.session_pane_empty),
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(horizontal = OpenCodeThemeExtras.spacing.lg),
+                OpenCodeEmptyState(
+                    title = stringResource(R.string.session_pane_empty),
+                    subtitle = stringResource(R.string.session_pane_empty_hint),
+                    icon = Icons.AutoMirrored.Filled.Chat,
+                    action = onNewSession?.let { newSession ->
+                        {
+                            Button(onClick = newSession) {
+                                Text(stringResource(R.string.session_pane_new_session))
+                            }
+                        }
+                    },
                 )
             }
         } else {
@@ -171,7 +187,9 @@ private fun SessionListRow(session: RecentSessionUi, selected: Boolean, onSelect
             .fillMaxWidth()
             .heightIn(min = RowHeight)
             .background(color = rowColor(selected), shape = MaterialTheme.shapes.small)
-            .selectable(selected = selected, role = Role.Button, onClick = { onSelect(session.id) })
+            // The pane is a single-selection list: one session on screen at a time, so the rows are
+            // radio buttons, not generic buttons — TalkBack announces the checked state.
+            .selectable(selected = selected, role = Role.RadioButton, onClick = { onSelect(session.id) })
             .semantics(mergeDescendants = true) { contentDescription = label }
             .padding(horizontal = OpenCodeThemeExtras.spacing.md, vertical = OpenCodeThemeExtras.spacing.md),
     )
