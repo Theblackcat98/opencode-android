@@ -2,11 +2,13 @@ package dev.opencode.android.feature.admin
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
@@ -114,7 +116,9 @@ fun ConfigEditorScreen(
                 style = MaterialTheme.typography.titleSmall,
                 modifier = Modifier.semantics { heading() },
             )
-            Row(horizontalArrangement = Arrangement.spacedBy(spacing.sm)) {
+            // Four short chips, but a narrow screen or a long translation still overflows a Row:
+            // FlowRow wraps instead of clipping.
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(spacing.sm)) {
                 ConfigTemplateChoice.entries.forEach { choice ->
                     FilterChip(
                         selected = state.template?.choice == choice,
@@ -174,7 +178,8 @@ fun ConfigEditorScreen(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             if (state.validating) {
-                CircularProgressIndicator(modifier = Modifier.heightIn(max = 20.dp))
+                // A fixed square: heightIn alone lets a narrow parent squeeze the spinner elliptical.
+                CircularProgressIndicator(modifier = Modifier.size(20.dp))
             }
             Button(
                 onClick = onSave,
