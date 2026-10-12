@@ -17,6 +17,7 @@ Every finding names the file that produced it, so a disagreement is a diff rathe
 | WebView | Hardened: local assets only, no file access, one bridged method |
 | Dangerous-action confirmations | Present for the four actions the plan names |
 | Analytics | None. No analytics or crash SDK is a dependency |
+| CI supply chain | Enforced — Actions pinned by commit SHA; CLI package SRI and Linux x64 binary checksum verified ([procedure](CI_SUPPLY_CHAIN.md)) |
 | Exported components | Two: the launcher activity, and the Quick Settings tile service, which only the system can bind (`BIND_QUICK_SETTINGS_TILE`). The `FileProvider` is not exported |
 | Backups | Disabled, with explicit extraction rules |
 | Secrets in the repository | None. No keystore, no `local.properties`, no credential literal |
