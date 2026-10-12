@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -26,6 +27,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.ExpandMore
@@ -41,6 +43,7 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -52,6 +55,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
@@ -151,14 +155,9 @@ private fun OlderMessagesRow(
                 )
             }
 
-            hasMore -> Text(
-                text = stringResource(R.string.session_load_older),
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier
-                    .clickable(onClick = onLoadOlder)
-                    .padding(OpenCodeThemeExtras.spacing.sm),
-            )
+            hasMore -> TextButton(onClick = onLoadOlder) {
+                Text(stringResource(R.string.session_load_older))
+            }
 
             else -> Text(
                 text = stringResource(R.string.session_start_of_history),
@@ -248,7 +247,10 @@ private fun UserMessageCard(message: SessionMessage.User, modifier: Modifier = M
             shape = RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp, bottomStart = 18.dp, bottomEnd = 4.dp),
         ) {
             Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
-                Text(text = message.text, style = MaterialTheme.typography.bodyLarge)
+                // Long-press to copy: message text is the thing people quote back to the agent.
+                SelectionContainer {
+                    Text(text = message.text, style = MaterialTheme.typography.bodyLarge)
+                }
                 message.files?.takeIf { it.isNotEmpty() }?.let { files ->
                     Spacer(Modifier.height(6.dp))
                     files.forEach { file ->
@@ -406,7 +408,9 @@ private fun AssistantMessageCard(
 
                 is AssistantBlock.Part -> when (val part = block.part) {
                     is AssistantContent.Text -> if (part.text.isNotBlank()) {
-                        MarkdownText(markdown = part.text, style = MaterialTheme.typography.bodyLarge)
+                        SelectionContainer {
+                            MarkdownText(markdown = part.text, style = MaterialTheme.typography.bodyLarge)
+                        }
                     }
 
                     is AssistantContent.Reasoning -> ReasoningBlock(part)
@@ -459,7 +463,8 @@ fun ReasoningBlock(part: AssistantContent.Reasoning, modifier: Modifier = Modifi
         Row(
             modifier = Modifier
                 .clip(OpenCodeThemeExtras.shapes.chip)
-                .clickable(onClickLabel = toggleLabel) { expanded = !expanded }
+                .clickable(onClickLabel = toggleLabel, role = Role.Button) { expanded = !expanded }
+                .defaultMinSize(minHeight = 48.dp)
                 .padding(vertical = OpenCodeThemeExtras.spacing.xs, horizontal = OpenCodeThemeExtras.spacing.xxs)
                 .semantics(mergeDescendants = true) { contentDescription = "$title, $toggleLabel" },
             verticalAlignment = Alignment.CenterVertically,

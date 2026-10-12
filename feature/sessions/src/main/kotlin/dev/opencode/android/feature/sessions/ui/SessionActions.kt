@@ -29,6 +29,7 @@ import androidx.compose.material.icons.outlined.NotificationsActive
 import androidx.compose.material.icons.outlined.Science
 import androidx.compose.material.icons.outlined.Timeline
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -258,6 +259,8 @@ fun SessionActionsSheet(
                         confirmingDelete = false
                         onDelete()
                     },
+                    // The destructive action wears the error color so it is not mistaken for a dismissal.
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
                 ) {
                     Text(stringResource(R.string.session_delete_confirm))
                 }
