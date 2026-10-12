@@ -28,6 +28,10 @@
     <string name="form_reply">Reply</string>
     <string name="form_answers_tool">Answers the %1$s tool call</string>
     <string name="form_cancel">Cancel</string>
+    <string name="form_discard_title">Discard your answers?</string>
+    <string name="form_discard_body">Dismissing now throws away what you typed for this request.</string>
+    <string name="form_discard_confirm">Discard</string>
+    <string name="form_discard_keep">Keep editing</string>
     <string name="form_custom_option">Something else</string>
     <string name="form_custom_hint">Type your own answer</string>
     <string name="form_required">Required</string>

@@ -2,15 +2,17 @@ package dev.opencode.android.feature.requests.ui
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -26,7 +28,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.unit.dp
 import dev.opencode.android.core.data.action.ActionError
 import dev.opencode.android.core.data.server.PendingRequest
 import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
@@ -77,8 +78,8 @@ fun PendingRequestsScreen(
             error?.let { AnswerFailedBanner(error = it, onDismiss = onDismissError) }
             if (requests.isEmpty()) {
                 Column(
-                    modifier = Modifier.fillMaxSize().padding(24.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxSize().padding(OpenCodeThemeExtras.spacing.xl),
+                    verticalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.sm),
                 ) {
                     Text(
                         text = stringResource(R.string.requests_inbox_empty_title),
@@ -91,12 +92,21 @@ fun PendingRequestsScreen(
                     )
                 }
             } else {
+                val spacing = OpenCodeThemeExtras.spacing
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    contentPadding = PaddingValues(spacing.md),
+                    verticalArrangement = Arrangement.spacedBy(spacing.sm),
                 ) {
-                    items(requests, key = { it.id }) { request ->
+                    itemsIndexed(requests, key = { _, request -> request.id }) { index, request ->
+                        // Stacked requests are separate decisions; the divider keeps one request's
+                        // buttons from visually merging into the next row's session label.
+                        if (index > 0) {
+                            HorizontalDivider(
+                                modifier = Modifier.padding(vertical = spacing.xs),
+                                color = MaterialTheme.colorScheme.outlineVariant,
+                            )
+                        }
                         Column(Modifier.fillMaxWidth()) {
                             Text(
                                 text = sessionTitles[request.sessionID]

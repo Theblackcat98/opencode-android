@@ -13,6 +13,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -28,6 +29,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -131,7 +133,10 @@ fun RequestDock(
         }
         if (expanded) {
             Column(Modifier.padding(start = spacing.md, end = spacing.md, bottom = spacing.md)) {
-                requests.forEach { request ->
+                requests.forEachIndexed { index, request ->
+                    // Stacked requests are separate decisions; the divider keeps one card's
+                    // buttons from visually merging into the next card's title.
+                    if (index > 0) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                     when (request) {
                         is PendingRequest.Form -> FormRequest(request, actions, busy = busy)
                         is PendingRequest.Permission -> PermissionCard(request.request, actions, busy = busy)
@@ -449,12 +454,47 @@ private fun ElicitationSheet(
     val form = request.form
     val answers = formAnswers(form)
     var attempted by rememberSaveable(form.id) { mutableStateOf(false) }
+    // Dismissing with answers typed would silently drop them, so a dirty sheet confirms first.
+    var confirmDiscard by rememberSaveable(form.id) { mutableStateOf(false) }
+    val dirty = answers.value != FormEngine.initialState(form)
     ModalBottomSheet(
-        onDismissRequest = { actions.onCancelForm(request) },
+        onDismissRequest = {
+            if (dirty) confirmDiscard = true else actions.onCancelForm(request)
+        },
         sheetState = sheetState,
         modifier = modifier,
     ) {
         ElicitationContent(form, answers.value, answers.set, actions, busy, attempted, onAttempt = { attempted = true })
+    }
+
+    if (confirmDiscard) {
+        AlertDialog(
+            onDismissRequest = { confirmDiscard = false },
+            title = { Text(stringResource(R.string.form_discard_title)) },
+            text = { Text(stringResource(R.string.form_discard_body)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        confirmDiscard = false
+                        actions.onCancelForm(request)
+                    },
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                ) {
+                    Text(stringResource(R.string.form_discard_confirm))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmDiscard = false }) {
+                    Text(stringResource(R.string.form_discard_keep))
+                }
+            },
+        )
+    }
+
+    // A swipe or scrim tap hides the sheet before the dialog is answered; if the user keeps
+    // editing, bring the sheet back instead of leaving a hidden sheet behind.
+    LaunchedEffect(confirmDiscard) {
+        if (!confirmDiscard) sheetState.show()
     }
 }
 
@@ -477,8 +517,8 @@ fun ElicitationContent(
 ) {
     val title = stringResource(R.string.form_mcp_title, form.mcpServer ?: form.title)
     Column(
-        modifier.fillMaxWidth().padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        modifier.fillMaxWidth().padding(OpenCodeThemeExtras.spacing.lg),
+        verticalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.sm),
     ) {
         Text(title, style = MaterialTheme.typography.titleMedium)
         form.mcpMessage?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
@@ -492,7 +532,7 @@ fun ElicitationContent(
             showProblems = showProblems,
         )
         Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.sm),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Button(
