@@ -114,7 +114,6 @@ object CodeHighlighter {
                 CodeLanguage.GO -> GO_KEYWORDS
                 else -> C_KEYWORDS
             },
-            charLiteral = language != CodeLanguage.RUST,
         )
 
         CodeLanguage.JSON, CodeLanguage.TOML -> dataLike(
@@ -162,7 +161,6 @@ private fun hashLike(
     keywords: Set<String>,
     tripleQuote: Boolean = false,
     backtickTemplate: Boolean = false,
-    charLiteral: Boolean = false,
     annotation: Boolean = true,
 ): LexerRules = LexerRules(
     lineComment = lineComment,
@@ -171,7 +169,6 @@ private fun hashLike(
     keywords = keywords,
     tripleQuote = tripleQuote,
     backtickTemplate = backtickTemplate,
-    charLiteral = charLiteral,
     annotation = annotation,
 )
 
@@ -249,12 +246,8 @@ internal data class LexerRules(
     val tripleQuote: Boolean = false,
     /** A backtick opens a template literal, which in JavaScript-family languages nests `${}`. */
     val backtickTemplate: Boolean = false,
-    /** Single-quote is a character literal rather than a string, in the C family. */
-    val charLiteral: Boolean = false,
     /** A `@` prefix marks an annotation or a decorator. */
     val annotation: Boolean = false,
-    /** A `-` prefix marks a YAML key, a Markdown list item, or a diff removal. */
-    val leadingDashKey: Boolean = false,
     /** A `<` starts a tag, which is what marks XML and HTML content. */
     val markup: Boolean = false,
     /** A `+`/`-` prefix marks a diff change, which is what marks a patch body. */

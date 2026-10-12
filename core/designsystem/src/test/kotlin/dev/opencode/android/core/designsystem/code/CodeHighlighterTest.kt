@@ -271,6 +271,57 @@ class CodeHighlighterTest {
     }
 
     @Test
+    fun `an escaped quote does not end the string`() {
+        val text = """val s = "a\"b""""
+        val line = CodeHighlighter.highlight(text, CodeLanguage.KOTLIN)
+
+        assertTiles(text, CodeLanguage.KOTLIN)
+        val strings = line.tokens.filter { it.kind == CodeTokenKind.STRING }
+        assertEquals(1, strings.size)
+        assertEquals(text.indexOf('"'), strings.single().start)
+        assertEquals(text.length, strings.single().end)
+    }
+
+    @Test
+    fun `an escaped backslash does not swallow the closing quote`() {
+        val text = """val s = "a\\" + 1"""
+        val line = CodeHighlighter.highlight(text, CodeLanguage.KOTLIN)
+
+        assertTiles(text, CodeLanguage.KOTLIN)
+        val string = line.tokens.single { it.kind == CodeTokenKind.STRING }
+        assertEquals(text.indexOf('"'), string.start)
+        assertEquals(text.indexOf('"', string.start + 1) + 1, string.end)
+        assertTrue(CodeTokenKind.NUMBER in line.tokens.map { it.kind })
+    }
+
+    @Test
+    fun `a backslash does not escape a block comment's close`() {
+        // Comments do not escape: the first */ ends it, backslash or not.
+        val text = """/* a \*/ + 1"""
+        val line = CodeHighlighter.highlight(text, CodeLanguage.KOTLIN)
+
+        assertTiles(text, CodeLanguage.KOTLIN)
+        val comment = line.tokens.first { it.kind == CodeTokenKind.COMMENT }
+        assertEquals(0, comment.start)
+        assertEquals(text.indexOf("*/") + 2, comment.end)
+        assertTrue(CodeTokenKind.NUMBER in line.tokens.map { it.kind })
+    }
+
+    @Test
+    fun `an escaped quote inside a triple-quoted literal does not close it early`() {
+        // The \" is an escape, so the two quotes after it are not a closer: the literal is still
+        // open at the end of the line. Kotlin has triple-quote rules; Python does not.
+        val text = "val x = \"\"\"a\\\"\"\""
+        val line = CodeHighlighter.highlight(text, CodeLanguage.KOTLIN)
+
+        assertTiles(text, CodeLanguage.KOTLIN)
+        val string = line.tokens.single { it.kind == CodeTokenKind.STRING }
+        assertEquals(text.indexOf('"'), string.start)
+        assertEquals(text.length, string.end)
+        assertTrue(line.carry.open)
+    }
+
+    @Test
     fun `a keyword is matched exactly, because the language does`() {
         // Kotlin's `val` is a keyword and `VAL` is an identifier. Colouring an identifier as a
         // keyword is a quiet lie, so the lookup does not fold case.
