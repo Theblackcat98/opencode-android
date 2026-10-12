@@ -13,12 +13,16 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -85,6 +89,7 @@ import dev.opencode.android.feature.sessions.ui.SessionListRoute
 import dev.opencode.android.feature.sessions.ui.SessionTabUi
 import dev.opencode.android.feature.sessions.ui.SettingsRoute
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.emptyFlow
@@ -345,6 +350,15 @@ fun OpenCodeApp(
     // The dialog and the leader keys read this one list, so a leader key cannot run a command the palette hides.
     val paletteOffered = paletteCommands(hasActiveServer = activeServerId != null)
     val leader = remember { LeaderKeyMachine() }
+    val leaderArmed by leader.armed
+    // The machine only disarms on the next key, so a Ctrl+X followed by silence would leave the armed
+    // indicator up: the wait times out here, through the same cancel() the key path uses.
+    LaunchedEffect(leaderArmed) {
+        if (leaderArmed) {
+            delay(LEADER_TIMEOUT_MILLIS)
+            leader.cancel()
+        }
+    }
     val onRunPaletteCommand: (PaletteCommand) -> Unit = { command ->
         when (command.id) {
             PaletteCommandIds.SERVERS -> navController.openShortcutDestination(ShortcutDestination.SERVERS)
@@ -593,6 +607,7 @@ fun OpenCodeApp(
                             onOpenSessionList = {
                                 navController.navigate(SessionListRoute(serverId = route.serverId))
                             },
+                            onOpenCommandPalette = { paletteOpen = true },
                             onNewSession = {
                                 // `/new`: the new-session flow is a sheet over the home, so this is the home with
                                 // the sheet already open. `popUpTo` the session so Back returns where it was.
@@ -1020,6 +1035,30 @@ fun OpenCodeApp(
                 .windowInsetsPadding(WindowInsets.navigationBars)
                 .padding(OpenCodeThemeExtras.spacing.lg),
         )
+
+        // The leader-key armed state, made visible: after Ctrl+X the app waits for a letter, and without
+        // this pill there is no sign it heard the first key. It sits at the top so it never fights the
+        // snackbar below, and the timeout above clears it.
+        if (leaderArmed) {
+            Surface(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .windowInsetsPadding(WindowInsets.statusBars)
+                    .padding(top = OpenCodeThemeExtras.spacing.sm),
+                shape = MaterialTheme.shapes.large,
+                color = MaterialTheme.colorScheme.secondaryContainer,
+            ) {
+                Text(
+                    text = stringResource(R.string.leader_armed),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                    modifier = Modifier.padding(
+                        horizontal = OpenCodeThemeExtras.spacing.lg,
+                        vertical = OpenCodeThemeExtras.spacing.sm,
+                    ),
+                )
+            }
+        }
 
         if (paletteOpen) {
             CommandPaletteDialog(

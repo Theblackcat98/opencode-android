@@ -23,6 +23,7 @@
     <!-- The command palette (navigation/CommandPalette.kt, CommandPaletteDialog.kt). Each command label is the text the palette lists. -->
     <string name="palette_search_label">Search commands</string>
     <string name="palette_no_match">No command matches.</string>
+    <string name="palette_clear">Clear search</string>
     <string name="palette_servers">Servers</string>
     <string name="palette_new_session">New session</string>
     <string name="palette_usage">Usage</string>
@@ -33,6 +34,10 @@
     <string name="palette_event_inspector">Event inspector</string>
     <!-- The leader-key mnemonic shown after a palette row (navigation/LeaderKeys.kt). %1$s is the letter that follows Ctrl+X. -->
     <string name="palette_leader_hint">Ctrl+X %1$s</string>
+    <!-- The pill shown while Ctrl+X waits for its letter (navigation/Routes.kt). -->
+    <string name="leader_armed">Ctrl+X: press a letter</string>
+    <!-- The session top bar's command-palette button (navigation/SessionHost.kt). -->
+    <string name="session_command_palette">Open command palette</string>
     <!-- The bottom bar's three tabs. -->
     <string name="tab_home">Home</string>
     <string name="tab_chat">Chat</string>

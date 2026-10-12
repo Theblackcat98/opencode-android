@@ -1,9 +1,11 @@
 package dev.opencode.android.navigation
 
+import androidx.compose.foundation.layout.Row
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Dvr
 import androidx.compose.material.icons.automirrored.outlined.Rule
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.AccountTree
 import androidx.compose.material.icons.outlined.Difference
 import androidx.compose.material.icons.outlined.FolderOpen
@@ -26,6 +28,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalUriHandler
@@ -94,6 +97,8 @@ fun SessionHost(
     onSessionDeleted: () -> Unit,
     onOpenChild: (String) -> Unit = {},
     onOpenSessionList: () -> Unit = {},
+    /** Opens the command palette: the session screen's touch trigger for it. */
+    onOpenCommandPalette: () -> Unit = {},
     onNewSession: () -> Unit = {},
     onOpenReview: (String?) -> Unit = {},
     /** The session's file browser, from the tools sheet's Files tile. */
@@ -157,6 +162,7 @@ fun SessionHost(
     val clipboard = LocalClipboardManager.current
     val uriHandler = LocalUriHandler.current
     val menu = stringResource(R.string.session_menu)
+    val search = stringResource(R.string.session_command_palette)
     var actionsOpen by remember { mutableStateOf(false) }
     var attentionOpen by remember { mutableStateOf(false) }
     var historyOpen by remember { mutableStateOf(false) }
@@ -357,8 +363,15 @@ fun SessionHost(
             )
         },
         menuSlot = {
-            IconButton(onClick = { actionsOpen = true }) {
-                Icon(Icons.Filled.MoreVert, contentDescription = menu)
+            // The palette's touch trigger on the session screen: the keyboard shortcut is undiscoverable
+            // for touch users, so it gets a button next to the overflow menu.
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = onOpenCommandPalette) {
+                    Icon(Icons.Filled.Search, contentDescription = search)
+                }
+                IconButton(onClick = { actionsOpen = true }) {
+                    Icon(Icons.Filled.MoreVert, contentDescription = menu)
+                }
             }
         },
     )
