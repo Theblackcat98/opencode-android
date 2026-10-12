@@ -9,13 +9,13 @@ import java.util.concurrent.Executors
 
 class QrCodeScannerResourcesTest {
     @Test
-    fun disposeUnbindsBeforeShutdownAndClosesDecoderOnlyOnce() {
+    fun disposeUnbindsCameraProviderBeforeShutdownAndClosesDecoderOnlyOnce() {
         val events = mutableListOf<String>()
         val executor = Executors.newSingleThreadExecutor()
         val decoder = RecordingDecoder(events)
-        val resources = QrCodeScannerResources(executor, decoder) {
-            events += "unbind"
-        }
+        val provider = RecordingCameraProvider(events)
+        val resources = QrCodeScannerResources(executor, decoder)
+        resources.retainCameraProvider(provider)
 
         resources.dispose()
         resources.dispose()
@@ -23,6 +23,14 @@ class QrCodeScannerResourcesTest {
         assertEquals(listOf("unbind", "close"), events)
         assertTrue(resources.disposed.get())
         assertTrue(executor.isShutdown)
+    }
+
+    private class RecordingCameraProvider(
+        private val events: MutableList<String>,
+    ) : QrCodeCameraProvider {
+        override fun unbind() {
+            events += "unbind"
+        }
     }
 
     private class RecordingDecoder(

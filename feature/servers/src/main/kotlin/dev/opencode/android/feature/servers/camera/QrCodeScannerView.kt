@@ -42,17 +42,29 @@ import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
 
+internal fun interface QrCodeCameraProvider {
+    fun unbind()
+}
+
 /** Owns the camera resources whose lifetime is shorter than the activity lifecycle. */
 internal class QrCodeScannerResources(
     private val cameraExecutor: ExecutorService,
     private val decoder: QrCodeDecoder,
-    private val unbindUseCases: () -> Unit,
 ) {
     val disposed = AtomicBoolean(false)
+    private var cameraProvider: QrCodeCameraProvider? = null
+
+    fun retainCameraProvider(provider: QrCodeCameraProvider) {
+        if (disposed.get()) {
+            provider.unbind()
+        } else {
+            cameraProvider = provider
+        }
+    }
 
     fun dispose() {
         if (!disposed.compareAndSet(false, true)) return
-        unbindUseCases()
+        cameraProvider?.unbind()
         cameraExecutor.shutdown()
         decoder.close()
     }
@@ -80,20 +92,7 @@ fun QrCodeScannerView(
     val lifecycleOwner = LocalLifecycleOwner.current
     val cameraExecutor = remember { Executors.newSingleThreadExecutor() }
     val delivered = remember { AtomicBoolean(false) }
-    val cameraProvider = remember { arrayOfNulls<ProcessCameraProvider>(1) }
-    val previewUseCase = remember { arrayOfNulls<Preview>(1) }
-    val analysisUseCase = remember { arrayOfNulls<ImageAnalysis>(1) }
-    val resources = remember {
-        QrCodeScannerResources(cameraExecutor, decoder) {
-            val provider = cameraProvider[0]
-            val preview = previewUseCase[0]
-            val analysis = analysisUseCase[0]
-            if (provider != null && preview != null && analysis != null) {
-                analysis.clearAnalyzer()
-                provider.unbind(preview, analysis)
-            }
-        }
-    }
+    val resources = remember { QrCodeScannerResources(cameraExecutor, decoder) }
     var cameraProblem by remember { mutableStateOf(false) }
     val scannerLabel = stringResource(R.string.qr_scanner_label)
 
@@ -142,9 +141,12 @@ fun QrCodeScannerView(
                             preview,
                             analysis,
                         )
-                        cameraProvider[0] = provider
-                        previewUseCase[0] = preview
-                        analysisUseCase[0] = analysis
+                        resources.retainCameraProvider(
+                            QrCodeCameraProvider {
+                                analysis.clearAnalyzer()
+                                provider.unbind(preview, analysis)
+                            },
+                        )
                     }
                     if (bound.isFailure && !resources.disposed.get()) cameraProblem = true
                 }, ContextCompat.getMainExecutor(ctx))
