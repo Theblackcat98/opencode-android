@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
@@ -350,7 +351,13 @@ fun DefinitionScreen(
             horizontalArrangement = Arrangement.spacedBy(spacing.sm),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            if (state.saving) CircularProgressIndicator(modifier = Modifier.heightIn(max = 20.dp))
+            // A fixed square (heightIn alone squeezes elliptical), announced: unlike the loading
+            // rows elsewhere, no text says a save is in flight, so the spinner must say it.
+            if (state.saving) CircularProgressIndicator(
+                modifier = Modifier
+                    .size(20.dp)
+                    .semantics { contentDescription = stringResource(R.string.admin_saving) },
+            )
             Button(onClick = onSave, enabled = state.canSave, modifier = Modifier.testTag("definition:save")) {
                 Text(stringResource(R.string.admin_save))
             }

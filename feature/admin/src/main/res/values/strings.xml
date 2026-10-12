@@ -9,6 +9,7 @@
     <string name="admin_retry">Retry</string>
     <string name="admin_remove_rule">Remove rule</string>
     <string name="admin_save">Save</string>
+    <string name="admin_saving">Saving…</string>
     <string name="admin_reload">Reload</string>
     <string name="admin_done">Done</string>
     <string name="admin_error_class">The server refused that (%1$s)</string>
@@ -32,6 +33,7 @@
     <string name="admin_config_title">Configuration</string>
     <string name="admin_config_loading">Reading the server\'s configuration…</string>
     <string name="admin_config_empty">This server reported no configuration keys.</string>
+    <string name="admin_config_search">Search keys</string>
     <string name="admin_configured_only">Configured only</string>
     <string name="admin_key_count">%1$d keys, %2$d in use</string>
     <string name="admin_sources">Where the configuration comes from</string>

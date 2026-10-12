@@ -21,6 +21,10 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -28,7 +32,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.unit.dp
 import dev.opencode.android.core.data.config.ConfigKey
 import dev.opencode.android.core.data.config.ConfigRow
 import dev.opencode.android.core.data.config.ConfigSource
@@ -69,6 +72,10 @@ fun ConfigScreen(
     configuredOnly: Boolean = false,
     onConfiguredOnlyChange: (Boolean) -> Unit = {},
 ) {
+    val spacing = OpenCodeThemeExtras.spacing
+    // A pure UI filter: the rows already arrived, so the query lives here in rememberSaveable,
+    // not in the ViewModel — the same pattern the P2 list blesses for catalog tab/search state.
+    var search by rememberSaveable { mutableStateOf("") }
     Column(modifier = modifier.fillMaxSize()) {
         ConfigToolbar(
             state = state,
@@ -79,13 +86,22 @@ fun ConfigScreen(
             onConfiguredOnlyChange = onConfiguredOnlyChange,
         )
         HorizontalDivider()
+        // Thirty-six keys in schema order is a list you scan, not one you read: the field narrows
+        // it by key name, case-insensitively.
+        LabelledField(
+            label = stringResource(R.string.admin_config_search),
+            value = search,
+            onValueChange = { search = it },
+            tag = "config:search",
+            modifier = Modifier.padding(horizontal = spacing.lg),
+        )
         when {
             state.loading && !state.loaded -> Row(
-                modifier = Modifier.fillMaxWidth().padding(24.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.fillMaxWidth().padding(spacing.xl),
+                horizontalArrangement = Arrangement.spacedBy(spacing.md),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                CircularProgressIndicator(modifier = Modifier.padding(4.dp))
+                CircularProgressIndicator(modifier = Modifier.padding(spacing.xs))
                 Text(stringResource(R.string.admin_config_loading))
             }
 
@@ -104,8 +120,14 @@ fun ConfigScreen(
                     ShellCard(state = state, onShellChange = onShellChange, onShellRequest = onShellRequest)
                 }
                 val rows = if (configuredOnly) state.configuredRows else state.rows
+                val visible = if (search.isBlank()) {
+                    rows
+                } else {
+                    val needle = search.trim()
+                    rows.filter { row -> row.key.key.contains(needle, ignoreCase = true) }
+                }
                 items(
-                    items = rows,
+                    items = visible,
                     // Namespaced, and keyed on the file's own name rather than the index. The namespace
                     // is load-bearing: `shell` is both one of the schema's keys and the row of the
                     // setting above, and two items in one `LazyColumn` with one key is a crash the
@@ -114,12 +136,12 @@ fun ConfigScreen(
                 ) { row ->
                     ConfigKeyCard(row = row)
                 }
-                if (rows.isEmpty()) {
+                if (visible.isEmpty()) {
                     item(key = FIXED_EMPTY) {
                         Text(
                             text = stringResource(R.string.admin_config_empty),
                             style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.padding(16.dp),
+                            modifier = Modifier.padding(spacing.lg),
                         )
                     }
                 }
