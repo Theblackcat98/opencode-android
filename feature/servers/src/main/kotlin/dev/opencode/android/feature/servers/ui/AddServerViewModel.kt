@@ -75,8 +75,12 @@ class AddServerViewModel @Inject constructor(
     )
     val uiState: StateFlow<AddServerUiState> = _uiState.asStateFlow()
 
-    fun selectTab(tab: AddServerTab) = _uiState.update {
-        it.copy(selectedTab = tab, error = null, errorTechnicalDetail = null)
+    fun selectTab(tab: AddServerTab) {
+        // A tab switch mid-pairing would strand the in-flight attempt's UI; the tabs unlock when it settles.
+        if (_uiState.value.isWorking) return
+        _uiState.update {
+            it.copy(selectedTab = tab, error = null, errorTechnicalDetail = null)
+        }
     }
 
     fun updatePairingLinkInput(input: String) = _uiState.update {

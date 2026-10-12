@@ -614,9 +614,22 @@ private fun InfoRow(label: String, value: String) {
     }
 }
 
+/** Humanized badge label for a connection event; the enum names are not UI copy. */
+private val ConnectionEventType.labelRes: Int
+    get() = when (this) {
+        ConnectionEventType.CONNECTING -> R.string.status_log_connecting
+        ConnectionEventType.CONNECTED -> R.string.status_log_connected
+        ConnectionEventType.HEARTBEAT -> R.string.status_log_heartbeat
+        ConnectionEventType.EVENT_RECEIVED -> R.string.status_log_event_received
+        ConnectionEventType.DISCONNECTED -> R.string.status_log_disconnected
+        ConnectionEventType.ERROR -> R.string.status_log_error
+        ConnectionEventType.WATCHDOG_TIMEOUT -> R.string.status_log_watchdog_timeout
+        ConnectionEventType.RESYNC -> R.string.status_log_resync
+        ConnectionEventType.EVENTS_DROPPED -> R.string.status_log_events_dropped
+    }
+
 @Composable
-private fun ConnectionLogItem(log: ConnectionLogEntry) {
-    val timeFormat = ClockFormatter.timeWithMillis(log.timestamp)
+private fun ConnectionLogItem(log: ConnectionLogEntry) {    val timeFormat = ClockFormatter.timeWithMillis(log.timestamp)
     val formattedTime = timeFormat.format(Date(log.timestamp))
     val badgeColor = when (log.type) {
         ConnectionEventType.CONNECTED, ConnectionEventType.RESYNC -> MaterialTheme.colorScheme.primaryContainer
@@ -652,7 +665,7 @@ private fun ConnectionLogItem(log: ConnectionLogEntry) {
                     .background(badgeColor, RoundedCornerShape(4.dp))
                     .padding(horizontal = OpenCodeThemeExtras.spacing.xs, vertical = OpenCodeThemeExtras.spacing.xxs),
             ) {
-                Text(text = log.type.name, style = MaterialTheme.typography.labelSmall)
+                Text(text = stringResource(log.type.labelRes), style = MaterialTheme.typography.labelSmall)
             }
             Text(
                 text = log.message,

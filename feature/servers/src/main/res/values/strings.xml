@@ -99,6 +99,16 @@
     <string name="status_test_connection">Test connection</string>
     <string name="status_test_ok">Reached OpenCode %1$s</string>
     <string name="status_connection_logs">Connection history</string>
+    <!-- Humanized connection-event badge labels; the enum names (EVENT_RECEIVED) are not UI copy. -->
+    <string name="status_log_connecting">Connecting</string>
+    <string name="status_log_connected">Connected</string>
+    <string name="status_log_heartbeat">Heartbeat</string>
+    <string name="status_log_event_received">Event received</string>
+    <string name="status_log_disconnected">Disconnected</string>
+    <string name="status_log_error">Error</string>
+    <string name="status_log_watchdog_timeout">Watchdog timeout</string>
+    <string name="status_log_resync">Resync</string>
+    <string name="status_log_events_dropped">Events dropped</string>
     <string name="status_clear_logs">Clear</string>
     <string name="status_no_logs">Nothing has been logged for this connection yet.</string>
     <string name="status_reconnect">Reconnect now</string>
