@@ -9,7 +9,8 @@ Everything a release needs, and an honest statement of what has not been done.
 | Release signing configured | **Yes** — reads `keystore.properties` or the environment, and attaches the config only when all four values are present |
 | A keystore in the repository | **No**, and none was created. There is no signing material anywhere in this tree. |
 | A signed artifact | **Not produced.** `assemblePlayRelease` produces `app-play-release-unsigned.apk`, named for what it is. |
-| The release tasks gated | **Yes** — they print what is missing rather than producing something that looks finished. |
+| Release assembly | **Compile-only unless signed.** `assemblePlayRelease` and `assembleFdroidRelease` can succeed and produce unsigned APKs; that success is not a release gate. |
+| Publishable release gate | **Available, not yet run.** `verifyPublishableRelease` requires signing material and verifies both generated APK signatures with `apksigner`; it does not upload or publish. |
 | The Play Console track progression | **Not run.** No account, no upload. |
 | GitHub Releases | **Not published.** No release was cut. |
 | The manual test matrix | **Partly run.** One API 36 phone emulator against a 2.0.18 dev server and a real 2.0.20 server (read-only); no second device, no tablet, no older Android. `docs/MANUAL_TEST_MATRIX.md` has the result of every row. |
@@ -50,30 +51,36 @@ otherwise.
    OPENCODE_KEYSTORE, OPENCODE_STORE_PASSWORD, OPENCODE_KEY_ALIAS, OPENCODE_KEY_PASSWORD
    ```
 
-3. **Build.**
+3. **Compile-check only (optional).**
 
    ```bash
    ./gradlew clean assemblePlayRelease assembleFdroidRelease
    ```
 
-   The `releaseMaterialMissing` task prints what it wanted and succeeds, so a build without the
-   material is still a useful compile check. With the material present the two APKs are signed:
+   These assemble tasks may succeed without signing material and produce `-unsigned.apk` files. That
+   is useful for checking compilation, but it is **not** release readiness and those outputs must not
+   be archived as publishable artifacts. With the material present they produce signed APKs, but the
+   assemble tasks themselves do not verify the signatures.
 
    ```
    app/build/outputs/apk/play/release/app-play-release.apk
    app/build/outputs/apk/fdroid/release/app-fdroid-release.apk
    ```
 
-   Note the name difference: with no material the output is `-unsigned.apk`, and that difference is
-   the whole safety mechanism. An unsigned artifact cannot be updated in place, so publishing one and
-   then signing a later build with the real key gives users two apps with the same id and no way to
-   move between them.
+   Without signing material, the `releaseMaterialMissing` task prints what is needed and the output
+   name includes `-unsigned.apk`. Never rely on the filename as the safety check.
 
-4. **Verify the signature before uploading anything.**
+4. **Build and verify the signed release candidate.**
 
    ```bash
-   $ANDROID_HOME/build-tools/*/apksigner verify --print-certs app-play-release.apk
+   ./gradlew verifyPublishableRelease
    ```
+
+   This task fails before assembling if the signing material is absent. With the four signing values
+   configured, it assembles both flavors and runs `apksigner verify --verbose --print-certs` on each
+   signed APK. It is a local verification gate only; it does not upload, publish, or replace the manual
+   test matrix. For F-Droid distribution, follow the downstream recipe and F-Droid signing guidance
+   below rather than uploading a Play-signed APK.
 
 5. **Run the manual test matrix** ([`MANUAL_TEST_MATRIX.md`](./MANUAL_TEST_MATRIX.md)) on a signed
    build. Not on a debug build: the debug build has a different application id and different
