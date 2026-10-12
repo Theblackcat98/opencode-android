@@ -9,12 +9,14 @@ import dev.opencode.android.core.data.capability.CapabilityPolicy
 import dev.opencode.android.core.data.capability.ExperimentalRoute
 import dev.opencode.android.core.data.capability.RouteAvailability
 import dev.opencode.android.core.data.server.ServerDataRegistry
+import dev.opencode.android.core.data.server.ServerDataSet
 import dev.opencode.android.core.data.server.SessionContextInspector
 import dev.opencode.android.core.data.transcript.TranscriptFormatter
 import dev.opencode.android.core.model.SessionMessage
 import dev.opencode.android.core.model.SessionTransfer
 import dev.opencode.android.core.model.json.OpenCodeJson
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -113,28 +115,72 @@ sealed interface TransferResult {
  * place this screen could drop frames, and it is a pure function so moving it costs nothing.
  */
 @HiltViewModel
-class HistoryViewModel @Inject constructor(
-    private val dataSets: ServerDataRegistry,
+class HistoryViewModel(
+    private val active: StateFlow<ServerDataSet?>,
 ) : ViewModel() {
+
+    /** Hilt's constructor: the read model of the server being followed. */
+    @Inject
+    constructor(dataSets: ServerDataRegistry) : this(dataSets.active)
 
     private val _state = MutableStateFlow(HistoryUiState())
     val state: StateFlow<HistoryUiState> = _state.asStateFlow()
 
     private var messages: List<SessionMessage> = emptyList()
     private var transferAllowed: Boolean = false
+    private var timelineJob: Job? = null
+    private var binding = SessionBinding(generation = 0, set = active.value, sessionID = null)
+
+    init {
+        // A server switch is also a new history scope, even when both servers happen to use the
+        // same session id. Rebind the selected session to the new server's own timeline.
+        viewModelScope.launch {
+            active.collect { set ->
+                if (set !== binding.set) bind(binding.sessionID, set)
+            }
+        }
+    }
 
     /** Binds to a session and folds in the prompts its timeline holds. */
     fun open(sessionID: String?) {
-        _state.value = _state.value.copy(sessionID = sessionID, cursor = null, hits = emptyList())
-        val set = dataSets.active.value ?: return
-        viewModelScope.launch {
-            set.sessions.loadSession(sessionID.orEmpty())
-            val timeline = sessionID?.let { set.timeline(it) }
-            timeline?.state?.collect { store ->
-                val next = store.messages
-                if (next == messages) return@collect
-                messages = next
-                _state.value = _state.value.copy(prompts = promptsOf(next))
+        bind(sessionID, active.value)
+    }
+
+    private fun bind(sessionID: String?, set: ServerDataSet?) {
+        if (binding.sessionID == sessionID && binding.set === set) return
+
+        val next = SessionBinding(binding.generation + 1, set, sessionID)
+        binding = next
+        timelineJob?.cancel()
+        messages = emptyList()
+        _state.value = _state.value.copy(
+            sessionID = sessionID,
+            prompts = emptyList(),
+            cursor = null,
+            search = "",
+            hits = emptyList(),
+            context = emptyList(),
+            contextOpen = false,
+            contextLoading = false,
+            transferring = false,
+            transfer = null,
+            exported = null,
+            error = null,
+            transferUsable = false,
+        )
+        fold()
+
+        if (sessionID == null || set == null) return
+        timelineJob = viewModelScope.launch {
+            // loadSession is suspendable. The binding check after it prevents a late response for the
+            // previous selection from attaching that session's timeline after a switch.
+            set.sessions.loadSession(sessionID)
+            if (binding != next) return@launch
+            set.timeline(sessionID).state.collect { store ->
+                if (binding != next) return@collect
+                val current = store.messages
+                messages = current
+                _state.value = _state.value.copy(prompts = promptsOf(current))
             }
         }
     }
@@ -175,23 +221,29 @@ class HistoryViewModel @Inject constructor(
             _state.value = _state.value.copy(hits = emptyList())
             return
         }
+        val selected = binding
+        val snapshot = messages
         viewModelScope.launch {
-            val hits = withContext(Dispatchers.Default) { hitsOf(messages, query) }
+            val hits = withContext(Dispatchers.Default) { hitsOf(snapshot, query) }
+            if (binding != selected || _state.value.search != query) return@launch
             _state.value = _state.value.copy(hits = hits)
         }
     }
 
     /** `session.context`: the messages after the last compaction, summarized. */
     fun loadContext() {
-        val id = _state.value.sessionID ?: return
-        val store = dataSets.active.value?.review ?: return
+        val selected = binding
+        val id = selected.sessionID ?: return
+        val store = selected.set?.review ?: return
         _state.value = _state.value.copy(contextOpen = true, contextLoading = true)
         viewModelScope.launch {
             val result = store.context(id)
             val error = result.exceptionOrNull()?.toActionError()
             val entries = result.getOrNull().orEmpty()
+            val context = withContext(Dispatchers.Default) { SessionContextInspector.inspect(entries) }
+            if (binding != selected) return@launch
             _state.value = _state.value.copy(
-                context = withContext(Dispatchers.Default) { SessionContextInspector.inspect(entries) },
+                context = context,
                 contextLoading = false,
                 error = error,
             )
@@ -221,21 +273,24 @@ class HistoryViewModel @Inject constructor(
      * button disappears rather than failing again.
      */
     fun export(format: TransferFormat) {
-        val id = _state.value.sessionID ?: return
-        val store = dataSets.active.value?.review ?: return
+        val selected = binding
+        val id = selected.sessionID ?: return
+        val store = selected.set?.review ?: return
         if (!_state.value.transferUsable) {
             _state.value = _state.value.copy(transfer = TransferResult.Refused(REFUSED_OFF))
             return
         }
+        val sanitize = _state.value.exportSanitize
         _state.value = _state.value.copy(transferring = true, transfer = null)
         viewModelScope.launch {
-            val result = store.export(id, _state.value.exportSanitize)
+            val result = store.export(id, sanitize)
             val error = result.exceptionOrNull()?.toActionError()
             store.recordCapability(ExperimentalRoute.SESSION_EXPORT, error)
+            if (binding != selected) return@launch
             val transfer = result.getOrNull()
-            val outcome = when {
+            val (outcome, exported) = when {
                 error != null || transfer == null ->
-                    TransferResult.Refused(error?.message.orEmpty().ifEmpty { REFUSED_OFF })
+                    TransferResult.Refused(error?.message.orEmpty().ifEmpty { REFUSED_OFF }) to null
 
                 // JSON is the server's own bytes and this client does not re-serialize them: a file
                 // that has been through a second encoder is a file whose imports may not round-trip.
@@ -244,10 +299,9 @@ class HistoryViewModel @Inject constructor(
                         runCatching { OpenCodeJson.encodeToString(SessionTransfer.serializer(), transfer) }.getOrNull()
                     }
                     if (encoded == null) {
-                        TransferResult.Refused(REFUSED_OFF)
+                        TransferResult.Refused(REFUSED_OFF) to null
                     } else {
-                        _state.value = _state.value.copy(exported = encoded)
-                        TransferResult.Exported(transfer.messages.size)
+                        TransferResult.Exported(transfer.messages.size) to encoded
                     }
                 }
 
@@ -257,11 +311,15 @@ class HistoryViewModel @Inject constructor(
                     val text = withContext(Dispatchers.Default) {
                         TranscriptFormatter.transcript(transfer.messages, transfer.info.title)
                     }
-                    _state.value = _state.value.copy(exported = text)
-                    TransferResult.Exported(transfer.messages.size)
+                    TransferResult.Exported(transfer.messages.size) to text
                 }
             }
-            _state.value = _state.value.copy(transferring = false, transfer = outcome)
+            if (binding != selected) return@launch
+            _state.value = _state.value.copy(
+                transferring = false,
+                transfer = outcome,
+                exported = exported ?: _state.value.exported,
+            )
             fold()
         }
     }
@@ -275,7 +333,8 @@ class HistoryViewModel @Inject constructor(
      * a request the server would answer `400`.
      */
     fun import(text: String) {
-        val store = dataSets.active.value?.review ?: return
+        val selected = binding
+        val store = selected.set?.review ?: return
         if (!_state.value.transferUsable) {
             _state.value = _state.value.copy(transfer = TransferResult.Refused(REFUSED_OFF))
             return
@@ -286,6 +345,7 @@ class HistoryViewModel @Inject constructor(
             val result = decoded?.let { store.import(it) }
             val error = result?.exceptionOrNull()?.toActionError()
             store.recordCapability(ExperimentalRoute.SESSION_IMPORT, error)
+            if (binding != selected) return@launch
             _state.value = _state.value.copy(
                 transferring = false,
                 transfer = when {
@@ -318,7 +378,7 @@ class HistoryViewModel @Inject constructor(
     }
 
     private fun fold() {
-        val store = dataSets.active.value?.review
+        val store = binding.set?.review
         val availability = store?.capabilities?.value?.get(ExperimentalRoute.SESSION_EXPORT)
         _state.value = _state.value.copy(
             transferAllowed = transferAllowed,
@@ -326,6 +386,12 @@ class HistoryViewModel @Inject constructor(
                 CapabilityPolicy.isUsable(availability ?: RouteAvailability.Unknown),
         )
     }
+
+    private data class SessionBinding(
+        val generation: Long,
+        val set: ServerDataSet?,
+        val sessionID: String?,
+    )
 
     private companion object {
         /** What the UI says when the button was pressed and the switch was off. */
