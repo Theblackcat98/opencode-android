@@ -98,7 +98,8 @@ fun RequestDock(
     if (requests.isEmpty()) return
     var expanded by rememberSaveable(requests.size) { mutableStateOf(initiallyExpanded) }
     Card(
-        modifier = modifier.fillMaxWidth(),
+        // The dock floats over the timeline: without its own margin it touches the screen edges.
+        modifier = modifier.fillMaxWidth().padding(horizontal = spacing.lg),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.tertiaryContainer,
             contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
