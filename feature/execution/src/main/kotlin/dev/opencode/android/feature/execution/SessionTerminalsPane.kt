@@ -6,8 +6,10 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -44,6 +46,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import dev.opencode.android.core.designsystem.component.OpenCodeTextButton
 import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
 import dev.opencode.android.core.model.SessionTerminalRead
 
@@ -71,6 +74,11 @@ fun SessionTerminalsPane(
     onRemove: (String) -> Unit,
     onDismissError: () -> Unit = {},
     modifier: Modifier = Modifier,
+    /**
+     * Opens the experimental settings. Null because navigation lives in the app module; when null
+     * the "switched off" notice is text-only rather than a dead button.
+     */
+    onOpenExperimentalSettings: (() -> Unit)? = null,
 ) {
     var removeTarget by remember { mutableStateOf<TerminalRow?>(null) }
     Column(modifier = modifier.fillMaxSize()) {
@@ -126,6 +134,13 @@ fun SessionTerminalsPane(
             !state.allowedBySetting -> Notice(
                 stringResource(R.string.session_terminals_off_body),
                 SessionTerminalTags.OFF,
+                action = onOpenExperimentalSettings?.let { openSettings ->
+                    {
+                        OpenCodeTextButton(onClick = openSettings) {
+                            Text(stringResource(R.string.session_terminals_open_settings))
+                        }
+                    }
+                },
             )
 
             !state.usable -> Notice(
@@ -320,15 +335,27 @@ private fun TerminalScreenText(
 }
 
 @Composable
-private fun Notice(text: String, tag: String, modifier: Modifier = Modifier) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.bodyMedium,
+private fun Notice(
+    text: String,
+    tag: String,
+    modifier: Modifier = Modifier,
+    action: (@Composable () -> Unit)? = null,
+) {
+    Column(
         modifier = modifier
             .fillMaxWidth()
-            .padding(OpenCodeThemeExtras.spacing.xl)
-            .testTag(SessionTerminalTags.NOTICE + tag),
-    )
+            .padding(OpenCodeThemeExtras.spacing.xl),
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.testTag(SessionTerminalTags.NOTICE + tag),
+        )
+        action?.let {
+            Spacer(modifier = Modifier.height(OpenCodeThemeExtras.spacing.sm))
+            it()
+        }
+    }
 }
 
 /** The tags the tests and the baselines address. */

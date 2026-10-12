@@ -88,6 +88,7 @@
     <string name="session_terminals_state_absent">not supported</string>
     <string name="session_terminals_state_unknown">not checked</string>
     <string name="session_terminals_off_body">Session terminals are an experimental feature and are switched off for this installation. Turn them on in the experimental settings.</string>
+    <string name="session_terminals_open_settings">Open settings</string>
     <string name="session_terminals_absent_body">This server does not have the experimental terminal routes. Nothing was sent.</string>
     <string name="session_terminals_host_down_body">This server has the terminal routes, but its persistent-terminal host is not running. Start it on the server machine.</string>
     <string name="session_terminals_empty_body">This session has no persistent terminal. Create one to give the agent a terminal it can read.</string>

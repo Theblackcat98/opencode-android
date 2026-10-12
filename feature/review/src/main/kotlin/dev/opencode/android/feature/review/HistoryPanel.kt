@@ -29,6 +29,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.opencode.android.core.data.action.ActionError
 import dev.opencode.android.core.data.server.SessionContextInspector
+import dev.opencode.android.core.designsystem.component.OpenCodeTextButton
 import dev.opencode.android.core.designsystem.text.SyncedTextField
 import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
 
@@ -136,12 +137,10 @@ fun HistoryPanel(
             HorizontalDivider()
         }
 
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            TextButton(onClick = onOpenContext) { Text(stringResource(R.string.context_title)) }
-        }
+        OpenCodeTextButton(
+            onClick = onOpenContext,
+            modifier = Modifier.padding(horizontal = OpenCodeThemeExtras.spacing.sm),
+        ) { Text(stringResource(R.string.context_title)) }
 
         // The transfer actions are their own row because three buttons plus the context row do not
         // fit a 360 dp phone in one line, and a button that has been pushed off the end of a row is
