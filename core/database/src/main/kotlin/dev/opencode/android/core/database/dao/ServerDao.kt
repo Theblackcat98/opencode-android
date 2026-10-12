@@ -49,6 +49,8 @@ interface ServerDao {
             val survivor = getAll().firstOrNull { it.id != server.id }
             update(server.copy(isDefault = survivor == null))
             survivor?.let { setDefaultServer(it.id) }
+        } else if (getDefaultServer() == null) {
+            update(server.copy(isDefault = true))
         } else {
             update(server)
         }

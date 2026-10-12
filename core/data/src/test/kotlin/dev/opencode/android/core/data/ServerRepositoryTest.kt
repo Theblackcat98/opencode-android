@@ -12,6 +12,7 @@ import dev.opencode.android.core.data.repository.ServerHealth
 import dev.opencode.android.core.data.repository.ServerRepository
 import dev.opencode.android.core.data.security.InMemoryCredentialStore
 import dev.opencode.android.core.database.OpenCodeDatabase
+import dev.opencode.android.core.database.entity.ServerEntity
 import dev.opencode.android.core.network.PairingClient
 import dev.opencode.android.core.network.PairingLink
 import dev.opencode.android.core.network.ServerApiFactory
@@ -155,6 +156,37 @@ class ServerRepositoryTest {
         assertTrue(updated.trustUserCertificates)
         assertTrue("The new address must be the one that authenticates", credentialCache.holds("http://localhost:4098"))
         assertFalse("The old address must not keep the token", credentialCache.holds("http://localhost:4096"))
+    }
+
+    @Test
+    fun editingAServerInLegacyDefaultlessStatePromotesItToDefault() = runTest {
+        val legacyServer = ServerEntity(
+            id = "legacy",
+            name = "Legacy",
+            baseUrl = "http://localhost:4096",
+            isDefault = false,
+        )
+        val editedServer = ServerEntity(
+            id = "edited",
+            name = "Edited",
+            baseUrl = "http://localhost:4097",
+            isDefault = false,
+        )
+        db.serverDao().insert(legacyServer)
+        db.serverDao().insert(editedServer)
+
+        repository.updateServer(
+            id = editedServer.id,
+            name = "Edited server",
+            baseUrl = editedServer.baseUrl,
+            credential = null,
+            isDefault = false,
+            trustUserCertificates = false,
+        )
+
+        assertFalse(repository.getServer(legacyServer.id)!!.isDefault)
+        assertTrue(repository.getServer(editedServer.id)!!.isDefault)
+        assertEquals(editedServer.id, repository.observeDefaultServer().first()!!.id)
     }
 
     @Test
