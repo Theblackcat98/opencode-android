@@ -3,6 +3,8 @@ package dev.opencode.android.navigation
 import android.os.SystemClock
 import android.view.View
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.State
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
@@ -71,6 +73,14 @@ sealed interface LeaderStep {
 class LeaderKeyMachine(private val timeoutMillis: Long = LEADER_TIMEOUT_MILLIS) {
     private var armedAtMillis: Long? = null
 
+    private val _armed = mutableStateOf(false)
+
+    /**
+     * Whether the leader is waiting for its letter. The machine sets it; the caller reads it to show
+     * the armed indicator, and clears it through [cancel] when the wait times out.
+     */
+    val armed: State<Boolean> = _armed
+
     /**
      * Feeds one key event and says what it did.
      *
@@ -86,6 +96,18 @@ class LeaderKeyMachine(private val timeoutMillis: Long = LEADER_TIMEOUT_MILLIS) 
         offered: List<PaletteCommand>,
     ): LeaderStep {
         if (type != KeyEventType.KeyDown) return LeaderStep.Ignored
+        val step = nextStep(key, ctrl, altOrMeta, nowMillis, offered)
+        _armed.value = step == LeaderStep.Armed
+        return step
+    }
+
+    private fun nextStep(
+        key: Key,
+        ctrl: Boolean,
+        altOrMeta: Boolean,
+        nowMillis: Long,
+        offered: List<PaletteCommand>,
+    ): LeaderStep {
         val armedAt = armedAtMillis
         armedAtMillis = null
         if (altOrMeta) return LeaderStep.Ignored
@@ -102,6 +124,7 @@ class LeaderKeyMachine(private val timeoutMillis: Long = LEADER_TIMEOUT_MILLIS) 
     /** Drops a waiting leader, for a key the caller handled itself, such as Ctrl+P opening the palette. */
     fun cancel() {
         armedAtMillis = null
+        _armed.value = false
     }
 }
 
