@@ -49,7 +49,6 @@
     <string name="session_start_of_history">Start of the conversation</string>
     <string name="session_load_older">Load earlier messages</string>
     <string name="session_title_untitled">Untitled session</string>
-    <string name="session_offline_notice">Offline: showing the last messages this device saved</string>
     <string name="session_following">Following</string>
     <string name="session_not_following">Not following</string>
 
@@ -115,7 +114,6 @@
     <string name="tool_files_changed">%1$d files</string>
     <string name="tool_output">Output</string>
     <string name="tool_input">Input</string>
-    <string name="tool_answers">Answer: %1$s</string>
     <string name="tool_child_session">Subagent session %1$s</string>
     <string name="tool_lines">%1$d lines</string>
     <string name="tool_diff_more">… %1$d more lines</string>

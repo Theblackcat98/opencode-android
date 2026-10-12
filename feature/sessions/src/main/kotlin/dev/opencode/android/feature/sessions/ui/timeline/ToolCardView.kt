@@ -5,9 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -35,7 +33,6 @@ import androidx.compose.material.icons.outlined.FolderOpen
 import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.Terminal
 import androidx.compose.material.icons.outlined.TravelExplore
-import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -500,38 +497,6 @@ private fun ToolStatus.labelRes(): Int = when (this) {
     is ToolStatus.Failed -> R.string.tool_failed
 }
 
-/** The subagent chip, shown under its parent's tool card. */
-@Composable
-fun SubagentChip(sessionID: String, modifier: Modifier = Modifier) {
-    AssistChip(
-        onClick = {},
-        label = {
-            Text(
-                text = stringResource(R.string.tool_child_session, sessionID),
-                style = MaterialTheme.typography.labelSmall,
-            )
-        },
-        modifier = modifier.padding(top = OpenCodeThemeExtras.spacing.xs),
-    )
-}
 
-/** The answers a `question` tool recorded, shown as chips. */
-@Composable
-fun AnswerChips(answers: List<String>, modifier: Modifier = Modifier) {
-    Row(
-        modifier = modifier.padding(top = OpenCodeThemeExtras.spacing.xs),
-        horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.xs),
-    ) {
-        answers.forEach { answer ->
-            AssistChip(
-                onClick = {},
-                label = {
-                    Text(
-                        text = stringResource(R.string.tool_answers, answer),
-                        style = MaterialTheme.typography.labelSmall,
-                    )
-                },
-            )
-        }
-    }
-}
+
+

@@ -23,7 +23,6 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.Difference
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -255,17 +254,4 @@ private fun Subtitle(state: SessionUiState) {
     }
 }
 
-/** The offline notice: shown when the timeline came from the cache and no server has answered. */
-@Composable
-fun OfflineNotice(modifier: Modifier = Modifier) {
-    Surface(
-        modifier = modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.tertiaryContainer,
-    ) {
-        Text(
-            text = stringResource(R.string.session_offline_notice),
-            style = MaterialTheme.typography.labelMedium,
-            modifier = Modifier.padding(OpenCodeThemeExtras.spacing.sm),
-        )
-    }
-}
+

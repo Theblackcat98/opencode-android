@@ -21,7 +21,6 @@ import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -492,8 +491,4 @@ private fun BrowserRow(entry: FileSystemEntry, onClick: () -> Unit) {
     )
 }
 
-/** A filter chip reused by the model picker; kept here so the sheet and the picker agree. */
-@Composable
-fun VariantChip(variant: String, selected: Boolean, onClick: () -> Unit) {
-    FilterChip(selected = selected, onClick = onClick, label = { Text(variant) })
-}
+
