@@ -299,6 +299,8 @@ class ComposerViewModel(
     private val sessionID = MutableStateFlow<String?>(null)
     private val effects = Channel<ComposerEffect>(Channel.BUFFERED)
     private var openedDraftKey: DraftKey? = null
+    private var openGeneration = 0L
+    private var draftEditGeneration = 0L
 
     /** The one-shot actions the composition root carries out. */
     val effect: Flow<ComposerEffect> = effects.receiveAsFlow()
@@ -571,6 +573,7 @@ class ComposerViewModel(
      */
     fun open(sessionID: String) {
         val set = active.value ?: return
+        val generation = ++openGeneration
         val draftKey = DraftKey(set.serverId, sessionID)
         if (openedDraftKey != draftKey) {
             val current = local.value
@@ -579,18 +582,38 @@ class ComposerViewModel(
         }
         this.sessionID.value = sessionID
         set.timeline(sessionID).start()
+        val draftEditGenerationAtOpen = draftEditGeneration
         viewModelScope.launch {
-            val directory = set.sessions.loadSession(sessionID)?.location?.directory ?: return@launch
+            val session = set.sessions.loadSession(sessionID)
+            if (!isCurrentOpen(set, sessionID, draftKey, generation)) return@launch
+            val directory = session?.location?.directory ?: return@launch
             set.agents(directory).sync()
+            if (!isCurrentOpen(set, sessionID, draftKey, generation)) return@launch
             set.models(directory).sync()
+            if (!isCurrentOpen(set, sessionID, draftKey, generation)) return@launch
             set.composerCatalogs.commands(directory).sync()
+            if (!isCurrentOpen(set, sessionID, draftKey, generation)) return@launch
             set.composerCatalogs.skills(directory).sync()
+            if (!isCurrentOpen(set, sessionID, draftKey, generation)) return@launch
             set.composerCatalogs.references(directory).sync()
-            restoreDraft(directory, sessionID)
+            if (!isCurrentOpen(set, sessionID, draftKey, generation)) return@launch
+            restoreDraft(set, sessionID, draftKey, generation, draftEditGenerationAtOpen)
         }
     }
 
+    private fun isCurrentOpen(
+        set: ServerDataSet,
+        sessionID: String,
+        draftKey: DraftKey,
+        generation: Long,
+    ): Boolean =
+        generation == openGeneration &&
+            active.value === set &&
+            this.sessionID.value == sessionID &&
+            openedDraftKey == draftKey
+
     fun setText(text: String, cursor: Int = text.length) {
+        markDraftChanged(text)
         local.value = local.value.copy(
             text = text,
             cursor = cursor.coerceIn(0, text.length),
@@ -601,6 +624,10 @@ class ComposerViewModel(
         )
         refresh()
         persistDraft()
+    }
+
+    private fun markDraftChanged(text: String) {
+        if (local.value.text != text) draftEditGeneration++
     }
 
     /**
@@ -945,6 +972,7 @@ class ComposerViewModel(
     /** Puts the restored prompt into the box: text, attachments and comments together. */
     private fun restore(revert: SessionRevert, message: SessionMessage.User?) {
         val prompt = message?.let(::restoredFrom) ?: return
+        markDraftChanged(prompt.text)
         local.value = local.value.copy(
             text = prompt.text,
             cursor = prompt.text.length,
@@ -965,10 +993,12 @@ class ComposerViewModel(
         local.value = local.value.copy(compacting = true, error = null)
         viewModelScope.launch {
             val error = set.commands.compact(id, local.value.delivery).actionErrorOrNull
+            val text = if (error == null) "" else local.value.text
+            markDraftChanged(text)
             local.value = local.value.copy(
                 compacting = false,
                 error = error,
-                text = if (error == null) "" else local.value.text,
+                text = text,
             )
         }
     }
@@ -984,6 +1014,7 @@ class ComposerViewModel(
         val id = sessionID.value ?: return
         val set = active.value ?: return
         if (question.isBlank()) return
+        markDraftChanged("")
         local.value = local.value.copy(sideQuestion = SideQuestion(question), text = "", error = null)
         viewModelScope.launch {
             val result = set.commands.generate(id, question)
@@ -1119,6 +1150,7 @@ class ComposerViewModel(
         val span = detectTrigger(current.text, current.cursor) ?: return
         val text = current.text
         val updated = text.substring(0, span.start) + completion.insertText + text.substring(span.end)
+        markDraftChanged(updated)
         local.value = current.copy(
             text = updated,
             cursor = span.start + completion.insertText.length,
@@ -1179,6 +1211,7 @@ class ComposerViewModel(
             PromptHistory.newer(history, current.historyCursor)
         }
         val text = cursor.text(history)
+        markDraftChanged(text)
         local.value = current.copy(historyCursor = cursor, text = text, cursor = text.length, problem = null)
         refresh()
         persistDraft()
@@ -1220,6 +1253,7 @@ class ComposerViewModel(
     }
 
     private fun restore(entry: StashEntry) {
+        markDraftChanged(entry.text)
         local.value = local.value.copy(
             text = entry.text,
             cursor = entry.text.length,
@@ -1401,6 +1435,7 @@ class ComposerViewModel(
     private fun clearComposer() {
         val serverId = active.value?.serverId
         val session = sessionID.value
+        markDraftChanged("")
         local.value = local.value.copy(
             text = "",
             cursor = 0,
@@ -1439,15 +1474,27 @@ class ComposerViewModel(
         }
     }
 
-    private fun restoreDraft(directory: String, session: String) {
-        val serverId = active.value?.serverId ?: return
-        val draftKey = DraftKey(serverId, session)
+    private suspend fun restoreDraft(
+        set: ServerDataSet,
+        session: String,
+        draftKey: DraftKey,
+        generation: Long,
+        draftEditGenerationAtOpen: Long,
+    ) {
         if (local.value.loadedDraftFor == draftKey) return
-        viewModelScope.launch {
-            val draft = memory.draft(serverId, session).first()
-            local.value = local.value.copy(text = draft, cursor = draft.length, loadedDraftFor = draftKey)
-            refresh()
+        if (draftEditGeneration != draftEditGenerationAtOpen) {
+            local.value = local.value.copy(loadedDraftFor = draftKey)
+            return
         }
+        val draft = memory.draft(set.serverId, session).first()
+        if (!isCurrentOpen(set, session, draftKey, generation)) return
+        if (draftEditGeneration != draftEditGenerationAtOpen) {
+            local.value = local.value.copy(loadedDraftFor = draftKey)
+            return
+        }
+        if (local.value.loadedDraftFor == draftKey) return
+        local.value = local.value.copy(text = draft, cursor = draft.length, loadedDraftFor = draftKey)
+        refresh()
     }
 
     /** For an operation that names its own session in what it carries, so none has to be open here. */
