@@ -4,10 +4,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
@@ -23,14 +24,15 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Terminal
 import androidx.compose.material.icons.filled.VpnKey
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.AssistChip
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -41,10 +43,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -420,26 +423,34 @@ fun ExtraKeysRow(
         ExtraKeys.row.forEach { key ->
             val isPressed = key in pressed
             val latches = pressed.filter(ExtraKeys::isModifier)
-            Box(
+            // An M3 button, not a hand-rolled box: the role is Button by construction, and a
+            // latched modifier exposes `selected` so TalkBack announces the latch state.
+            Button(
+                onClick = {
+                    if (ExtraKeys.isModifier(key)) {
+                        pressed = if (isPressed) pressed - key else pressed + key
+                    }
+                    onKeys(latches + key)
+                },
                 modifier = Modifier
                     .width(KEY_WIDTH)
                     .height(KEY_HEIGHT)
-                    .clip(MaterialTheme.shapes.small)
-                    .background(
-                        if (isPressed) {
-                            MaterialTheme.colorScheme.primaryContainer
-                        } else {
-                            MaterialTheme.colorScheme.surface
-                        },
-                    )
-                    .clickable {
-                        if (ExtraKeys.isModifier(key)) {
-                            pressed = if (isPressed) pressed - key else pressed + key
-                        }
-                        onKeys(latches + key)
-                    }
-                    .testTag(TerminalTags.KEY + ExtraKeys.label(key)),
-                contentAlignment = Alignment.Center,
+                    .testTag(TerminalTags.KEY + ExtraKeys.label(key))
+                    .semantics { selected = isPressed },
+                shape = MaterialTheme.shapes.small,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (isPressed) {
+                        MaterialTheme.colorScheme.primaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.surface
+                    },
+                    contentColor = if (isPressed) {
+                        MaterialTheme.colorScheme.onPrimaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.onSurface
+                    },
+                ),
+                contentPadding = PaddingValues(horizontal = OpenCodeThemeExtras.spacing.xxs),
             ) {
                 Text(
                     text = ExtraKeys.label(key),
@@ -474,13 +485,32 @@ private fun TerminalPickerSheet(
             } else {
                 Column(verticalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.xs)) {
                     shells.forEach { shell ->
-                        FilterChip(
-                            selected = false,
-                            enabled = shell.acceptable,
-                            onClick = { onSelect(shell) },
-                            label = { Text(shell.name) },
-                            modifier = Modifier.fillMaxWidth(),
-                        )
+                        // Radio rows, not chips: the dialog offers one shell out of many, and a
+                        // chip that is never selected misdescribes the choice.
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .selectable(
+                                    selected = false,
+                                    enabled = shell.acceptable,
+                                    onClick = { onSelect(shell) },
+                                    role = Role.RadioButton,
+                                )
+                                .padding(vertical = OpenCodeThemeExtras.spacing.xs),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            RadioButton(
+                                selected = false,
+                                onClick = null,
+                                enabled = shell.acceptable,
+                            )
+                            Spacer(Modifier.width(OpenCodeThemeExtras.spacing.sm))
+                            Text(
+                                text = shell.name,
+                                style = MaterialTheme.typography.bodyLarge,
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
                     }
                 }
             }

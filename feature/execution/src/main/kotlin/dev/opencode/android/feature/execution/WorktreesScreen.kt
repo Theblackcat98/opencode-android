@@ -25,6 +25,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -272,8 +273,10 @@ fun WorktreesScreen(
                 }
             },
             confirmButton = {
+                // Destructive: the error color is the whole signal that this is not a dismissal.
                 TextButton(
                     onClick = { if (state.forceArmed) onForceRemove() else onRemove() },
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
                     modifier = Modifier.testTag(WorktreeTags.FORCE),
                 ) {
                     Text(
