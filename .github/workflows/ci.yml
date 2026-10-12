@@ -63,6 +63,9 @@ jobs:
             exit 1
           fi
 
+      - name: Smoke-test Android SDK bootstrap package selection
+        run: bash tools/test-android-sdk-bootstrap.sh
+
       - name: Setup Android SDK
         run: ./scripts/setup-android-sdk.sh
 
