@@ -550,7 +550,6 @@ private fun DiffBody(
                 item(key = row.key) {
                     DiffRowView(
                         row = row.row,
-                        key = row.key,
                         colors = colors,
                         wrap = state.wrap,
                         language = language,
