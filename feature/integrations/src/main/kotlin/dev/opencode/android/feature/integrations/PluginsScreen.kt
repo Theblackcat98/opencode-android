@@ -3,11 +3,13 @@ package dev.opencode.android.feature.integrations
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -83,13 +85,20 @@ fun PluginsScreen(
                         onDismiss = onDismissError,
                     )
 
-                    SyncStatus.Loading -> Row(
-                        modifier = Modifier.fillMaxWidth().padding(OpenCodeThemeExtras.spacing.lg),
-                        horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.md),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        CircularProgressIndicator()
-                        Text(stringResource(R.string.plugins_loading))
+                    SyncStatus.Loading -> {
+                        // Read here rather than inside the `semantics` block, which is not a
+                        // composable scope, so the description is the same string the visible
+                        // label uses and cannot drift from it.
+                        val loading = stringResource(R.string.plugins_loading)
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(OpenCodeThemeExtras.spacing.lg)
+                                .semantics { contentDescription = loading },
+                            horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.md),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            CircularProgressIndicator()
+                            Text(loading)
+                        }
                     }
 
                     else -> if (state.rows.isEmpty()) {
@@ -263,13 +272,20 @@ fun ProvidersScreen(
                         onDismiss = {},
                     )
 
-                    SyncStatus.Loading -> Row(
-                        modifier = Modifier.fillMaxWidth().padding(OpenCodeThemeExtras.spacing.lg),
-                        horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.md),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        CircularProgressIndicator()
-                        Text(stringResource(R.string.providers_loading))
+                    SyncStatus.Loading -> {
+                        // Read here rather than inside the `semantics` block, which is not a
+                        // composable scope, so the description is the same string the visible
+                        // label uses and cannot drift from it.
+                        val loading = stringResource(R.string.providers_loading)
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(OpenCodeThemeExtras.spacing.lg)
+                                .semantics { contentDescription = loading },
+                            horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.md),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            CircularProgressIndicator()
+                            Text(loading)
+                        }
                     }
 
                     else -> if (state.rows.isEmpty()) {
@@ -436,8 +452,10 @@ fun WebSearchScreen(
 }
 
 @Composable
-private fun WebSearchResults(response: WebSearchResponse) {
-    LazyColumn(modifier = Modifier.fillMaxSize()) {
+private fun ColumnScope.WebSearchResults(response: WebSearchResponse) {
+    // weight, not fillMaxSize: the list shares its Column with the query row and the error
+    // line, and a fillMaxSize child would crowd them out of measurement.
+    LazyColumn(modifier = Modifier.fillMaxWidth().weight(1f)) {
         item {
             Text(
                 text = stringResource(R.string.websearch_served_by, response.providerID),
