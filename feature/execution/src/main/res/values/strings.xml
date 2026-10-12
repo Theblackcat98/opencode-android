@@ -110,6 +110,9 @@
     <string name="worktrees_force_warning">The server has uncommitted work here. Removing it anyway deletes those changes.</string>
     <string name="worktrees_move_session">Move a session here</string>
     <string name="worktrees_empty">No worktrees for this project.</string>
+    <string name="worktrees_creating">Creating the worktree…</string>
+    <string name="worktrees_loading">Loading worktrees…</string>
+    <string name="worktrees_notice">Worktree change completed: %1$s</string>
     <string name="worktrees_strategy">Strategy: %1$s</string>
     <string name="worktrees_failed">Worktree change failed: %1$s</string>
 

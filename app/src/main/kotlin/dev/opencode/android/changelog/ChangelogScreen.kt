@@ -13,6 +13,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Article
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -31,6 +32,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import dev.opencode.android.R
+import dev.opencode.android.core.designsystem.component.OpenCodeEmptyState
 
 /**
  * What the changelog screen shows. Loading is kept apart from a missing file, so neither is mistaken for the other.
@@ -97,14 +99,31 @@ fun ChangelogScreen(
                 )
             }
 
-            is ChangelogUiState.Ready -> LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                items(state.blocks) { block -> ChangelogBlockView(block) }
+            is ChangelogUiState.Ready -> if (state.blocks.isEmpty()) {
+                // An empty changelog is a state, not a missing screen: without this branch the
+                // release notes render as a blank page, which reads as a load that never finished.
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(padding),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    OpenCodeEmptyState(
+                        title = stringResource(R.string.changelog_empty_title),
+                        subtitle = stringResource(R.string.changelog_empty_body),
+                        icon = Icons.AutoMirrored.Filled.Article,
+                    )
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(padding),
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    items(state.blocks) { block -> ChangelogBlockView(block) }
+                }
             }
         }
     }

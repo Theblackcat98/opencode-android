@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -34,6 +35,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -125,8 +127,19 @@ fun ShellsScreen(
                 textStyle = OpenCodeThemeExtras.code.body,
                 modifier = Modifier.weight(1f),
             )
+            // While a command is starting, the button trades its play arrow for a spinner: a disabled
+            // button alone says nothing about whether the tap registered, and the run can take a
+            // moment to appear in the list above.
             FilledIconButton(onClick = onRun, enabled = state.canRun) {
-                Icon(Icons.Filled.PlayArrow, stringResource(R.string.shells_run))
+                if (state.running) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp).testTag(TAG_RUN_PROGRESS),
+                        strokeWidth = 2.dp,
+                        color = LocalContentColor.current,
+                    )
+                } else {
+                    Icon(Icons.Filled.PlayArrow, stringResource(R.string.shells_run))
+                }
             }
         }
     }
@@ -353,6 +366,7 @@ object ExecutionTags {
     const val RUNNING: String = "shells-running"
     const val OUTPUT: String = "shells-output"
     const val PROGRESS: String = "shells-progress"
+    const val RUN_PROGRESS: String = "shells-run-progress"
     const val TRUNCATED: String = "shells-truncated"
     const val OUTPUT_ERROR: String = "shells-output-error"
 }
@@ -365,5 +379,6 @@ private val TAG_ROW = ExecutionTags.ROW
 private val TAG_RUNNING = ExecutionTags.RUNNING
 private val TAG_OUTPUT = ExecutionTags.OUTPUT
 private val TAG_PROGRESS = ExecutionTags.PROGRESS
+private val TAG_RUN_PROGRESS = ExecutionTags.RUN_PROGRESS
 private val TAG_TRUNCATED = ExecutionTags.TRUNCATED
 private val TAG_OUTPUT_ERROR = ExecutionTags.OUTPUT_ERROR
