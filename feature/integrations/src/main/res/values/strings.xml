@@ -112,6 +112,7 @@
     <string name="mcp_timeout_startup">Startup s</string>
     <string name="mcp_timeout_catalog">Catalog s</string>
     <string name="mcp_timeout_execution">Execution s</string>
+    <string name="mcp_timeout_bad">Use a whole number of seconds, or leave it blank.</string>
     <string name="mcp_add_runtime_only">Added for this run only. It is gone when the server restarts unless it is also written into the configuration.</string>
     <string name="mcp_add_confirm">Add it</string>
 

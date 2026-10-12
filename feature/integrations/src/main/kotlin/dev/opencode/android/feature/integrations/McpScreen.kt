@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -33,12 +34,15 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -94,13 +98,20 @@ fun McpScreen(
                         onDismiss = onDismissError,
                     )
 
-                    SyncStatus.Loading -> Row(
-                        modifier = Modifier.fillMaxWidth().padding(OpenCodeThemeExtras.spacing.lg),
-                        horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.md),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        CircularProgressIndicator()
-                        Text(stringResource(R.string.mcp_loading))
+                    SyncStatus.Loading -> {
+                        // Read here rather than inside the `semantics` block, which is not a
+                        // composable scope, so the description is the same string the visible
+                        // label uses and cannot drift from it.
+                        val loading = stringResource(R.string.mcp_loading)
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(OpenCodeThemeExtras.spacing.lg)
+                                .semantics { contentDescription = loading },
+                            horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.md),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            CircularProgressIndicator()
+                            Text(loading)
+                        }
                     }
 
                     else -> if (state.rows.isEmpty()) {
@@ -147,7 +158,10 @@ fun McpScreen(
     }
 
     if (state.addSheetOpen) {
-        ModalBottomSheet(onDismissRequest = onDismissAdd) {
+        // skipPartiallyExpanded: a half-open sheet hides the form's add button behind the drag
+        // handle's dead zone; the sheet always opens fully.
+        val addSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        ModalBottomSheet(onDismissRequest = onDismissAdd, sheetState = addSheetState) {
             McpAddSheetContent(
                 draft = state.draft,
                 problems = state.problems,
@@ -159,7 +173,10 @@ fun McpScreen(
     }
 
     if (state.resourcesOpen) {
-        ModalBottomSheet(onDismissRequest = onCloseResources) {
+        // skipPartiallyExpanded: the catalog is the point of this sheet; a half-open sheet
+        // would show the title and one row.
+        val resourcesSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        ModalBottomSheet(onDismissRequest = onCloseResources, sheetState = resourcesSheetState) {
             McpResourceSheetContent(
                 resources = state.catalog,
                 templates = state.templates,
@@ -291,6 +308,7 @@ fun McpAddSheetContent(
             .fillMaxWidth()
             .padding(horizontal = OpenCodeThemeExtras.spacing.lg)
             .verticalScroll(rememberScrollState())
+            .imePadding()
             .padding(bottom = OpenCodeThemeExtras.spacing.xl),
         verticalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.sm),
     ) {
@@ -364,7 +382,7 @@ fun McpAddSheetContent(
                 modifier = Modifier.fillMaxWidth().heightIn(min = 72.dp),
             )
         }
-        TimeoutFields(draft = draft, onChange = onChange, invalid = McpConfigProblem.NOT_A_POSITIVE_INTEGER in problems)
+        TimeoutFields(draft = draft, onChange = onChange)
         // The whole row is the toggle: the label is the tap target, not just the switch, and the
         // Switch itself is the indicator, not a second control.
         Row(
@@ -404,13 +422,18 @@ fun McpAddSheetContent(
 private fun TimeoutFields(
     draft: dev.opencode.android.core.data.integrations.McpServerDraft,
     onChange: (dev.opencode.android.core.data.integrations.McpServerDraft) -> Unit,
-    invalid: Boolean,
 ) {
     val labels = listOf(
         R.string.mcp_timeout_startup to draft.startupTimeout,
         R.string.mcp_timeout_catalog to draft.catalogTimeout,
         R.string.mcp_timeout_execution to draft.executionTimeout,
     )
+    // Per-field, not the aggregated `invalid`: only the box with the bad value goes red, so the
+    // user knows which one to fix. The rule mirrors McpConfigForm's — blank is the server default,
+    // anything else must be a positive whole number.
+    val bad = labels.map { (_, value) ->
+        value.isNotBlank() && value.trim().toLongOrNull()?.let { it > 0 } != true
+    }
     Row(horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.sm)) {
         labels.forEachIndexed { index, (label, value) ->
             SyncedTextField(
@@ -425,7 +448,12 @@ private fun TimeoutFields(
                     )
                 },
                 label = { Text(stringResource(label)) },
-                isError = invalid,
+                isError = bad[index],
+                supportingText = {
+                    if (bad[index]) {
+                        Text(stringResource(R.string.mcp_timeout_bad))
+                    }
+                },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 singleLine = true,
                 modifier = Modifier.weight(1f),

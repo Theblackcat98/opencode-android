@@ -6,7 +6,9 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -34,6 +36,7 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -113,13 +116,20 @@ fun ConnectScreen(
                         onDismiss = onDismissError,
                     )
 
-                    SyncStatus.Loading -> Row(
-                        modifier = Modifier.fillMaxWidth().padding(OpenCodeThemeExtras.spacing.lg),
-                        horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.md),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        CircularProgressIndicator()
-                        Text(stringResource(R.string.connect_loading))
+                    SyncStatus.Loading -> {
+                        // Read here rather than inside the `semantics` block, which is not a
+                        // composable scope, so the description is the same string the visible
+                        // label uses and cannot drift from it.
+                        val loading = stringResource(R.string.connect_loading)
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(OpenCodeThemeExtras.spacing.lg)
+                                .semantics { contentDescription = loading },
+                            horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.md),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            CircularProgressIndicator()
+                            Text(loading)
+                        }
                     }
 
                     else -> if (state.rows.isEmpty()) {
@@ -167,7 +177,10 @@ fun ConnectScreen(
 
     val active = state.active
     if (active != null) {
-        ModalBottomSheet(onDismissRequest = onDismissConnect) {
+        // skipPartiallyExpanded: a half-open sheet hides the form's submit row behind the drag
+        // handle's dead zone; the sheet always opens fully.
+        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        ModalBottomSheet(onDismissRequest = onDismissConnect, sheetState = sheetState) {
             ConnectSheetContent(
                 state = state,
                 onLabelChange = onLabelChange,
@@ -349,6 +362,7 @@ fun ConnectSheetContent(
             .fillMaxWidth()
             .padding(horizontal = OpenCodeThemeExtras.spacing.lg)
             .verticalScroll(rememberScrollState())
+            .imePadding()
             .padding(bottom = OpenCodeThemeExtras.spacing.xl),
         verticalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.md),
     ) {
@@ -589,7 +603,7 @@ private fun AttemptProgress(state: ConnectUiState, onCancel: () -> Unit) {
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.semantics { contentDescription = waiting },
             ) {
-                CircularProgressIndicator(modifier = Modifier.heightIn(max = 20.dp))
+                CircularProgressIndicator(modifier = Modifier.size(20.dp))
                 Text(
                     text = stringResource(R.string.connect_waiting),
                     style = MaterialTheme.typography.bodySmall,
