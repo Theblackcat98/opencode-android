@@ -35,6 +35,10 @@ import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
  * The header is one `toggleable` node, so TalkBack reads the title once and announces the expanded
  * state itself; the chevron is decoration. When [content] is null the row is not expandable and
  * draws no chevron.
+ *
+ * The role is deliberately [Role.DropdownList], not [Role.Checkbox]: a checkbox announces
+ * "checked / not checked", which misdescribes a section header, while a dropdown list's
+ * expand/collapse announcement matches what the row does.
  */
 @Composable
 fun OpenCodeAccordionRow(

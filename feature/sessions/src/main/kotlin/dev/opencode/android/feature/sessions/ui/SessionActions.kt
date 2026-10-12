@@ -497,7 +497,8 @@ fun SessionToolTile(
     }
 }
 
-private const val DISABLED_ALPHA = 0.38f
+/** The alpha for disabled controls; shared with SettingsScreen in the same package. */
+internal const val DISABLED_ALPHA = 0.38f
 private const val TILES_PER_ROW = 4
 private val TILE_WIDTH = 80.dp
 

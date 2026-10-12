@@ -274,5 +274,3 @@ private fun SettingsRow(destination: ManageDestination, enabled: Boolean, onClic
         )
     }
 }
-
-private const val DISABLED_ALPHA = 0.38f

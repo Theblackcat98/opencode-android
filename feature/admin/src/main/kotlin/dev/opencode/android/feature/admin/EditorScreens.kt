@@ -235,7 +235,7 @@ private fun EffectChips(selected: String, onSelect: (String) -> Unit) {
                 selected = selected == effect,
                 onClick = { onSelect(effect) },
                 label = { Text(label) },
-                modifier = Modifier.testTag("template:effect:$effect"),
+                modifier = Modifier.testTag(AdminTags.templateEffect(effect)),
             )
         }
     }
@@ -254,7 +254,7 @@ private fun ModeChips(selected: String, onSelect: (String) -> Unit) {
                 selected = selected == mode,
                 onClick = { onSelect(mode) },
                 label = { Text(label) },
-                modifier = Modifier.testTag("template:mode:$mode"),
+                modifier = Modifier.testTag(AdminTags.templateMode(mode)),
             )
         }
     }
@@ -358,7 +358,7 @@ fun DefinitionScreen(
                     .size(20.dp)
                     .semantics { contentDescription = stringResource(R.string.admin_saving) },
             )
-            Button(onClick = onSave, enabled = state.canSave, modifier = Modifier.testTag("definition:save")) {
+            Button(onClick = onSave, enabled = state.canSave, modifier = Modifier.testTag(AdminTags.DEFINITION_SAVE)) {
                 Text(stringResource(R.string.admin_save))
             }
         }

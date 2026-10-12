@@ -184,7 +184,7 @@ fun ConfigEditorScreen(
             Button(
                 onClick = onSave,
                 enabled = state.canSave,
-                modifier = Modifier.testTag("config:save"),
+                modifier = Modifier.testTag(AdminTags.CONFIG_SAVE),
             ) { Text(stringResource(R.string.admin_save)) }
             if (state.writesUsable.not()) {
                 Text(

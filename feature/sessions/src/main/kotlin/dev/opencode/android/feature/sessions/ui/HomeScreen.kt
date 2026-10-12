@@ -166,7 +166,7 @@ fun HomeScreen(
                 if (pendingRequests > 0) {
                     item(key = "pending-requests") {
                         PendingRequestsCard(pendingRequests, onPendingRequestsClick)
-                        Spacer(Modifier.height(GROUP_GAP))
+                        Spacer(Modifier.height(OpenCodeThemeExtras.spacing.xxl))
                     }
                 }
                 state.groups.forEach { group ->
@@ -190,7 +190,7 @@ fun HomeScreen(
                     items(items = group.sessions, key = { "session-${it.id}" }) { row ->
                         HomeSessionRow(row, now = state.now, onClick = { onSessionClick(row.id) })
                     }
-                    item(key = "project-${group.project.id}-gap") { Spacer(Modifier.height(GROUP_GAP)) }
+                    item(key = "project-${group.project.id}-gap") { Spacer(Modifier.height(OpenCodeThemeExtras.spacing.xxl)) }
                 }
                 if (state.available.isNotEmpty()) {
                     item(key = "add-project") {
@@ -419,6 +419,3 @@ private fun PendingRequestsCard(count: Int, onClick: () -> Unit) {
 
 /** A project's display name: the one the server was given, or its directory's. */
 fun projectLabel(project: Project): String = project.name?.takeIf { it.isNotBlank() } ?: Formatters.directoryName(project.canonical)
-
-/** The whitespace between two projects, which is what separates them instead of a card edge. */
-private val GROUP_GAP = 28.dp

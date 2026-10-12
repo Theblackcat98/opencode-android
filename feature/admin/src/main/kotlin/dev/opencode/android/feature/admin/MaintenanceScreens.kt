@@ -417,7 +417,7 @@ private fun InstructionRow(entry: InstructionEntry, onRemove: () -> Unit) {
             }
         },
         trailingContent = {
-            TextButton(onClick = onRemove, modifier = Modifier.testTag("instructions:remove:${entry.key}")) {
+            TextButton(onClick = onRemove, modifier = Modifier.testTag(AdminTags.removeInstruction(entry.key))) {
                 Text(stringResource(R.string.admin_instructions_remove))
             }
         },

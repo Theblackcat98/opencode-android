@@ -190,7 +190,7 @@ private fun RuleSection(
             )
             TextButton(
                 onClick = if (state.editing) onCancelEditing else onStartEditing,
-                modifier = Modifier.testTag("permissions:toggle-editing"),
+                modifier = Modifier.testTag(AdminTags.TOGGLE_EDITING),
             ) { Text(stringResource(if (state.editing) R.string.admin_cancel else R.string.admin_rules_edit)) }
         }
         if (!state.editing) {
@@ -264,7 +264,7 @@ private fun RuleEditor(
                 onValueChange = { value -> onChange { it.copy(action = value) } },
                 modifier = Modifier.weight(1f),
             )
-            IconButton(onClick = onRemove, modifier = Modifier.testTag("permissions:remove-rule:$index")) {
+            IconButton(onClick = onRemove, modifier = Modifier.testTag(AdminTags.removeRule(index))) {
                 // A real icon button, not a text glyph: TalkBack announces the action instead of "times".
                 Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.admin_remove_rule))
             }
@@ -280,7 +280,7 @@ private fun RuleEditor(
                     selected = draft.effect == effect,
                     onClick = { onChange { it.copy(effect = effect) } },
                     label = { Text(effectLabel(effect)) },
-                    modifier = Modifier.testTag("permissions:effect:$index:${effect.value}"),
+                    modifier = Modifier.testTag(AdminTags.ruleEffect(index, effect.value)),
                 )
             }
         }
