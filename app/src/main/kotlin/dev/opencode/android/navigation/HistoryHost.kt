@@ -92,6 +92,7 @@ fun HistoryHost(
             onExportMarkdown = { history.export(TransferFormat.MARKDOWN) },
             onImport = { picker.launch(arrayOf("application/json", "*/*")) },
             onDismissTransfer = history::dismissTransfer,
+            onDismissError = history::dismissError,
         )
     }
 }
