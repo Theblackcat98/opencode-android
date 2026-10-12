@@ -9,6 +9,7 @@ dependencies {
     testImplementation(projects.feature.composer)
     testImplementation(projects.feature.sessions)
     testImplementation(projects.core.testing)
+    testImplementation(projects.core.database)
     testImplementation(libs.okhttp.mockwebserver)
     testImplementation(libs.robolectric)
     testImplementation(libs.kotlinx.coroutines.test)
