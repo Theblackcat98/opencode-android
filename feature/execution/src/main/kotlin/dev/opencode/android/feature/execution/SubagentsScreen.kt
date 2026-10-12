@@ -234,49 +234,51 @@ fun SubagentStrip(
         ) {
             items(state.children, key = { it.sessionID }) { child ->
                 val busy = state.interrupting == child.sessionID
-                AssistChip(
-                    onClick = { onOpen(child.sessionID) },
-                    label = {
-                        Text(
-                            text = child.title,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    },
-                    leadingIcon = {
-                        // One glyph, and the name carries the state. A stop glyph on a *retrying* child
-                        // and a play glyph on a *running* one read as the opposite of what they mean;
-                        // both chips are interrupt targets, and "running" versus "retrying" is a
-                        // distinction TalkBack makes from the content description and a sighted user
-                        // makes from the spinner the row shows.
-                        Icon(
-                            imageVector = Icons.Filled.Stop,
-                            contentDescription = if (child.isRetrying) {
-                                stringResource(R.string.subagents_retrying)
-                            } else {
-                                stringResource(R.string.subagents_running)
-                            },
-                        )
-                    },
-                    trailingIcon = {
-                        IconButton(
-                            onClick = { onInterrupt(child.sessionID) },
-                            enabled = !busy,
-                            modifier = Modifier.size(24.dp).testTag(SubagentTags.INTERRUPT + child.sessionID),
-                        ) {
-                            if (busy) {
-                                CircularProgressIndicator(Modifier.size(14.dp), strokeWidth = 2.dp)
-                            } else {
-                                Icon(
-                                    Icons.Filled.Stop,
-                                    stringResource(R.string.subagents_interrupt),
-                                    modifier = Modifier.size(16.dp),
-                                )
-                            }
+                // The interrupt sits beside the chip, not inside it: a 24dp button nested in a
+                // clickable chip's trailing icon is a TalkBack hazard (chip opens, button
+                // interrupts — adjacent targets, one tiny). Its own 48dp target ends the nesting.
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    AssistChip(
+                        onClick = { onOpen(child.sessionID) },
+                        label = {
+                            Text(
+                                text = child.title,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        },
+                        leadingIcon = {
+                            // One glyph, and the name carries the state. A stop glyph on a *retrying* child
+                            // and a play glyph on a *running* one read as the opposite of what they mean;
+                            // both chips are interrupt targets, and "running" versus "retrying" is a
+                            // distinction TalkBack makes from the content description and a sighted user
+                            // makes from the spinner the row shows.
+                            Icon(
+                                imageVector = Icons.Filled.Stop,
+                                contentDescription = if (child.isRetrying) {
+                                    stringResource(R.string.subagents_retrying)
+                                } else {
+                                    stringResource(R.string.subagents_running)
+                                },
+                            )
+                        },
+                        colors = AssistChipDefaults.assistChipColors(),
+                    )
+                    IconButton(
+                        onClick = { onInterrupt(child.sessionID) },
+                        enabled = !busy,
+                        modifier = Modifier.size(48.dp).testTag(SubagentTags.INTERRUPT + child.sessionID),
+                    ) {
+                        if (busy) {
+                            CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                        } else {
+                            Icon(
+                                Icons.Filled.Stop,
+                                stringResource(R.string.subagents_interrupt),
+                            )
                         }
-                    },
-                    colors = AssistChipDefaults.assistChipColors(),
-                )
+                    }
+                }
             }
         }
         // The interrupt's own failure. A strip that swallowed it would show a chip that stopped

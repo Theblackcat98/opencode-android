@@ -1,7 +1,6 @@
 package dev.opencode.android.feature.execution
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -13,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -39,6 +40,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -143,8 +145,11 @@ fun SessionTerminalsPane(
             )
 
             else -> {
+                // Tapping a row inspects it: the snapshot below shows the tapped terminal, so the
+                // rows are the pickers the onInspect callback was always meant to serve.
+                val selectedId = state.inspected ?: state.latest?.id
                 LazyColumn(
-                    modifier = Modifier.weight(1f).testTag(SessionTerminalTags.LIST),
+                    modifier = Modifier.weight(0.4f).testTag(SessionTerminalTags.LIST),
                     contentPadding = PaddingValues(bottom = 8.dp),
                 ) {
                     items(state.terminals, key = { it.id }) { terminal ->
@@ -168,6 +173,11 @@ fun SessionTerminalsPane(
                                     Icon(Icons.Filled.Delete, stringResource(R.string.session_terminals_remove))
                                 }
                             },
+                            modifier = Modifier.selectable(
+                                selected = terminal.id == selectedId,
+                                onClick = { onInspect(terminal.id) },
+                                role = Role.RadioButton,
+                            ),
                         )
                         HorizontalDivider()
                     }
@@ -176,7 +186,9 @@ fun SessionTerminalsPane(
                     state = state,
                     onRead = onRead,
                     onResize = onResize,
-                    modifier = Modifier.weight(1f),
+                    // The snapshot is the thing being read: on short screens it takes the weight,
+                    // not an even split with the list above it.
+                    modifier = Modifier.weight(0.6f),
                 )
             }
         }
@@ -187,11 +199,13 @@ fun SessionTerminalsPane(
             title = { Text(stringResource(R.string.session_terminals_remove_title)) },
             text = { Text(stringResource(R.string.session_terminals_remove_body)) },
             confirmButton = {
+                // Destructive: the error color is the whole signal that this is not a dismissal.
                 TextButton(
                     onClick = {
                         onRemove(target.id)
                         removeTarget = null
                     },
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
                 ) { Text(stringResource(R.string.session_terminals_remove_confirm)) }
             },
             dismissButton = {
