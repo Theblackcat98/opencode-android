@@ -19,10 +19,12 @@ import dev.opencode.android.core.network.PtySocket
 import dev.opencode.android.core.network.PtyStreamState
 import dev.opencode.android.core.network.ServerCredentialCache
 import dev.opencode.android.core.network.ServerTls
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
 import javax.inject.Inject
@@ -74,6 +76,8 @@ data class TerminalUiState(
      */
     val epoch: Int = 0,
     val error: TerminalError? = null,
+    /** Monotonic identity of the latest output frame; content alone is not a safe event key. */
+    val pendingOutputToken: Long = 0L,
 ) {
     val canStartProject: Boolean get() = !creating && !startCommand.isNullOrBlank()
 
@@ -89,6 +93,7 @@ data class TerminalUiState(
             is PtyStreamState.Idle -> "idle"
             is PtyStreamState.Connecting -> "connecting"
             is PtyStreamState.Live -> "live"
+            is PtyStreamState.Desynchronized -> "reconnecting"
             is PtyStreamState.Reconnecting -> "reconnecting"
             is PtyStreamState.Closed -> "closed"
         }
@@ -164,14 +169,8 @@ class TerminalViewModel(
     private val _state = MutableStateFlow(TerminalUiState())
     val state: StateFlow<TerminalUiState> = _state.asStateFlow()
 
-    /**
-     * Output the page has not taken yet.
-     *
-     * Held until the page says `ready`, because a WebView loads its assets asynchronously and writing
-     * into a terminal that is not mounted loses the text. It is a `StringBuilder` rather than a
-     * `MutableStateFlow` because it changes at message rate and nothing observes it but the bridge.
-     */
-    private val pendingOutput = StringBuilder()
+    /** The one output chunk currently offered to the page; the socket waits until this is acknowledged. */
+    private var pendingOutputAck: CompletableDeferred<Unit>? = null
 
     /**
      * Whether a page is mounted and can take output.
@@ -180,7 +179,7 @@ class TerminalViewModel(
      * it was — mounted, ready, and never going to say `ready` again — so replacing one must not clear
      * this; only the page going away does.
      */
-    private var pageReady = false
+    private val pageReady = MutableStateFlow(false)
 
     /** The grid the page last measured, which a terminal the server has just made is told about. */
     private var grid: TerminalGridSize? = null
@@ -280,7 +279,7 @@ class TerminalViewModel(
         grid?.let { resize(it.cols, it.rows) }
     }
 
-    /** Re-opens the socket from the cursor the server last reported. */
+    /** Re-opens the socket from the last output offset accepted by the page. */
     fun reconnect() {
         val directory = _state.value.directory ?: return
         val id = _state.value.open?.id ?: return
@@ -315,18 +314,20 @@ class TerminalViewModel(
         val socket = sockets.create(directory, ptyID, ticket) ?: return null
         this.socket = socket
         // A new socket replays the retained buffer from the start, so the page starts from an empty screen.
+        pendingOutputAck?.cancel()
+        pendingOutputAck = null
         _state.value = _state.value.copy(pendingOutput = "", epoch = _state.value.epoch + 1)
         collectors = viewModelScope.launch {
             launch { socket.state.collect { stream -> foldStream(stream) } }
             launch {
                 socket.output.collect { chunk ->
-                    // A terminal writes faster than a WebView lays out a line, so the buffer drops its
-                    // oldest frames rather than applying backpressure to the socket (plan §4.2, "never
-                    // block the reader"). What is lost is a frame of output; the page redraws from its own
-                    // buffer, so the terminal's state is not lost.
-                    pendingOutput.append(chunk)
-                    trimPending()
-                    drain()
+                    pageReady.first { it }
+                    val acknowledgment = CompletableDeferred<Unit>()
+                    pendingOutputAck = acknowledgment
+                    val token = _state.value.pendingOutputToken + 1L
+                    _state.value = _state.value.copy(pendingOutput = chunk, pendingOutputToken = token)
+                    acknowledgment.await()
+                    if (pendingOutputAck === acknowledgment) pendingOutputAck = null
                 }
             }
         }
@@ -351,9 +352,9 @@ class TerminalViewModel(
                 // is a *different* page — the activity was recreated, and the screen the old one drew went
                 // with it. The socket is still open and will only say what comes next, so it is started
                 // again, and its replay is what fills the new page.
-                val replacement = pageReady
-                pageReady = true
-                if (replacement && _state.value.open != null) reconnect() else drain()
+                val replacement = pageReady.value
+                pageReady.value = true
+                if (replacement && _state.value.open != null) reconnect()
             }
 
             is TerminalBridgeMessage.Input -> sendInput(message.data)
@@ -381,21 +382,6 @@ class TerminalViewModel(
     fun sendInput(text: String) {
         if (text.isEmpty()) return
         socket?.send(text)
-    }
-
-    private fun drain() {
-        if (!pageReady || pendingOutput.isEmpty()) return
-        val chunk = pendingOutput.toString()
-        pendingOutput.setLength(0)
-        // Bounded like the builder above: while the screen is stopped nothing consumes this, and a busy
-        // terminal would otherwise grow it for as long as the app stays in the background.
-        val held = (_state.value.pendingOutput + chunk).takeLast(PENDING_LIMIT)
-        _state.value = _state.value.copy(pendingOutput = held)
-    }
-
-    private fun trimPending() {
-        if (pendingOutput.length <= PENDING_LIMIT) return
-        pendingOutput.delete(0, pendingOutput.length - PENDING_LIMIT)
     }
 
     /** `pty.update` with a size, but only when the grid actually moved. */
@@ -489,7 +475,7 @@ class TerminalViewModel(
             } else if (_state.value.open?.id == target) {
                 closeSocket()
                 // Nothing is open, so the page is unmounted; the next terminal gets a new one.
-                pageReady = false
+                pageReady.value = false
                 _state.value = _state.value.copy(open = null, stream = PtyStreamState.Closed("removed"))
             }
         }
@@ -523,12 +509,21 @@ class TerminalViewModel(
      */
     fun outputConsumed(count: Int) {
         if (count <= 0) return
-        _state.value = _state.value.copy(pendingOutput = _state.value.pendingOutput.drop(count))
+        val current = _state.value.pendingOutput
+        if (current.isEmpty()) return
+        val remainder = current.drop(count.coerceAtMost(current.length))
+        _state.value = _state.value.copy(pendingOutput = remainder)
+        if (remainder.isEmpty()) pendingOutputAck?.complete(Unit)
     }
 
     private fun foldStream(stream: PtyStreamState) {
         val directory = _state.value.directory
         val open = _state.value.open
+        if (stream is PtyStreamState.Desynchronized) {
+            _state.value = _state.value.copy(stream = stream, pendingOutput = "")
+            if (open != null && directory != null) reconnect()
+            return
+        }
         // A refused upgrade is the one failure a credential in the header cannot fix, so it is the one
         // case a `pty.connect.token` is worth spending. `4404` is not: that terminal is gone.
         if (stream is PtyStreamState.Closed && open != null && directory != null &&
@@ -551,9 +546,11 @@ class TerminalViewModel(
     private fun closeSocket() {
         collectors?.cancel()
         collectors = null
+        pendingOutputAck?.cancel()
+        pendingOutputAck = null
         socket?.close("closed")
         socket = null
-        pendingOutput.setLength(0)
+        _state.value = _state.value.copy(pendingOutput = "")
     }
 
     override fun onCleared() {
@@ -562,9 +559,6 @@ class TerminalViewModel(
     }
 
     private companion object {
-        /** How much output is held before the oldest is dropped: 256 KiB of characters. */
-        const val PENDING_LIMIT = 256 * 1024
-
         /**
          * The statuses a single-use ticket can still fix.
          *

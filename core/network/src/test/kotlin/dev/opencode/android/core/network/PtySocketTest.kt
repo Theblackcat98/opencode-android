@@ -26,6 +26,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import java.util.concurrent.CountDownLatch
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit
 
@@ -266,7 +267,7 @@ class PtySocketTest {
         val received = LinkedBlockingQueue<String>()
         // The collector and the socket's own coroutines run on a real dispatcher, because the test body
         // blocks on queues: a coroutine on the blocked `runBlocking` event loop would never get to
-        // subscribe, and the flow's drop-oldest buffer would throw the output away.
+        // subscribe to the cursor-barrier flow.
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
         val job = scope.launch { socket.output.collect { received += it } }
         try {
@@ -279,6 +280,8 @@ class PtySocketTest {
             assertFalse("credential in the URL", upgrade?.query.orEmpty().contains("opencode:secret"))
 
             val peer = awaitPeer()
+            peer.send(control(0))
+            awaitState { it is PtyStreamState.Live }
             peer.send("hello ")
             assertEquals("hello ", received.poll(5, TimeUnit.SECONDS))
             // A text frame and a binary frame of the same bytes decode identically; the server may send
@@ -292,10 +295,11 @@ class PtySocketTest {
     }
 
     @Test
-    fun `the control frame makes the stream live and is the only source of the cursor`() = runBlocking {
+    fun `the cursor barrier makes the stream live and seeds the delivered cursor`() = runBlocking {
         serveWebSocket()
         val socket = socket()
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val job = scope.launch { socket.output.collect { } }
         try {
             socket.open(scope)
             awaitPeer().send(control(2048))
@@ -383,23 +387,110 @@ class PtySocketTest {
         }
         val socket = socket()
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val output = LinkedBlockingQueue<String>()
+        val job = scope.launch { socket.output.collect { output += it } }
         try {
             socket.open(scope)
             assertNotNull("the first upgrade", accepted.poll(5, TimeUnit.SECONDS))
-            awaitPeer().send(control(1000))
-            awaitValue("the cursor") { socket.cursor.value }
+            val firstPeer = awaitPeer()
+            firstPeer.send(control(1000))
+            awaitState { it is PtyStreamState.Live }
+            firstPeer.send("seen")
+            assertEquals("seen", output.poll(5, TimeUnit.SECONDS))
+            awaitValue("the delivered cursor") { socket.cursor.value?.takeIf { it == 1004L } }
 
             // Drop it the way a lift does.
-            awaitPeer().close(1001, "gone")
+            firstPeer.close(1001, "gone")
             assertNotNull("the reconnect", accepted.poll(5, TimeUnit.SECONDS))
 
             awaitValue("the second upgrade") { upgrades.size >= 2 }
-            // The reconnect asks for what comes after the cursor, not the whole buffer again: a
-            // terminal dropped in a lift must not re-emit twenty thousand lines already read.
+            // The reconnect asks for what the page actually accepted, not the whole buffer again:
+            // a terminal dropped in a lift must not re-emit output already read.
             assertTrue(
                 "query was ${upgrades.last().query}",
-                upgrades.last().query.orEmpty().contains("cursor=1000"),
+                upgrades.last().query.orEmpty().contains("cursor=1004"),
             )
+        } finally {
+            socket.close()
+            scope.cancel()
+        }
+    }
+
+    @Test
+    fun `a slow output consumer backpressures without dropping or reordering frames`() = runBlocking {
+        serveWebSocket()
+        val socket = socket()
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val received = LinkedBlockingQueue<String>()
+        val consumerStarted = CountDownLatch(1)
+        val releaseConsumer = CountDownLatch(1)
+        val job = scope.launch {
+            var count = 0
+            socket.output.collect { text ->
+                received += text
+                if (count++ == 0) {
+                    consumerStarted.countDown()
+                    check(releaseConsumer.await(5, TimeUnit.SECONDS)) { "slow consumer was not released" }
+                }
+            }
+        }
+        val expected = List(PtySocket.OUTPUT_BUFFER + 12) { "frame-$it;" }
+        try {
+            socket.open(scope)
+            val peer = awaitPeer()
+            peer.send(control(0))
+            awaitState { it is PtyStreamState.Live }
+            expected.forEach { assertTrue("server rejected $it", peer.send(it)) }
+            assertTrue("the consumer did not receive the first frame", consumerStarted.await(5, TimeUnit.SECONDS))
+
+            // The first frame is still being handled downstream, so neither its cursor nor later frames
+            // may be reported as delivered while the bounded queue applies backpressure.
+            Thread.sleep(300)
+            assertEquals(0L, socket.cursor.value)
+            releaseConsumer.countDown()
+
+            val actual = List(expected.size) {
+                received.poll(5, TimeUnit.SECONDS) ?: throw AssertionError("timed out waiting for frame $it")
+            }
+            assertEquals(expected, actual)
+            assertEquals(expected.sumOf { it.length }.toLong(), socket.cursor.value)
+        } finally {
+            releaseConsumer.countDown()
+            socket.close()
+            scope.cancel()
+        }
+    }
+
+    @Test
+    fun `a reconnect gap is marked desynchronized and withheld from the current page`() = runBlocking {
+        serveWebSocket()
+        val socket = socket()
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val output = LinkedBlockingQueue<String>()
+        val job = scope.launch { socket.output.collect { output += it } }
+        try {
+            socket.open(scope)
+            val firstPeer = awaitPeer()
+            firstPeer.send(control(1000))
+            awaitState { it is PtyStreamState.Live }
+            firstPeer.send("seen")
+            assertEquals("seen", output.poll(5, TimeUnit.SECONDS))
+            awaitValue("the delivered cursor") { socket.cursor.value?.takeIf { it == 1004L } }
+
+            firstPeer.close(1001, "network lost")
+            val reconnect = upgrades.poll(5, TimeUnit.SECONDS)
+            assertNotNull("the reconnect", reconnect)
+            assertTrue("query was ${reconnect?.query}", reconnect?.query.orEmpty().contains("cursor=1004"))
+            val secondPeer = awaitValue("the replacement peer") { peer?.takeIf { it !== firstPeer } }
+
+            // The server retained only data beginning after the last delivered cursor. The replay
+            // cursor makes the gap unambiguous, so these bytes must not be appended to a stale screen.
+            secondPeer.send("missing")
+            secondPeer.send(control(2000))
+            val state = awaitState { it is PtyStreamState.Desynchronized }
+            assertTrue("state was $state", state is PtyStreamState.Desynchronized)
+            assertEquals(1004L, socket.cursor.value)
+            assertNull("gap output reached the stale page", output.poll(300, TimeUnit.MILLISECONDS))
         } finally {
             socket.close()
             scope.cancel()

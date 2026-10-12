@@ -121,6 +121,8 @@ class TerminalPageTest {
         // The refresh button: a new socket, on the page that said `ready` once and will not say it again.
         model.reconnect()
         awaitUntil("the second socket") { server.sockets >= 2 }
+        server.sendCursor(0)
+        awaitState("the replay barrier on the second socket") { it.stream is PtyStreamState.Live }
         server.sendOutput("second")
 
         // Before, the reconnect marked the page not ready and this was held for a `ready` that never came:
@@ -167,6 +169,7 @@ class TerminalPageTest {
 
         awaitUntil("a second socket, to replay the retained buffer") { server.sockets >= 2 }
         server.sendOutput("the replay")
+        server.sendCursor("the replay".length.toLong())
         val state = awaitState("the replay to reach the new page") { it.pendingOutput.contains("the replay") }
         assertEquals("pty_a", state.open?.id)
         assertFalse("nothing is held over from the old page", state.pendingOutput.contains("old page"))
@@ -180,6 +183,43 @@ class TerminalPageTest {
         pumpFor(SETTLE_MILLIS)
 
         assertEquals("one page, one socket", 1, server.sockets)
+    }
+
+    @Test
+    fun `a slow page consumer receives every output frame in order`() {
+        startTerminal("pty_a", sockets = 1)
+        val expected = List(dev.opencode.android.core.network.PtySocket.OUTPUT_BUFFER + 12) { "frame-$it;" }
+        expected.forEach(server::sendOutput)
+        // Before the page is ready, the collector holds only its current chunk; the bounded socket queue
+        // absorbs the rest and eventually stops the WebSocket reader instead of dropping the oldest.
+        pumpFor(SETTLE_MILLIS)
+        assertEquals("nothing is written into an unmounted page", "", model.state.value.pendingOutput)
+
+        model.onBridgeMessage(TerminalBridgeMessage.Ready)
+        val delivered = List(expected.size) {
+            val state = awaitState("frame $it to reach the page") { it.pendingOutput.isNotEmpty() }
+            val chunk = state.pendingOutput
+            model.outputConsumed(chunk.length)
+            chunk
+        }
+
+        assertEquals(expected, delivered)
+    }
+
+    @Test
+    fun `identical adjacent output frames have separate delivery tokens`() {
+        startTerminal("pty_a", sockets = 1)
+        model.onBridgeMessage(TerminalBridgeMessage.Ready)
+        server.sendOutput("repeat")
+        val first = awaitState("the first repeated frame") { it.pendingOutput == "repeat" }
+        model.outputConsumed(first.pendingOutput.length)
+        pumpFor(SETTLE_MILLIS)
+
+        server.sendOutput("repeat")
+        val second = awaitState("the second repeated frame") {
+            it.pendingOutput == "repeat" && it.pendingOutputToken > first.pendingOutputToken
+        }
+        assertTrue("the frame token advanced", second.pendingOutputToken > first.pendingOutputToken)
     }
 
     @Test
@@ -198,6 +238,43 @@ class TerminalPageTest {
         // stream is dropped: written after the reset it would be the replay's own first lines, twice.
         assertTrue("the epoch moved from $first to ${state.epoch}", state.epoch > first)
         assertEquals("", state.pendingOutput)
+    }
+
+    @Test
+    fun `a replay gap resets the page and requests the full retained buffer`() {
+        startTerminal("pty_a", sockets = 1)
+        model.onBridgeMessage(TerminalBridgeMessage.Ready)
+        val initialEpoch = model.state.value.epoch
+        server.sendOutput("seen")
+        val seen = awaitState("the first delivered output") { it.pendingOutput == "seen" }
+        model.outputConsumed(seen.pendingOutput.length)
+        pumpFor(SETTLE_MILLIS)
+
+        assertTrue("the first connection closed", server.closeNewest())
+        awaitState("the reconnect backoff to start") { it.stream is PtyStreamState.Reconnecting }
+        scheduler.advanceTimeBy(1_000)
+        scheduler.runCurrent()
+        awaitUntil("the socket to reconnect with its delivered cursor") { server.sockets >= 2 }
+        val resumedRequest = server.lastRequest("/api/pty/pty_a/connect").orEmpty()
+        assertTrue("the reconnect must resume after output already delivered: $resumedRequest", "cursor=4" in resumedRequest)
+
+        // The server's retained buffer no longer covers the requested cursor. It sends the replay and its
+        // absolute cursor; the client must withhold the bytes and replace the page with a cursor-free replay.
+        server.sendOutput("gap")
+        server.sendCursor(1000)
+        awaitUntil("a fresh socket for a full replay") { server.sockets >= 3 }
+        val fullReplayRequest = server.lastRequest("/api/pty/pty_a/connect").orEmpty()
+        assertFalse("a reset page must request the retained buffer from its beginning: $fullReplayRequest", "cursor=" in fullReplayRequest)
+        assertTrue("the replay reset the page epoch", model.state.value.epoch > initialEpoch)
+        assertEquals("gap bytes must not reach the page", "", model.state.value.pendingOutput)
+
+        server.sendOutput("retained")
+        server.sendCursor(1008)
+        assertEquals(
+            "retained",
+            awaitState("the full retained replay to reach the reset page") { it.pendingOutput == "retained" }
+                .pendingOutput,
+        )
     }
 
     // ------------------------------------------------------------------ the activity coming back

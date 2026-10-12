@@ -166,6 +166,10 @@ class ExecutionServer(
         synchronized(peers) { peers.last() }.send(text)
     }
 
+    /** Closes the newest accepted terminal connection, as a network drop or process exit would. */
+    fun closeNewest(code: Int = 1001, reason: String = "network lost"): Boolean =
+        synchronized(peers) { peers.lastOrNull() }?.close(code, reason) ?: false
+
     private val acceptor = object : WebSocketListener() {
         override fun onOpen(webSocket: WebSocket, response: Response) {
             synchronized(peers) { peers += webSocket }

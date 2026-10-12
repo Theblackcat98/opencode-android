@@ -326,10 +326,11 @@ private fun TerminalList(
 /**
  * The live surface: the WebView, and the output the view model has buffered for it.
  *
- * **The output is written in a `LaunchedEffect` on the buffer, then handed back.** A
+ * **Each output frame is written once, identified by its token, then handed back.** A
  * `WebView.evaluateJavascript` is a call onto the browser's thread, and a terminal producing a thousand
  * chunks a second would make that call a thousand times a second; folding them into the state and
- * writing on each publication means one evaluation per recomposition, in order. The length is then
+ * writing on each publication means one evaluation per frame, in order. Identical adjacent chunks still
+ * have distinct tokens and are not collapsed by state conflation. The length is then
  * reported back through [onOutputConsumed], because the buffer is a queue and a queue nobody drains is
  * a terminal that re-sends its whole history on every frame.
  *
@@ -349,7 +350,7 @@ private fun TerminalSurface(
     // Declared before the output effect on purpose: when the view model starts a replay it changes the
     // epoch and empties the output in one update, and the screen has to be cleared before what follows.
     LaunchedEffect(state.epoch) { channel.reset() }
-    LaunchedEffect(state.pendingOutput) {
+    LaunchedEffect(state.pendingOutputToken) {
         if (state.pendingOutput.isEmpty()) return@LaunchedEffect
         channel.write(state.pendingOutput)
         onOutputConsumed(state.pendingOutput.length)

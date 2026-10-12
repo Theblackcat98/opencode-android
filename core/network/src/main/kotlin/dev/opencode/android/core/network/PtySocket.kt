@@ -4,16 +4,17 @@ import dev.opencode.android.core.model.PtyCursor
 import dev.opencode.android.core.model.json.OpenCodeJson
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.channels.ClosedSendChannelException
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import okhttp3.Credentials
 import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrl
@@ -42,6 +43,9 @@ sealed interface PtyStreamState {
 
     /** The cursor frame arrived: the replay is complete and the terminal is following. */
     data class Live(val cursor: Long) : PtyStreamState
+
+    /** The server no longer retains the last delivered cursor; the page must reset and replay retained output. */
+    data class Desynchronized(val reason: String) : PtyStreamState
 
     /**
      * The stream closed and a reconnect is scheduled.
@@ -179,25 +183,21 @@ sealed interface PtyFrame {
 /**
  * A live terminal stream (features doc §31).
  *
- * **The cursor is the client's, and it is only ever what the server said.** The server sends one
- * control frame after the replay, and that number is the only honest record of how much output this
- * client has seen; a cursor advanced locally would be a guess that a reconnect would then send as
- * `?cursor=`, and the gap between the guess and the truth is output the user never sees and can
- * never recover. So [cursor] is a `StateFlow` fed only by a decoded control frame, and the socket
- * reconnects with it verbatim.
+ * **The cursor is the last output delivered to the page.** The server's cursor frame is an absolute
+ * UTF-16 code-unit offset at the end of replay. Each subsequently acknowledged string advances it by
+ * [String.length], matching the server's `chunk.length`; an output frame that has only been queued or
+ * is still waiting for the page never advances the cursor.
  *
  * **Reconnect resumes rather than replays.** `?cursor=<n>` is what the server understands, and it
  * is what a phone needs: a terminal that is dropped in a lift should not re-emit twenty thousand
  * lines of scrollback the user has already read. A first connection sends no cursor at all, which is
  * the server's "replay the whole retained buffer" and the right thing for a terminal being opened.
  *
- * **Output is a hot `SharedFlow` with a drop-oldest buffer, deliberately.** A terminal writing
- * faster than a phone can draw must not apply backpressure to the socket: the standard advice for
- * the event stream ("never block the reader", plan §4.2) is the same here, and the failure mode of
- * getting it wrong is a reconnect loop on a build that is working perfectly. What is dropped is
- * pixels of output, and the cursor that follows is the server's, so a dropped frame costs the user
- * a moment of output rather than the terminal's state. Each accepted frame is at most 64 KiB and the
- * flow holds at most 64 frames, so retained wire payload is bounded to 4 MiB.
+ * **Output uses a bounded, suspending channel.** A full channel stops the WebSocket reader from
+ * accepting more frames instead of discarding an arbitrary part of the terminal byte stream. Replay
+ * is held behind the server's cursor barrier, then each chunk is emitted only as its consumer accepts
+ * it. If the requested cursor has fallen out of the server's retained buffer, the stream is marked
+ * desynchronized so the owner can reset the page and request a full retained replay.
  */
 class PtySocket(
     private val url: HttpUrl,
@@ -211,18 +211,100 @@ class PtySocket(
     private val _state = MutableStateFlow<PtyStreamState>(PtyStreamState.Idle)
     val state: StateFlow<PtyStreamState> = _state.asStateFlow()
 
-    private val _output = MutableSharedFlow<String>(
-        replay = 0,
-        extraBufferCapacity = OUTPUT_BUFFER,
-        onBufferOverflow = BufferOverflow.DROP_OLDEST,
-    )
+    private data class QueuedFrame(val connectionGeneration: Long, val frame: PtyFrame)
 
-    /** Terminal output, in order, at the cost of dropping the oldest when the buffer fills. */
-    val output: SharedFlow<String> = _output.asSharedFlow()
+    private val outputFrames = Channel<QueuedFrame>(capacity = OUTPUT_BUFFER)
+    private val outputCollectorStarted = AtomicBoolean(false)
+
+    /** The socket's sole lifetime-scoped consumer receives output after replay reaches its cursor barrier. */
+    val output: Flow<String> = flow {
+        check(outputCollectorStarted.compareAndSet(false, true)) {
+            "PtySocket.output supports one collector for its lifetime"
+        }
+        var generation = -1L
+        val replay = mutableListOf<String>()
+        var replayCharacters = 0L
+        var liveCursor: Long? = null
+        for (queued in outputFrames) {
+            if (queued.connectionGeneration < generation) continue
+            if (queued.connectionGeneration > generation) {
+                generation = queued.connectionGeneration
+                replay.clear()
+                replayCharacters = 0L
+                liveCursor = null
+            }
+            when (val frame = queued.frame) {
+                is PtyFrame.Output -> {
+                    if (frame.text.isEmpty()) continue
+                    val cursor = liveCursor
+                    if (cursor == null) {
+                        val nextSize = replayCharacters + frame.text.length
+                        if (nextSize > MAX_REPLAY_BUFFERED_CHARACTERS.toLong()) {
+                            markDesynchronized("PTY replay exceeded the bounded client buffer")
+                            return@flow
+                        }
+                        replay += frame.text
+                        replayCharacters = nextSize
+                    } else {
+                        val nextCursor = cursor + frame.text.length.toLong()
+                        if (nextCursor < cursor) {
+                            markDesynchronized("PTY output cursor overflowed")
+                            return@flow
+                        }
+                        emit(frame.text)
+                        liveCursor = nextCursor
+                        _cursor.value = nextCursor
+                    }
+                }
+
+                is PtyFrame.Cursor -> {
+                    val serverCursor = frame.cursor
+                    val replayStart = serverCursor - replayCharacters
+                    val lastDelivered = _cursor.value
+                    if (
+                        serverCursor < 0 ||
+                        replayStart < 0 ||
+                        (lastDelivered != null && replayStart > lastDelivered) ||
+                        (lastDelivered != null && serverCursor < lastDelivered)
+                    ) {
+                        markDesynchronized("PTY replay no longer contains the last delivered cursor")
+                        return@flow
+                    }
+
+                    var cursorPosition = replayStart
+                    var skip = lastDelivered?.minus(replayStart)?.coerceAtLeast(0L) ?: 0L
+                    for (chunk in replay) {
+                        val skipInChunk = minOf(skip, chunk.length.toLong()).toInt()
+                        skip -= skipInChunk
+                        cursorPosition += skipInChunk
+                        val remainder = chunk.substring(skipInChunk)
+                        if (remainder.isNotEmpty()) {
+                            emit(remainder)
+                            cursorPosition += remainder.length
+                            _cursor.value = cursorPosition
+                        }
+                    }
+                    if (skip != 0L || cursorPosition != serverCursor) {
+                        markDesynchronized("PTY replay cursor did not match its output")
+                        return@flow
+                    }
+
+                    _cursor.value = serverCursor
+                    liveCursor = serverCursor
+                    _state.value = PtyStreamState.Live(serverCursor)
+                    reconnect?.cancel()
+                    reconnect = null
+                    attempt = 0
+                    replay.clear()
+                    replayCharacters = 0L
+                }
+            }
+        }
+    }
 
     private val _cursor = MutableStateFlow<Long?>(null)
 
-    /** The cursor the server last reported, which is what a reconnect sends. */
+    /** The last output offset accepted downstream, which is what a reconnect sends. */
     val cursor: StateFlow<Long?> = _cursor.asStateFlow()
 
     private val decoder = PtyFrameDecoder()
@@ -239,6 +321,9 @@ class PtySocket(
     private var terminalGone = false
     private var socket: WebSocket? = null
     private var attempt = 0
+
+    @Volatile
+    private var connectionGeneration = 0L
     private var reconnect: Job? = null
 
     /** Opens the stream. Calling it again while open is ignored. */
@@ -249,12 +334,14 @@ class PtySocket(
 
     private fun connect(scope: CoroutineScope) {
         attempt += 1
+        connectionGeneration += 1
+        val generation = connectionGeneration
         _state.value = PtyStreamState.Connecting(attempt)
         val request = Request.Builder()
             .url(socketUrl())
             .apply { if (ticket == null) setBasicAuth(credential) }
             .build()
-        val opened = okHttpClient.newWebSocket(request, Listener(scope))
+        val opened = okHttpClient.newWebSocket(request, Listener(scope, generation))
         socket = opened
     }
 
@@ -305,41 +392,60 @@ class PtySocket(
         if (!closed.compareAndSet(false, true)) return
         reconnect?.cancel()
         reconnect = null
+        outputFrames.close()
         socket?.close(NORMAL_CLOSURE, reason)
         socket = null
         _state.value = PtyStreamState.Closed(reason)
     }
 
-    private inner class Listener(private val scope: CoroutineScope) : WebSocketListener() {
+    private inner class Listener(
+        private val scope: CoroutineScope,
+        private val generation: Long,
+    ) : WebSocketListener() {
 
         override fun onOpen(webSocket: WebSocket, response: Response) {
-            socket = webSocket
+            if (generation == connectionGeneration) {
+                socket = webSocket
+            } else {
+                webSocket.close(NORMAL_CLOSURE, "superseded")
+            }
         }
 
         override fun onMessage(webSocket: WebSocket, text: String) {
-            receive(webSocket) { decoder.decode(text) }
+            receive(webSocket, generation) { decoder.decode(text) }
         }
 
         override fun onMessage(webSocket: WebSocket, bytes: ByteString) {
-            receive(webSocket) { decoder.decode(bytes) }
+            receive(webSocket, generation) { decoder.decode(bytes) }
         }
 
         override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
+            if (generation != connectionGeneration) {
+                webSocket.close(NORMAL_CLOSURE, null)
+                return
+            }
             // A normal close, and 4404 in particular, are the server telling the client this
             // terminal is over. `close(NORMAL_CLOSURE, …)` answers the handshake so the server is
             // not left waiting, and no reconnect is scheduled.
             val gone = code == TERMINAL_GONE
             terminalGone = gone
             webSocket.close(NORMAL_CLOSURE, null)
-            if (gone || closed.get()) {
+            if (gone) {
                 socket = null
+                outputFrames.close()
                 _state.value = PtyStreamState.Closed(reason.ifEmpty { "closed ($code)" })
+            } else if (closed.get()) {
+                // An app-initiated close may already have published either Closed or Desynchronized.
+                // The peer's acknowledgment must not overwrite that more useful state.
+                socket = null
+                outputFrames.close()
             } else {
                 scheduleReconnect(scope, "closed ($code) ${reason.ifEmpty { code.toString() }}", retry = true)
             }
         }
 
         override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
+            if (generation != connectionGeneration) return
             socket = null
             if (closed.get() || terminalGone) return
             // A 401 or a 403 is a credential and a 404 is a terminal that is gone; no retry fixes
@@ -349,6 +455,7 @@ class PtySocket(
             // failure, so the status is honoured as well.
             val status = response?.code
             if (status == 401 || status == 403 || status == 404) {
+                outputFrames.close()
                 _state.value = PtyStreamState.Closed("refused ($status)")
                 return
             }
@@ -356,35 +463,43 @@ class PtySocket(
         }
     }
 
-    private fun receive(webSocket: WebSocket, decode: () -> List<PtyFrame>) {
+    private fun receive(webSocket: WebSocket, generation: Long, decode: () -> List<PtyFrame>) {
+        if (generation != connectionGeneration || closed.get()) return
         try {
-            dispatch(decode())
+            dispatch(generation, decode())
         } catch (tooLarge: PtyFrameTooLargeException) {
             if (!closed.compareAndSet(false, true)) return
             reconnect?.cancel()
             reconnect = null
             socket = null
+            outputFrames.close()
             val reason = "PTY frame too large (${tooLarge.observedBytes} > ${tooLarge.maxBytes} bytes)"
             _state.value = PtyStreamState.Closed(reason)
             webSocket.close(TOO_BIG, reason)
         }
     }
 
-    private fun dispatch(frames: List<PtyFrame>) {
+    private fun dispatch(generation: Long, frames: List<PtyFrame>) {
         frames.forEach { frame ->
-            when (frame) {
-                is PtyFrame.Output -> if (frame.text.isNotEmpty()) _output.tryEmit(frame.text)
-
-                is PtyFrame.Cursor -> {
-                    _cursor.value = frame.cursor
-                    // The first cursor frame is what "the replay is complete" means.
-                    _state.value = PtyStreamState.Live(frame.cursor)
-                    reconnect?.cancel()
-                    reconnect = null
-                    attempt = 0
-                }
+            if (generation != connectionGeneration || closed.get()) return@forEach
+            try {
+                runBlocking { outputFrames.send(QueuedFrame(generation, frame)) }
+            } catch (_: ClosedSendChannelException) {
+                // Closing the socket wakes a reader that was suspended by backpressure.
             }
         }
+    }
+
+    private fun markDesynchronized(reason: String) {
+        if (!closed.compareAndSet(false, true)) return
+        terminalGone = true
+        reconnect?.cancel()
+        reconnect = null
+        val activeSocket = socket
+        socket = null
+        outputFrames.close()
+        _state.value = PtyStreamState.Desynchronized(reason)
+        activeSocket?.close(NORMAL_CLOSURE, "reset required")
     }
 
     private fun scheduleReconnect(scope: CoroutineScope, reason: String, retry: Boolean) {
@@ -417,17 +532,14 @@ class PtySocket(
         /** RFC 6455 message-too-big closure. */
         const val TOO_BIG: Int = 1009
 
-        /**
-         * Frames of output the buffer holds before the oldest is dropped.
-         *
-         * With the 64 KiB inbound frame limit, the byte budget allows 64 complete frames. This is
-         * about a screenful of redraw for a full-screen program, after which dropping is preferable
-         * to holding the socket's send window open.
-         */
+        /** Maximum complete frames queued before the WebSocket reader suspends for its consumer. */
         const val OUTPUT_BUFFER: Int = 64
 
-        /** Hard byte cap for the output SharedFlow's retained wire payload. */
+        /** Upper bound on queued wire payload, from the frame limit multiplied by channel capacity. */
         const val MAX_BUFFERED_OUTPUT_BYTES: Int = OUTPUT_BUFFER * PtyFrameDecoder.MAX_INBOUND_FRAME_BYTES
+
+        /** The pinned server retains at most two million output characters. */
+        const val MAX_REPLAY_BUFFERED_CHARACTERS: Int = 2 * 1024 * 1024
 
         /** 250 ms, doubling to a 10 s ceiling. The event stream's shape, for the same reason. */
         fun defaultBackoff(attempt: Int): Long =
