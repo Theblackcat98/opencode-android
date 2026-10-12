@@ -27,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import dev.opencode.android.core.data.action.ActionError
 import dev.opencode.android.core.data.server.SessionContextInspector
 import dev.opencode.android.core.designsystem.text.SyncedTextField
 
@@ -55,6 +56,12 @@ fun HistoryPanel(
     onExportMarkdown: () -> Unit,
     onImport: () -> Unit,
     onDismissTransfer: () -> Unit,
+    /**
+     * Clears the failure row. The host passes `HistoryViewModel::dismissError`; the default keeps
+     * existing call sites compiling, but a host that leaves it defaulted ships a Dismiss button that
+     * does nothing, which is the dead-control defect the codebase's own KDoc warns about.
+     */
+    onDismissError: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
@@ -181,6 +188,10 @@ fun HistoryPanel(
             TransferNotice(result = result, onDismiss = onDismissTransfer)
         }
 
+        state.error?.let { error ->
+            HistoryErrorNotice(error = error, onDismiss = onDismissError)
+        }
+
         if (state.contextOpen) {
             HorizontalDivider()
             ContextSection(state = state, onClose = onCloseContext)
@@ -284,6 +295,30 @@ private fun TransferNotice(result: TransferResult, onDismiss: () -> Unit) {
             } else {
                 MaterialTheme.colorScheme.onSurfaceVariant
             },
+            modifier = Modifier.weight(1f),
+        )
+        TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_dismiss)) }
+    }
+}
+
+/**
+ * The last transfer or context action's failure, in the server's own words when it gave any.
+ *
+ * It sits beside the transfer notice rather than under the buttons it came from: the error is the
+ * transfer's outcome, and a row next to that outcome reads as the outcome's shadow rather than a new
+ * control to learn. The error color is the whole signal, which matches the transfer row's refusal
+ * styling one row above it.
+ */
+@Composable
+private fun HistoryErrorNotice(error: ActionError, onDismiss: () -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = error.serverMessage ?: stringResource(R.string.history_error_unknown),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.error,
             modifier = Modifier.weight(1f),
         )
         TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_dismiss)) }

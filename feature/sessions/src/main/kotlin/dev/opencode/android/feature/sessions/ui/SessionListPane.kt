@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -11,12 +12,14 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -24,6 +27,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
@@ -67,6 +71,9 @@ private val PaneInsetSides = WindowInsetsSides.Start + WindowInsetsSides.Top + W
  * A selected session that is off screen is scrolled into view when it becomes the selection, for example when it was
  * opened from a notification. A tap on a row never scrolls, because the row it selects is already on screen. The
  * scroll waits for the first layout, so a restored scroll position is not overwritten before it is measured.
+ *
+ * [loading] is whether the rows are still being read: an empty list while loading is a spinner, not "No sessions
+ * yet." A list that finished loading and is genuinely empty keeps the empty text.
  */
 @Composable
 fun SessionListPane(
@@ -74,6 +81,7 @@ fun SessionListPane(
     selectedId: String?,
     onSelect: (String) -> Unit,
     listState: LazyListState,
+    loading: Boolean = false,
     modifier: Modifier = Modifier,
     /**
      * The system bars and cutout the pane keeps clear of. Nothing above the pane pads for them (the navigation graph
@@ -108,11 +116,28 @@ fun SessionListPane(
                 .semantics { heading() },
         )
         if (sessions.isEmpty()) {
-            Text(
-                text = stringResource(R.string.session_pane_empty),
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.padding(horizontal = 16.dp),
-            )
+            if (loading) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        strokeWidth = 2.dp,
+                    )
+                    Text(
+                        text = stringResource(R.string.session_pane_loading),
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
+            } else {
+                Text(
+                    text = stringResource(R.string.session_pane_empty),
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                )
+            }
         } else {
             LazyColumn(
                 state = listState,

@@ -120,6 +120,7 @@
     <string name="history_export_done">Exported %1$d messages.</string>
     <string name="history_import">Import</string>
     <string name="history_import_done">Imported as %1$s.</string>
+    <string name="history_error_unknown">Something went wrong.</string>
     <string name="context_title">Context</string>
     <string name="context_body">%1$d messages after the last compaction, %2$d characters.</string>
     <string name="context_empty">Nothing after the last compaction.</string>

@@ -239,6 +239,7 @@
     <string name="session_pane_title">Sessions</string>
     <string name="session_pane_label_selected">%1$s, selected</string>
     <string name="session_pane_empty">No sessions yet.</string>
+    <string name="session_pane_loading">Loading sessions…</string>
     <!-- The home: added projects, each with its sessions. -->
     <string name="home_empty_projects_title">No projects yet</string>
     <string name="home_empty_projects_subtitle">Add a project this server already knows, or start a new session and its project appears here.</string>

@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -17,6 +18,7 @@ import androidx.compose.material.icons.filled.DriveFileMove
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -122,6 +124,24 @@ fun WorktreesScreen(
                     modifier = Modifier.padding(start = 8.dp),
                 )
             }
+            // Creating runs the project's setup script on the server, which takes a while; the
+            // button alone greying out says nothing about the wait, so the progress gets its own row.
+            if (state.creating) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        strokeWidth = 2.dp,
+                    )
+                    Text(
+                        text = stringResource(R.string.worktrees_creating),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
             // Every failure the panel's writes produce lands in state.error, so it is shown here, next to the
             // form the user is correcting, until they dismiss it. The drafts are kept beside it on a refusal.
             state.error?.let { error ->
@@ -136,6 +156,18 @@ fun WorktreesScreen(
                         Icon(Icons.Filled.Close, stringResource(R.string.action_close))
                     }
                 }
+            }
+            // A completed write says which directory it landed on, in the server's words: the server
+            // chooses the path, and the notice is the receipt. It stays until the next write or
+            // refresh, like the error beside it; it is informational, so it carries no dismiss of
+            // its own.
+            state.notice?.let { notice ->
+                Text(
+                    text = stringResource(R.string.worktrees_notice, notice),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.testTag(WorktreeTags.NOTICE),
+                )
             }
         }
 
@@ -252,4 +284,5 @@ object WorktreeTags {
     const val CREATE: String = "worktrees-create"
     const val FORCE: String = "worktrees-force"
     const val ERROR: String = "worktrees-error"
+    const val NOTICE: String = "worktrees-notice"
 }

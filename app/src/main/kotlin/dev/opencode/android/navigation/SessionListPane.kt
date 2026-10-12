@@ -56,9 +56,11 @@ fun SessionListPaneHost(
     val rowsFlow = remember(serverDataSets) {
         serverDataSets.active.flatMapLatest { set -> set?.sessions?.rows ?: emptyFlow() }
     }
-    val rows by rowsFlow.collectAsStateWithLifecycle(initialValue = emptyList())
+    // Null until the first emission, which is what the pane's loading state is: an emptyList() initial
+    // value would be indistinguishable from a server that genuinely has no sessions.
+    val rows by rowsFlow.collectAsStateWithLifecycle(initialValue = null)
     val sessions = remember(rows, untitledTitle) {
-        rows.asSequence()
+        (rows ?: emptyList()).asSequence()
             .filterNot { it.isChild }
             .take(SESSION_LIST_MAX)
             .map { row ->
@@ -71,6 +73,7 @@ fun SessionListPaneHost(
         selectedId = selectedId,
         onSelect = onSelect,
         listState = listState,
+        loading = rows == null,
         modifier = modifier,
     )
 }
