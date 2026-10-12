@@ -59,7 +59,7 @@ enum class AdminCatalog(val id: String) {
  * in the screen; a row type makes "the agents tab shows these fields" one line each and keeps the
  * `LazyColumn` single, which is what lets all four share stable keys and one scroll position.
  */
-data class CatalogRow(
+private data class CatalogRow(
     val key: String,
     val title: String,
     val subtitle: String? = null,
@@ -226,7 +226,6 @@ fun CatalogScreen(
     state: CatalogUiState,
     onTabChange: (AdminCatalog) -> Unit,
     onSearchChange: (String) -> Unit,
-    onReload: () -> Unit = {},
     modifier: Modifier = Modifier,
     /**
      * Re-runs the catalog sync after a failure. The host wires this to the same sync the entry

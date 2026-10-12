@@ -286,6 +286,8 @@ fun DefinitionScreen(
     modifier: Modifier = Modifier,
 ) {
     val spacing = OpenCodeThemeExtras.spacing
+    // Read in the composable context: stringResource cannot be called inside the semantics block below.
+    val savingDescription = stringResource(R.string.admin_saving)
     Column(modifier = modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxWidth().padding(horizontal = spacing.lg, vertical = spacing.sm)) {
             FlowRow(horizontalArrangement = Arrangement.spacedBy(spacing.sm)) {
@@ -355,7 +357,7 @@ fun DefinitionScreen(
             if (state.saving) CircularProgressIndicator(
                 modifier = Modifier
                     .size(20.dp)
-                    .semantics { contentDescription = stringResource(R.string.admin_saving) },
+                    .semantics { contentDescription = savingDescription },
             )
             Button(onClick = onSave, enabled = state.canSave, modifier = Modifier.testTag(AdminTags.DEFINITION_SAVE)) {
                 Text(stringResource(R.string.admin_save))

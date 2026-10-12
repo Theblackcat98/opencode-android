@@ -3,7 +3,6 @@ package dev.opencode.android.feature.integrations
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -440,7 +439,7 @@ fun WebSearchScreen(
         }
         state.error?.let { ErrorLine(text = it.message, onDismiss = onDismissError) }
         state.response?.let { response ->
-            WebSearchResults(response = response)
+            WebSearchResults(response = response, modifier = Modifier.weight(1f))
         }
         if (state.rows.isEmpty() && state.providers.hasValue) {
             OpenCodeEmptyState(
@@ -452,10 +451,10 @@ fun WebSearchScreen(
 }
 
 @Composable
-private fun ColumnScope.WebSearchResults(response: WebSearchResponse) {
+private fun WebSearchResults(response: WebSearchResponse, modifier: Modifier = Modifier) {
     // weight, not fillMaxSize: the list shares its Column with the query row and the error
     // line, and a fillMaxSize child would crowd them out of measurement.
-    LazyColumn(modifier = Modifier.fillMaxWidth().weight(1f)) {
+    LazyColumn(modifier = modifier.fillMaxWidth()) {
         item {
             Text(
                 text = stringResource(R.string.websearch_served_by, response.providerID),
