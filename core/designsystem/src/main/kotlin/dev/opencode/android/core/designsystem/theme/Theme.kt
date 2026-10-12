@@ -33,14 +33,18 @@ fun OpenCodeTheme(
 
         else -> OpenCodeLightColors
     }
+    // One shape object feeds both the design-system local and the M3 slots, so a component that
+    // reads MaterialTheme.shapes and one that reads OpenCodeThemeExtras.shapes cannot disagree.
+    val shapes = OpenCodeShapes()
     CompositionLocalProvider(
         LocalCodeTypography provides CodeTypography(),
         LocalOpenCodeSpacing provides OpenCodeSpacing(),
-        LocalOpenCodeShapes provides OpenCodeShapes(),
+        LocalOpenCodeShapes provides shapes,
         LocalOpenCodeStatusColors provides if (darkTheme) DarkStatusColors else LightStatusColors,
     ) {
         MaterialTheme(
             colorScheme = colorScheme,
+            shapes = shapes.toMaterialShapes(),
             typography = OpenCodeTypography,
             content = content,
         )

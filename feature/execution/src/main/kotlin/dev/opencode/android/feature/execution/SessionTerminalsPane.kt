@@ -17,6 +17,7 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.AlertDialog
@@ -65,6 +66,7 @@ fun SessionTerminalsPane(
     onInspect: (String) -> Unit,
     onResize: (String, Int, Int) -> Unit,
     onRemove: (String) -> Unit,
+    onDismissError: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     var removeTarget by remember { mutableStateOf<TerminalRow?>(null) }
@@ -91,6 +93,31 @@ fun SessionTerminalsPane(
             }
         }
         HorizontalDivider()
+
+        // The terminal operations all report failures into state.error; without this row they
+        // vanish, because every other branch of the `when` below renders something else.
+        state.error?.let { message ->
+            Surface(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+                color = MaterialTheme.colorScheme.errorContainer,
+                contentColor = MaterialTheme.colorScheme.onErrorContainer,
+                shape = MaterialTheme.shapes.small,
+            ) {
+                Row(
+                    modifier = Modifier.padding(start = 12.dp, top = 4.dp, end = 4.dp, bottom = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = message,
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.weight(1f),
+                    )
+                    IconButton(onClick = onDismissError) {
+                        Icon(Icons.Filled.Close, stringResource(R.string.action_close))
+                    }
+                }
+            }
+        }
 
         when {
             !state.allowedBySetting -> Notice(
