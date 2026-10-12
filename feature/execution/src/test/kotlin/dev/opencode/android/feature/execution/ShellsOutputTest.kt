@@ -69,14 +69,14 @@ class ShellsOutputTest {
         Dispatchers.resetMain()
     }
 
-    private fun openPanel() {
+    private fun openPanel(panelDirectory: String = directory) {
         val factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T =
                 ShellsViewModel(MutableStateFlow(server.set), OpenLocationTracker()) as T
         }
         model = ViewModelProvider(viewModels, factory)[ShellsViewModel::class.java]
-        model.openPanel(directory)
+        model.openPanel(panelDirectory)
         // The list is read before anything runs, as it is when a user has looked at the screen before
         // typing: a list that lands *after* a command is created replaces the row, which is another bug.
         settle("the shell list to be read") { server.set.execution.at(directory).shellList.value != null }
@@ -89,6 +89,34 @@ class ShellsOutputTest {
     }
 
     private fun paneText(): String? = model.state.value.open?.output?.text
+
+    @Test
+    fun `switching directory clears the command and does not follow it in the new directory`() {
+        openPanel()
+        run(COMMAND)
+        settle("the command to be followed in directory A") { server.requests.any { it.contains("/api/shell/sh_1") } }
+        val requestsBeforeSwitch = server.requests.count {
+            it.contains("/api/shell/sh_1") && it.contains("%2Fwork%2Fapp")
+        }
+
+        openPanel("/work/other")
+        scheduler.runCurrent()
+        assertEquals("/work/other", model.state.value.directory)
+        assertNull(model.state.value.openID)
+        assertNull(model.state.value.open)
+
+        repeat(QUIET_ROUNDS) {
+            scheduler.advanceTimeBy(STEP_MILLIS)
+            scheduler.runCurrent()
+        }
+        assertEquals(
+            requestsBeforeSwitch,
+            server.requests.count { it.contains("/api/shell/sh_1") && it.contains("%2Fwork%2Fapp") },
+        )
+        assertFalse(
+            server.requests.any { it.contains("/api/shell/sh_1") && it.contains("%2Fwork%2Fother") },
+        )
+    }
 
     // ------------------------------------------------------------------ F1, as recorded
 
