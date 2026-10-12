@@ -38,4 +38,13 @@
         <item quantity="one">%1$d day ago</item>
         <item quantity="other">%1$d days ago</item>
     </plurals>
+
+    <!--
+      The top bar's back button. Screens may override it with [backDescription] when "back" means
+      something more specific, but no back button ever goes unlabeled.
+    -->
+    <string name="top_app_bar_back">Back</string>
+
+    <!-- The bottom bar's badge, read by TalkBack: "%1$d" is the capped count, "%2$s" the tab label. -->
+    <string name="navigation_bar_badge_description">%1$s, %2$d notifications</string>
 </resources>

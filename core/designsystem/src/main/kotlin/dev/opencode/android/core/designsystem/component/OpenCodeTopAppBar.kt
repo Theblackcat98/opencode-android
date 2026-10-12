@@ -20,10 +20,12 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import dev.opencode.android.core.designsystem.R
 
 /**
  * The one top bar: a single-line title, an optional single-line subtitle, and an optional thin
@@ -35,6 +37,10 @@ import androidx.compose.ui.unit.dp
  *
  * [progress] is a fraction in 0..1; [progressDescription] is what a screen reader hears for it, since a
  * 2dp line carries no text of its own.
+ *
+ * [backDescription] labels the back button for screen readers. When a screen passes [onBack]
+ * without one, the button falls back to the generic "Back" label rather than going unlabeled;
+ * pass an explicit description when back means something more specific than leaving the screen.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -69,7 +75,11 @@ fun OpenCodeTopAppBar(
             navigationIcon = {
                 if (onBack != null) {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = backDescription)
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = backDescription
+                                ?: stringResource(R.string.top_app_bar_back),
+                        )
                     }
                 }
             },

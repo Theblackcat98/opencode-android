@@ -5,7 +5,7 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 
 /**
- * Semantic status colors, as container / content pairs (`design.md` § Chips & Status Badges).
+ * Semantic status colors, as container / content pairs (repo-root `design.md` § Chips & Status Badges).
  *
  * Material's scheme has `error` but no success, warning or running, and screens used to borrow
  * `tertiary` or `secondary` for those, which meant the same state was a different color on every screen.
