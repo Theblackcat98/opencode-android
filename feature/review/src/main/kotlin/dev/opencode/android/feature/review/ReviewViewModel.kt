@@ -201,6 +201,7 @@ class ReviewViewModel @Inject constructor(
     private val _state = MutableStateFlow(ReviewUiState())
     private var loadJob: Job? = null
     private val loadGeneration = ReviewLoadGeneration()
+    private val loadBinding = ReviewLoadBinding()
 
     /** The published review. */
     val state: StateFlow<ReviewUiState> = _state.asStateFlow()
@@ -336,6 +337,7 @@ class ReviewViewModel @Inject constructor(
 
     private fun ReviewLoadRequest.isCurrent(): Boolean =
         loadGeneration.isCurrent(generation) &&
+            loadBinding.isCurrent(generation, set, sessionID, scope, baseOverride, directory) &&
             dataSets.active.value === set &&
             local.value.sessionID == sessionID &&
             local.value.scope == scope &&
@@ -384,6 +386,7 @@ class ReviewViewModel @Inject constructor(
             baseOverride = local.value.baseOverride,
             directory = _state.value.directory,
         )
+        loadBinding.begin(set, request.sessionID, request.scope, request.baseOverride, request.directory)
         loadJob?.cancel()
         _state.value = _state.value.copy(loading = true, error = null)
         loadJob = viewModelScope.launch {
@@ -677,4 +680,41 @@ internal class ReviewLoadGeneration {
     }
 
     fun isCurrent(generation: Long): Boolean = generation == current
+}
+
+/** A latest-only binding used before a completed load is allowed to reach the UI. */
+internal class ReviewLoadBinding {
+    private var current: Binding? = null
+    private var generation = 0L
+
+    private data class Binding(
+        val owner: Any,
+        val sessionID: String?,
+        val scope: ReviewScope,
+        val baseOverride: String?,
+        val directory: String?,
+    )
+
+    fun begin(
+        owner: Any,
+        sessionID: String?,
+        scope: ReviewScope,
+        baseOverride: String?,
+        directory: String?,
+    ): Long {
+        generation += 1
+        current = Binding(owner, sessionID, scope, baseOverride, directory)
+        return generation
+    }
+
+    fun isCurrent(
+        requestGeneration: Long,
+        owner: Any,
+        sessionID: String?,
+        scope: ReviewScope,
+        baseOverride: String?,
+        directory: String?,
+    ): Boolean =
+        requestGeneration == generation &&
+            current == Binding(owner, sessionID, scope, baseOverride, directory)
 }
