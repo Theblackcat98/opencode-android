@@ -10,6 +10,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
+import mockwebserver3.Dispatcher
+import mockwebserver3.MockResponse
+import mockwebserver3.RecordedRequest
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -19,6 +22,9 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
 
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -34,7 +40,6 @@ class ConfigEditorReadBindingTest {
     fun setUp() {
         Dispatchers.setMain(UnconfinedTestDispatcher())
         server = AdminServer()
-        server.answerPrefix("GET", "/api/fs/read/", "{\"model\":\"second-provider/second-model\"}")
         scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
         val set = server.dataSet(scope)
         model = ConfigEditorViewModel(MutableStateFlow(set), FakeExperimental(ExperimentalSettings(fileWrites = true)))
@@ -49,15 +54,54 @@ class ConfigEditorReadBindingTest {
 
     @Test
     fun `a late read cannot publish contents or save target for an older directory and path`() {
-        model.open("/first", "first.jsonc")
-        model.open("/second", "second.jsonc")
-        waitUntil { !model.state.value.reading && model.state.value.text.contains("second-provider") }
+        val firstReadStarted = CountDownLatch(1)
+        val releaseFirstResponse = CountDownLatch(1)
+        val firstResponseReady = CountDownLatch(1)
+        val readCount = AtomicInteger()
+        val fallback = server.server.dispatcher
+        server.server.dispatcher = object : Dispatcher() {
+            override fun dispatch(request: RecordedRequest): MockResponse {
+                if (!request.url.encodedPath.startsWith("/api/fs/read/")) {
+                    return fallback.dispatch(request)
+                }
+                val firstRead = readCount.getAndIncrement() == 0
+                if (firstRead) {
+                    firstReadStarted.countDown()
+                    check(releaseFirstResponse.await(5, TimeUnit.SECONDS))
+                }
+                val response = MockResponse.Builder()
+                    .code(200)
+                    .addHeader("Content-Type", "application/json")
+                    .body(
+                        if (firstRead) "{\"model\":\"first-provider/first-model\"}"
+                        else "{\"model\":\"second-provider/second-model\"}",
+                    )
+                if (firstRead) {
+                    response.bodyDelay(300, TimeUnit.MILLISECONDS)
+                    firstResponseReady.countDown()
+                }
+                return response.build()
+            }
+        }
 
-        assertEquals("/second", model.state.value.directory)
-        assertEquals("second.jsonc", model.state.value.path)
-        assertTrue(model.state.value.text.contains("second-provider/second-model"))
-        model.requestSave()
-        assertEquals("second.jsonc", model.state.value.plan?.target)
+        try {
+            model.open("/first", "first.jsonc")
+            assertTrue("the first read never reached the server", firstReadStarted.await(5, TimeUnit.SECONDS))
+            model.open("/second", "second.jsonc")
+            waitUntil { !model.state.value.reading && model.state.value.text.contains("second-provider") }
+
+            releaseFirstResponse.countDown()
+            assertTrue("the delayed first response was not released", firstResponseReady.await(5, TimeUnit.SECONDS))
+            Thread.sleep(500)
+
+            assertEquals("/second", model.state.value.directory)
+            assertEquals("second.jsonc", model.state.value.path)
+            assertTrue(model.state.value.text.contains("second-provider/second-model"))
+            model.requestSave()
+            assertEquals("second.jsonc", model.state.value.plan?.target)
+        } finally {
+            releaseFirstResponse.countDown()
+        }
     }
 
     private fun waitUntil(condition: () -> Boolean) {
