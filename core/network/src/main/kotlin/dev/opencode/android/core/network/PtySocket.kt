@@ -72,13 +72,14 @@ sealed interface PtyStreamState {
  * segments, and a terminal's output can contain a `0x00` byte of its own. Deciding per frame is only
  * sound if the frame boundary is known, and the boundary is the WebSocket message, not the payload:
  * so a control message is a *whole message* that begins with `0x00`, and [PtyFrameDecoder] is fed
- * complete messages. That is why this takes a `ByteArray` and not a stream — a decoder that
+ * complete messages. That is why the decoder consumes a whole message and not a stream — one that
  * consumed a byte at a time would have to reimplement message framing to answer the same question.
  *
- * **A control frame it cannot read becomes output.** The cursor is one JSON object; anything else
+ * **An in-limit control frame it cannot read becomes output.** The cursor is one JSON object; anything else
  * beginning with `0x00` is not something this protocol defines, and failing the whole connection
  * over a byte would drop the output the user is watching. The unreadable bytes are handed on as
  * output so nothing is lost, and the frame is counted so a test can assert the decision was taken.
+ * Frames larger than the 64 KiB replay limit are rejected before decoding.
  */
 class PtyFrameDecoder {
 
@@ -94,20 +95,59 @@ class PtyFrameDecoder {
      * Decodes one complete inbound message.
      *
      * Total by construction: a binary message, an empty message and a message that is one `0x00`
-     * byte and nothing else all produce frames, and none of them throw.
+     * byte and nothing else all produce frames. An over-limit message throws before it is copied or
+     * decoded.
      */
     fun decode(frame: ByteArray): List<PtyFrame> {
+        rejectIfTooLarge(frame.size)
         if (frame.isEmpty()) return emptyList()
-        if (frame[0] != CONTROL_PREFIX) return listOf(PtyFrame.Output(frame.copyOf().decodeToString()))
-        val json = frame.copyOfRange(1, frame.size).decodeToString()
+        if (frame[0] != CONTROL_PREFIX) return listOf(PtyFrame.Output(frame.decodeToString()))
+        val json = frame.decodeToString(startIndex = 1, endIndex = frame.size)
         val cursor = runCatching { OpenCodeJson.decodeFromString(PtyCursor.serializer(), json) }.getOrNull()
         if (cursor != null) return listOf(PtyFrame.Cursor(cursor.cursor))
         _unreadableControls.value = _unreadableControls.value + 1
         return listOf(PtyFrame.Output(json))
     }
 
-    /** Decodes a text message, which is how an OkHttp listener reports a UTF-8 frame. */
-    fun decode(text: String): List<PtyFrame> = decode(text.toByteArray(Charsets.UTF_8))
+    /** Checks an Okio binary message's size before the conversion to a byte array. */
+    fun decode(frame: ByteString): List<PtyFrame> {
+        rejectIfTooLarge(frame.size)
+        return decode(frame.toByteArray())
+    }
+
+    /** Decodes an OkHttp text message after counting its UTF-8 bytes without allocating another buffer. */
+    fun decode(text: String): List<PtyFrame> {
+        var byteCount = 0
+        var index = 0
+        while (index < text.length) {
+            val current = text[index]
+            val nextBytes = when {
+                current.code <= 0x7F -> 1
+
+                current.code <= 0x7FF -> 2
+
+                Character.isHighSurrogate(current) &&
+                    index + 1 < text.length && Character.isLowSurrogate(text[index + 1]) -> {
+                    index++
+                    4
+                }
+
+                else -> 3
+            }
+            byteCount += nextBytes
+            if (byteCount > MAX_INBOUND_FRAME_BYTES) {
+                throw PtyFrameTooLargeException(byteCount, MAX_INBOUND_FRAME_BYTES)
+            }
+            index++
+        }
+        return decode(text.toByteArray(Charsets.UTF_8))
+    }
+
+    private fun rejectIfTooLarge(size: Int) {
+        if (size > MAX_INBOUND_FRAME_BYTES) {
+            throw PtyFrameTooLargeException(size, MAX_INBOUND_FRAME_BYTES)
+        }
+    }
 
     companion object {
         /** The byte that makes a frame a control frame. */
@@ -115,8 +155,17 @@ class PtyFrameDecoder {
 
         /** The replay chunk size the server sends in (features doc §31). */
         const val REPLAY_CHUNK_BYTES: Int = 64 * 1024
+
+        /** No inbound WebSocket message may exceed the protocol's replay chunk size. */
+        const val MAX_INBOUND_FRAME_BYTES: Int = REPLAY_CHUNK_BYTES
     }
 }
+
+/** Rejected inbound frame size; the WebSocket listener closes the peer with RFC 6455 code 1009. */
+internal class PtyFrameTooLargeException(
+    val observedBytes: Int,
+    val maxBytes: Int,
+) : IllegalArgumentException("PTY frame exceeds $maxBytes bytes")
 
 /** One decoded inbound message. */
 sealed interface PtyFrame {
@@ -147,7 +196,8 @@ sealed interface PtyFrame {
  * the event stream ("never block the reader", plan §4.2) is the same here, and the failure mode of
  * getting it wrong is a reconnect loop on a build that is working perfectly. What is dropped is
  * pixels of output, and the cursor that follows is the server's, so a dropped frame costs the user
- * a moment of output rather than the terminal's state.
+ * a moment of output rather than the terminal's state. Each accepted frame is at most 64 KiB and the
+ * flow holds at most 64 frames, so retained wire payload is bounded to 4 MiB.
  */
 class PtySocket(
     private val url: HttpUrl,
@@ -267,11 +317,11 @@ class PtySocket(
         }
 
         override fun onMessage(webSocket: WebSocket, text: String) {
-            dispatch(decoder.decode(text))
+            receive(webSocket) { decoder.decode(text) }
         }
 
         override fun onMessage(webSocket: WebSocket, bytes: ByteString) {
-            dispatch(decoder.decode(bytes.toByteArray()))
+            receive(webSocket) { decoder.decode(bytes) }
         }
 
         override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
@@ -303,6 +353,20 @@ class PtySocket(
                 return
             }
             scheduleReconnect(scope, t.message ?: t::class.java.simpleName, retry = true)
+        }
+    }
+
+    private fun receive(webSocket: WebSocket, decode: () -> List<PtyFrame>) {
+        try {
+            dispatch(decode())
+        } catch (tooLarge: PtyFrameTooLargeException) {
+            if (!closed.compareAndSet(false, true)) return
+            reconnect?.cancel()
+            reconnect = null
+            socket = null
+            val reason = "PTY frame too large (${tooLarge.observedBytes} > ${tooLarge.maxBytes} bytes)"
+            _state.value = PtyStreamState.Closed(reason)
+            webSocket.close(TOO_BIG, reason)
         }
     }
 
@@ -350,13 +414,20 @@ class PtySocket(
         /** RFC 6455 normal closure. */
         const val NORMAL_CLOSURE: Int = 1000
 
+        /** RFC 6455 message-too-big closure. */
+        const val TOO_BIG: Int = 1009
+
         /**
          * Frames of output the buffer holds before the oldest is dropped.
          *
-         * 64 is about a screenful of redraw for a full-screen program, which is the point at which
-         * dropping is preferable to holding the socket's send window open.
+         * With the 64 KiB inbound frame limit, the byte budget allows 64 complete frames. This is
+         * about a screenful of redraw for a full-screen program, after which dropping is preferable
+         * to holding the socket's send window open.
          */
         const val OUTPUT_BUFFER: Int = 64
+
+        /** Hard byte cap for the output SharedFlow's retained wire payload. */
+        const val MAX_BUFFERED_OUTPUT_BYTES: Int = OUTPUT_BUFFER * PtyFrameDecoder.MAX_INBOUND_FRAME_BYTES
 
         /** 250 ms, doubling to a 10 s ceiling. The event stream's shape, for the same reason. */
         fun defaultBackoff(attempt: Int): Long =

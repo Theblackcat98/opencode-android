@@ -56,6 +56,7 @@ class PtySocketTest {
     private var peer: WebSocket? = null
 
     private val fromServer = LinkedBlockingQueue<String>()
+    private val peerCloseCodes = LinkedBlockingQueue<Int>()
 
     @Before
     fun setUp() {
@@ -96,6 +97,11 @@ class PtySocketTest {
 
         override fun onMessage(webSocket: WebSocket, bytes: ByteString) {
             fromServer += bytes.utf8()
+        }
+
+        override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
+            peerCloseCodes += code
+            webSocket.close(code, reason)
         }
     }
 
@@ -149,6 +155,60 @@ class PtySocketTest {
     @Test
     fun `the replay chunk size is the protocol's 64 KiB`() {
         assertEquals(65_536, PtyFrameDecoder.REPLAY_CHUNK_BYTES)
+        assertEquals(
+            PtySocket.MAX_BUFFERED_OUTPUT_BYTES,
+            PtySocket.OUTPUT_BUFFER * PtyFrameDecoder.MAX_INBOUND_FRAME_BYTES,
+        )
+    }
+
+    @Test
+    fun `a frame at the protocol byte cap is accepted`() {
+        val decoder = PtyFrameDecoder()
+        val text = "x".repeat(PtyFrameDecoder.MAX_INBOUND_FRAME_BYTES)
+        val bytes = ByteArray(PtyFrameDecoder.MAX_INBOUND_FRAME_BYTES) { 'x'.code.toByte() }
+
+        assertEquals(listOf(PtyFrame.Output(text)), decoder.decode(text))
+        assertEquals(listOf(PtyFrame.Output(text)), decoder.decode(bytes))
+    }
+
+    @Test
+    fun `oversized text and binary frames are rejected before control decoding`() {
+        val decoder = PtyFrameDecoder()
+        val tooLargeText = "\u0000" + "é".repeat(PtyFrameDecoder.MAX_INBOUND_FRAME_BYTES / 2)
+        val tooLargeBinary = ByteArray(PtyFrameDecoder.MAX_INBOUND_FRAME_BYTES + 1).toByteString()
+
+        repeat(3) {
+            val textError = runCatching { decoder.decode(tooLargeText) }.exceptionOrNull()
+            assertTrue("text frame was not rejected: $textError", textError is PtyFrameTooLargeException)
+            assertEquals(
+                PtyFrameDecoder.MAX_INBOUND_FRAME_BYTES + 1,
+                (textError as PtyFrameTooLargeException).observedBytes,
+            )
+
+            val arrayError = runCatching { decoder.decode(ByteArray(PtyFrameDecoder.MAX_INBOUND_FRAME_BYTES + 1)) }
+                .exceptionOrNull()
+            assertTrue("byte array frame was not rejected: $arrayError", arrayError is PtyFrameTooLargeException)
+
+            val binaryError = runCatching { decoder.decode(tooLargeBinary) }.exceptionOrNull()
+            assertTrue("binary frame was not rejected: $binaryError", binaryError is PtyFrameTooLargeException)
+        }
+
+        // Each test frame begins with a control prefix, so a nonzero count would mean oversized data
+        // reached JSON decoding instead of being rejected at the byte-size check.
+        assertEquals(0L, decoder.unreadableControls.value)
+    }
+
+    @Test
+    fun `oversized text message closes the WebSocket without reconnecting`() = runBlocking {
+        assertOversizedFrameCloses { peer ->
+            peer.send("x".repeat(PtyFrameDecoder.MAX_INBOUND_FRAME_BYTES + 1))
+        }
+    }
+
+    @Test
+    fun `oversized binary message closes the WebSocket without reconnecting`() = runBlocking {
+        val frame = ByteArray(PtyFrameDecoder.MAX_INBOUND_FRAME_BYTES + 1).toByteString()
+        assertOversizedFrameCloses { peer -> peer.send(frame) }
     }
 
     // ------------------------------------------------------------------ the URL
@@ -402,5 +462,23 @@ class PtySocketTest {
     private suspend fun awaitPeer(): WebSocket = withTimeout(5_000) {
         while (peer == null) Thread.sleep(10)
         peer!!
+    }
+
+    private suspend fun assertOversizedFrameCloses(send: (WebSocket) -> Boolean) {
+        serveWebSocket()
+        val socket = socket()
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        try {
+            socket.open(scope)
+            assertNotNull("first upgrade was missing", upgrades.poll(5, TimeUnit.SECONDS))
+            assertTrue("server rejected the test send", send(awaitPeer()))
+            assertEquals(PtySocket.TOO_BIG, peerCloseCodes.poll(5, TimeUnit.SECONDS))
+            val state = awaitState { it is PtyStreamState.Closed }
+            assertTrue("stream should be closed; was $state", state is PtyStreamState.Closed)
+            assertNull("stream reconnected after an oversized frame", upgrades.poll(200, TimeUnit.MILLISECONDS))
+        } finally {
+            socket.close("test complete")
+            scope.cancel()
+        }
     }
 }
