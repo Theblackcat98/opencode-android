@@ -3,17 +3,22 @@ package dev.opencode.android.feature.integrations
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CloudOff
+import androidx.compose.material.icons.filled.Extension
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
@@ -31,8 +36,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.unit.dp
 import dev.opencode.android.core.data.sync.SyncStatus
+import dev.opencode.android.core.designsystem.component.OpenCodeBadge
+import dev.opencode.android.core.designsystem.component.OpenCodeEmptyState
 import dev.opencode.android.core.designsystem.text.SyncedTextField
 import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
 import dev.opencode.android.core.model.PluginInfo
@@ -86,7 +92,12 @@ fun PluginsScreen(
                         Text(stringResource(R.string.plugins_loading))
                     }
 
-                    else -> if (state.rows.isEmpty()) EmptyNote(stringResource(R.string.plugins_empty))
+                    else -> if (state.rows.isEmpty()) {
+                        OpenCodeEmptyState(
+                            title = stringResource(R.string.plugins_empty),
+                            icon = Icons.Filled.Extension,
+                        )
+                    }
                 }
                 state.status?.let { line ->
                     Text(
@@ -132,10 +143,10 @@ private fun PluginActions(
             }
         }
         if (state.outdatedCount > 0) {
-            Text(
+            OpenCodeBadge(
                 text = stringResource(R.string.plugins_outdated_badge, state.outdatedCount),
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                containerColor = OpenCodeThemeExtras.status.warning,
+                contentColor = OpenCodeThemeExtras.status.onWarning,
             )
         }
         if (state.selected.isNotEmpty()) {
@@ -221,15 +232,14 @@ private fun PluginRow(
  *
  * **No activation switch, and the screen says where the control is instead.** Activation, `settings`,
  * `headers` and `body` are all configuration (features doc §9), so a switch here would either not
- * take effect or would need the experimental config writer that Phase 9 owns. The row links to the
- * editor rather than pretending to be one.
+ * take effect or would need the experimental config writer that Phase 9 owns. Tapping a row opens
+ * the provider's detail below the search field rather than pretending to edit it.
  */
 @Composable
 fun ProvidersScreen(
     state: ProvidersUiState,
     onSearchChange: (String) -> Unit,
     onSelect: (ProviderInfo?) -> Unit,
-    onOpenProvider: (ProviderInfo) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier.fillMaxSize()) {
@@ -238,7 +248,7 @@ fun ProvidersScreen(
             onValueChange = onSearchChange,
             label = { Text(stringResource(R.string.providers_search)) },
             singleLine = true,
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            modifier = Modifier.fillMaxWidth().padding(OpenCodeThemeExtras.spacing.lg),
         )
         val selected = state.selected
         if (selected != null) {
@@ -254,15 +264,20 @@ fun ProvidersScreen(
                     )
 
                     SyncStatus.Loading -> Row(
-                        modifier = Modifier.fillMaxWidth().padding(16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier.fillMaxWidth().padding(OpenCodeThemeExtras.spacing.lg),
+                        horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.md),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         CircularProgressIndicator()
                         Text(stringResource(R.string.providers_loading))
                     }
 
-                    else -> if (state.rows.isEmpty()) EmptyNote(stringResource(R.string.providers_empty))
+                    else -> if (state.rows.isEmpty()) {
+                        OpenCodeEmptyState(
+                            title = stringResource(R.string.providers_empty),
+                            icon = Icons.Filled.CloudOff,
+                        )
+                    }
                 }
             }
             items(state.rows, key = { it.id }) { provider ->
@@ -297,7 +312,9 @@ fun ProvidersScreen(
                     },
                     modifier = Modifier
                         .testTag(IntegrationsTags.provider(provider.id))
-                        .clickable { onOpenProvider(provider) },
+                        // Tapping a row opens the provider's detail above the list; the screen is
+                        // read-only, so there is nothing else a tap could honestly do.
+                        .clickable { onSelect(provider) },
                 )
                 HorizontalDivider()
             }
@@ -364,16 +381,24 @@ fun WebSearchScreen(
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier.fillMaxSize()) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(OpenCodeThemeExtras.spacing.lg),
+        // A LazyRow, not a Row: the provider list is unbounded and a Row would push chips off
+        // screen with no way to reach them.
+        LazyRow(
+            modifier = Modifier.fillMaxWidth(),
+            contentPadding = PaddingValues(
+                horizontal = OpenCodeThemeExtras.spacing.lg,
+                vertical = OpenCodeThemeExtras.spacing.sm,
+            ),
             horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.sm),
         ) {
-            androidx.compose.material3.FilterChip(
-                selected = state.selected == null,
-                onClick = { onSelect(null) },
-                label = { Text(stringResource(R.string.websearch_default)) },
-            )
-            state.rows.forEach { provider ->
+            item {
+                androidx.compose.material3.FilterChip(
+                    selected = state.selected == null,
+                    onClick = { onSelect(null) },
+                    label = { Text(stringResource(R.string.websearch_default)) },
+                )
+            }
+            items(state.rows, key = { it.id }) { provider ->
                 androidx.compose.material3.FilterChip(
                     selected = state.selected == provider.id,
                     onClick = { onSelect(provider.id) },
@@ -402,7 +427,10 @@ fun WebSearchScreen(
             WebSearchResults(response = response)
         }
         if (state.rows.isEmpty() && state.providers.hasValue) {
-            EmptyNote(stringResource(R.string.websearch_empty))
+            OpenCodeEmptyState(
+                title = stringResource(R.string.websearch_empty),
+                icon = Icons.Filled.Search,
+            )
         }
     }
 }
@@ -419,7 +447,12 @@ private fun WebSearchResults(response: WebSearchResponse) {
             )
         }
         if (response.results.isEmpty()) {
-            item { EmptyNote(stringResource(R.string.websearch_no_results)) }
+            item {
+                OpenCodeEmptyState(
+                    title = stringResource(R.string.websearch_no_results),
+                    icon = Icons.Filled.Search,
+                )
+            }
         }
         items(response.results, key = { it.url }) { result ->
             ListItem(
