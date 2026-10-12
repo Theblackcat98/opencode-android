@@ -21,6 +21,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -39,8 +40,10 @@ import dev.opencode.android.core.model.CommandInfo
 import dev.opencode.android.core.model.ReferenceInfo
 import dev.opencode.android.core.model.ReferenceSource
 import dev.opencode.android.core.model.SkillInfo
+import kotlinx.serialization.Serializable
 
 /** Which catalog the browser is showing. */
+@Serializable
 enum class AdminCatalog(val id: String) {
     AGENTS("agents"),
     COMMANDS("commands"),
@@ -223,6 +226,7 @@ fun CatalogScreen(
     state: CatalogUiState,
     onTabChange: (AdminCatalog) -> Unit,
     onSearchChange: (String) -> Unit,
+    onReload: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val spacing = OpenCodeThemeExtras.spacing
@@ -252,6 +256,10 @@ fun CatalogScreen(
                 // A catalog read fails as a raw `Throwable`; the screen reports the class of it rather
                 // than the request, which for these routes would name a directory the user chose.
                 ErrorLine(error = status.error.toActionError(), onDismiss = { })
+                // The syncs are re-runnable, so a failure offers the retry rather than a dead end.
+                TextButton(onClick = onReload, modifier = Modifier.padding(horizontal = spacing.lg)) {
+                    Text(stringResource(R.string.admin_reload))
+                }
             }
 
             SyncStatus.Loading -> Row(
