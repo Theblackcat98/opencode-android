@@ -630,6 +630,10 @@ fun OpenCodeApp(
                             onOpenSessionTerminals = {
                                 navController.navigate(SessionTerminalsRoute(route.serverId, route.sessionId))
                             },
+                            // The tools sheet's Files tile: the file browser for the session's checkout.
+                            onOpenFiles = {
+                                navController.navigate(FilesRoute(route.serverId, route.sessionId))
+                            },
                             // Phase 9, from the session: its own permission rules and its instruction entries are
                             // scoped to a session rather than to a checkout, so Manage cannot reach them.
                             onOpenSessionPermissions = { projectId: String?, directory: String ->

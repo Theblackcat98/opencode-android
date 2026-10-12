@@ -168,10 +168,13 @@ private fun PluginRow(
                     },
                     style = MaterialTheme.typography.bodySmall,
                 )
+                val serverLabel = stringResource(R.string.plugins_feature_server)
+                val tuiLabel = stringResource(R.string.plugins_feature_tui)
+                val rpcLabel = stringResource(R.string.plugins_feature_rpc)
                 val features = buildList {
-                    if (plugin.features.server) add("server")
-                    if (plugin.features.tui) add("tui")
-                    if (plugin.features.rpc) add("rpc")
+                    if (plugin.features.server) add(serverLabel)
+                    if (plugin.features.tui) add(tuiLabel)
+                    if (plugin.features.rpc) add(rpcLabel)
                 }
                 if (features.isNotEmpty()) {
                     Text(
@@ -311,13 +314,13 @@ private fun ProviderDetail(provider: ProviderInfo, onClose: () -> Unit) {
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Text(text = provider.name, style = MaterialTheme.typography.titleLarge)
-        DetailLine("id", provider.id)
-        DetailLine("activation", provider.activation)
-        DetailLine("package", provider.packageName)
-        provider.canonical?.let { DetailLine("canonical", it) }
-        provider.endpoint?.let { DetailLine("baseURL", it) }
-        provider.settings.transport?.let { DetailLine("transport", it) }
-        provider.settings.compaction?.let { DetailLine("compaction", it) }
+        DetailLine(stringResource(R.string.provider_detail_id), provider.id)
+        DetailLine(stringResource(R.string.provider_detail_activation), provider.activation)
+        DetailLine(stringResource(R.string.provider_detail_package), provider.packageName)
+        provider.canonical?.let { DetailLine(stringResource(R.string.provider_detail_canonical), it) }
+        provider.endpoint?.let { DetailLine(stringResource(R.string.provider_detail_base_url), it) }
+        provider.settings.transport?.let { DetailLine(stringResource(R.string.provider_detail_transport), it) }
+        provider.settings.compaction?.let { DetailLine(stringResource(R.string.provider_detail_compaction), it) }
         // The whole point of the detail: why there is no switch here.
         Text(
             text = stringResource(R.string.providers_config_only),

@@ -19,6 +19,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -29,6 +30,10 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -62,6 +67,7 @@ fun SessionTerminalsPane(
     onRemove: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    var removeTarget by remember { mutableStateOf<TerminalRow?>(null) }
     Column(modifier = modifier.fillMaxSize()) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
@@ -130,7 +136,7 @@ fun SessionTerminalsPane(
                                 )
                             },
                             trailingContent = {
-                                IconButton(onClick = { onRemove(terminal.id) }) {
+                                IconButton(onClick = { removeTarget = terminal }) {
                                     Icon(Icons.Filled.Delete, stringResource(R.string.session_terminals_remove))
                                 }
                             },
@@ -146,6 +152,24 @@ fun SessionTerminalsPane(
                 )
             }
         }
+    }
+    removeTarget?.let { target ->
+        AlertDialog(
+            onDismissRequest = { removeTarget = null },
+            title = { Text(stringResource(R.string.session_terminals_remove_title)) },
+            text = { Text(stringResource(R.string.session_terminals_remove_body)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onRemove(target.id)
+                        removeTarget = null
+                    },
+                ) { Text(stringResource(R.string.session_terminals_remove_confirm)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { removeTarget = null }) { Text(stringResource(R.string.action_close)) }
+            },
+        )
     }
 }
 

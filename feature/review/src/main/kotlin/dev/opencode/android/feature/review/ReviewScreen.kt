@@ -68,6 +68,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import dev.opencode.android.core.data.action.ActionError
 import dev.opencode.android.core.data.review.DiffHunk
 import dev.opencode.android.core.data.review.DiffLine
 import dev.opencode.android.core.data.review.DiffLineKind
@@ -121,6 +122,7 @@ fun ReviewScreen(
     onOpenTree: () -> Unit = {},
     onOpenComments: () -> Unit = {},
     onRemoveComment: (Int) -> Unit = {},
+    onRetry: () -> Unit = {},
 ) {
     val colors = DiffColors.of()
     var menuOpen by remember { mutableStateOf(false) }
@@ -182,6 +184,16 @@ fun ReviewScreen(
         }
 
         FileSelector(state = state, onOpenTree = onOpenTree, onToggleReviewed = onToggleReviewed)
+
+        // A failed load must not masquerade as a clean review: the two "empty for a reason" errors
+        // keep their empty messages below, and anything else gets an error with a retry.
+        val loadError = state.error?.takeUnless { error ->
+            error.message == REVIEW_STORE_NO_SESSION || error.message == REVIEW_STORE_NO_LOCATION
+        }
+        if (loadError != null) {
+            ReviewLoadError(error = loadError, onRetry = onRetry)
+            return@Column
+        }
 
         if (state.isEmpty) {
             Text(
@@ -649,6 +661,26 @@ internal fun ReviewScope.labelRes(): Int = when (this) {
 
 /** The sentence for an empty review, which differs by scope because the reasons differ. */
 @Composable
+/**
+ * A failed diff load, which must not look like a clean review. The message is the failure's own
+ * words; the retry re-runs the load.
+ */
+@Composable
+private fun ReviewLoadError(error: ActionError, onRetry: () -> Unit, modifier: Modifier = Modifier) {
+    Surface(
+        modifier = modifier.fillMaxWidth().padding(16.dp),
+        color = MaterialTheme.colorScheme.errorContainer,
+        contentColor = MaterialTheme.colorScheme.onErrorContainer,
+        shape = MaterialTheme.shapes.medium,
+    ) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(text = stringResource(R.string.review_load_failed), style = MaterialTheme.typography.titleSmall)
+            Text(text = error.message, style = MaterialTheme.typography.bodyMedium)
+            TextButton(onClick = onRetry) { Text(stringResource(R.string.action_retry)) }
+        }
+    }
+}
+
 internal fun emptyMessage(state: ReviewUiState): String = when {
     state.error?.message == REVIEW_STORE_NO_SESSION -> stringResource(R.string.review_no_session)
     state.error?.message == REVIEW_STORE_NO_LOCATION -> stringResource(R.string.review_no_location)
@@ -703,6 +735,7 @@ private fun FileTreeRow(
     onOpenFile: (String) -> Unit,
 ) {
     val background = if (current) MaterialTheme.colorScheme.secondaryContainer else androidx.compose.ui.graphics.Color.Transparent
+    val directoryDesc = stringResource(R.string.review_tree_directory_desc, node.name)
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -710,7 +743,7 @@ private fun FileTreeRow(
             .clickable(enabled = !node.isDirectory) { onOpenFile(node.path) }
             .padding(horizontal = 12.dp, vertical = 8.dp)
             .semantics {
-                contentDescription = node.name + if (node.isDirectory) ", directory" else ""
+                contentDescription = if (node.isDirectory) directoryDesc else node.name
             },
         verticalAlignment = Alignment.CenterVertically,
     ) {

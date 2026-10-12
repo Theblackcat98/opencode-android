@@ -178,6 +178,7 @@ fun SessionHost(
     val pickAttachment = rememberAttachmentPicker(
         onPicked = composer::attachImage,
         onCameraUnavailable = { attachOpen = false },
+        onSourceUnavailable = { attachOpen = false },
     )
 
     // A fork produced a new session id; the graph is what knows how to open one. Taking it here

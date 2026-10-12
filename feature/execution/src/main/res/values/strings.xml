@@ -91,6 +91,9 @@
     <string name="session_terminals_absent_body">This server does not have the experimental terminal routes. Nothing was sent.</string>
     <string name="session_terminals_host_down_body">This server has the terminal routes, but its persistent-terminal host is not running. Start it on the server machine.</string>
     <string name="session_terminals_empty_body">This session has no persistent terminal. Create one to give the agent a terminal it can read.</string>
+    <string name="session_terminals_remove_title">Remove this terminal?</string>
+    <string name="session_terminals_remove_body">The terminal is removed and its scrollback is discarded. Anything running in it stops.</string>
+    <string name="session_terminals_remove_confirm">Remove it</string>
 
     <!-- Worktrees -->
     <string name="worktrees_title">Worktrees</string>

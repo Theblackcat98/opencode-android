@@ -43,11 +43,18 @@ import java.io.File
  *
  * The launcher registration has to live in a composable, which is one of the reasons the session
  * screen's wiring lives in the app module rather than in the composer feature.
+ *
+ * **Every launch is guarded, because every one of them can throw.** The photo picker does not exist
+ * on devices without it (old APIs, de-Googled ROMs) — [PickVisualMedia.isPhotoPickerAvailable] is
+ * checked and the document picker filtered to images is the fallback. Camera and file launches go
+ * through `runCatching`: with no app to handle the intent the platform throws
+ * `ActivityNotFoundException`, and a crash is not an acceptable answer to "no camera app".
  */
 @Composable
 fun rememberAttachmentPicker(
     onPicked: (Uri) -> Unit,
     onCameraUnavailable: () -> Unit = {},
+    onSourceUnavailable: () -> Unit = {},
 ): (String) -> Unit {
     val context = LocalContext.current
     var cameraTarget by remember { mutableStateOf<Uri?>(null) }
@@ -66,11 +73,21 @@ fun rememberAttachmentPicker(
 
     return { source ->
         when (source) {
-            AttachSource.PHOTO -> photo.launch(
-                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
-            )
+            AttachSource.PHOTO -> {
+                if (ActivityResultContracts.PickVisualMedia.isPhotoPickerAvailable(context)) {
+                    runCatching {
+                        photo.launch(
+                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
+                        )
+                    }.onFailure { onSourceUnavailable() }
+                } else {
+                    runCatching { file.launch(arrayOf("image/*")) }
+                        .onFailure { onSourceUnavailable() }
+                }
+            }
 
-            AttachSource.FILE -> file.launch(arrayOf("*/*"))
+            AttachSource.FILE -> runCatching { file.launch(arrayOf("*/*")) }
+                .onFailure { onSourceUnavailable() }
 
             AttachSource.CAMERA -> {
                 val uri = context.newCaptureUri()
@@ -78,7 +95,10 @@ fun rememberAttachmentPicker(
                     onCameraUnavailable()
                 } else {
                     cameraTarget = uri
-                    camera.launch(uri)
+                    runCatching { camera.launch(uri) }.onFailure {
+                        cameraTarget = null
+                        onCameraUnavailable()
+                    }
                 }
             }
         }

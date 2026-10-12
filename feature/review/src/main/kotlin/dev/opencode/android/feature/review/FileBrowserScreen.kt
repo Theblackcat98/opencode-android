@@ -474,14 +474,17 @@ private fun TextFileView(
         ) {
             items(lines, key = { it.number }) { line ->
                 val selected = selection.contains(line.number)
+                val lineDesc = stringResource(
+                    R.string.file_browser_line_desc,
+                    line.number,
+                    line.text.take(80),
+                )
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .background(if (selected) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent)
                         .clickable { onSelectLine(line.number) }
-                        .semantics {
-                            contentDescription = "${line.number}, ${line.text.take(80)}"
-                        }
+                        .semantics { contentDescription = lineDesc }
                         .padding(horizontal = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -859,7 +862,11 @@ fun BaseBranchContent(
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Text(
-                    text = if (branch == selected) "✓ $branch" else branch,
+                    text = if (branch == selected) {
+                        stringResource(R.string.review_base_selected, branch)
+                    } else {
+                        branch
+                    },
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
