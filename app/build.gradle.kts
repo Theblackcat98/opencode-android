@@ -11,8 +11,8 @@ plugins {
  * Release signing, configured but not satisfied.
  *
  * **No keystore, key or credential is in this repository, and none was created for this phase.** The
- * build is set up so that a release is *ready* the moment the material exists, and the release tasks
- * refuse to run without it rather than producing an unsigned artifact that looks finished.
+ * assemble tasks remain available as compile checks. The explicitly named `verifyPublishableRelease`
+ * task refuses to run without the material and verifies the generated APK signatures.
  *
  * What a release needs, all of it outside the repository:
  *
@@ -72,8 +72,7 @@ android {
         getByName("release") {
             // An unsigned release build is a legitimate thing to want -- a CI compile check, for
             // example -- so this is not gated on the material being present. `signingConfig` is only
-            // attached when it exists, and the tasks that produce something to upload are gated
-            // below instead.
+            // attached when it exists; compile-only assemble tasks remain usable without release keys.
             if (hasReleaseSigning) {
                 signingConfig = signingConfigs.getByName("release")
             }
@@ -128,20 +127,17 @@ dependencies {
 }
 
 /**
- * The release tasks are gated, and they say why when they refuse.
- *
- * **A task that quietly produced an unsigned APK would be worse than one that fails.** An unsigned
- * artifact cannot be updated in place, so publishing one and then signing a later build with the
- * real key gives users two apps with the same id and no way to move between them. So
- * `assemblePlayRelease` and `assembleFdroidRelease` are ordinary Gradle tasks that work without the
- * material, and the *upload* tasks are not declared at all until it is present.
+ * `assemblePlayRelease` and `assembleFdroidRelease` are compile-only when signing material is absent.
+ * `verifyPublishableRelease` is the explicit fail-closed gate for signed APKs. It verifies both
+ * signatures and never uploads or publishes.
  */
 val releaseMaterialMissing = tasks.register("releaseMaterialMissing") {
     group = "release"
-    description = "Explains what a signed release build still needs."
+    description = "Explains why unsigned release assembly is compile-only."
     doLast {
-        logger.lifecycle(
-            """
+        if (!hasReleaseSigning) {
+            logger.lifecycle(
+                """
             |No release signing material is present, so no signed artifact can be produced.
             |
             |A release needs, all of it outside this repository:
@@ -157,12 +153,75 @@ val releaseMaterialMissing = tasks.register("releaseMaterialMissing") {
             |What this does not do, and cannot: verify the release against the manual test matrix,
             |upload to the Play Console, or produce a signed APK. See docs/RELEASE.md.
             """.trimMargin(),
-        )
+            )
+        }
     }
 }
 
-tasks.matching { it.name == "assemblePlayRelease" || it.name == "assembleFdroidRelease" }
-    .configureEach { dependsOn(releaseMaterialMissing) }
+if (!hasReleaseSigning) {
+    tasks.matching { it.name == "assemblePlayRelease" || it.name == "assembleFdroidRelease" }
+        .configureEach { dependsOn(releaseMaterialMissing) }
+}
+
+val verifyPublishableReleaseRequested = gradle.startParameter.taskNames.any {
+    it.substringAfterLast(':') == "verifyPublishableRelease"
+}
+if (verifyPublishableReleaseRequested && !hasReleaseSigning) {
+    throw org.gradle.api.GradleException(
+        "verifyPublishableRelease requires complete release signing material. " +
+            "Set OPENCODE_KEYSTORE, OPENCODE_STORE_PASSWORD, OPENCODE_KEY_ALIAS, and " +
+            "OPENCODE_KEY_PASSWORD, or provide the matching keystore.properties values.",
+    )
+}
+
+val verifyPublishableRelease = tasks.register("verifyPublishableRelease") {
+    group = "release"
+    description = "Assembles and verifies signed Play and F-Droid release APKs; does not publish them."
+    dependsOn("assemblePlayRelease", "assembleFdroidRelease")
+    doLast {
+        if (!hasReleaseSigning) {
+            throw org.gradle.api.GradleException("verifyPublishableRelease requires complete release signing material.")
+        }
+
+        val localProperties = java.util.Properties()
+        val localPropertiesFile = project.rootProject.file("local.properties")
+        if (localPropertiesFile.isFile) {
+            localPropertiesFile.inputStream().use { localProperties.load(it) }
+        }
+        val sdkPath = localProperties.getProperty("sdk.dir")
+            ?: System.getenv("ANDROID_HOME")
+            ?: System.getenv("ANDROID_SDK_ROOT")
+            ?: throw org.gradle.api.GradleException("Android SDK location is required to run apksigner.")
+        val sdkRoot = project.rootProject.file(sdkPath)
+        val isWindows = System.getProperty("os.name").startsWith("Windows", ignoreCase = true)
+        val apksignerName = if (isWindows) "apksigner.bat" else "apksigner"
+        val apksigner = sdkRoot.resolve("build-tools").listFiles()
+            .orEmpty()
+            .filter { it.isDirectory }
+            .sortedByDescending { it.name }
+            .map { it.resolve(apksignerName) }
+            .firstOrNull { it.isFile }
+            ?: throw org.gradle.api.GradleException(
+                "Could not find $apksignerName under ${sdkRoot.resolve("build-tools")}.",
+            )
+
+        val signedApks = listOf(
+            project.layout.buildDirectory.file("outputs/apk/play/release/app-play-release.apk").get().asFile,
+            project.layout.buildDirectory.file("outputs/apk/fdroid/release/app-fdroid-release.apk").get().asFile,
+        )
+        signedApks.forEach { apk ->
+            if (!apk.isFile) {
+                throw org.gradle.api.GradleException("Signed release APK was not produced: $apk")
+            }
+            val command = if (isWindows) {
+                listOf("cmd", "/c", apksigner.absolutePath, "verify", "--verbose", "--print-certs", apk.absolutePath)
+            } else {
+                listOf(apksigner.absolutePath, "verify", "--verbose", "--print-certs", apk.absolutePath)
+            }
+            project.exec { commandLine(command) }
+        }
+    }
+}
 
 // ------------------------------------------------------------------ the bundled changelog
 //
