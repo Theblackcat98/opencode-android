@@ -58,6 +58,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.isCtrlPressed
+import androidx.compose.ui.input.key.isMetaPressed
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -164,7 +171,24 @@ fun ComposerBar(
     }
     var actionsOpen by remember { mutableStateOf(false) }
     Surface(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .onPreviewKeyEvent { event ->
+                // Ctrl+Enter / Cmd+Enter sends, the desktop-chat gesture. Preview so the field never
+                // sees it as a newline, and the same canSend guard as the Send button: a chord that
+                // cannot send must not steal the key from anything else.
+                if (
+                    event.type == KeyEventType.KeyDown &&
+                    (event.isCtrlPressed || event.isMetaPressed) &&
+                    (event.key == Key.Enter || event.key == Key.NumPadEnter) &&
+                    state.canSend
+                ) {
+                    onSend()
+                    true
+                } else {
+                    false
+                }
+            },
         color = MaterialTheme.colorScheme.surface,
         shadowElevation = 0.dp,
         tonalElevation = 0.dp,

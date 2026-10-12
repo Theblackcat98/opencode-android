@@ -21,6 +21,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.isCtrlPressed
+import androidx.compose.ui.input.key.isMetaPressed
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.window.Dialog
@@ -80,7 +87,23 @@ fun FullScreenEditor(
                 OutlinedTextField(
                     value = text,
                     onValueChange = { edited: String -> text = edited },
-                    modifier = Modifier.fillMaxSize().padding(OpenCodeThemeExtras.spacing.md),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(OpenCodeThemeExtras.spacing.md)
+                        .onPreviewKeyEvent { event ->
+                            // Ctrl+Enter / Cmd+Enter confirms, matching the composer's send chord.
+                            // Preview so the field never sees it as a newline.
+                            if (
+                                event.type == KeyEventType.KeyDown &&
+                                (event.isCtrlPressed || event.isMetaPressed) &&
+                                (event.key == Key.Enter || event.key == Key.NumPadEnter)
+                            ) {
+                                onDone(text)
+                                true
+                            } else {
+                                false
+                            }
+                        },
                     maxLines = 40,
                 )
             }

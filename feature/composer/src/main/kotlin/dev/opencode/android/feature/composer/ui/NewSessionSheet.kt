@@ -197,7 +197,8 @@ private fun NewSessionForm(
             onValueChange = onTitleChange,
             label = { Text(stringResource(R.string.new_session_title_hint)) },
             singleLine = true,
-            keyboardOptions = KeyboardOptions.Default,
+            // Next moves to the path field below; the sheet is a short form, not a chat box.
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
             modifier = Modifier.fillMaxWidth(),
         )
         LocationSection(state, onSelectProject, onSelectDirectory, onOpenBrowser, onPathDraftChange, onPathCommit)
