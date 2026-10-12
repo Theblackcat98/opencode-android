@@ -1,6 +1,5 @@
 package dev.opencode.android.core.designsystem.markdown
 
-import android.content.ClipData
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
@@ -34,7 +33,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
@@ -305,7 +303,11 @@ fun CodeBlock(
                 )
                 IconButton(
                     onClick = {
-                        clipboard.setText(ClipEntry(ClipData.newPlainText("code", code.trimEnd('\n'))))
+                        // setText(AnnotatedString) is deprecated in favor of ClipEntry, but this BOM's
+                        // ClipboardManager has no setText(ClipEntry) overload — the deprecated call is
+                        // the only one that compiles here.
+                        @Suppress("DEPRECATION")
+                        clipboard.setText(AnnotatedString(code.trimEnd('\n')))
                         copied = true
                     },
                     modifier = Modifier.size(36.dp),
