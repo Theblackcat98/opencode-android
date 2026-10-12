@@ -1,5 +1,9 @@
 package dev.opencode.android.core.designsystem.format
 
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
+import dev.opencode.android.core.designsystem.R
 import java.util.Locale
 
 /**
@@ -114,24 +118,25 @@ object Formatters {
  *
  * TalkBack cannot use the abbreviation, so the screen passes this instead and a sighted user never
  * sees it.
+ *
+ * A `@Composable` rather than a pure function like the rest of [Formatters]: the units are
+ * pluralized per locale, and English's "one/many" rule is not every language's. Both call sites
+ * already run in a composable scope, so the signature change needs no call-site edits.
  */
+@Composable
 fun relativeTimeDescription(then: Long, now: Long): String {
     val delta = (now - then).coerceAtLeast(0)
     val minutes = delta / 60_000
-    val value: Long = when {
-        delta < 60_000 -> 0
-        minutes < 60 -> minutes
-        minutes < 60 * 24 -> minutes / 60
-        else -> minutes / (60 * 24)
-    }
-    val unit = when {
-        delta < 3_600_000 -> "minute"
-        delta < 86_400_000 -> "hour"
-        else -> "day"
-    }
-    val plural = if (value == 1L) "" else "s"
-    return when (value) {
-        0L -> "just now"
-        else -> "$value $unit$plural ago"
+    return when {
+        delta < 60_000 -> stringResource(R.string.relative_time_just_now)
+        minutes < 60 -> pluralStringResource(R.plurals.relative_time_minutes_ago, minutes.toInt(), minutes)
+        minutes < 60 * 24 -> {
+            val hours = minutes / 60
+            pluralStringResource(R.plurals.relative_time_hours_ago, hours.toInt(), hours)
+        }
+        else -> {
+            val days = minutes / (60 * 24)
+            pluralStringResource(R.plurals.relative_time_days_ago, days.toInt(), days)
+        }
     }
 }

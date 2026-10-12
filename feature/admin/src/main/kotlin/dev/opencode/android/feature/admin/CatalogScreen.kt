@@ -1,5 +1,6 @@
 package dev.opencode.android.feature.admin
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
@@ -58,11 +59,28 @@ data class CatalogRow(
     val key: String,
     val title: String,
     val subtitle: String? = null,
-    val facts: List<Pair<String, String>> = emptyList(),
+    val facts: List<CatalogFact> = emptyList(),
     /** The body the row expands to show, for a skill or an agent's prompt. */
     val body: String? = null,
     val tag: String,
 )
+
+/**
+ * One label/value line of a catalog row.
+ *
+ * The label is always a string resource. The value is server data shown verbatim — except for the
+ * handful of client-rendered constants ("yes", "unknown", "in the command file"), which are
+ * resources too, because a label that translates next to a value that does not is half a fix.
+ */
+private data class CatalogFact(
+    @StringRes val label: Int,
+    val value: String? = null,
+    @StringRes val valueRes: Int? = null,
+) {
+    init {
+        require(value != null || valueRes != null) { "A catalog fact needs a value" }
+    }
+}
 
 /** The browser's state: which tab, and the four catalogs. */
 data class CatalogUiState(
@@ -126,12 +144,14 @@ private fun agentRow(agent: AgentInfo) = CatalogRow(
     title = agent.name,
     subtitle = agent.description,
     facts = buildList {
-        add("Mode" to agent.mode)
-        agent.model?.let { add("Model" to it.id) }
-        agent.steps?.let { add("Steps" to it.toString()) }
-        agent.color?.let { add("Color" to it) }
-        if (agent.hidden) add("Hidden" to "yes")
-        agent.permissions?.let { add("Permissions" to showValue("permission", it)) }
+        add(CatalogFact(R.string.admin_fact_mode, value = agent.mode))
+        agent.model?.let { add(CatalogFact(R.string.admin_fact_model, value = it.id)) }
+        agent.steps?.let { add(CatalogFact(R.string.admin_fact_steps, value = it.toString())) }
+        agent.color?.let { add(CatalogFact(R.string.admin_fact_color, value = it)) }
+        if (agent.hidden) add(CatalogFact(R.string.admin_fact_hidden, valueRes = R.string.admin_fact_yes))
+        agent.permissions?.let {
+            add(CatalogFact(R.string.admin_fact_permissions, value = showValue("permission", it)))
+        }
     },
     body = agent.system,
     tag = AdminTags.agent(agent.name),
@@ -149,7 +169,7 @@ private fun commandRow(command: CommandInfo) = CatalogRow(
     key = command.name,
     title = "/${command.name}",
     subtitle = command.description,
-    facts = listOf("Template" to "in the command file"),
+    facts = listOf(CatalogFact(R.string.admin_fact_template, valueRes = R.string.admin_fact_template_in_file)),
     tag = AdminTags.command(command.name),
 )
 
@@ -158,8 +178,10 @@ private fun skillRow(skill: SkillInfo) = CatalogRow(
     title = skill.name,
     subtitle = skill.description,
     facts = buildList {
-        add("Path" to skill.path)
-        if (skill.autoinvoke == true) add("Autoinvoke" to "yes")
+        add(CatalogFact(R.string.admin_fact_path, value = skill.path))
+        if (skill.autoinvoke == true) {
+            add(CatalogFact(R.string.admin_fact_autoinvoke, valueRes = R.string.admin_fact_yes))
+        }
     },
     body = skill.content,
     tag = AdminTags.skill(skill.name),
@@ -171,16 +193,17 @@ private fun referenceRow(reference: ReferenceInfo) = CatalogRow(
     subtitle = reference.description,
     facts = buildList {
         when (val source = reference.source) {
-            is ReferenceSource.Local -> add("Path" to source.path)
+            is ReferenceSource.Local -> add(CatalogFact(R.string.admin_fact_path, value = source.path))
 
             is ReferenceSource.Git -> {
-                add("Repository" to source.repository)
-                source.branch?.let { add("Branch" to it) }
+                add(CatalogFact(R.string.admin_fact_repository, value = source.repository))
+                source.branch?.let { add(CatalogFact(R.string.admin_fact_branch, value = it)) }
             }
 
-            is ReferenceSource.Unknown -> add("Source" to "unknown")
+            is ReferenceSource.Unknown ->
+                add(CatalogFact(R.string.admin_fact_source, valueRes = R.string.admin_fact_unknown))
         }
-        if (reference.hidden == true) add("Hidden" to "yes")
+        if (reference.hidden == true) add(CatalogFact(R.string.admin_fact_hidden, valueRes = R.string.admin_fact_yes))
     },
     tag = AdminTags.reference(reference.name),
 )
@@ -271,7 +294,11 @@ private fun CatalogRowCard(row: CatalogRow) {
             row.subtitle?.let {
                 Text(text = it, style = MaterialTheme.typography.bodySmall)
             }
-            row.facts.forEach { (label, value) -> Fact(label = label, value = value, monospace = true) }
+            row.facts.forEach { fact ->
+                // The init require guarantees exactly one of the two is set.
+                val value = fact.value ?: stringResource(fact.valueRes!!)
+                Fact(label = stringResource(fact.label), value = value, monospace = true)
+            }
             row.body?.let { body ->
                 HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
                 Text(

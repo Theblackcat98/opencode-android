@@ -12,4 +12,28 @@
     <!-- The code block header: the label when a fence names no language, and the copy button. -->
     <string name="md_code_plain">text</string>
     <string name="md_code_copy">Copy code</string>
+
+    <!--
+      The diff viewer's "no newline at end of file" note. The leading spaces and the backslash
+      are the diff convention; \u0020 keeps the spaces through aapt's whitespace trimming.
+    -->
+    <string name="diff_no_newline_suffix">\u0020\u0020\ No newline at end of file</string>
+
+    <!--
+      The full relative time, for content descriptions. TalkBack cannot use the "3m" abbreviation
+      the sighted UI shows, so these are the words it reads instead.
+    -->
+    <string name="relative_time_just_now">just now</string>
+    <plurals name="relative_time_minutes_ago">
+        <item quantity="one">%1$d minute ago</item>
+        <item quantity="other">%1$d minutes ago</item>
+    </plurals>
+    <plurals name="relative_time_hours_ago">
+        <item quantity="one">%1$d hour ago</item>
+        <item quantity="other">%1$d hours ago</item>
+    </plurals>
+    <plurals name="relative_time_days_ago">
+        <item quantity="one">%1$d day ago</item>
+        <item quantity="other">%1$d days ago</item>
+    </plurals>
 </resources>
