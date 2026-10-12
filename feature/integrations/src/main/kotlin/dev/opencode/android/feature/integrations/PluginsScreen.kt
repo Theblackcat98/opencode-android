@@ -34,6 +34,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import dev.opencode.android.core.data.sync.SyncStatus
 import dev.opencode.android.core.designsystem.text.SyncedTextField
+import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
 import dev.opencode.android.core.model.PluginInfo
 import dev.opencode.android.core.model.PluginSource
 import dev.opencode.android.core.model.PluginState
@@ -77,8 +78,8 @@ fun PluginsScreen(
                     )
 
                     SyncStatus.Loading -> Row(
-                        modifier = Modifier.fillMaxWidth().padding(16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier.fillMaxWidth().padding(OpenCodeThemeExtras.spacing.lg),
+                        horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.md),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         CircularProgressIndicator()
@@ -91,7 +92,7 @@ fun PluginsScreen(
                     Text(
                         text = line,
                         style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                        modifier = Modifier.padding(horizontal = OpenCodeThemeExtras.spacing.lg, vertical = OpenCodeThemeExtras.spacing.xs),
                     )
                 }
                 state.error?.let { ErrorLine(text = it.message, onDismiss = onDismissError) }
@@ -117,13 +118,13 @@ private fun PluginActions(
     onSelectAll: () -> Unit,
     onClearSelection: () -> Unit,
 ) {
-    Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+    Column(modifier = Modifier.padding(horizontal = OpenCodeThemeExtras.spacing.lg, vertical = OpenCodeThemeExtras.spacing.sm)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.sm), verticalAlignment = Alignment.CenterVertically) {
             TextButton(onClick = onCheck, enabled = !state.checking && !state.updating) {
                 Icon(Icons.Filled.Refresh, contentDescription = null)
                 Text(
                     text = stringResource(if (state.checking) R.string.plugins_checking else R.string.plugins_check),
-                    modifier = Modifier.padding(start = 4.dp),
+                    modifier = Modifier.padding(start = OpenCodeThemeExtras.spacing.xs),
                 )
             }
             Button(onClick = onUpdate, enabled = state.canUpdate) {
@@ -138,7 +139,7 @@ private fun PluginActions(
             )
         }
         if (state.selected.isNotEmpty()) {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.sm)) {
                 TextButton(onClick = onSelectAll) { Text(stringResource(R.string.plugins_select_all)) }
                 TextButton(onClick = onClearSelection) { Text(stringResource(R.string.plugins_clear)) }
             }
@@ -309,9 +310,9 @@ private fun ProviderDetail(provider: ProviderInfo, onClose: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(16.dp)
+            .padding(OpenCodeThemeExtras.spacing.lg)
             .verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.sm),
     ) {
         Text(text = provider.name, style = MaterialTheme.typography.titleLarge)
         DetailLine(stringResource(R.string.provider_detail_id), provider.id)
@@ -333,7 +334,7 @@ private fun ProviderDetail(provider: ProviderInfo, onClose: () -> Unit) {
 
 @Composable
 private fun DetailLine(label: String, value: String) {
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    Row(horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.sm)) {
         Text(text = label, style = MaterialTheme.typography.labelMedium)
         SelectionContainer {
             Text(
@@ -364,8 +365,8 @@ fun WebSearchScreen(
 ) {
     Column(modifier = modifier.fillMaxSize()) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.fillMaxWidth().padding(OpenCodeThemeExtras.spacing.lg),
+            horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.sm),
         ) {
             androidx.compose.material3.FilterChip(
                 selected = state.selected == null,
@@ -381,8 +382,8 @@ fun WebSearchScreen(
             }
         }
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = OpenCodeThemeExtras.spacing.lg),
+            horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.sm),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             SyncedTextField(
@@ -414,7 +415,7 @@ private fun WebSearchResults(response: WebSearchResponse) {
                 text = stringResource(R.string.websearch_served_by, response.providerID),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(16.dp),
+                modifier = Modifier.padding(OpenCodeThemeExtras.spacing.lg),
             )
         }
         if (response.results.isEmpty()) {

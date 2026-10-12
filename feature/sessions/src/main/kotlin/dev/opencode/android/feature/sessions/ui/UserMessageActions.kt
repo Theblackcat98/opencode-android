@@ -10,6 +10,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
 import dev.opencode.android.feature.sessions.R
 
 /**
@@ -33,7 +34,7 @@ fun UserMessageActions(
     modifier: Modifier = Modifier,
 ) {
     Row(
-        modifier = modifier.fillMaxWidth().padding(horizontal = 8.dp),
+        modifier = modifier.fillMaxWidth().padding(horizontal = OpenCodeThemeExtras.spacing.sm),
         horizontalArrangement = Arrangement.End,
     ) {
         TextButton(onClick = { onFork(messageId) }) {

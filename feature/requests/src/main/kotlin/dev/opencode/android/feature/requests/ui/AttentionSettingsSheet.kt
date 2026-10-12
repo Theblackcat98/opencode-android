@@ -47,6 +47,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.opencode.android.core.data.attention.AttentionChannel
 import dev.opencode.android.core.data.attention.QuietHours
 import dev.opencode.android.core.data.attention.userFacingChannels
+import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
 import dev.opencode.android.feature.requests.R
 import dev.opencode.android.feature.requests.notifications.AttentionChannelSpec
 import dev.opencode.android.feature.requests.notifications.canPostNotifications
@@ -160,12 +161,13 @@ fun AttentionSettingsContent(
     onRequestAutoApprove: (String?, Long?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val spacing = OpenCodeThemeExtras.spacing
     Column(
         modifier = modifier
             .fillMaxWidth()
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
+            .padding(horizontal = spacing.sm),
+        verticalArrangement = Arrangement.spacedBy(spacing.xs),
     ) {
         ListItem(
             headlineContent = {
@@ -234,8 +236,8 @@ fun AttentionSettingsContent(
         // A flow rather than a row: at a large font scale a fixed row squeezes the last chip until it
         // wraps inside itself, which is what the 1.5x screenshot caught.
         FlowRow(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = spacing.lg, vertical = spacing.xs),
+            horizontalArrangement = Arrangement.spacedBy(spacing.sm),
         ) {
             IDLE_GRACE_CHOICES.forEach { minutes ->
                 FilterChip(
@@ -301,7 +303,7 @@ private fun SectionTitle(res: Int) {
         headlineContent = {
             Text(stringResource(res), style = MaterialTheme.typography.titleSmall)
         },
-        modifier = Modifier.padding(top = 8.dp),
+        modifier = Modifier.padding(top = OpenCodeThemeExtras.spacing.sm),
     )
 }
 
@@ -348,8 +350,8 @@ private fun AutoApproveRow(
         },
     )
     FlowRow(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = OpenCodeThemeExtras.spacing.lg, vertical = OpenCodeThemeExtras.spacing.xs),
+        horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.sm),
     ) {
         AUTO_APPROVE_CHOICES.forEach { choice ->
             FilterChip(

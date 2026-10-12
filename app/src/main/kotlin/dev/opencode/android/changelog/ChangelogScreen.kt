@@ -33,6 +33,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import dev.opencode.android.R
 import dev.opencode.android.core.designsystem.component.OpenCodeEmptyState
+import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
 
 /**
  * What the changelog screen shows. Loading is kept apart from a missing file, so neither is mistaken for the other.
@@ -89,7 +90,7 @@ fun ChangelogScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding)
-                    .padding(24.dp),
+                    .padding(OpenCodeThemeExtras.spacing.xl),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
@@ -119,7 +120,7 @@ fun ChangelogScreen(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(padding),
-                    contentPadding = PaddingValues(16.dp),
+                    contentPadding = PaddingValues(OpenCodeThemeExtras.spacing.lg),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
                     items(state.blocks) { block -> ChangelogBlockView(block) }
@@ -144,7 +145,7 @@ private fun ChangelogBlockView(block: ChangelogBlock) {
                 style = style,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier
-                    .padding(top = if (block.level <= 2) 16.dp else 8.dp)
+                    .padding(top = if (block.level <= 2) OpenCodeThemeExtras.spacing.lg else OpenCodeThemeExtras.spacing.sm)
                     .semantics { heading() },
             )
         }

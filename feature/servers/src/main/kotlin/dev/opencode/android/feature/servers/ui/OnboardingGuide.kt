@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
+import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
 import dev.opencode.android.feature.servers.R
 
 /**
@@ -37,8 +38,8 @@ fun OnboardingGuideCard(
         shape = RoundedCornerShape(16.dp),
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+            modifier = Modifier.padding(OpenCodeThemeExtras.spacing.lg),
+            verticalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.lg),
         ) {
             Text(
                 text = stringResource(R.string.onboarding_guide_title),
@@ -115,7 +116,7 @@ private fun GuideStep(
                 fontFamily = FontFamily.Monospace,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(8.dp),
+                    .padding(OpenCodeThemeExtras.spacing.sm),
                 color = MaterialTheme.colorScheme.onTertiaryContainer,
             )
         }

@@ -86,13 +86,14 @@ fun ShellsScreen(
     onDismissError: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val spacing = OpenCodeThemeExtras.spacing
     Column(modifier = modifier.fillMaxSize()) {
         if (state.rows.isEmpty()) {
             EmptyShells(Modifier.weight(1f))
         } else {
             LazyColumn(
                 modifier = Modifier.weight(if (state.open != null) LIST_WEIGHT_WITH_OUTPUT else 1f).testTag(TAG_LIST),
-                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                contentPadding = PaddingValues(horizontal = spacing.md, vertical = spacing.sm),
                 verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 items(state.rows, key = { it.id }) { row ->
@@ -115,9 +116,9 @@ fun ShellsScreen(
         // The command line is docked at the bottom, like the session's composer: it is the one control on the
         // screen a thumb reaches for, and the list and the output above it are what it produces.
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = spacing.md, vertical = spacing.sm),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(spacing.sm),
         ) {
             SyncedTextField(
                 value = state.draft,
@@ -181,7 +182,7 @@ private fun KillShellDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.shells_kill_title)) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.sm)) {
                 Text(stringResource(R.string.shells_kill_body))
                 Text(
                     text = command.take(280),
@@ -224,10 +225,10 @@ private fun ShellRowItem(
             .clickable(onClickLabel = stringResource(R.string.shells_show_output), onClick = onOpen)
             .semantics { selected = open }
             .testTag(TAG_ROW + row.id)
-            .padding(start = 12.dp, top = 8.dp, bottom = 8.dp),
+            .padding(start = OpenCodeThemeExtras.spacing.md, top = OpenCodeThemeExtras.spacing.sm, bottom = OpenCodeThemeExtras.spacing.sm),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.xs)) {
             Text(
                 text = row.info.command,
                 style = OpenCodeThemeExtras.code.body,
@@ -283,8 +284,9 @@ fun ShellOutputPane(
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val spacing = OpenCodeThemeExtras.spacing
     val output = row.output ?: ShellOutputPlaceholder()
-    Column(modifier = modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
+    Column(modifier = modifier.fillMaxWidth().padding(horizontal = spacing.md)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 text = stringResource(R.string.shells_output),
@@ -306,7 +308,7 @@ fun ShellOutputPane(
             Text(
                 text = stringResource(R.string.shells_output_truncated),
                 style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.padding(top = 4.dp).testTag(TAG_TRUNCATED),
+                modifier = Modifier.padding(top = spacing.xs).testTag(TAG_TRUNCATED),
             )
         }
         output.error?.let { error ->
@@ -314,11 +316,11 @@ fun ShellOutputPane(
                 text = stringResource(R.string.shells_output_failed, error),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.error,
-                modifier = Modifier.padding(top = 4.dp).testTag(TAG_OUTPUT_ERROR),
+                modifier = Modifier.padding(top = spacing.xs).testTag(TAG_OUTPUT_ERROR),
             )
         }
         Surface(
-            modifier = Modifier.fillMaxWidth().weight(1f).padding(top = 4.dp, bottom = 4.dp),
+            modifier = Modifier.fillMaxWidth().weight(1f).padding(top = spacing.xs, bottom = spacing.xs),
             color = MaterialTheme.colorScheme.surfaceContainerLowest,
             shape = OpenCodeThemeExtras.shapes.codeBlock,
             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
@@ -328,7 +330,7 @@ fun ShellOutputPane(
                     text = output.text.ifEmpty { stringResource(R.string.shells_no_output) },
                     style = OpenCodeThemeExtras.code.small,
                     modifier = Modifier
-                        .padding(8.dp)
+                        .padding(spacing.sm)
                         .verticalScroll(rememberScrollState())
                         .horizontalScroll(rememberScrollState())
                         .testTag(TAG_OUTPUT),
@@ -344,8 +346,8 @@ private fun ShellOutputPlaceholder() = dev.opencode.android.core.data.execution.
 @Composable
 private fun EmptyShells(modifier: Modifier = Modifier) {
     Column(
-        modifier = modifier.fillMaxWidth().padding(32.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = modifier.fillMaxWidth().padding(OpenCodeThemeExtras.spacing.xxl),
+        verticalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.sm),
     ) {
         Text(
             text = stringResource(R.string.shells_empty),

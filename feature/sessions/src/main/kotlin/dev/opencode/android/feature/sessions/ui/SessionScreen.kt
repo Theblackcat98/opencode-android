@@ -53,6 +53,7 @@ import dev.opencode.android.core.designsystem.component.OpenCodeTopAppBar
 import dev.opencode.android.core.designsystem.component.StatusDot
 import dev.opencode.android.core.designsystem.component.StatusKind
 import dev.opencode.android.core.designsystem.format.Formatters
+import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
 import dev.opencode.android.feature.sessions.R
 import dev.opencode.android.feature.sessions.ui.timeline.TimelineList
 import kotlinx.coroutines.launch
@@ -260,7 +261,7 @@ fun OfflineNotice(modifier: Modifier = Modifier) {
         Text(
             text = stringResource(R.string.session_offline_notice),
             style = MaterialTheme.typography.labelMedium,
-            modifier = Modifier.padding(8.dp),
+            modifier = Modifier.padding(OpenCodeThemeExtras.spacing.sm),
         )
     }
 }

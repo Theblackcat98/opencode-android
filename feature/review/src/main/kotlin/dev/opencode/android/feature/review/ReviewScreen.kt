@@ -304,11 +304,11 @@ fun CommentListContent(
     onRemove: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier = modifier.fillMaxWidth().padding(bottom = 24.dp)) {
+    Column(modifier = modifier.fillMaxWidth().padding(bottom = OpenCodeThemeExtras.spacing.xl)) {
         Text(
             text = stringResource(R.string.review_comment_count, comments.size),
             style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            modifier = Modifier.padding(horizontal = OpenCodeThemeExtras.spacing.lg, vertical = OpenCodeThemeExtras.spacing.sm),
         )
         HorizontalDivider()
         comments.forEachIndexed { index, comment ->
@@ -335,17 +335,17 @@ fun FileTreeContent(
     onOpenFile: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier = modifier.fillMaxWidth().padding(bottom = 24.dp)) {
+    Column(modifier = modifier.fillMaxWidth().padding(bottom = OpenCodeThemeExtras.spacing.xl)) {
         Text(
             text = stringResource(R.string.review_file_tree),
             style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            modifier = Modifier.padding(horizontal = OpenCodeThemeExtras.spacing.lg, vertical = OpenCodeThemeExtras.spacing.sm),
         )
         Text(
             text = stringResource(R.string.review_progress, state.reviewed.size, state.files.size),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(horizontal = 16.dp),
+            modifier = Modifier.padding(horizontal = OpenCodeThemeExtras.spacing.lg),
         )
         HorizontalDivider()
         ReviewFileTree(state = state, onOpenFile = onOpenFile)
@@ -357,7 +357,7 @@ fun FileTreeContent(
 private fun ScopeRow(state: ReviewUiState, onSelectScope: (ReviewScope) -> Unit, onOpenBasePicker: () -> Unit) {
     LazyRow(
         modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
-        contentPadding = PaddingValues(horizontal = 12.dp),
+        contentPadding = PaddingValues(horizontal = OpenCodeThemeExtras.spacing.md),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         items(state.scopes, key = { it.id }) { scope ->
@@ -398,10 +398,11 @@ private fun vcsSummary(state: ReviewUiState): String = if (state.vcs.isRepositor
  */
 @Composable
 private fun FileSelector(state: ReviewUiState, onOpenTree: () -> Unit, onToggleReviewed: () -> Unit) {
+    val spacing = OpenCodeThemeExtras.spacing
     val file = state.currentFile
     val index = file?.let { current -> state.files.indexOfFirst { it.file == current.file } } ?: -1
     Row(
-        modifier = Modifier.fillMaxWidth().padding(start = 12.dp, end = 4.dp, bottom = 4.dp),
+        modifier = Modifier.fillMaxWidth().padding(start = spacing.md, end = spacing.xs, bottom = spacing.xs),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Surface(
@@ -411,7 +412,7 @@ private fun FileSelector(state: ReviewUiState, onOpenTree: () -> Unit, onToggleR
             modifier = Modifier.weight(1f),
         ) {
             Row(
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                modifier = Modifier.padding(horizontal = spacing.md, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 if (index >= 0 && state.files.size > 1) {
@@ -445,10 +446,10 @@ private fun FileSelector(state: ReviewUiState, onOpenTree: () -> Unit, onToggleR
                 modifier = Modifier
                     .toggleable(value = state.currentReviewed, role = Role.Checkbox, onValueChange = { onToggleReviewed() })
                     .semantics(mergeDescendants = true) { contentDescription = progress }
-                    .padding(start = 4.dp),
+                    .padding(start = spacing.xs),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Checkbox(checked = state.currentReviewed, onCheckedChange = null, modifier = Modifier.padding(12.dp))
+                Checkbox(checked = state.currentReviewed, onCheckedChange = null, modifier = Modifier.padding(spacing.md))
             }
         }
     }
@@ -466,9 +467,10 @@ private fun ReviewNavigationBar(
     onPreviousHunk: () -> Unit,
     onNextHunk: () -> Unit,
 ) {
+    val spacing = OpenCodeThemeExtras.spacing
     Surface(color = MaterialTheme.colorScheme.surfaceContainerLow) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 2.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = spacing.xs, vertical = spacing.xxs),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             IconButton(onClick = onPreviousFile, enabled = severalFiles) {
@@ -509,7 +511,7 @@ private fun DiffBody(
             text = stringResource(R.string.review_empty),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = modifier.padding(16.dp),
+            modifier = modifier.padding(OpenCodeThemeExtras.spacing.lg),
         )
         return
     }
@@ -518,7 +520,7 @@ private fun DiffBody(
             text = stringResource(R.string.review_file_binary),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = modifier.padding(16.dp),
+            modifier = modifier.padding(OpenCodeThemeExtras.spacing.lg),
         )
         return
     }
@@ -550,7 +552,7 @@ private fun DiffBody(
                         text = line,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.padding(horizontal = 8.dp),
+                        modifier = Modifier.padding(horizontal = OpenCodeThemeExtras.spacing.sm),
                     )
                 }
             }
@@ -667,13 +669,14 @@ internal fun ReviewScope.labelRes(): Int = when (this) {
  */
 @Composable
 private fun ReviewLoadError(error: ActionError, onRetry: () -> Unit, modifier: Modifier = Modifier) {
+    val spacing = OpenCodeThemeExtras.spacing
     Surface(
-        modifier = modifier.fillMaxWidth().padding(16.dp),
+        modifier = modifier.fillMaxWidth().padding(spacing.lg),
         color = MaterialTheme.colorScheme.errorContainer,
         contentColor = MaterialTheme.colorScheme.onErrorContainer,
         shape = MaterialTheme.shapes.medium,
     ) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(modifier = Modifier.padding(spacing.lg), verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
             Text(text = stringResource(R.string.review_load_failed), style = MaterialTheme.typography.titleSmall)
             Text(text = error.message, style = MaterialTheme.typography.bodyMedium)
             TextButton(onClick = onRetry) { Text(stringResource(R.string.action_retry)) }
@@ -741,7 +744,7 @@ private fun FileTreeRow(
             .fillMaxWidth()
             .background(background)
             .clickable(enabled = !node.isDirectory) { onOpenFile(node.path) }
-            .padding(horizontal = 12.dp, vertical = 8.dp)
+            .padding(horizontal = OpenCodeThemeExtras.spacing.md, vertical = OpenCodeThemeExtras.spacing.sm)
             .semantics {
                 contentDescription = if (node.isDirectory) directoryDesc else node.name
             },
@@ -758,7 +761,7 @@ private fun FileTreeRow(
             style = MaterialTheme.typography.bodyMedium,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f).padding(start = 8.dp),
+            modifier = Modifier.weight(1f).padding(start = OpenCodeThemeExtras.spacing.sm),
         )
         if (reviewed) {
             Icon(

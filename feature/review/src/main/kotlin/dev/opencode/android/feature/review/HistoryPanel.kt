@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import dev.opencode.android.core.data.action.ActionError
 import dev.opencode.android.core.data.server.SessionContextInspector
 import dev.opencode.android.core.designsystem.text.SyncedTextField
+import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
 
 /**
  * The history panel: jump between prompts, search, export, import, and the context inspector
@@ -212,9 +213,10 @@ fun ContextSection(
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val spacing = OpenCodeThemeExtras.spacing
     Column(modifier = modifier.fillMaxWidth()) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = spacing.lg, vertical = spacing.sm),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(modifier = Modifier.weight(1f)) {
@@ -241,7 +243,7 @@ fun ContextSection(
                 text = stringResource(R.string.context_empty),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                modifier = Modifier.padding(horizontal = spacing.lg, vertical = spacing.xs),
             )
         }
         LazyColumn(modifier = Modifier.fillMaxWidth()) {
@@ -284,7 +286,7 @@ private fun TransferNotice(result: TransferResult, onDismiss: () -> Unit) {
         is TransferResult.Refused -> stringResource(R.string.experimental_unavailable)
     }
     Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = OpenCodeThemeExtras.spacing.lg, vertical = OpenCodeThemeExtras.spacing.xs),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
@@ -312,7 +314,7 @@ private fun TransferNotice(result: TransferResult, onDismiss: () -> Unit) {
 @Composable
 private fun HistoryErrorNotice(error: ActionError, onDismiss: () -> Unit) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = OpenCodeThemeExtras.spacing.lg, vertical = OpenCodeThemeExtras.spacing.xs),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(

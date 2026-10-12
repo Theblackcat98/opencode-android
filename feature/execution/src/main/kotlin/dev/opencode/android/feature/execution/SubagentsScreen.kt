@@ -48,6 +48,7 @@ import dev.opencode.android.core.designsystem.component.OpenCodeAvatar
 import dev.opencode.android.core.designsystem.component.OpenCodeStatusPill
 import dev.opencode.android.core.designsystem.component.StatusKind
 import dev.opencode.android.core.designsystem.format.Formatters
+import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
 
 /**
  * The session family tree (plan §6, "Subagents").
@@ -71,9 +72,10 @@ fun SubagentsScreen(
     onNext: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val spacing = OpenCodeThemeExtras.spacing
     Column(modifier = modifier.fillMaxSize()) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = spacing.sm, vertical = spacing.xs),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             IconButton(onClick = onParent, enabled = state.canGoToParent) {
@@ -109,14 +111,14 @@ fun SubagentsScreen(
             Text(
                 text = stringResource(R.string.subagents_empty),
                 style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.padding(24.dp),
+                modifier = Modifier.padding(spacing.xl),
             )
             return@Column
         }
 
         LazyColumn(
             modifier = Modifier.fillMaxSize().testTag(SubagentTags.TREE),
-            contentPadding = PaddingValues(bottom = 24.dp),
+            contentPadding = PaddingValues(bottom = spacing.xl),
         ) {
             items(state.nodes, key = { it.id }) { node ->
                 SubagentNodeRow(node = node, selected = node.id == state.selected, onClick = { onSelect(node.id) })
@@ -127,7 +129,7 @@ fun SubagentsScreen(
             Text(
                 text = stringResource(R.string.subagents_incomplete, state.missingChildren),
                 style = MaterialTheme.typography.labelSmall,
-                modifier = Modifier.padding(12.dp),
+                modifier = Modifier.padding(spacing.md),
             )
         }
     }
@@ -149,20 +151,20 @@ private fun SubagentNodeRow(node: SessionNode, selected: Boolean, onClick: () ->
             .background(if (selected) scheme.secondaryContainer.copy(alpha = 0.35f) else scheme.surface)
             .clickable(onClick = onClick)
             .testTag(SubagentTags.NODE + node.id)
-            .padding(start = 12.dp, end = 12.dp),
+            .padding(start = OpenCodeThemeExtras.spacing.md, end = OpenCodeThemeExtras.spacing.md),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         repeat(node.depth) {
             Box(
                 Modifier
-                    .padding(start = 10.dp, end = 12.dp)
+                    .padding(start = 10.dp, end = OpenCodeThemeExtras.spacing.md)
                     .width(1.dp)
                     .fillMaxHeight()
                     .background(scheme.outlineVariant),
             )
         }
         OpenCodeAvatar(key = row.agent ?: node.id, label = row.agent ?: node.title, size = 28.dp)
-        Column(modifier = Modifier.weight(1f).padding(horizontal = 12.dp, vertical = 10.dp)) {
+        Column(modifier = Modifier.weight(1f).padding(horizontal = OpenCodeThemeExtras.spacing.md, vertical = 10.dp)) {
             Text(
                 text = node.title,
                 style = MaterialTheme.typography.bodyLarge,

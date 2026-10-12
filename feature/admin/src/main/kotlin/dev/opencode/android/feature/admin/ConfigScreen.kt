@@ -36,6 +36,7 @@ import dev.opencode.android.core.data.config.ConfigRow
 import dev.opencode.android.core.data.config.ConfigSource
 import dev.opencode.android.core.data.config.WritePlan
 import dev.opencode.android.core.designsystem.text.SyncedTextField
+import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
 
 /**
  * The config explorer (plan §6, "Config explorer").
@@ -140,8 +141,9 @@ private fun ConfigToolbar(
     configuredOnly: Boolean,
     onConfiguredOnlyChange: (Boolean) -> Unit,
 ) {
-    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    val spacing = OpenCodeThemeExtras.spacing
+    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = spacing.lg, vertical = spacing.sm)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(spacing.sm)) {
             TextButton(onClick = onReload, enabled = !state.loading) { Text(stringResource(R.string.admin_reload)) }
             TextButton(
                 onClick = onOpenEditor,
@@ -156,7 +158,7 @@ private fun ConfigToolbar(
         }
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(spacing.sm),
         ) {
             FilterChip(
                 selected = configuredOnly,
@@ -181,7 +183,8 @@ private fun ConfigToolbar(
  */
 @Composable
 private fun SourceSummary(state: ConfigUiState) {
-    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+    val spacing = OpenCodeThemeExtras.spacing
+    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = spacing.lg, vertical = spacing.sm)) {
         SectionHeading(stringResource(R.string.admin_sources))
         if (state.documentsRead.isEmpty() && state.searched.isEmpty()) {
             Text(
@@ -222,13 +225,14 @@ private fun ShellCard(
     onShellChange: (String) -> Unit,
     onShellRequest: () -> Unit,
 ) {
+    val spacing = OpenCodeThemeExtras.spacing
     Card(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = spacing.lg, vertical = spacing.xs),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant,
         ),
     ) {
-        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(modifier = Modifier.padding(spacing.md), verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
             Text(
                 text = stringResource(R.string.admin_shell_title),
                 style = MaterialTheme.typography.titleSmall,
@@ -277,14 +281,15 @@ private fun ShellCard(
  */
 @Composable
 private fun ConfigKeyCard(row: ConfigRow) {
+    val spacing = OpenCodeThemeExtras.spacing
     val key = row.key
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 4.dp)
+            .padding(horizontal = spacing.lg, vertical = spacing.xs)
             .testTag(AdminTags.configKey(key.key)),
     ) {
-        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Column(modifier = Modifier.padding(spacing.md), verticalArrangement = Arrangement.spacedBy(spacing.xs)) {
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(text = key.key, style = MaterialTheme.typography.titleSmall, fontFamily = FontFamily.Monospace)
                 if (key.hidden) {
@@ -402,8 +407,8 @@ internal fun ChipRow(content: @Composable () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .horizontalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp, vertical = 4.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+            .padding(horizontal = OpenCodeThemeExtras.spacing.lg, vertical = OpenCodeThemeExtras.spacing.xs),
+        horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.sm),
         content = { content() },
     )
 }
@@ -411,7 +416,7 @@ internal fun ChipRow(content: @Composable () -> Unit) {
 /** The key's own name, for a screen that lists keys rather than rows. */
 @Composable
 internal fun KeyChip(key: ConfigKey, selected: Boolean, onClick: () -> Unit) {
-    FlowRow(modifier = Modifier.padding(2.dp)) {
+    FlowRow(modifier = Modifier.padding(OpenCodeThemeExtras.spacing.xxs)) {
         FilterChip(
             selected = selected,
             onClick = onClick,

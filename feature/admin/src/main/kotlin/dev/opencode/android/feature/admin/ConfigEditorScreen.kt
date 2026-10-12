@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import dev.opencode.android.core.data.action.ActionError
 import dev.opencode.android.core.data.config.WriteOutcome
 import dev.opencode.android.core.designsystem.text.SyncedTextField
+import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
 
 /**
  * The configuration file editor (plan §6, "Config and definition editor").
@@ -67,11 +68,12 @@ fun ConfigEditorScreen(
     onDismissError: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val spacing = OpenCodeThemeExtras.spacing
     Column(modifier = modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp)
+                .padding(horizontal = spacing.lg, vertical = spacing.sm)
                 // `weight(1f, fill = false)` is load-bearing. A `verticalScroll` sizes itself to the
                 // height it is offered, so an unweighted scrolling header claims the whole column and
                 // the diagnostics and the save button are pushed off the bottom of the screen — which a
@@ -106,13 +108,13 @@ fun ConfigEditorScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+            HorizontalDivider(modifier = Modifier.padding(vertical = spacing.sm))
             Text(
                 text = stringResource(R.string.admin_templates_title),
                 style = MaterialTheme.typography.titleSmall,
                 modifier = Modifier.semantics { heading() },
             )
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(spacing.sm)) {
                 ConfigTemplateChoice.entries.forEach { choice ->
                     FilterChip(
                         selected = state.template?.choice == choice,
@@ -135,7 +137,7 @@ fun ConfigEditorScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f)
-                .padding(horizontal = 16.dp, vertical = 8.dp)
+                .padding(horizontal = spacing.lg, vertical = spacing.sm)
                 .heightIn(min = 200.dp)
                 .testTag(AdminTags.CONFIG_EDITOR),
         )
@@ -157,7 +159,7 @@ fun ConfigEditorScreen(
                         error = writeError,
                         hint = stringResource(R.string.admin_write_failed_hint),
                         onDismiss = onDismissError,
-                        modifier = Modifier.padding(horizontal = 16.dp).testTag(AdminTags.WRITE_FAILURE),
+                        modifier = Modifier.padding(horizontal = spacing.lg).testTag(AdminTags.WRITE_FAILURE),
                     )
                 }
                 if (outcome != null) {
@@ -167,8 +169,8 @@ fun ConfigEditorScreen(
         }
         HorizontalDivider()
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = spacing.lg, vertical = spacing.sm),
+            horizontalArrangement = Arrangement.spacedBy(spacing.sm),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             if (state.validating) {
@@ -204,7 +206,7 @@ fun ConfigEditorScreen(
 private fun Diagnostics(state: ConfigEditorUiState) {
     val failure = state.parseFailure
     if (failure != null) {
-        ParseFailureRow(failure = failure, modifier = Modifier.padding(horizontal = 16.dp))
+        ParseFailureRow(failure = failure, modifier = Modifier.padding(horizontal = OpenCodeThemeExtras.spacing.lg))
         return
     }
     if (state.diagnostics.isEmpty()) {
@@ -213,7 +215,7 @@ private fun Diagnostics(state: ConfigEditorUiState) {
                 text = stringResource(R.string.admin_config_valid),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                modifier = Modifier.padding(horizontal = OpenCodeThemeExtras.spacing.lg, vertical = OpenCodeThemeExtras.spacing.xs),
             )
         }
         return
@@ -223,7 +225,7 @@ private fun Diagnostics(state: ConfigEditorUiState) {
             .fillMaxWidth()
             .heightIn(max = 220.dp)
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp),
+            .padding(horizontal = OpenCodeThemeExtras.spacing.lg),
     ) {
         Text(
             text = stringResource(R.string.admin_diagnostics_count, state.diagnostics.size),
@@ -252,18 +254,19 @@ internal fun FailureCard(
     onDismiss: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
+    val spacing = OpenCodeThemeExtras.spacing
     Card(
-        modifier = modifier.fillMaxWidth().padding(vertical = 4.dp),
+        modifier = modifier.fillMaxWidth().padding(vertical = spacing.xs),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.errorContainer,
             contentColor = MaterialTheme.colorScheme.onErrorContainer,
         ),
     ) {
         Row(
-            modifier = Modifier.padding(start = 12.dp, top = 8.dp, bottom = 8.dp, end = 4.dp),
+            modifier = Modifier.padding(start = spacing.md, top = spacing.sm, bottom = spacing.sm, end = spacing.xs),
             verticalAlignment = Alignment.Top,
         ) {
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(spacing.xs)) {
                 Text(
                     text = title,
                     style = MaterialTheme.typography.labelLarge,
@@ -297,7 +300,7 @@ private fun failureReason(error: ActionError): String = error.serverMessage
 /** What a write reported, in the server's own terms. */
 @Composable
 fun WriteOutcomeCard(outcome: WriteOutcome, onDismiss: () -> Unit) {
-    Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+    Column(modifier = Modifier.fillMaxWidth().padding(OpenCodeThemeExtras.spacing.lg)) {
         Text(text = outcome.summary, style = MaterialTheme.typography.bodyMedium)
         outcome.diagnostics.forEach { DiagnosticRow(diagnostic = it) }
         TextButton(onClick = onDismiss) {

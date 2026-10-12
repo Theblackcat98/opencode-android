@@ -26,6 +26,7 @@ import dev.opencode.android.core.data.config.DocumentParseFailure
 import dev.opencode.android.core.data.config.SchemaDiagnostic
 import dev.opencode.android.core.data.config.WritePlan
 import dev.opencode.android.core.designsystem.text.SyncedTextField
+import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
 
 /**
  * The dialog every write in this phase goes through.
@@ -61,7 +62,7 @@ fun WriteConfirmationDialog(
             )
         },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.sm)) {
                 Text(text = plan.consequence)
                 Text(
                     text = plan.target,
@@ -128,13 +129,13 @@ fun DiagnosticRow(diagnostic: SchemaDiagnostic, modifier: Modifier = Modifier) {
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp)
+            .padding(vertical = OpenCodeThemeExtras.spacing.xs)
             .testTag(AdminTags.diagnostic(diagnostic.path))
             // Read as one sentence, so TalkBack does not read five disconnected fragments.
             .semantics {
                 contentDescription = "$location, ${diagnostic.keyword}: ${diagnostic.expected}"
             },
-        verticalArrangement = Arrangement.spacedBy(2.dp),
+        verticalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.xxs),
     ) {
         Text(
             text = location,
@@ -162,14 +163,15 @@ fun DiagnosticRow(diagnostic: SchemaDiagnostic, modifier: Modifier = Modifier) {
  */
 @Composable
 fun ParseFailureRow(failure: DocumentParseFailure, modifier: Modifier = Modifier) {
+    val spacing = OpenCodeThemeExtras.spacing
     Card(
-        modifier = modifier.fillMaxWidth().padding(vertical = 4.dp),
+        modifier = modifier.fillMaxWidth().padding(vertical = spacing.xs),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.errorContainer,
             contentColor = MaterialTheme.colorScheme.onErrorContainer,
         ),
     ) {
-        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Column(modifier = Modifier.padding(spacing.md), verticalArrangement = Arrangement.spacedBy(spacing.xs)) {
             Text(
                 text = stringResource(R.string.admin_syntax_at, failure.line, failure.column),
                 style = MaterialTheme.typography.labelLarge,
@@ -189,7 +191,7 @@ fun ParseFailureRow(failure: DocumentParseFailure, modifier: Modifier = Modifier
 @Composable
 fun ErrorLine(error: ActionError, onDismiss: () -> Unit, modifier: Modifier = Modifier) {
     Row(
-        modifier = modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+        modifier = modifier.fillMaxWidth().padding(horizontal = OpenCodeThemeExtras.spacing.lg, vertical = OpenCodeThemeExtras.spacing.sm),
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
         Column(modifier = Modifier.weight(1f)) {
@@ -238,7 +240,7 @@ fun LabelledField(
         },
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 4.dp)
+            .padding(horizontal = OpenCodeThemeExtras.spacing.lg, vertical = OpenCodeThemeExtras.spacing.xs)
             .then(if (tag == null) Modifier else Modifier.testTag(tag)),
     )
 }
@@ -246,7 +248,7 @@ fun LabelledField(
 /** A section heading, marked as a heading for TalkBack and separated from what follows it. */
 @Composable
 fun SectionHeading(text: String, modifier: Modifier = Modifier) {
-    Column(modifier = modifier.fillMaxWidth().padding(top = 16.dp, bottom = 4.dp)) {
+    Column(modifier = modifier.fillMaxWidth().padding(top = OpenCodeThemeExtras.spacing.lg, bottom = OpenCodeThemeExtras.spacing.xs)) {
         Text(
             text = text,
             style = MaterialTheme.typography.titleSmall,
@@ -259,12 +261,12 @@ fun SectionHeading(text: String, modifier: Modifier = Modifier) {
 /** A short fact about a row: a label and a value, in the monospace face when it is a path. */
 @Composable
 fun Fact(label: String, value: String, monospace: Boolean = false) {
-    Row(modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp)) {
+    Row(modifier = Modifier.fillMaxWidth().padding(vertical = OpenCodeThemeExtras.spacing.xxs)) {
         Text(
             text = label,
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(end = 8.dp),
+            modifier = Modifier.padding(end = OpenCodeThemeExtras.spacing.sm),
         )
         Text(
             text = value,

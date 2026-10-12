@@ -30,6 +30,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import dev.opencode.android.core.data.config.DefinitionKind
 import dev.opencode.android.core.designsystem.text.SyncedTextField
+import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
 
 /**
  * The guided templates sheet (plan §6).
@@ -64,7 +65,7 @@ fun TemplateSheet(
         text = {
             Column(
                 modifier = Modifier.verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
+                verticalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.xs),
             ) {
                 when (draft.choice) {
                     ConfigTemplateChoice.MODEL -> {
@@ -112,7 +113,7 @@ fun TemplateSheet(
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.error,
                             modifier = Modifier
-                                .padding(top = 4.dp)
+                                .padding(top = OpenCodeThemeExtras.spacing.xs)
                                 .testTag(AdminTags.RULES_PRECEDENCE_WARNING),
                         )
                     }
@@ -149,7 +150,7 @@ fun TemplateSheet(
                             text = stringResource(R.string.admin_template_mcp_kind),
                             style = MaterialTheme.typography.labelMedium,
                         )
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.sm)) {
                             FilterChip(
                                 selected = draft.mcpKind == "remote",
                                 onClick = { onChange { it.copy(mcpKind = "remote") } },
@@ -227,7 +228,7 @@ private fun EffectChips(selected: String, onSelect: (String) -> Unit) {
         "allow" to stringResource(R.string.admin_template_effect_allow),
         "deny" to stringResource(R.string.admin_template_effect_deny),
     )
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.sm)) {
         labels.forEach { (effect, label) ->
             FilterChip(
                 selected = selected == effect,
@@ -246,7 +247,7 @@ private fun ModeChips(selected: String, onSelect: (String) -> Unit) {
         "subagent" to stringResource(R.string.admin_template_mode_subagent),
         "all" to stringResource(R.string.admin_template_mode_all),
     )
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.sm)) {
         labels.forEach { (mode, label) ->
             FilterChip(
                 selected = selected == mode,
@@ -284,9 +285,10 @@ fun DefinitionScreen(
     onDismissError: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val spacing = OpenCodeThemeExtras.spacing
     Column(modifier = modifier.fillMaxSize()) {
-        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = spacing.lg, vertical = spacing.sm)) {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(spacing.sm)) {
                 DefinitionKind.entries.forEach { kind ->
                     FilterChip(
                         selected = state.kind == kind,
@@ -310,7 +312,7 @@ fun DefinitionScreen(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp)
+                .padding(horizontal = spacing.lg)
                 // `fill = false`, for the same reason the editor's header has it: a scrolling child
                 // without it takes the whole column and the body field and the save row fall off the
                 // bottom of the screen.
@@ -338,14 +340,14 @@ fun DefinitionScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f)
-                .padding(16.dp)
+                .padding(spacing.lg)
                 .heightIn(min = 180.dp)
                 .testTag(AdminTags.DEFINITION_BODY),
         )
         HorizontalDivider()
         Row(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.fillMaxWidth().padding(spacing.lg),
+            horizontalArrangement = Arrangement.spacedBy(spacing.sm),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             if (state.saving) CircularProgressIndicator(modifier = Modifier.heightIn(max = 20.dp))
@@ -362,7 +364,7 @@ fun DefinitionScreen(
             onDismissRequest = onDismissOutcome,
             title = { Text(stringResource(R.string.admin_write_title)) },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(spacing.xs)) {
                     Text(outcome.summary)
                     outcome.diagnostics.forEach { DiagnosticRow(diagnostic = it) }
                 }

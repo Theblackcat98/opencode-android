@@ -70,6 +70,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.opencode.android.core.data.repository.AddServerErrorType
 import dev.opencode.android.core.designsystem.text.SyncedTextField
+import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
 import dev.opencode.android.core.network.LanFound
 import dev.opencode.android.feature.servers.R
 import dev.opencode.android.feature.servers.camera.QrCodeScannerView
@@ -231,13 +232,13 @@ private fun BoxScope.WorkingOverlay(message: String) {
     Card(
         modifier = Modifier
             .align(Alignment.Center)
-            .padding(32.dp),
+            .padding(OpenCodeThemeExtras.spacing.xxl),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
     ) {
         Row(
-            modifier = Modifier.padding(24.dp),
+            modifier = Modifier.padding(OpenCodeThemeExtras.spacing.xl),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.lg),
         ) {
             CircularProgressIndicator(modifier = Modifier.semantics { contentDescription = message })
             Text(text = message, style = MaterialTheme.typography.bodyMedium)
@@ -264,7 +265,7 @@ fun ConnectionErrorDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.error_title)) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.md)) {
                 Text(stringResource(error.messageRes()), style = MaterialTheme.typography.bodyMedium)
                 error.helpRes()?.let { help ->
                     Text(
@@ -274,7 +275,7 @@ fun ConnectionErrorDialog(
                     )
                 }
                 if (technicalDetail != null) {
-                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Column(verticalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.xs)) {
                         Text(
                             text = stringResource(R.string.error_technical_details),
                             style = MaterialTheme.typography.labelMedium,
@@ -339,7 +340,7 @@ private fun ScanQrTab(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth()
-                    .padding(16.dp),
+                    .padding(OpenCodeThemeExtras.spacing.lg),
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
                 ),
@@ -347,7 +348,7 @@ private fun ScanQrTab(
                 Text(
                     text = stringResource(R.string.qr_instructions),
                     style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.padding(12.dp),
+                    modifier = Modifier.padding(OpenCodeThemeExtras.spacing.md),
                 )
             }
         }
@@ -356,7 +357,7 @@ private fun ScanQrTab(
             modifier = modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(24.dp),
+                .padding(OpenCodeThemeExtras.spacing.xl),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
@@ -391,8 +392,8 @@ internal fun PasteLinkTab(
         modifier = modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+            .padding(OpenCodeThemeExtras.spacing.lg),
+        verticalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.lg),
     ) {
         SyncedTextField(
             value = state.pairingLinkInput,
@@ -409,7 +410,7 @@ internal fun PasteLinkTab(
 
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.sm),
         ) {
             OutlinedButton(
                 onClick = { onLinkChange(context.clipboardText()) },
@@ -575,9 +576,9 @@ fun TrustUserCertificatesToggle(
             .fillMaxWidth()
             .toggleable(value = checked, enabled = enabled, role = Role.Switch, onValueChange = onCheckedChange)
             .semantics { contentDescription = "$label. $help" }
-            .padding(vertical = 4.dp),
+            .padding(vertical = OpenCodeThemeExtras.spacing.xs),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.md),
     ) {
         Switch(checked = checked, onCheckedChange = null, enabled = enabled)
         Column(modifier = Modifier.weight(1f)) {

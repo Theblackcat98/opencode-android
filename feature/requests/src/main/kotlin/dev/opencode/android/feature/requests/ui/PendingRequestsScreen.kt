@@ -29,6 +29,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import dev.opencode.android.core.data.action.ActionError
 import dev.opencode.android.core.data.server.PendingRequest
+import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
 import dev.opencode.android.feature.requests.R
 
 /**
@@ -124,18 +125,19 @@ fun PendingRequestsScreen(
  */
 @Composable
 private fun AnswerFailedBanner(error: ActionError, onDismiss: () -> Unit, modifier: Modifier = Modifier) {
+    val spacing = OpenCodeThemeExtras.spacing
     Surface(
-        modifier = modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, top = 8.dp)
+        modifier = modifier.fillMaxWidth().padding(start = spacing.md, end = spacing.md, top = spacing.sm)
             .semantics { liveRegion = LiveRegionMode.Polite },
         color = MaterialTheme.colorScheme.errorContainer,
         contentColor = MaterialTheme.colorScheme.onErrorContainer,
         shape = MaterialTheme.shapes.small,
     ) {
         Row(
-            modifier = Modifier.padding(start = 12.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
+            modifier = Modifier.padding(start = spacing.md, end = spacing.xs, top = spacing.xs, bottom = spacing.xs),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Column(modifier = Modifier.weight(1f).padding(vertical = 4.dp)) {
+            Column(modifier = Modifier.weight(1f).padding(vertical = spacing.xs)) {
                 Text(
                     text = stringResource(R.string.requests_inbox_answer_failed),
                     style = MaterialTheme.typography.labelLarge,

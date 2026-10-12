@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
 import dev.opencode.android.feature.servers.R
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
@@ -179,7 +180,7 @@ fun QrCodeScannerView(
                 style = MaterialTheme.typography.bodyLarge,
                 modifier = Modifier
                     .align(Alignment.Center)
-                    .padding(32.dp),
+                    .padding(OpenCodeThemeExtras.spacing.xxl),
             )
             LaunchedEffect(Unit) { onCameraUnavailable() }
         }

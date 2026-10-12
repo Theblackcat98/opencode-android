@@ -28,6 +28,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.opencode.android.core.data.composer.PromptIntent
 import dev.opencode.android.core.data.composer.StashEntry
+import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
 import dev.opencode.android.core.model.SkillInfo
 import dev.opencode.android.feature.composer.R
 
@@ -57,7 +58,7 @@ fun ComposerContextRow(state: ComposerUiState, modifier: Modifier = Modifier) {
         overflow = TextOverflow.Ellipsis,
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 4.dp)
+            .padding(horizontal = OpenCodeThemeExtras.spacing.xs)
             .semantics { contentDescription = summary },
     )
 }
@@ -92,6 +93,7 @@ fun ComposerProblemRow(
     onSendAnyway: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val spacing = OpenCodeThemeExtras.spacing
     val problem = state.problem ?: return
     val message = when (problem) {
         ComposerProblem.ATTACHMENT_BLOCKED -> stringResource(
@@ -117,12 +119,12 @@ fun ComposerProblemRow(
         ComposerProblem.SEARCH_FAILED -> stringResource(R.string.composer_search_failed)
     }
     Surface(
-        modifier = modifier.fillMaxWidth().padding(bottom = 8.dp),
+        modifier = modifier.fillMaxWidth().padding(bottom = spacing.sm),
         color = MaterialTheme.colorScheme.tertiaryContainer,
         contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
     ) {
         Row(
-            modifier = Modifier.padding(start = 12.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
+            modifier = Modifier.padding(start = spacing.md, end = spacing.xs, top = spacing.xs, bottom = spacing.xs),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(text = message, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
@@ -152,29 +154,29 @@ fun SkillPicker(
     onDismiss: () -> Unit,
 ) {
     ModalBottomSheet(onDismissRequest = onDismiss) {
-        Column(Modifier.fillMaxWidth().padding(bottom = 24.dp)) {
+        Column(Modifier.fillMaxWidth().padding(bottom = OpenCodeThemeExtras.spacing.xl)) {
             Text(
                 text = stringResource(R.string.composer_add_skill),
                 style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                modifier = Modifier.padding(horizontal = OpenCodeThemeExtras.spacing.lg, vertical = OpenCodeThemeExtras.spacing.sm),
             )
             if (skills.isEmpty()) {
                 Text(
                     text = stringResource(R.string.composer_skill_none),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(16.dp),
+                    modifier = Modifier.padding(OpenCodeThemeExtras.spacing.lg),
                 )
                 return@Column
             }
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.xxs)) {
                 items(skills, key = { it.id }) { skill ->
                     val isAttached = skill.id in attached
                     val description = skill.description ?: stringResource(R.string.composer_skill_none)
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                            .padding(horizontal = OpenCodeThemeExtras.spacing.lg, vertical = OpenCodeThemeExtras.spacing.sm),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Row(
@@ -194,7 +196,7 @@ fun SkillPicker(
                             Column(
                                 Modifier
                                     .weight(1f)
-                                    .padding(start = 8.dp),
+                                    .padding(start = OpenCodeThemeExtras.spacing.sm),
                             ) {
                                 Text(skill.name, style = MaterialTheme.typography.bodyLarge)
                                 Text(
@@ -224,11 +226,12 @@ fun SkillPicker(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SideQuestionSheet(state: SideQuestion, onDismiss: () -> Unit) {
+    val spacing = OpenCodeThemeExtras.spacing
     val clipboard = LocalClipboardManager.current
     ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = spacing.lg, vertical = spacing.sm),
+            verticalArrangement = Arrangement.spacedBy(spacing.sm),
         ) {
             Text(
                 text = stringResource(R.string.composer_btw_title),
@@ -250,7 +253,7 @@ fun SideQuestionSheet(state: SideQuestion, onDismiss: () -> Unit) {
 
                 else -> {
                     Text(state.answer.orEmpty(), style = MaterialTheme.typography.bodyMedium)
-                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(spacing.xs)) {
                         TextButton(
                             enabled = state.answered,
                             onClick = { clipboard.setText(AnnotatedString(state.answer.orEmpty())) },
@@ -283,10 +286,11 @@ fun StashList(
     onRestore: (StashEntry) -> Unit,
     onDismiss: () -> Unit,
 ) {
+    val spacing = OpenCodeThemeExtras.spacing
     ModalBottomSheet(onDismissRequest = onDismiss) {
-        Column(Modifier.fillMaxWidth().padding(bottom = 24.dp)) {
+        Column(Modifier.fillMaxWidth().padding(bottom = spacing.xl)) {
             Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = spacing.lg, vertical = spacing.sm),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
@@ -303,17 +307,17 @@ fun StashList(
                     text = stringResource(R.string.composer_stash_empty),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(16.dp),
+                    modifier = Modifier.padding(spacing.lg),
                 )
                 return@Column
             }
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(spacing.xxs)) {
                 items(stash, key = { it.id }) { entry ->
                     val restore = stringResource(R.string.composer_stash_restore, entry.text)
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(start = 16.dp, end = 8.dp, top = 4.dp, bottom = 4.dp),
+                            .padding(start = spacing.lg, end = spacing.sm, top = spacing.xs, bottom = spacing.xs),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(

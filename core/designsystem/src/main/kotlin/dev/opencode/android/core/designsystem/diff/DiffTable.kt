@@ -242,7 +242,7 @@ fun DiffRowView(
             color = textColor,
             maxLines = if (wrap) Int.MAX_VALUE else 1,
             softWrap = wrap,
-            modifier = Modifier.weight(1f, fill = true).padding(end = 8.dp),
+            modifier = Modifier.weight(1f, fill = true).padding(end = OpenCodeThemeExtras.spacing.sm),
         )
     }
 }
@@ -337,12 +337,12 @@ fun DiffFileCard(
         color = MaterialTheme.colorScheme.surface,
         shape = RoundedCornerShape(8.dp),
     ) {
-        Column(modifier = Modifier.padding(vertical = 4.dp)) {
+        Column(modifier = Modifier.padding(vertical = OpenCodeThemeExtras.spacing.xs)) {
             Text(
                 text = fileName,
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                modifier = Modifier.padding(horizontal = OpenCodeThemeExtras.spacing.sm, vertical = OpenCodeThemeExtras.spacing.xs),
                 maxLines = 1,
             )
             if (rows.isEmpty() && emptyMessage != null) {
@@ -350,7 +350,7 @@ fun DiffFileCard(
                     text = emptyMessage,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(8.dp),
+                    modifier = Modifier.padding(OpenCodeThemeExtras.spacing.sm),
                 )
             } else {
                 DiffTable(

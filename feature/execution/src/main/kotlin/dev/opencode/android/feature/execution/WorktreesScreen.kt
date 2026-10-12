@@ -36,6 +36,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.opencode.android.core.designsystem.text.SyncedTextField
+import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
 import dev.opencode.android.core.model.Project
 
 /**
@@ -66,9 +67,10 @@ fun WorktreesScreen(
     onDismissError: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val spacing = OpenCodeThemeExtras.spacing
     Column(modifier = modifier.fillMaxSize()) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = spacing.lg, vertical = spacing.sm),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
@@ -85,8 +87,8 @@ fun WorktreesScreen(
         }
 
         Column(
-            modifier = Modifier.padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.padding(horizontal = spacing.lg),
+            verticalArrangement = Arrangement.spacedBy(spacing.sm),
         ) {
             SyncedTextField(
                 value = state.draftFrom,
@@ -121,7 +123,7 @@ fun WorktreesScreen(
                 Icon(Icons.Filled.Add, contentDescription = null)
                 Text(
                     text = stringResource(R.string.worktrees_create),
-                    modifier = Modifier.padding(start = 8.dp),
+                    modifier = Modifier.padding(start = spacing.sm),
                 )
             }
             // Creating runs the project's setup script on the server, which takes a while; the
@@ -129,7 +131,7 @@ fun WorktreesScreen(
             if (state.creating) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(spacing.sm),
                 ) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(20.dp),
@@ -171,13 +173,13 @@ fun WorktreesScreen(
             }
         }
 
-        HorizontalDivider(modifier = Modifier.padding(top = 8.dp))
+        HorizontalDivider(modifier = Modifier.padding(top = spacing.sm))
 
         if (state.loading) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.padding(24.dp),
+                horizontalArrangement = Arrangement.spacedBy(spacing.sm),
+                modifier = Modifier.padding(spacing.xl),
             ) {
                 CircularProgressIndicator(
                     modifier = Modifier.size(20.dp),
@@ -192,12 +194,12 @@ fun WorktreesScreen(
             Text(
                 text = stringResource(R.string.worktrees_empty),
                 style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.padding(24.dp),
+                modifier = Modifier.padding(spacing.xl),
             )
         } else {
             LazyColumn(
                 modifier = Modifier.fillMaxSize().testTag(WorktreeTags.LIST),
-                contentPadding = PaddingValues(bottom = 24.dp),
+                contentPadding = PaddingValues(bottom = spacing.xl),
             ) {
                 items(state.directories, key = { it.directory }) { entry ->
                     ListItem(
@@ -250,7 +252,7 @@ fun WorktreesScreen(
             onDismissRequest = onCancelRemove,
             title = { Text(stringResource(R.string.worktrees_remove_title)) },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
                     Text(
                         text = target,
                         style = MaterialTheme.typography.bodySmall,

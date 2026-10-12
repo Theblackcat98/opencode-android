@@ -55,6 +55,7 @@ import dev.opencode.android.core.data.terminal.TerminalBridgeMessage
 import dev.opencode.android.core.data.terminal.TerminalGrid
 import dev.opencode.android.core.data.terminal.TerminalInput
 import dev.opencode.android.core.data.terminal.TerminalKey
+import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
 import dev.opencode.android.core.network.PtyStreamState
 
 /**
@@ -229,9 +230,9 @@ private fun TerminalHeader(
     onReconnect: () -> Unit,
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = OpenCodeThemeExtras.spacing.sm, vertical = OpenCodeThemeExtras.spacing.xs),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.xs),
     ) {
         Text(
             text = state.open?.title ?: stringResource(R.string.terminal_none),
@@ -282,7 +283,7 @@ private fun TerminalList(
 ) {
     LazyColumn(
         modifier = modifier.fillMaxWidth().testTag(TerminalTags.LIST),
-        contentPadding = PaddingValues(bottom = 8.dp),
+        contentPadding = PaddingValues(bottom = OpenCodeThemeExtras.spacing.sm),
     ) {
         items(state.terminals, key = { it.id }) { terminal ->
             ListItem(
@@ -410,10 +411,10 @@ fun ExtraKeysRow(
             .fillMaxWidth()
             .background(MaterialTheme.colorScheme.surfaceVariant)
             .horizontalScroll(rememberScrollState())
-            .padding(horizontal = 4.dp, vertical = 4.dp)
+            .padding(horizontal = OpenCodeThemeExtras.spacing.xs, vertical = OpenCodeThemeExtras.spacing.xs)
             .testTag(TerminalTags.EXTRA_KEYS)
             .semantics { contentDescription = label },
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.xs),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         ExtraKeys.row.forEach { key ->
@@ -471,7 +472,7 @@ private fun TerminalPickerSheet(
             if (shells.isEmpty()) {
                 Text(stringResource(R.string.terminal_picker_empty))
             } else {
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.xs)) {
                     shells.forEach { shell ->
                         FilterChip(
                             selected = false,
@@ -496,8 +497,8 @@ private fun TerminalPickerSheet(
 @Composable
 private fun TerminalEmpty(modifier: Modifier = Modifier) {
     Column(
-        modifier = modifier.fillMaxWidth().padding(32.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = modifier.fillMaxWidth().padding(OpenCodeThemeExtras.spacing.xxl),
+        verticalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.sm),
     ) {
         Text(
             text = stringResource(R.string.terminal_empty),

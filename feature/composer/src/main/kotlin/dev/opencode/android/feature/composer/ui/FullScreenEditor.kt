@@ -25,6 +25,7 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
 import dev.opencode.android.feature.composer.R
 
 /**
@@ -66,7 +67,7 @@ fun FullScreenEditor(
                             Icon(Icons.Filled.Check, contentDescription = null)
                             Text(
                                 text = stringResource(R.string.composer_send),
-                                modifier = Modifier.padding(start = 8.dp),
+                                modifier = Modifier.padding(start = OpenCodeThemeExtras.spacing.sm),
                             )
                         }
                     },
@@ -77,7 +78,7 @@ fun FullScreenEditor(
                 OutlinedTextField(
                     value = text,
                     onValueChange = { edited: String -> text = edited },
-                    modifier = Modifier.fillMaxSize().padding(12.dp),
+                    modifier = Modifier.fillMaxSize().padding(OpenCodeThemeExtras.spacing.md),
                     maxLines = 40,
                 )
             }

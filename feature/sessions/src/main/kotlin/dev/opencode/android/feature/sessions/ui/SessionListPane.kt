@@ -38,6 +38,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
 import dev.opencode.android.feature.sessions.R
 import kotlinx.coroutines.flow.first
 
@@ -112,15 +113,15 @@ fun SessionListPane(
             style = MaterialTheme.typography.titleSmall,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp)
+                .padding(horizontal = OpenCodeThemeExtras.spacing.lg, vertical = OpenCodeThemeExtras.spacing.md)
                 .semantics { heading() },
         )
         if (sessions.isEmpty()) {
             if (loading) {
                 Row(
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                    modifier = Modifier.padding(horizontal = OpenCodeThemeExtras.spacing.lg, vertical = OpenCodeThemeExtras.spacing.md),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.md),
                 ) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(20.dp),
@@ -135,15 +136,15 @@ fun SessionListPane(
                 Text(
                     text = stringResource(R.string.session_pane_empty),
                     style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(horizontal = 16.dp),
+                    modifier = Modifier.padding(horizontal = OpenCodeThemeExtras.spacing.lg),
                 )
             }
         } else {
             LazyColumn(
                 state = listState,
                 modifier = Modifier.weight(1f),
-                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
+                contentPadding = PaddingValues(horizontal = OpenCodeThemeExtras.spacing.sm, vertical = OpenCodeThemeExtras.spacing.xs),
+                verticalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.xs),
             ) {
                 items(sessions, key = { it.id }) { session ->
                     SessionListRow(session = session, selected = session.id == selectedId, onSelect = onSelect)
@@ -172,7 +173,7 @@ private fun SessionListRow(session: RecentSessionUi, selected: Boolean, onSelect
             .background(color = rowColor(selected), shape = MaterialTheme.shapes.small)
             .selectable(selected = selected, role = Role.Button, onClick = { onSelect(session.id) })
             .semantics(mergeDescendants = true) { contentDescription = label }
-            .padding(horizontal = 12.dp, vertical = 12.dp),
+            .padding(horizontal = OpenCodeThemeExtras.spacing.md, vertical = OpenCodeThemeExtras.spacing.md),
     )
 }
 

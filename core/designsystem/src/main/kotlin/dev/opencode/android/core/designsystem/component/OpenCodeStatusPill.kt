@@ -45,7 +45,7 @@ fun OpenCodeStatusPill(
         modifier = modifier
             .clip(OpenCodeThemeExtras.shapes.pill)
             .background(container)
-            .padding(horizontal = 8.dp, vertical = 2.dp),
+            .padding(horizontal = OpenCodeThemeExtras.spacing.sm, vertical = OpenCodeThemeExtras.spacing.xxs),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {

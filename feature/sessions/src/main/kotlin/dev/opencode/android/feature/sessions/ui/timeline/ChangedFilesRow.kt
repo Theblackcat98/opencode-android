@@ -14,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
 import dev.opencode.android.feature.sessions.R
 
 /**
@@ -36,7 +37,7 @@ fun ChangedFilesRow(
     modifier: Modifier = Modifier,
 ) {
     if (files.isEmpty()) return
-    Column(modifier = modifier.fillMaxWidth().padding(top = 4.dp)) {
+    Column(modifier = modifier.fillMaxWidth().padding(top = OpenCodeThemeExtras.spacing.xs)) {
         Text(
             text = pluralStringResource(R.plurals.timeline_changed_files, files.size, files.size),
             style = MaterialTheme.typography.labelSmall,
@@ -48,7 +49,7 @@ fun ChangedFilesRow(
                     .fillMaxWidth()
                     .defaultMinSize(minHeight = 48.dp)
                     .clickable { onOpenFile(path) }
-                    .padding(vertical = 8.dp),
+                    .padding(vertical = OpenCodeThemeExtras.spacing.sm),
                 horizontalArrangement = Arrangement.Start,
                 verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
             ) {

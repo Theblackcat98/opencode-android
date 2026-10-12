@@ -235,7 +235,7 @@ private fun ServerTitle(serverName: String?, onSwitchServer: (() -> Unit)?) {
         Modifier
     }
     Row(
-        modifier = clickable.padding(horizontal = 4.dp, vertical = 4.dp),
+        modifier = clickable.padding(horizontal = OpenCodeThemeExtras.spacing.xs, vertical = OpenCodeThemeExtras.spacing.xs),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(text = name, style = MaterialTheme.typography.titleLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -250,7 +250,7 @@ private fun ProjectHeader(group: ProjectGroup, onSeeAll: () -> Unit, onRemove: (
     val label = projectLabel(project)
     var menuOpen by remember { mutableStateOf(false) }
     Row(
-        modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
+        modifier = Modifier.fillMaxWidth().padding(bottom = OpenCodeThemeExtras.spacing.xs),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         OpenCodeAvatar(key = project.id, label = label, size = 32.dp)
@@ -312,7 +312,7 @@ private fun HomeSessionRow(row: SessionRow, now: Long, onClick: () -> Unit) {
             .clip(OpenCodeThemeExtras.shapes.button)
             .clickable(onClick = onClick)
             .semantics(mergeDescendants = true) { contentDescription = description }
-            .padding(start = 44.dp, top = 10.dp, bottom = 10.dp, end = 8.dp),
+            .padding(start = 44.dp, top = 10.dp, bottom = 10.dp, end = OpenCodeThemeExtras.spacing.sm),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(modifier = Modifier.weight(1f)) {
@@ -359,23 +359,23 @@ private fun AddProjectSheet(projects: List<Project>, onPick: (String) -> Unit, o
         Text(
             text = stringResource(R.string.home_add_project),
             style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
+            modifier = Modifier.padding(horizontal = OpenCodeThemeExtras.spacing.xl, vertical = OpenCodeThemeExtras.spacing.sm),
         )
         Text(
             text = stringResource(R.string.home_add_project_hint),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(horizontal = 24.dp),
+            modifier = Modifier.padding(horizontal = OpenCodeThemeExtras.spacing.xl),
         )
         Spacer(Modifier.height(8.dp))
-        LazyColumn(contentPadding = PaddingValues(bottom = 24.dp)) {
+        LazyColumn(contentPadding = PaddingValues(bottom = OpenCodeThemeExtras.spacing.xl)) {
             items(items = projects.sortedByDescending { it.time.updated }, key = { it.id }) { project ->
                 val label = projectLabel(project)
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable(onClickLabel = stringResource(R.string.home_add_project)) { onPick(project.id) }
-                        .padding(horizontal = 24.dp, vertical = 12.dp),
+                        .padding(horizontal = OpenCodeThemeExtras.spacing.xl, vertical = OpenCodeThemeExtras.spacing.md),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     OpenCodeAvatar(key = project.id, label = label, size = 28.dp)
@@ -424,7 +424,7 @@ private fun PendingRequestsCard(count: Int, onClick: () -> Unit) {
         contentColor = MaterialTheme.colorScheme.onErrorContainer,
         shape = OpenCodeThemeExtras.shapes.card,
     ) {
-        Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.padding(OpenCodeThemeExtras.spacing.lg), verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Outlined.Inbox, contentDescription = null)
             Spacer(Modifier.size(12.dp))
             Column(Modifier.weight(1f)) {

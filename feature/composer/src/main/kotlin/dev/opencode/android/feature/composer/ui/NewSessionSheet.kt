@@ -43,6 +43,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.opencode.android.core.designsystem.format.Formatters
 import dev.opencode.android.core.designsystem.text.SyncedTextField
+import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
 import dev.opencode.android.core.model.FileSystemEntry
 import dev.opencode.android.core.model.ModelRef
 import dev.opencode.android.feature.composer.R
@@ -187,7 +188,7 @@ private fun NewSessionForm(
     onSelectModel: (ModelRef) -> Unit,
     onModelSearchChange: (String) -> Unit,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.sm)) {
         Text(stringResource(R.string.new_session_title), style = MaterialTheme.typography.titleMedium)
         SyncedTextField(
             value = state.title,
@@ -215,7 +216,7 @@ private fun LocationSection(
 ) {
     val draft = state.pathDraft.trim()
     val draftValid = isAbsoluteServerPath(draft)
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.xs)) {
         Text(
             text = stringResource(R.string.new_session_where),
             style = MaterialTheme.typography.titleSmall,
@@ -297,11 +298,11 @@ private fun LocationSection(
 @Composable
 private fun LocationRow(title: String, subtitle: String, selected: Boolean, onClick: () -> Unit) {
     Row(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 4.dp),
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = OpenCodeThemeExtras.spacing.xs),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         RadioButton(selected = selected, onClick = null)
-        Column(Modifier.padding(start = 8.dp)) {
+        Column(Modifier.padding(start = OpenCodeThemeExtras.spacing.sm)) {
             Text(title, style = MaterialTheme.typography.bodyMedium)
             Text(
                 text = subtitle,
@@ -317,7 +318,7 @@ private fun LocationRow(title: String, subtitle: String, selected: Boolean, onCl
 /** The agent, with its description. An empty list means the server decides. */
 @Composable
 private fun AgentSection(state: NewSessionUiState, onSelectAgent: (String) -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.xs)) {
         ModelSectionHeader(stringResource(R.string.new_session_agent))
         if (state.primaryAgents.isEmpty()) {
             Text(
@@ -350,7 +351,7 @@ private fun ModelSection(
     onSelectModel: (ModelRef) -> Unit,
 ) {
     val groups = state.modelGroups(favorites, recents, search)
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.xs)) {
         ModelSectionHeader(stringResource(R.string.new_session_model))
         // A server can list a hundred models across a dozen providers, so finding one by scrolling is the
         // slow way; the filter is the same one the model picker applies.
@@ -377,7 +378,7 @@ private fun ModelSection(
                 text = group.providerID,
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(start = 16.dp, top = 4.dp),
+                modifier = Modifier.padding(start = OpenCodeThemeExtras.spacing.lg, top = OpenCodeThemeExtras.spacing.xs),
             )
             group.entries.forEach { entry ->
                 val current = state.model
@@ -417,8 +418,8 @@ fun DirectoryBrowser(
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState, modifier = modifier) {
         Column(
-            Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
+            Modifier.fillMaxWidth().padding(horizontal = OpenCodeThemeExtras.spacing.lg).padding(bottom = OpenCodeThemeExtras.spacing.xl),
+            verticalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.xs),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = onUp) {
@@ -437,7 +438,7 @@ fun DirectoryBrowser(
             HorizontalDivider()
             if (state.browserLoading) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    CircularProgressIndicator(Modifier.padding(8.dp))
+                    CircularProgressIndicator(Modifier.padding(OpenCodeThemeExtras.spacing.sm))
                     Text(stringResource(R.string.new_session_browse_loading))
                 }
             } else if (state.entries.isEmpty()) {

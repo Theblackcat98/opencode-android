@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import dev.opencode.android.R
+import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
 
 /**
  * The command palette: a search field over the commands the app can run from here.
@@ -71,11 +72,11 @@ fun CommandPaletteDialog(
         LaunchedEffect(Unit) { focusRequester.requestFocus() }
 
         Surface(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = OpenCodeThemeExtras.spacing.lg),
             shape = MaterialTheme.shapes.extraLarge,
             color = MaterialTheme.colorScheme.surfaceContainerHigh,
         ) {
-            Column(modifier = Modifier.padding(16.dp)) {
+            Column(modifier = Modifier.padding(OpenCodeThemeExtras.spacing.lg)) {
                 OutlinedTextField(
                     value = query,
                     onValueChange = {
@@ -128,7 +129,7 @@ fun CommandPaletteDialog(
                         text = stringResource(R.string.palette_no_match),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(vertical = 16.dp),
+                        modifier = Modifier.padding(vertical = OpenCodeThemeExtras.spacing.lg),
                     )
                 }
                 LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 480.dp)) {
@@ -158,7 +159,7 @@ fun CommandPaletteDialog(
                                     onDismiss()
                                 }
                                 .semantics { role = Role.Button }
-                                .padding(horizontal = 8.dp, vertical = 14.dp),
+                                .padding(horizontal = OpenCodeThemeExtras.spacing.sm, vertical = 14.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Text(
@@ -173,7 +174,7 @@ fun CommandPaletteDialog(
                                     text = stringResource(R.string.palette_leader_hint, letter),
                                     style = MaterialTheme.typography.labelLarge,
                                     color = hintColor,
-                                    modifier = Modifier.padding(start = 16.dp),
+                                    modifier = Modifier.padding(start = OpenCodeThemeExtras.spacing.lg),
                                 )
                             }
                         }

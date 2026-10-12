@@ -51,6 +51,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.opencode.android.core.data.repository.ServerHealth
 import dev.opencode.android.core.data.repository.ServerProfile
+import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
 import dev.opencode.android.feature.servers.R
 
 /**
@@ -154,8 +155,8 @@ fun ServersScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                contentPadding = PaddingValues(OpenCodeThemeExtras.spacing.lg),
+                verticalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.md),
             ) {
                 items(servers, key = { it.id }) { server ->
                     ServerListItem(
@@ -239,7 +240,7 @@ private fun ServerListItem(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(OpenCodeThemeExtras.spacing.lg),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Row(
@@ -255,7 +256,7 @@ private fun ServerListItem(
                 Column(modifier = Modifier.weight(1f)) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.sm),
                     ) {
                         Text(text = server.name, style = MaterialTheme.typography.titleMedium)
                         if (server.isDefault) DefaultServerBadge()
@@ -339,7 +340,7 @@ private fun EmptyServersView(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .padding(24.dp),
+            .padding(OpenCodeThemeExtras.spacing.xl),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {

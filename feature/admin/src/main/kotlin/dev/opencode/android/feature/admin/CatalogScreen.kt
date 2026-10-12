@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import dev.opencode.android.core.data.action.toActionError
 import dev.opencode.android.core.data.sync.SyncStatus
 import dev.opencode.android.core.data.sync.SyncedState
+import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
 import dev.opencode.android.core.model.AgentInfo
 import dev.opencode.android.core.model.CommandInfo
 import dev.opencode.android.core.model.ReferenceInfo
@@ -224,10 +225,11 @@ fun CatalogScreen(
     onSearchChange: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val spacing = OpenCodeThemeExtras.spacing
     Column(modifier = modifier.fillMaxSize()) {
         FlowRow(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = spacing.lg, vertical = spacing.sm),
+            horizontalArrangement = Arrangement.spacedBy(spacing.sm),
         ) {
             AdminCatalog.entries.forEach { tab ->
                 FilterChip(
@@ -253,8 +255,8 @@ fun CatalogScreen(
             }
 
             SyncStatus.Loading -> Row(
-                modifier = Modifier.fillMaxWidth().padding(16.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.fillMaxWidth().padding(spacing.lg),
+                horizontalArrangement = Arrangement.spacedBy(spacing.md),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 CircularProgressIndicator()
@@ -266,7 +268,7 @@ fun CatalogScreen(
                     Text(
                         text = stringResource(R.string.admin_catalog_empty),
                         style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.padding(16.dp),
+                        modifier = Modifier.padding(spacing.lg),
                     )
                 } else {
                     LazyColumn(modifier = Modifier.weight(1f)) {
@@ -282,10 +284,11 @@ fun CatalogScreen(
 
 @Composable
 private fun CatalogRowCard(row: CatalogRow) {
+    val spacing = OpenCodeThemeExtras.spacing
     Card(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp).testTag(row.tag),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = spacing.lg, vertical = spacing.xs).testTag(row.tag),
     ) {
-        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Column(modifier = Modifier.padding(spacing.md), verticalArrangement = Arrangement.spacedBy(spacing.xs)) {
             Text(
                 text = row.title,
                 style = MaterialTheme.typography.titleSmall,
@@ -300,7 +303,7 @@ private fun CatalogRowCard(row: CatalogRow) {
                 Fact(label = stringResource(fact.label), value = value, monospace = true)
             }
             row.body?.let { body ->
-                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                HorizontalDivider(modifier = Modifier.padding(vertical = spacing.xs))
                 Text(
                     text = body,
                     style = MaterialTheme.typography.bodySmall,

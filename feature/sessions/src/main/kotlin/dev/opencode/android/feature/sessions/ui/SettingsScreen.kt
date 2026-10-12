@@ -158,6 +158,7 @@ fun SettingsScreen(
     onOpen: (ManageDestination) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val spacing = OpenCodeThemeExtras.spacing
     Scaffold(
         modifier = modifier,
         topBar = {
@@ -180,7 +181,7 @@ fun SettingsScreen(
     ) { padding ->
         LazyColumn(
             modifier = Modifier.padding(padding).fillMaxSize(),
-            contentPadding = PaddingValues(bottom = 24.dp),
+            contentPadding = PaddingValues(bottom = spacing.xl),
         ) {
             item(key = "project") {
                 ProjectScope(state, onSelectProject)
@@ -192,7 +193,7 @@ fun SettingsScreen(
                         style = MaterialTheme.typography.labelLarge,
                         color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier
-                            .padding(start = 24.dp, end = 24.dp, top = 24.dp, bottom = 4.dp)
+                            .padding(start = spacing.xl, end = spacing.xl, top = spacing.xl, bottom = spacing.xs)
                             .semantics { heading() },
                     )
                 }
@@ -215,24 +216,25 @@ object SettingsTags {
 
 @Composable
 private fun ProjectScope(state: SettingsUiState, onSelectProject: (String) -> Unit) {
-    Column(modifier = Modifier.padding(top = 8.dp)) {
+    val spacing = OpenCodeThemeExtras.spacing
+    Column(modifier = Modifier.padding(top = spacing.sm)) {
         Text(
             text = stringResource(R.string.settings_project_scope),
             style = MaterialTheme.typography.labelLarge,
             color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp).semantics { heading() },
+            modifier = Modifier.padding(horizontal = spacing.xl, vertical = spacing.xs).semantics { heading() },
         )
         if (state.projects.isEmpty()) {
             Text(
                 text = stringResource(R.string.settings_project_none),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 24.dp),
+                modifier = Modifier.padding(horizontal = spacing.xl),
             )
         } else {
             LazyRow(
-                contentPadding = PaddingValues(horizontal = 24.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                contentPadding = PaddingValues(horizontal = spacing.xl),
+                horizontalArrangement = Arrangement.spacedBy(spacing.sm),
             ) {
                 items(items = state.projects, key = { it.id }) { project ->
                     OpenCodeChip(
@@ -249,7 +251,7 @@ private fun ProjectScope(state: SettingsUiState, onSelectProject: (String) -> Un
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 6.dp),
+                    modifier = Modifier.padding(horizontal = spacing.xl, vertical = 6.dp),
                 )
             }
         }
@@ -264,7 +266,7 @@ private fun SettingsRow(destination: ManageDestination, enabled: Boolean, onClic
             .fillMaxWidth()
             .clickable(enabled = enabled, onClick = onClick)
             .testTag(SettingsTags.row(destination))
-            .padding(horizontal = 24.dp, vertical = 14.dp),
+            .padding(horizontal = OpenCodeThemeExtras.spacing.xl, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(

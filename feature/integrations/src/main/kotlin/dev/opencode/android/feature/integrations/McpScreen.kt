@@ -43,6 +43,7 @@ import androidx.compose.ui.unit.dp
 import dev.opencode.android.core.data.integrations.McpConfigProblem
 import dev.opencode.android.core.data.sync.SyncStatus
 import dev.opencode.android.core.designsystem.text.SyncedTextField
+import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
 import dev.opencode.android.core.model.McpProtocol
 import dev.opencode.android.core.model.McpResource
 import dev.opencode.android.core.model.McpServer
@@ -89,8 +90,8 @@ fun McpScreen(
                     )
 
                     SyncStatus.Loading -> Row(
-                        modifier = Modifier.fillMaxWidth().padding(16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier.fillMaxWidth().padding(OpenCodeThemeExtras.spacing.lg),
+                        horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.md),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         CircularProgressIndicator()
@@ -171,7 +172,7 @@ private fun McpServerView(
     onRemove: () -> Unit,
 ) {
     Column(
-        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+        modifier = Modifier.padding(horizontal = OpenCodeThemeExtras.spacing.lg, vertical = OpenCodeThemeExtras.spacing.sm)
             .testTag(IntegrationsTags.server(server.name)),
     ) {
         Text(text = server.name, style = MaterialTheme.typography.titleMedium)
@@ -180,7 +181,7 @@ private fun McpServerView(
             style = MaterialTheme.typography.bodySmall,
             color = statusColour(server),
         )
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.sm)) {
             when {
                 // A `needs_auth` server is fixed by opening the *integration's* login, which is only
                 // possible when the server named one. Without it there is no flow this client could
@@ -241,15 +242,15 @@ private fun McpActions(
     onOpenAdd: () -> Unit,
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(16.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.fillMaxWidth().padding(OpenCodeThemeExtras.spacing.lg),
+        horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.sm),
     ) {
         TextButton(onClick = onOpenResources, enabled = hasResources) {
             Text(stringResource(R.string.mcp_resources))
         }
         TextButton(onClick = onOpenAdd, enabled = runtimeUsable) {
             Icon(Icons.Filled.Add, contentDescription = null)
-            Text(stringResource(R.string.mcp_add), modifier = Modifier.padding(start = 4.dp))
+            Text(stringResource(R.string.mcp_add), modifier = Modifier.padding(start = OpenCodeThemeExtras.spacing.xs))
         }
     }
 }
@@ -279,10 +280,10 @@ fun McpAddSheetContent(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp)
+            .padding(horizontal = OpenCodeThemeExtras.spacing.lg)
             .verticalScroll(rememberScrollState())
-            .padding(bottom = 24.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+            .padding(bottom = OpenCodeThemeExtras.spacing.xl),
+        verticalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.sm),
     ) {
         Text(stringResource(R.string.mcp_add), style = MaterialTheme.typography.titleLarge)
         SyncedTextField(
@@ -293,7 +294,7 @@ fun McpAddSheetContent(
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.selectableGroup()) {
+        Row(horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.sm), modifier = Modifier.selectableGroup()) {
             dev.opencode.android.core.data.integrations.McpServerDraft.Kind.entries.forEach { kind ->
                 FilterChip(
                     selected = draft.kind == kind,
@@ -359,10 +360,10 @@ fun McpAddSheetContent(
             Switch(checked = draft.codemode, onCheckedChange = { onChange(draft.copy(codemode = it)) })
             Text(
                 text = stringResource(R.string.mcp_add_codemode),
-                modifier = Modifier.padding(start = 12.dp),
+                modifier = Modifier.padding(start = OpenCodeThemeExtras.spacing.md),
             )
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.sm)) {
             McpProtocol.ALL.forEach { protocol ->
                 FilterChip(
                     selected = draft.protocol == protocol,
@@ -392,7 +393,7 @@ private fun TimeoutFields(
         R.string.mcp_timeout_catalog to draft.catalogTimeout,
         R.string.mcp_timeout_execution to draft.executionTimeout,
     )
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    Row(horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.sm)) {
         labels.forEachIndexed { index, (label, value) ->
             SyncedTextField(
                 value = value,
@@ -435,9 +436,9 @@ fun McpResourceSheetContent(
     LazyColumn(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp)
-            .padding(bottom = 24.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
+            .padding(horizontal = OpenCodeThemeExtras.spacing.lg)
+            .padding(bottom = OpenCodeThemeExtras.spacing.xl),
+        verticalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.xs),
     ) {
         item {
             Text(stringResource(R.string.mcp_resources), style = MaterialTheme.typography.titleLarge)
@@ -470,7 +471,7 @@ fun McpResourceSheetContent(
                         ),
                     ) {
                         Icon(Icons.Filled.Link, contentDescription = null)
-                        Text(stringResource(R.string.mcp_attach), modifier = Modifier.padding(start = 4.dp))
+                        Text(stringResource(R.string.mcp_attach), modifier = Modifier.padding(start = OpenCodeThemeExtras.spacing.xs))
                     }
                 },
             )

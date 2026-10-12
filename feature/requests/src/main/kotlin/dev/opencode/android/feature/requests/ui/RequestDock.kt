@@ -45,6 +45,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import dev.opencode.android.core.data.forms.FormEngine
 import dev.opencode.android.core.data.server.PendingRequest
+import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
 import dev.opencode.android.core.model.FormAnswer
 import dev.opencode.android.core.model.FormInfo
 import dev.opencode.android.core.model.FormKind
@@ -93,6 +94,7 @@ fun RequestDock(
     busy: Boolean = false,
     initiallyExpanded: Boolean = true,
 ) {
+    val spacing = OpenCodeThemeExtras.spacing
     if (requests.isEmpty()) return
     var expanded by rememberSaveable(requests.size) { mutableStateOf(initiallyExpanded) }
     Card(
@@ -103,7 +105,7 @@ fun RequestDock(
         ),
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(start = 12.dp, end = 4.dp),
+            modifier = Modifier.fillMaxWidth().padding(start = spacing.md, end = spacing.xs),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
@@ -127,7 +129,7 @@ fun RequestDock(
             }
         }
         if (expanded) {
-            Column(Modifier.padding(start = 12.dp, end = 12.dp, bottom = 12.dp)) {
+            Column(Modifier.padding(start = spacing.md, end = spacing.md, bottom = spacing.md)) {
                 requests.forEach { request ->
                     when (request) {
                         is PendingRequest.Form -> FormRequest(request, actions, busy = busy)
@@ -163,17 +165,17 @@ fun PermissionCard(
     var feedback by rememberSaveable(request.id) { mutableStateOf("") }
     var confirmingAlways by remember { mutableStateOf(false) }
 
-    Column(modifier = modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+    Column(modifier = modifier.fillMaxWidth().padding(vertical = OpenCodeThemeExtras.spacing.sm)) {
         Text(
             text = stringResource(R.string.permission_title, request.action),
             style = MaterialTheme.typography.titleSmall,
         )
-        if (!request.raisedByToolCall) NotFromToolLabel(modifier = Modifier.padding(top = 4.dp))
+        if (!request.raisedByToolCall) NotFromToolLabel(modifier = Modifier.padding(top = OpenCodeThemeExtras.spacing.xs))
         request.title?.let {
             Text(
                 text = it,
                 style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
-                modifier = Modifier.padding(top = 4.dp),
+                modifier = Modifier.padding(top = OpenCodeThemeExtras.spacing.xs),
             )
         }
         request.message?.let {
@@ -200,8 +202,8 @@ fun PermissionCard(
         // A wrapping row, not a fixed one: at a large font scale three buttons do not fit on a
         // phone's width, and clipping "Reject" is the one button a user must always be able to reach.
         FlowRow(
-            modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.fillMaxWidth().padding(top = OpenCodeThemeExtras.spacing.xs),
+            horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.sm),
         ) {
             Button(
                 onClick = { actions.onReplyOnce(PendingRequest.Permission(request)) },
@@ -226,7 +228,7 @@ fun PermissionCard(
             value = feedback,
             onValueChange = { feedback = it },
             label = { Text(stringResource(R.string.permission_feedback_label)) },
-            modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+            modifier = Modifier.fillMaxWidth().padding(top = OpenCodeThemeExtras.spacing.xs),
         )
     }
 
@@ -281,7 +283,7 @@ private fun NotFromToolLabel(modifier: Modifier = Modifier) {
         Text(
             text = stringResource(R.string.permission_not_from_tool),
             style = MaterialTheme.typography.labelMedium,
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+            modifier = Modifier.padding(horizontal = OpenCodeThemeExtras.spacing.sm, vertical = OpenCodeThemeExtras.spacing.xs),
         )
     }
 }
@@ -320,7 +322,7 @@ private fun InlineForm(request: PendingRequest.Form, actions: RequestActions, bu
     var attempted by rememberSaveable(form.id) { mutableStateOf(false) }
     val problems = FormEngine.validate(form.fields, answers.value)
 
-    Column(modifier = modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+    Column(modifier = modifier.fillMaxWidth().padding(vertical = OpenCodeThemeExtras.spacing.sm)) {
         Text(form.title, style = MaterialTheme.typography.titleSmall)
         // A question is asked by a specific tool call, and a transcript can hold several; naming the
         // one being answered is what tells the user which card this belongs to.
@@ -340,8 +342,8 @@ private fun InlineForm(request: PendingRequest.Form, actions: RequestActions, bu
             showProblems = attempted,
         )
         Row(
-            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.fillMaxWidth().padding(top = OpenCodeThemeExtras.spacing.sm),
+            horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.sm),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Button(
@@ -414,11 +416,11 @@ private fun ConsentRequest(
         )
     } else {
         Surface(
-            modifier = modifier.fillMaxWidth().padding(vertical = 8.dp),
+            modifier = modifier.fillMaxWidth().padding(vertical = OpenCodeThemeExtras.spacing.sm),
             color = MaterialTheme.colorScheme.surfaceVariant,
         ) {
             Row(
-                modifier = Modifier.fillMaxWidth().padding(12.dp),
+                modifier = Modifier.fillMaxWidth().padding(OpenCodeThemeExtras.spacing.md),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(title, Modifier.weight(1f), style = MaterialTheme.typography.titleSmall)

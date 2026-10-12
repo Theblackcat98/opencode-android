@@ -42,6 +42,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
 import dev.opencode.android.core.model.SessionTerminalRead
 
 /**
@@ -221,7 +222,7 @@ private fun TerminalScreenText(
 ) {
     val screen = state.screen
     val inspected = state.terminals.firstOrNull { it.id == state.inspected } ?: state.latest
-    Column(modifier = modifier.fillMaxWidth().padding(12.dp)) {
+    Column(modifier = modifier.fillMaxWidth().padding(OpenCodeThemeExtras.spacing.md)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 text = stringResource(R.string.session_terminals_screen),
@@ -234,7 +235,7 @@ private fun TerminalScreenText(
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.xs),
             ) {
                 Text(
                     text = "${inspected.cols}×${inspected.rows}",
@@ -294,7 +295,7 @@ private fun TerminalScreenText(
                     style = MaterialTheme.typography.bodySmall,
                     fontFamily = FontFamily.Monospace,
                     modifier = Modifier
-                        .padding(8.dp)
+                        .padding(OpenCodeThemeExtras.spacing.sm)
                         .verticalScroll(rememberScrollState())
                         .horizontalScroll(rememberScrollState())
                         .testTag(SessionTerminalTags.SCREEN),
@@ -311,7 +312,7 @@ private fun Notice(text: String, tag: String, modifier: Modifier = Modifier) {
         style = MaterialTheme.typography.bodyMedium,
         modifier = modifier
             .fillMaxWidth()
-            .padding(24.dp)
+            .padding(OpenCodeThemeExtras.spacing.xl)
             .testTag(SessionTerminalTags.NOTICE + tag),
     )
 }

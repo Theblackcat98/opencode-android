@@ -31,6 +31,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
 import dev.opencode.android.core.model.InstructionEntry
 import dev.opencode.android.core.model.LoadedLocation
 import dev.opencode.android.core.model.MigrationStatus
@@ -88,14 +89,14 @@ fun PermissionsScreen(
                     stringResource(
                         if (state.projectID == null) R.string.admin_saved_all else R.string.admin_saved_project,
                     ),
-                    modifier = Modifier.padding(horizontal = 16.dp),
+                    modifier = Modifier.padding(horizontal = OpenCodeThemeExtras.spacing.lg),
                 )
             }
             if (state.loading && !state.savedLoaded) {
                 item(key = "saved-loading") {
                     Row(
-                        modifier = Modifier.fillMaxWidth().padding(16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier.fillMaxWidth().padding(OpenCodeThemeExtras.spacing.lg),
+                        horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.md),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         CircularProgressIndicator()
@@ -111,7 +112,7 @@ fun PermissionsScreen(
                     Text(
                         text = stringResource(R.string.admin_saved_empty),
                         style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.padding(16.dp),
+                        modifier = Modifier.padding(OpenCodeThemeExtras.spacing.lg),
                     )
                 }
             }
@@ -126,7 +127,7 @@ fun PermissionsScreen(
             onDismissRequest = onCancelRemove,
             title = { Text(stringResource(R.string.admin_saved_remove_title)) },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.xs)) {
                     Text(stringResource(R.string.admin_saved_remove_body, target.action, target.resource))
                     Text(
                         text = stringResource(R.string.admin_saved_remove_consequence),
@@ -156,17 +157,18 @@ fun PermissionsScreen(
  */
 @Composable
 private fun PrecedenceWarning() {
+    val spacing = OpenCodeThemeExtras.spacing
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(16.dp)
+            .padding(spacing.lg)
             .testTag(AdminTags.RULES_PRECEDENCE_WARNING),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.tertiaryContainer,
             contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
         ),
     ) {
-        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Column(modifier = Modifier.padding(spacing.md), verticalArrangement = Arrangement.spacedBy(spacing.xs)) {
             Text(
                 text = stringResource(R.string.admin_rules_warning_title),
                 style = MaterialTheme.typography.titleSmall,
@@ -187,7 +189,7 @@ private fun RuleSection(
     onRemoveRule: (Int) -> Unit,
     onSaveRules: () -> Unit,
 ) {
-    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = OpenCodeThemeExtras.spacing.lg)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 text = stringResource(R.string.admin_rules_title),
@@ -220,7 +222,7 @@ private fun RuleSection(
                 onRemove = { onRemoveRule(index) },
             )
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.sm)) {
             TextButton(onClick = onAddRule, modifier = Modifier.testTag(AdminTags.ADD_RULE)) {
                 Text(stringResource(R.string.admin_rules_add))
             }
@@ -239,8 +241,8 @@ private fun RuleSection(
 @Composable
 private fun RuleSummary(index: Int, rule: dev.opencode.android.core.model.PermissionRule) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).testTag(AdminTags.rule(index)),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.fillMaxWidth().padding(vertical = OpenCodeThemeExtras.spacing.xs).testTag(AdminTags.rule(index)),
+        horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.sm),
     ) {
         Text(
             text = effectLabel(rule.effect),
@@ -260,10 +262,10 @@ private fun RuleEditor(
     onRemove: () -> Unit,
 ) {
     Column(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).testTag(AdminTags.rule(index)),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
+        modifier = Modifier.fillMaxWidth().padding(vertical = OpenCodeThemeExtras.spacing.xs).testTag(AdminTags.rule(index)),
+        verticalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.xs),
     ) {
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.sm), verticalAlignment = Alignment.CenterVertically) {
             LabelledField(
                 label = stringResource(R.string.admin_template_action),
                 value = draft.action,
@@ -279,7 +281,7 @@ private fun RuleEditor(
             value = draft.resource,
             onValueChange = { value -> onChange { it.copy(resource = value) } },
         )
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.sm)) {
             listOf(PermissionEffect.Ask, PermissionEffect.Allow, PermissionEffect.Deny).forEach { effect ->
                 FilterChip(
                     selected = draft.effect == effect,

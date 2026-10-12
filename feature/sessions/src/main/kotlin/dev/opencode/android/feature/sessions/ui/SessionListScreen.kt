@@ -52,6 +52,7 @@ import dev.opencode.android.core.data.server.SessionRow
 import dev.opencode.android.core.designsystem.format.Formatters
 import dev.opencode.android.core.designsystem.format.relativeTimeDescription
 import dev.opencode.android.core.designsystem.text.SyncedTextField
+import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
 import dev.opencode.android.core.model.Project
 import dev.opencode.android.feature.sessions.R
 
@@ -114,7 +115,7 @@ fun SessionListScreen(
                 },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 8.dp)
+                    .padding(horizontal = OpenCodeThemeExtras.spacing.md, vertical = OpenCodeThemeExtras.spacing.sm)
                     .semantics { contentDescription = searchDescription },
             )
             FilterRow(
@@ -134,8 +135,8 @@ fun SessionListScreen(
                 else -> LazyColumn(
                     state = listState,
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    contentPadding = PaddingValues(OpenCodeThemeExtras.spacing.md),
+                    verticalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.sm),
                 ) {
                     items(items = state.rows, key = { it.id }) { row ->
                         SessionRowCard(row, now = state.now, onClick = { onSessionClick(row.id) })
@@ -163,8 +164,8 @@ private fun FilterRow(
         modifier = Modifier
             .fillMaxWidth()
             .horizontalScroll(rememberScrollState())
-            .padding(horizontal = 12.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+            .padding(horizontal = OpenCodeThemeExtras.spacing.md),
+        horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.sm),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         val rootsDescription = stringResource(R.string.sessions_filter_roots_description)
@@ -222,7 +223,7 @@ private fun SessionRowCard(row: SessionRow, now: Long, onClick: () -> Unit) {
             },
         ),
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
+        Column(modifier = Modifier.padding(OpenCodeThemeExtras.spacing.md)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (row.isRunning) {
                     CircularProgressIndicator(modifier = Modifier.size(14.dp), strokeWidth = 2.dp)
@@ -331,7 +332,7 @@ private fun SessionRow.badgeLabels(now: Long): List<String> = buildList {
 @Composable
 private fun PagingFooter(paging: PagingState, onLoadMore: () -> Unit) {
     Box(
-        modifier = Modifier.fillMaxWidth().padding(8.dp),
+        modifier = Modifier.fillMaxWidth().padding(OpenCodeThemeExtras.spacing.sm),
         contentAlignment = Alignment.Center,
     ) {
         when {
@@ -343,7 +344,7 @@ private fun PagingFooter(paging: PagingState, onLoadMore: () -> Unit) {
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier
                     .clickable { onLoadMore() }
-                    .padding(8.dp),
+                    .padding(OpenCodeThemeExtras.spacing.sm),
             )
 
             else -> Text(
@@ -365,7 +366,7 @@ private fun Loading() {
 @Composable
 private fun EmptyState() {
     Column(
-        modifier = Modifier.fillMaxSize().padding(32.dp),
+        modifier = Modifier.fillMaxSize().padding(OpenCodeThemeExtras.spacing.xxl),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {

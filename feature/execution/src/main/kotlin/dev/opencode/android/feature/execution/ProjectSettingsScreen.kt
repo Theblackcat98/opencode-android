@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.opencode.android.core.designsystem.text.SyncedTextField
+import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
 import dev.opencode.android.core.model.Project
 
 /**
@@ -128,9 +129,9 @@ fun ProjectSettingsSheet(
         modifier = modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(16.dp)
+            .padding(OpenCodeThemeExtras.spacing.lg)
             .testTag(ProjectSettingsTags.SHEET),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.md),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             ProjectIconBadge(state)
@@ -138,7 +139,7 @@ fun ProjectSettingsSheet(
                 text = stringResource(R.string.project_settings_title),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.padding(start = 12.dp),
+                modifier = Modifier.padding(start = OpenCodeThemeExtras.spacing.md),
             )
         }
         ProjectField(state.name, onNameChange, R.string.project_settings_name)
@@ -155,7 +156,7 @@ fun ProjectSettingsSheet(
             text = stringResource(R.string.project_settings_icon_hint),
             style = MaterialTheme.typography.bodySmall,
         )
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.sm)) {
             Button(onClick = onDismiss) {
                 Text(stringResource(R.string.action_close))
             }
@@ -204,7 +205,7 @@ private fun ProjectIconBadge(state: ProjectSettingsUiState) {
     Column(
         modifier = Modifier
             .testTag(ProjectSettingsTags.BADGE)
-            .padding(4.dp),
+            .padding(OpenCodeThemeExtras.spacing.xs),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(

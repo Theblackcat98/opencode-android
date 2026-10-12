@@ -29,6 +29,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import dev.opencode.android.core.data.config.ConfigValues
+import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
 import dev.opencode.android.core.model.InstructionEntry
 import dev.opencode.android.core.model.LoadedLocation
 import dev.opencode.android.core.model.MigrationStatus
@@ -63,7 +64,7 @@ fun MaintenanceScreen(
                 item(key = "update") { UpdateBanner(version = version) }
             }
             item(key = "reload") {
-                Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+                Column(modifier = Modifier.fillMaxWidth().padding(OpenCodeThemeExtras.spacing.lg)) {
                     Button(
                         onClick = onReload,
                         enabled = !state.reloading,
@@ -80,14 +81,14 @@ fun MaintenanceScreen(
             item(key = "locations-heading") {
                 SectionHeading(
                     stringResource(R.string.admin_loaded_locations),
-                    modifier = Modifier.padding(horizontal = 16.dp),
+                    modifier = Modifier.padding(horizontal = OpenCodeThemeExtras.spacing.lg),
                 )
             }
             if (state.loading && !state.locationsLoaded) {
                 item(key = "locations-loading") {
                     Row(
-                        modifier = Modifier.fillMaxWidth().padding(16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier.fillMaxWidth().padding(OpenCodeThemeExtras.spacing.lg),
+                        horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.md),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         CircularProgressIndicator()
@@ -103,7 +104,7 @@ fun MaintenanceScreen(
                     Text(
                         text = stringResource(R.string.admin_locations_empty),
                         style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.padding(16.dp),
+                        modifier = Modifier.padding(OpenCodeThemeExtras.spacing.lg),
                     )
                 }
             }
@@ -128,8 +129,8 @@ fun MaintenanceScreen(
         }
         state.outcome?.let { outcome ->
             Row(
-                modifier = Modifier.fillMaxWidth().padding(16.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth().padding(OpenCodeThemeExtras.spacing.lg),
+                horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.sm),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(text = stringResource(outcomeMessage(outcome)), style = MaterialTheme.typography.bodyMedium)
@@ -142,7 +143,7 @@ fun MaintenanceScreen(
             onDismissRequest = onCancelEvict,
             title = { Text(stringResource(R.string.admin_evict_title)) },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.xs)) {
                     Text(shortPath(target.directory), fontFamily = FontFamily.Monospace)
                     Text(stringResource(R.string.admin_evict_body), style = MaterialTheme.typography.bodySmall)
                     Text(
@@ -178,7 +179,7 @@ private fun outcomeMessage(outcome: String): Int = when (outcome) {
 @Composable
 private fun MigrationCard(state: MaintenanceUiState) {
     val status = state.migration
-    Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+    Column(modifier = Modifier.fillMaxWidth().padding(OpenCodeThemeExtras.spacing.lg)) {
         Text(
             text = stringResource(R.string.admin_migration_title),
             style = MaterialTheme.typography.titleSmall,
@@ -255,14 +256,15 @@ private fun MigrationCard(state: MaintenanceUiState) {
  */
 @Composable
 private fun UpdateBanner(version: String) {
+    val spacing = OpenCodeThemeExtras.spacing
     Card(
-        modifier = Modifier.fillMaxWidth().padding(16.dp),
+        modifier = Modifier.fillMaxWidth().padding(spacing.lg),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.secondaryContainer,
             contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
         ),
     ) {
-        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Column(modifier = Modifier.padding(spacing.md), verticalArrangement = Arrangement.spacedBy(spacing.xs)) {
             Text(
                 text = stringResource(R.string.admin_update_title, version),
                 style = MaterialTheme.typography.titleSmall,
@@ -318,11 +320,11 @@ fun InstructionsScreen(
                     if (state.allowed) R.string.admin_instructions_absent else R.string.admin_instructions_off,
                 ),
                 style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.padding(16.dp),
+                modifier = Modifier.padding(OpenCodeThemeExtras.spacing.lg),
             )
             return
         }
-        Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+        Column(modifier = Modifier.fillMaxWidth().padding(OpenCodeThemeExtras.spacing.lg)) {
             Text(
                 text = stringResource(R.string.admin_instructions_title),
                 style = MaterialTheme.typography.titleSmall,
@@ -361,8 +363,8 @@ fun InstructionsScreen(
             if (state.loading) {
                 item(key = "loading") {
                     Row(
-                        modifier = Modifier.fillMaxWidth().padding(16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier.fillMaxWidth().padding(OpenCodeThemeExtras.spacing.lg),
+                        horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.md),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         CircularProgressIndicator()
@@ -378,7 +380,7 @@ fun InstructionsScreen(
                     Text(
                         text = stringResource(R.string.admin_instructions_empty),
                         style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.padding(16.dp),
+                        modifier = Modifier.padding(OpenCodeThemeExtras.spacing.lg),
                     )
                 }
             }

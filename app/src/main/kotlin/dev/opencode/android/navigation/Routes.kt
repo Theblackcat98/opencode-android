@@ -57,6 +57,7 @@ import dev.opencode.android.core.data.server.ServerDataRegistry
 import dev.opencode.android.core.data.server.ServerDataSet
 import dev.opencode.android.core.data.sync.SyncStatus
 import dev.opencode.android.core.data.sync.SyncedState
+import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
 import dev.opencode.android.core.model.AgentInfo
 import dev.opencode.android.core.model.CommandInfo
 import dev.opencode.android.core.model.PermissionReply
@@ -1017,7 +1018,7 @@ fun OpenCodeApp(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .windowInsetsPadding(WindowInsets.navigationBars)
-                .padding(16.dp),
+                .padding(OpenCodeThemeExtras.spacing.lg),
         )
 
         if (paletteOpen) {

@@ -62,7 +62,7 @@ fun MarkdownText(
     style: androidx.compose.ui.text.TextStyle = MaterialTheme.typography.bodyLarge,
 ) {
     val blocks = rememberParsedMarkdown(markdown)
-    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.sm)) {
         blocks.forEach { block ->
             when (block) {
                 is MarkdownBlock.Paragraph -> Text(
@@ -110,7 +110,7 @@ fun MarkdownText(
                     modifier = Modifier.fillMaxWidth(),
                 )
 
-                is MarkdownBlock.Quote -> Column(modifier = Modifier.padding(start = 12.dp)) {
+                is MarkdownBlock.Quote -> Column(modifier = Modifier.padding(start = OpenCodeThemeExtras.spacing.md)) {
                     HorizontalDivider()
                     block.lines.forEach { line ->
                         when (line) {
@@ -128,7 +128,7 @@ fun MarkdownText(
                 is MarkdownBlock.Table -> Table(block, style)
 
                 is MarkdownBlock.Divider -> HorizontalDivider(
-                    modifier = Modifier.padding(vertical = 8.dp),
+                    modifier = Modifier.padding(vertical = OpenCodeThemeExtras.spacing.sm),
                     color = if (block.style == MarkdownBlock.DividerStyle.HORIZONTAL_RULE) {
                         MaterialTheme.colorScheme.outlineVariant
                     } else {
@@ -196,7 +196,7 @@ private fun Table(block: MarkdownBlock.Table, style: androidx.compose.ui.text.Te
                     ),
                     modifier = Modifier
                         .width(160.dp)
-                        .padding(horizontal = 6.dp, vertical = 2.dp),
+                        .padding(horizontal = 6.dp, vertical = OpenCodeThemeExtras.spacing.xxs),
                 )
             }
         }
@@ -210,7 +210,7 @@ private fun Table(block: MarkdownBlock.Table, style: androidx.compose.ui.text.Te
                         style = style.copy(textAlign = alignment.toTextAlign()),
                         modifier = Modifier
                             .width(160.dp)
-                            .padding(horizontal = 6.dp, vertical = 2.dp),
+                            .padding(horizontal = 6.dp, vertical = OpenCodeThemeExtras.spacing.xxs),
                     )
                 }
             }
@@ -259,7 +259,7 @@ fun CodeBlock(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-                    .padding(start = 12.dp),
+                    .padding(start = OpenCodeThemeExtras.spacing.md),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
@@ -284,7 +284,7 @@ fun CodeBlock(
                 style = codeTypography.body,
                 modifier = Modifier
                     .horizontalScroll(scroll)
-                    .padding(12.dp),
+                    .padding(OpenCodeThemeExtras.spacing.md),
             )
         }
     }

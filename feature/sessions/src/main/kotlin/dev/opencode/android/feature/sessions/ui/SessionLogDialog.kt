@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import dev.opencode.android.core.data.insights.SessionLogEntry
+import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
 import dev.opencode.android.feature.sessions.R
 
 /**
@@ -38,9 +39,10 @@ fun SessionLogDialog(
     onClose: () -> Unit,
     onDismissError: () -> Unit,
 ) {
+    val spacing = OpenCodeThemeExtras.spacing
     Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Surface(modifier = Modifier.fillMaxSize()) {
-            Column(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(Modifier.fillMaxSize().padding(spacing.lg), verticalArrangement = Arrangement.spacedBy(spacing.md)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -53,7 +55,7 @@ fun SessionLogDialog(
                 state.error?.let { error ->
                     Card(modifier = Modifier.fillMaxWidth()) {
                         Row(
-                            Modifier.fillMaxWidth().padding(16.dp),
+                            Modifier.fillMaxWidth().padding(spacing.lg),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
@@ -65,7 +67,7 @@ fun SessionLogDialog(
 
                 LazyColumn(
                     modifier = Modifier.fillMaxWidth().weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(spacing.sm),
                 ) {
                     items(state.entries) { entry -> SessionLogRow(entry) }
 
@@ -81,7 +83,7 @@ fun SessionLogDialog(
 @Composable
 private fun SessionLogRow(entry: SessionLogEntry) {
     Card(modifier = Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(12.dp)) {
+        Column(Modifier.padding(OpenCodeThemeExtras.spacing.md)) {
             entry.event?.let { event ->
                 Text(event, style = MaterialTheme.typography.titleSmall)
             }
@@ -97,8 +99,8 @@ private fun SessionLogRow(entry: SessionLogEntry) {
 @Composable
 private fun Footer(state: SessionLogUiState) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        modifier = Modifier.fillMaxWidth().padding(vertical = OpenCodeThemeExtras.spacing.sm),
+        horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.md),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         when {

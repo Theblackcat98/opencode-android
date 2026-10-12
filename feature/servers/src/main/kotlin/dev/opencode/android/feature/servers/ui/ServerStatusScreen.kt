@@ -47,6 +47,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.opencode.android.core.data.capability.RouteAvailability
+import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
 import dev.opencode.android.core.network.ConnectionEventType
 import dev.opencode.android.core.network.ConnectionLogEntry
 import dev.opencode.android.core.network.ConnectionState
@@ -123,8 +124,8 @@ fun ServerStatusScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
+                contentPadding = PaddingValues(OpenCodeThemeExtras.spacing.lg),
+                verticalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.lg),
             ) {
                 item(key = "header") {
                     StatusHeaderCard(
@@ -250,12 +251,12 @@ private fun StatusHeaderCard(
         ),
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.padding(OpenCodeThemeExtras.spacing.lg),
+            verticalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.sm),
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.sm),
             ) {
                 HealthStatusDot(health = profile.health)
                 Text(text = profile.name, style = MaterialTheme.typography.titleLarge)
@@ -293,7 +294,7 @@ private fun StatusHeaderCard(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.sm)) {
                 Button(
                     onClick = onTest,
                     enabled = !uiState.isTesting,
@@ -325,7 +326,7 @@ private fun StatusHeaderCard(
                 }
             }
 
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.sm)) {
                 OutlinedButton(onClick = onEdit, modifier = Modifier.weight(1f)) {
                     Text(stringResource(R.string.servers_edit))
                 }
@@ -361,8 +362,8 @@ private fun RePairCard(
         ),
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.padding(OpenCodeThemeExtras.spacing.lg),
+            verticalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.sm),
         ) {
             Text(
                 text = stringResource(R.string.status_reauth_title),
@@ -372,7 +373,7 @@ private fun RePairCard(
                 text = stringResource(R.string.status_reauth_body),
                 style = MaterialTheme.typography.bodyMedium,
             )
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.sm)) {
                 Button(onClick = onPairAgain) { Text(stringResource(R.string.servers_repair)) }
                 OutlinedButton(onClick = onEdit) { Text(stringResource(R.string.servers_edit)) }
             }
@@ -388,8 +389,8 @@ private fun ServerInfoCard(uiState: ServerStatusUiState) {
         shape = RoundedCornerShape(16.dp),
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.padding(OpenCodeThemeExtras.spacing.lg),
+            verticalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.sm),
         ) {
             Text(
                 text = stringResource(R.string.status_details_title),
@@ -459,8 +460,8 @@ private fun HostLifecycleCard(
         shape = RoundedCornerShape(16.dp),
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.padding(OpenCodeThemeExtras.spacing.lg),
+            verticalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.sm),
         ) {
             Text(
                 text = stringResource(R.string.status_host_title),
@@ -483,7 +484,7 @@ private fun HostLifecycleCard(
                 )
 
                 else -> {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.sm)) {
                         OutlinedButton(
                             onClick = onHandoff,
                             enabled = state.usable && !state.busy,
@@ -582,8 +583,8 @@ private fun ResyncCard(resyncCount: Long) {
         shape = RoundedCornerShape(16.dp),
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
+            modifier = Modifier.padding(OpenCodeThemeExtras.spacing.lg),
+            verticalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.xs),
         ) {
             Text(
                 text = stringResource(R.string.status_resync_count, resyncCount),
@@ -636,9 +637,9 @@ private fun ConnectionLogItem(log: ConnectionLogEntry) {
         shape = RoundedCornerShape(8.dp),
     ) {
         Row(
-            modifier = Modifier.padding(8.dp),
+            modifier = Modifier.padding(OpenCodeThemeExtras.spacing.sm),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.sm),
         ) {
             Text(
                 text = formattedTime,
@@ -649,7 +650,7 @@ private fun ConnectionLogItem(log: ConnectionLogEntry) {
             Box(
                 modifier = Modifier
                     .background(badgeColor, RoundedCornerShape(4.dp))
-                    .padding(horizontal = 4.dp, vertical = 2.dp),
+                    .padding(horizontal = OpenCodeThemeExtras.spacing.xs, vertical = OpenCodeThemeExtras.spacing.xxs),
             ) {
                 Text(text = log.type.name, style = MaterialTheme.typography.labelSmall)
             }
