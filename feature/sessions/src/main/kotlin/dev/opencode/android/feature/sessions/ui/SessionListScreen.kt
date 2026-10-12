@@ -1,6 +1,5 @@
 package dev.opencode.android.feature.sessions.ui
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -215,9 +214,9 @@ private fun SessionRowCard(row: SessionRow, now: Long, onClick: () -> Unit) {
         append(summaryTemplate)
     }
     Card(
+        onClick = onClick,
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
             .semantics { contentDescription = description },
         colors = CardDefaults.cardColors(
             containerColor = if (row.isUnread) {

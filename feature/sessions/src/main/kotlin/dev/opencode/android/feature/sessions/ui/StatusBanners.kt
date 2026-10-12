@@ -52,7 +52,9 @@ fun RetryBanner(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = headline,
-                    style = MaterialTheme.typography.titleSmall,
+                    // Tabular numerals: the countdown ticks every second, and proportional digits
+                    // would make the headline jitter as the widths change.
+                    style = MaterialTheme.typography.titleSmall.copy(fontFeatureSettings = "tnum"),
                     modifier = Modifier.weight(1f),
                 )
                 Text(
