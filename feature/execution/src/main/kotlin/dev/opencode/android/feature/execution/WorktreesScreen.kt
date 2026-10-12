@@ -173,7 +173,22 @@ fun WorktreesScreen(
 
         HorizontalDivider(modifier = Modifier.padding(top = 8.dp))
 
-        if (state.directories.isEmpty()) {
+        if (state.loading) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.padding(24.dp),
+            ) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(20.dp),
+                    strokeWidth = 2.dp,
+                )
+                Text(
+                    text = stringResource(R.string.worktrees_loading),
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            }
+        } else if (state.directories.isEmpty()) {
             Text(
                 text = stringResource(R.string.worktrees_empty),
                 style = MaterialTheme.typography.bodyMedium,
