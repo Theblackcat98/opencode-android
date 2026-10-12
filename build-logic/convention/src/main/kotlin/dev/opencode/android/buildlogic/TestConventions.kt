@@ -1,5 +1,6 @@
 package dev.opencode.android.buildlogic
 
+import org.gradle.api.GradleException
 import org.gradle.api.Project
 import org.gradle.api.tasks.testing.Test
 import org.gradle.api.tasks.testing.logging.TestExceptionFormat
@@ -24,7 +25,8 @@ private const val INTEGRATION_PATTERN = "*.integration.*"
  * A Gradle property of the same name wins, because a long-lived daemon does not reliably see the
  * environment of a client that started after it: without the property, a local integration run
  * silently skips instead of failing. CI sets the environment and keeps working; a developer on the
- * command line passes `-Popencode.it.url=... -Popencode.it.password=...` and is sure of the run.
+ * command line passes `-Popencode.it.url=... -Popencode.it.password=... -Popencode.it.directory=...`
+ * and is sure of the run.
  */
 private val INTEGRATION_ENV = mapOf(
     "OPENCODE_URL" to "opencode.it.url",
@@ -34,8 +36,27 @@ private val INTEGRATION_ENV = mapOf(
     "FAKE_PROVIDER_URL" to "opencode.it.fakeProviderUrl",
 )
 
+private val REQUIRED_INTEGRATION_ENV = listOf(
+    "OPENCODE_URL" to "opencode.it.url",
+    "OPENCODE_PASSWORD" to "opencode.it.password",
+    "OPENCODE_DIRECTORY" to "opencode.it.directory",
+)
+
 internal fun Project.configureTests() {
     val integration = integrationMode
+    if (integration) {
+        val missing = REQUIRED_INTEGRATION_ENV.filter { (env, property) ->
+            val value = providers.gradleProperty(property).orNull
+                ?: providers.environmentVariable(env).orNull
+            value.isNullOrBlank()
+        }
+        if (missing.isNotEmpty()) {
+            throw GradleException(
+                "Integration tests require live-server configuration. Missing: " +
+                    missing.joinToString { (env, property) -> "$env (-P$property)" },
+            )
+        }
+    }
     tasks.withType(Test::class.java).configureEach {
         testLogging {
             events(TestLogEvent.FAILED, TestLogEvent.SKIPPED)
@@ -50,7 +71,7 @@ internal fun Project.configureTests() {
             "--add-opens=java.base/java.util=ALL-UNNAMED",
             "--add-opens=java.base/jdk.internal.access=ALL-UNNAMED",
         )
-        filter.isFailOnNoMatchingTests = false
+        filter.isFailOnNoMatchingTests = integration
         if (integration) {
             filter.includeTestsMatching(INTEGRATION_PATTERN)
             INTEGRATION_ENV.forEach { (env, property) ->

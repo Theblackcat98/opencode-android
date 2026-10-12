@@ -33,7 +33,7 @@ object DevServerHarness {
             ?: System.getenv("FAKE_PROVIDER_URL")
 
     val isAvailable: Boolean
-        get() = !url.isNullOrBlank() && !password.isNullOrBlank()
+        get() = !url.isNullOrBlank() && !password.isNullOrBlank() && !directory.isNullOrBlank()
 
     fun client(): OkHttpClient = OkHttpClient.Builder()
         .connectTimeout(5, TimeUnit.SECONDS)
