@@ -214,12 +214,11 @@ class DefaultServerRepository(
         val cleanBaseUrl = baseUrl.toServerBaseUrl().trimEnd('/')
         val addressChanged = cleanBaseUrl != existing.baseUrl
 
-        if (isDefault && !existing.isDefault) serverDao.clearDefaultFlags()
         if (addressChanged) {
             // A token belongs to the server it was issued by, and to the address it was issued for.
             credentialCache.forget(existing.baseUrl)
         }
-        serverDao.update(
+        serverDao.updatePreservingDefault(
             existing.copy(
                 name = name.trim().ifBlank { cleanBaseUrl },
                 baseUrl = cleanBaseUrl,

@@ -38,6 +38,22 @@ interface ServerDao {
     @Update
     suspend fun update(server: ServerEntity)
 
+    /** Updates a server without allowing the database to become default-less. */
+    @Transaction
+    suspend fun updatePreservingDefault(server: ServerEntity) {
+        val existing = getById(server.id) ?: return
+        if (server.isDefault) {
+            clearDefaultFlags()
+            update(server)
+        } else if (existing.isDefault) {
+            val survivor = getAll().firstOrNull { it.id != server.id }
+            update(server.copy(isDefault = survivor == null))
+            survivor?.let { setDefaultServer(it.id) }
+        } else {
+            update(server)
+        }
+    }
+
     @Query("DELETE FROM servers WHERE id = :id")
     suspend fun deleteById(id: String)
 

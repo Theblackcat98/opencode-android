@@ -17,6 +17,7 @@ import dev.opencode.android.core.network.PairingLink
 import dev.opencode.android.core.network.ServerApiFactory
 import dev.opencode.android.core.network.ServerCredentialCache
 import dev.opencode.android.core.network.ServerValidator
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import mockwebserver3.Dispatcher
 import mockwebserver3.MockResponse
@@ -154,6 +155,45 @@ class ServerRepositoryTest {
         assertTrue(updated.trustUserCertificates)
         assertTrue("The new address must be the one that authenticates", credentialCache.holds("http://localhost:4098"))
         assertFalse("The old address must not keep the token", credentialCache.holds("http://localhost:4096"))
+    }
+
+    @Test
+    fun uncheckingTheDefaultPromotesAnotherServerAtomically() = runTest {
+        val defaultId = repository.addServer("Default", "http://localhost:4096", null)
+        val otherId = repository.addServer("Other", "http://localhost:4097", null)
+
+        repository.observeDefaultServer().test {
+            assertEquals(defaultId, awaitItem()!!.id)
+            repository.updateServer(
+                id = defaultId,
+                name = "Default edited",
+                baseUrl = "http://localhost:4096",
+                credential = null,
+                isDefault = false,
+                trustUserCertificates = false,
+            )
+            assertEquals(otherId, awaitItem()!!.id)
+            expectNoEvents()
+        }
+        assertFalse(repository.getServer(defaultId)!!.isDefault)
+        assertTrue(repository.getServer(otherId)!!.isDefault)
+    }
+
+    @Test
+    fun uncheckingTheOnlyDefaultKeepsItDefault() = runTest {
+        val id = repository.addServer("Only", "http://localhost:4096", null)
+
+        repository.updateServer(
+            id = id,
+            name = "Only edited",
+            baseUrl = "http://localhost:4096",
+            credential = null,
+            isDefault = false,
+            trustUserCertificates = false,
+        )
+
+        assertTrue(repository.getServer(id)!!.isDefault)
+        assertEquals(id, repository.observeDefaultServer().first()!!.id)
     }
 
     @Test
