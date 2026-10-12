@@ -102,7 +102,10 @@ class ConnectionNotificationBuilder(
             .setShowWhen(false)
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
             .setPriority(NotificationCompat.PRIORITY_LOW)
-            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            // PRIVATE, not PUBLIC: the body names the running sessions, and a session title can say
+            // what the user is working on (a file path, a task description). The lock screen gets the
+            // redacted form — the service is visible, the work is not.
+            .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
         words.subText?.let { builder.setSubText(it) }
         if (words.canInterrupt && interruptSessionId != null) {
             builder.addAction(
