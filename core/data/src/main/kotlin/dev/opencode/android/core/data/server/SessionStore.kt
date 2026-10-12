@@ -39,6 +39,8 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 /**
  * The session list: one server's sessions, their live state, and the events that change them.
@@ -82,6 +84,7 @@ class SessionStore(
 
     private val pages = HashMap<SessionFilter, SessionPage>()
     private var filterGeneration = 0L
+    private val pagingMutex = Mutex()
 
     /** Direct children per session id, derived from the sessions the client has seen. */
     val childCounts: StateFlow<Map<String, Int>> = _info
@@ -122,29 +125,41 @@ class SessionStore(
         val generation = filterGeneration
         scope.launch {
             page(filter).refresh()
-            if (generation == filterGeneration) _paging.value = page(filter).paging.value
+            pagingMutex.withLock {
+                if (generation == filterGeneration) _paging.value = page(filter).paging.value
+            }
         }
     }
 
     /** Loads the active filter's first page, showing the cached copy first when there is one. */
     fun start() {
         val filter = _filter.value
+        val generation = filterGeneration
         scope.launch {
             if (page(filter).state.value.value == null) hydrateFromCache(filter)
             page(filter).sync()
+            pagingMutex.withLock {
+                if (generation == filterGeneration) _paging.value = page(filter).paging.value
+            }
         }
     }
 
     /** Asks for the next page of the active filter. A no-op while one is in flight or exhausted. */
     fun loadMore() {
-        val current = _paging.value
-        if (current.loading || !current.hasMore) return
-        val generation = filterGeneration
-        val active = page(_filter.value)
-        _paging.value = current.copy(loading = true)
         scope.launch {
+            val request = pagingMutex.withLock {
+                val current = _paging.value
+                if (current.loading || !current.hasMore) return@withLock null
+                val generation = filterGeneration
+                val active = page(_filter.value)
+                _paging.value = current.copy(loading = true)
+                generation to active
+            } ?: return@launch
+            val (generation, active) = request
             active.loadMore(generation)
-            if (generation == filterGeneration) _paging.value = active.paging.value
+            pagingMutex.withLock {
+                if (generation == filterGeneration) _paging.value = active.paging.value
+            }
         }
     }
 
@@ -346,7 +361,7 @@ class SessionStore(
     }
 
     private fun page(filter: SessionFilter): SessionPage = pages.getOrPut(filter) {
-        SessionPage(serverId, api, scope, cache, filter, pageSize) { generation, sessions ->
+        SessionPage(serverId, api, scope, cache, filter, pageSize, { filterGeneration }) { generation, sessions ->
             if (generation == null || generation == filterGeneration) {
                 _info.value = _info.value + sessions.associateBy { it.id }
             }

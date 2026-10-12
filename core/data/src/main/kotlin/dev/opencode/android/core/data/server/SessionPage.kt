@@ -31,6 +31,7 @@ class SessionPage(
     private val cache: ReadCacheStore,
     val filter: SessionFilter,
     private val pageSize: Int,
+    private val currentGeneration: () -> Long,
     private val onSessions: suspend (Long?, List<SessionInfo>) -> Unit,
 ) {
     private var cursor: String? = null
@@ -44,7 +45,7 @@ class SessionPage(
         key = ResourceKey(serverId, filter.directory),
         name = "session.list(${filter.name()})",
         scope = scope,
-        loader = ::fetch,
+        loader = { fetch(currentGeneration()) },
         onError = { error -> _paging.value = _paging.value.copy(error = error.message) },
     )
 
@@ -87,6 +88,7 @@ class SessionPage(
             directory = filter.directory,
             cursor = cursor,
         )
+        if (generation != null && generation != currentGeneration()) return emptyList()
         cursor = page.cursor.next
         val fresh = page.data.filter { seen.add(it.id) }
         firstPage = false

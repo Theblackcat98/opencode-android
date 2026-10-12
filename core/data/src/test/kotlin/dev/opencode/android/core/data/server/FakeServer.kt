@@ -52,6 +52,9 @@ class FakeServer(
     var sessions: List<SessionInfo> = emptyList()
     var pagedSessionRequestStarted: CountDownLatch? = null
     var releasePagedSessionRequest: CountDownLatch? = null
+    var blockedSessionSearch: String? = null
+    var sessionRequestStarted: CountDownLatch? = null
+    var releaseSessionRequest: CountDownLatch? = null
     var messagePage: List<SessionMessage> = emptyList()
     var messageCursorNext: String? = null
 
@@ -74,6 +77,10 @@ class FakeServer(
                         if (query(path, "cursor") != null) {
                             pagedSessionRequestStarted?.countDown()
                             releasePagedSessionRequest?.await(5, TimeUnit.SECONDS)
+                        }
+                        if (query(path, "search") == blockedSessionSearch) {
+                            sessionRequestStarted?.countDown()
+                            releaseSessionRequest?.await(5, TimeUnit.SECONDS)
                         }
                         sessionsPage(path)
                     }

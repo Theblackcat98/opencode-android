@@ -206,6 +206,57 @@ class SessionStoreTest {
     }
 
     @Test
+    fun `outdated first page does not publish rows or paging state`() = runBlocking {
+        val store = newStore()
+        server.sessions = listOf(
+            sessionFixture("ses_alpha", title = "alpha", updated = 20L),
+            sessionFixture("ses_beta", title = "beta", updated = 10L),
+        )
+        val started = CountDownLatch(1)
+        val release = CountDownLatch(1)
+        server.blockedSessionSearch = "alpha"
+        server.sessionRequestStarted = started
+        server.releaseSessionRequest = release
+
+        store.setFilter(SessionFilter(search = "alpha"))
+        assertTrue("the old filter request was never started", started.await(STATE_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS))
+        store.setFilter(SessionFilter(search = "beta"))
+        awaitState("the new filter request never completed") { store.visibleRows.value.map { it.id } == listOf("ses_beta") }
+        release.countDown()
+        awaitQuiescent()
+
+        assertEquals(listOf("ses_beta"), store.visibleRows.value.map { it.id })
+        assertFalse("the stale first page must not overwrite paging state", store.paging.value.hasMore)
+    }
+
+    @Test
+    fun `overlapping load more calls issue one request and preserve the cursor`() = runBlocking {
+        val store = newStore(pageSize = 1)
+        server.sessions = listOf(
+            sessionFixture("ses_1", updated = 30L),
+            sessionFixture("ses_2", updated = 20L),
+            sessionFixture("ses_3", updated = 10L),
+        )
+        store.start()
+        awaitQuiescent()
+        val started = CountDownLatch(1)
+        val release = CountDownLatch(1)
+        server.pagedSessionRequestStarted = started
+        server.releasePagedSessionRequest = release
+
+        store.loadMore()
+        store.loadMore()
+        assertTrue("the page request was never started", started.await(STATE_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS))
+        delay(100)
+        assertEquals(1, server.requests().count { it.url.query?.contains("cursor=") == true })
+        release.countDown()
+        awaitQuiescent()
+
+        assertEquals(listOf("ses_1", "ses_2"), store.visibleRows.value.map { it.id })
+        assertTrue(store.paging.value.hasMore)
+    }
+
+    @Test
     fun `unread means the session went idle after the last view`() = runBlocking {
         val store = newStore()
         server.sessions = listOf(
