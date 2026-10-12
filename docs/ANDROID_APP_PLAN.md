@@ -917,10 +917,10 @@ phone cannot be decided here, and there is no emulator and no device.
 - **A draft is written after a pause and lost if the process dies inside it.** A DataStore write is a
   write, and a phone that is killed inside 400 ms of the last keystroke loses that sentence; the
   window is the price of not writing a preference file per keystroke.
-- **The share-sheet target is declared and its filter is tested; nothing routes a shared payload into
-  a session yet.** `MainActivity` already handles a `SEND` intent for pairing links, and the composer
-  accepts text and an image, but the wiring that opens a new or existing session from a shared image
-  is Phase 6's "review comments" work, which is where a shared text or diff is most useful.
+- **External image sharing is not supported yet.** `MainActivity` reads only `EXTRA_TEXT`, so the
+  manifest advertises `text/plain` shares and deliberately omits `image/*` until the app can validate
+  a shared URI, preserve its grant, and route the image into a session. Images remain available through
+  the in-app composer attachment flow.
 
 ---
 

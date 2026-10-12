@@ -1,6 +1,7 @@
 package dev.opencode.android
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.w3c.dom.Element
@@ -72,16 +73,14 @@ class Phase5ManifestWiringTest {
     }
 
     @Test
-    fun `the app is a share target for text and for an image in one filter`() {
-        // "Send to OpenCode" (features doc §38). One filter carrying both types, so the chooser shows
-        // the app once rather than twice.
+    fun `the app advertises supported text sharing but not unsupported image sharing`() {
         val sendFilters = mainActivity()
             .elements("intent-filter")
             .filter { it.elements("action").any { a -> a.attribute("name") == "android.intent.action.SEND" } }
         val withMime = sendFilters.filter { it.elements("data").isNotEmpty() }
         val types = withMime.flatMap { filter -> filter.elements("data").map { it.attribute("mimeType") } }
         assertTrue("text/plain" in types)
-        assertTrue("image/*" in types)
+        assertFalse("image/*" in types)
     }
 
     @Test
