@@ -57,6 +57,8 @@ import dev.opencode.android.core.data.terminal.TerminalInput
 import dev.opencode.android.core.data.terminal.TerminalKey
 import dev.opencode.android.core.network.PtyStreamState
 
+private const val TERMINAL_LIST_SPLIT_WEIGHT = 0.4f
+
 /**
  * The terminal screen (plan §6, "PTY terminals").
  *
@@ -109,7 +111,7 @@ fun TerminalScreen(
                 state = state,
                 onOpen = onOpenTerminal,
                 onRequestKill = onRequestKill,
-                modifier = Modifier.weight(if (state.open == null) 1f else 0.4f),
+                modifier = Modifier.weight(if (state.open == null) 1f else TERMINAL_LIST_SPLIT_WEIGHT),
             )
         }
 
@@ -213,7 +215,7 @@ fun TerminalChrome(
                 state = state,
                 onOpen = {},
                 onRequestKill = {},
-                modifier = Modifier.weight(if (state.open == null) 1f else 0.4f),
+                modifier = Modifier.weight(if (state.open == null) 1f else TERMINAL_LIST_SPLIT_WEIGHT),
             )
         }
         ExtraKeysRow(onKeys = onExtraKeys)

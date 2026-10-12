@@ -209,13 +209,18 @@ class AttachmentReader(
          * not what the user picked and blocking it is the honest answer.
          */
         const val MAX_ATTEMPTS = 6
+        const val JPEG_QUALITY = 85
     }
 
     private fun compress(bitmap: Bitmap, mime: String): ByteArray {
         val png = mime == "image/png"
         val out = ByteArrayOutputStream()
         // 85 is the usual compromise for a photograph: a model reads the image, not the artefacts.
-        bitmap.compress(if (png) Bitmap.CompressFormat.PNG else Bitmap.CompressFormat.JPEG, if (png) 100 else 85, out)
+        bitmap.compress(
+            if (png) Bitmap.CompressFormat.PNG else Bitmap.CompressFormat.JPEG,
+            if (png) 100 else JPEG_QUALITY,
+            out,
+        )
         return out.toByteArray()
     }
 

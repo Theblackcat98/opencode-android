@@ -37,7 +37,7 @@ class ConfigCatalogCoverageTest {
 
     @Test
     fun `every top-level key of the vendored schema has exactly one row, in the schema's order`() {
-        val expected = topLevelPropertyNames(root)
+        val expected = topLevelPropertyNames()
         val rows = ConfigExplorer.rows(schema, emptyList())
 
         assertEquals(expected.size, rows.size)
@@ -84,7 +84,7 @@ class ConfigCatalogCoverageTest {
 
     @Test
     fun `the keys with no projection are exactly the set the code names`() {
-        val fromSchema = topLevelPropertyNames(root).filterNot { ConfigSchema.PROJECTION_NAMES.containsKey(it) }
+        val fromSchema = topLevelPropertyNames().filterNot { ConfigSchema.PROJECTION_NAMES.containsKey(it) }
         assertEquals(
             "a key that gained or lost a projection must be declared in ConfigSchema",
             ConfigSchema.UNPROJECTED_KEYS,
@@ -120,7 +120,7 @@ class ConfigCatalogCoverageTest {
         // The 28-property projection and the 36-key file schema are not nested: eleven file keys have
         // no projection, and two projections have no file key. Both directions have to be declared, or
         // "every key is visible" would be true for the file and silently false for the runtime.
-        val fileKeys = topLevelPropertyNames(root)
+        val fileKeys = topLevelPropertyNames()
         val claimedByFile = ConfigSchema.PROJECTION_NAMES.values
         assertEquals(setOf("websearch", "worktree", "warming"), ConfigSchema.PROJECTION_ONLY_KEYS)
         assertTrue(
@@ -248,7 +248,7 @@ class UnsupportedKeywordTest {
 
     @Test
     fun `the vendored schema uses no assertion keyword the validator does not implement`() {
-        val unsupported = SchemaKeywords.used(root) -
+        val unsupported = SchemaKeywords.used() -
             JsonSchemaValidator.ASSERTION_KEYWORDS -
             JsonSchemaValidator.ANNOTATION_KEYWORDS
 
@@ -264,7 +264,7 @@ class UnsupportedKeywordTest {
         // A floor rather than an exact list, because the walk may reach keywords through definitions
         // this build does not exercise. The exact claim is the test above: nothing the file uses is
         // missing from the constants.
-        val used = SchemaKeywords.used(root)
+        val used = SchemaKeywords.used()
         assertTrue(
             "the validator must implement the keywords this schema leans on",
             used.count { it in JsonSchemaValidator.ASSERTION_KEYWORDS } >= 8,
@@ -291,7 +291,7 @@ class UnsupportedKeywordTest {
         // looked at, so this counts the references it resolved.
         assertTrue(
             "the schema is ref-heavy, so the walker must have followed them",
-            SchemaKeywords.walk(root).localRefs > 30,
+            SchemaKeywords.walk().localRefs > 30,
         )
     }
 }

@@ -276,6 +276,8 @@ data class ProjectSettingsRoute(
  * never been told about, and each returned without a word. A ViewModel a route needs is taken *inside*
  * that route's lambda, with the entry as its owner; `tools/audit-viewmodels.mjs` fails on the other shape.
  */
+// Keep the route graph and its ownership boundaries visible in one composition root.
+@Suppress("CyclomaticComplexMethod", "LongMethod")
 @OptIn(ExperimentalCoroutinesApi::class, ExperimentalLayoutApi::class)
 @Composable
 fun OpenCodeApp(
@@ -887,12 +889,6 @@ fun OpenCodeApp(
                         },
                         onOpenDefinitions = {
                             navController.navigate(DefinitionRoute(route.serverId, route.directory, "agent", ""))
-                        },
-                        onOpenCatalogs = {
-                            navController.navigate(CatalogRoute(route.serverId, route.directory, "agents"))
-                        },
-                        onOpenPermissions = {
-                            navController.navigate(PermissionsRoute(route.serverId, route.directory))
                         },
                     )
                 }

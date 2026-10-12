@@ -7,6 +7,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.withTimeoutOrNull
 import mockwebserver3.Dispatcher
 import mockwebserver3.MockResponse
 import mockwebserver3.MockWebServer
@@ -372,23 +373,29 @@ class PtySocketTest {
     private fun socketState(): PtyStreamState? = stateUnderTest?.state?.value
 
     /** Polls a queue on a real deadline, so a regression is a failure rather than a hang. */
-    private suspend fun <T> pollUntil(what: String, poll: () -> T?): T? = withTimeout(5_000) {
-        while (true) {
-            poll()?.let { return@withTimeout it }
-            Thread.sleep(10)
+    private suspend fun <T> pollUntil(what: String, poll: () -> T?): T? {
+        val result: T? = withTimeoutOrNull(5_000) {
+            while (true) {
+                poll()?.let { return@withTimeoutOrNull it }
+                Thread.sleep(10)
+            }
+            @Suppress("UNREACHABLE_CODE")
+            null
         }
-        @Suppress("UNREACHABLE_CODE")
-        null
+        return result ?: throw AssertionError("Timed out waiting for $what")
     }
 
     /** Polls a condition on a real deadline and returns the value that satisfied it. */
-    private suspend fun <T> awaitValue(what: String, read: () -> T?): T = withTimeout(10_000) {
-        while (true) {
-            read()?.let { return@withTimeout it }
-            Thread.sleep(10)
+    private suspend fun <T> awaitValue(what: String, read: () -> T?): T {
+        val result: T? = withTimeoutOrNull(10_000) {
+            while (true) {
+                read()?.let { return@withTimeoutOrNull it }
+                Thread.sleep(10)
+            }
+            @Suppress("UNREACHABLE_CODE")
+            null
         }
-        @Suppress("UNREACHABLE_CODE")
-        throw AssertionError("unreachable")
+        return result ?: throw AssertionError("Timed out waiting for $what")
     }
 
     /**

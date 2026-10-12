@@ -115,6 +115,7 @@ fun SessionTerminalsPane(
                 ) {
                     items(state.terminals, key = { it.id }) { terminal ->
                         ListItem(
+                            modifier = Modifier.clickable { onInspect(terminal.id) },
                             headlineContent = { Text(terminal.title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                             supportingContent = {
                                 Text(

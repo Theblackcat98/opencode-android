@@ -185,14 +185,14 @@ class AttentionContractsTest {
         )
         val fields = form.fields.map(::encodeField).let { encoded -> encoded.toFormFields() }
 
-        assertNull(remoteInputAnswer("q0", "   "))
+        assertNull(remoteInputAnswer("   "))
         assertEquals(
             mapOf("q0" to FieldProblem.REQUIRED),
             FormEngine.validate(fields, emptyMap()),
         )
-        val good = remoteInputAnswer("q0", "bash")!!
+        val good = remoteInputAnswer("bash")!!
         assertTrue(FormEngine.validate(fields, mapOf("q0" to good)).isEmpty())
-        val bad = remoteInputAnswer("q0", "Bash 1")!!
+        val bad = remoteInputAnswer("Bash 1")!!
         assertEquals(1, FormEngine.validate(fields, mapOf("q0" to bad)).size)
     }
 

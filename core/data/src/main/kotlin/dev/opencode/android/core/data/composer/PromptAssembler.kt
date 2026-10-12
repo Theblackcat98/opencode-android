@@ -212,6 +212,8 @@ object PromptAssembler {
         return Assembly.Shell(SessionShellRequest(command = command))
     }
 
+    // Keep server commands, client commands, refusals, and ordinary text as explicit ordered outcomes.
+    @Suppress("ReturnCount")
     private fun assembleCommandLine(line: String, input: ComposerInput, confirmed: Boolean): Assembly {
         val name = line.drop(1).substringBefore(' ').substringBefore('\t')
         val arguments = line.drop(1 + name.length).trim()

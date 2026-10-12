@@ -300,6 +300,8 @@ object AttachmentPolicy {
      * strength of missing information is the worse failure; only formats the model is never sent are
      * blocked regardless.
      */
+    // Preserve the first precise validation verdict instead of collapsing distinct user actions.
+    @Suppress("ReturnCount")
     fun verify(attachment: AttachmentDraft, model: ModelInfo?): AttachmentVerdict {
         if (attachment.sizeBytes > MAX_DECODED_BYTES) {
             return AttachmentVerdict.Blocked(AttachmentProblem.TOO_LARGE, "over the 20 MiB limit")

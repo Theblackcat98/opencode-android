@@ -69,7 +69,7 @@ class AdminScreenContentTest {
             model = dev.opencode.android.core.model.ConfigModel.Ref("placeholder-provider", "other-model"),
             shell = "/bin/zsh",
             share = "disabled",
-            default_agent = "build",
+            defaultAgent = "build",
             permissions = listOf(PermissionRule("bash", "*", PermissionEffect.Ask)),
             snapshots = true,
             // A provider with a named key: the case the redaction exists for.

@@ -171,6 +171,8 @@ class SessionStore(
      * Returns true when the event changed something, so a caller can fold a frame's worth of events
      * into a single state publication.
      */
+    // The event matrix updates several related projections and remains exhaustive by design.
+    @Suppress("CyclomaticComplexMethod")
     fun apply(event: Event): Boolean {
         val payload = event.payload
         val sessionID = (payload as? EventPayload.SessionScoped)?.sessionID

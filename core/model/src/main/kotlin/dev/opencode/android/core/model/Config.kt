@@ -103,7 +103,7 @@ data class ConfigInfo(
     @SerialName("\$schema") val schema: String? = null,
     val shell: String? = null,
     val model: ConfigModel? = null,
-    val default_agent: String? = null,
+    @SerialName("default_agent") val defaultAgent: String? = null,
     val update: String? = null,
     val share: String? = null,
     val enterprise: JsonObject? = null,
@@ -116,7 +116,7 @@ data class ConfigInfo(
     val formatter: JsonElement? = null,
     val lsp: JsonElement? = null,
     val media: JsonElement? = null,
-    val tool_output: JsonObject? = null,
+    @SerialName("tool_output") val toolOutput: JsonObject? = null,
     val mcp: JsonObject? = null,
     val compaction: JsonObject? = null,
     val skills: JsonObject? = null,
@@ -138,6 +138,8 @@ data class ConfigInfo(
      * explorer, which walks the file schema: that is what makes "every top-level config key is
      * visible" a checkable statement rather than an aspiration.
      */
+    // This exhaustive key map is paired with ConfigInfoCoverageTest and is intentionally explicit.
+    @Suppress("CyclomaticComplexMethod")
     fun projected(fileKey: String): JsonElement? = when (fileKey) {
         "\$schema" -> schema?.let(::JsonPrimitive)
 
@@ -145,7 +147,7 @@ data class ConfigInfo(
 
         "model" -> model?.toJson()
 
-        "default_agent" -> default_agent?.let(::JsonPrimitive)
+        "default_agent" -> defaultAgent?.let(::JsonPrimitive)
 
         "autoupdate" -> update?.let(::JsonPrimitive)
 
@@ -169,7 +171,7 @@ data class ConfigInfo(
 
         "attachment" -> media
 
-        "tool_output" -> tool_output
+        "tool_output" -> toolOutput
 
         "mcp" -> mcp
 

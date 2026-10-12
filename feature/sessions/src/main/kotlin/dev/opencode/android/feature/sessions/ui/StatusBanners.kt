@@ -22,6 +22,8 @@ import dev.opencode.android.core.model.StructuredError
 import dev.opencode.android.feature.sessions.R
 import java.util.concurrent.TimeUnit
 
+private const val SECONDS_PER_HOUR = 60 * 60
+
 /**
  * The busy and retry indicators the session header carries (plan §6, Status and errors).
  *
@@ -123,7 +125,7 @@ internal fun formatCountdown(millis: Long): String {
     val seconds = TimeUnit.MILLISECONDS.toSeconds(millis)
     return when {
         seconds < 60 -> "${seconds}s"
-        seconds < 3600 -> "${seconds / 60}m"
-        else -> "${seconds / 3600}h"
+        seconds < SECONDS_PER_HOUR -> "${seconds / 60}m"
+        else -> "${seconds / SECONDS_PER_HOUR}h"
     }
 }

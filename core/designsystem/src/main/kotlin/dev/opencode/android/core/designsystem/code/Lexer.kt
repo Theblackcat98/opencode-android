@@ -52,6 +52,8 @@ internal class Lexer(
         return CodeLine(number, text, merge(tokens), pendingCarry)
     }
 
+    // Each branch recognizes one token class and returns its consumed span immediately.
+    @Suppress("CyclomaticComplexMethod", "ReturnCount")
     private fun step(index: Int, carryIn: LineCarry): Int {
         val rest = index
         val ch = text[index]
@@ -163,6 +165,8 @@ internal class Lexer(
     /** The carry the last step decided, read by [run] after the loop. */
     private var pendingCarry: LineCarry = LineCarry.NONE
 
+    // Each leading marker is a distinct tokenization rule with its own consumed span.
+    @Suppress("ReturnCount")
     private fun markLeadingMarker(index: Int, carryIn: LineCarry): Int? {
         val ch = text[index]
         if (carryIn.open) return null

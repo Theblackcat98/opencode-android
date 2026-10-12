@@ -65,6 +65,8 @@ import dev.opencode.android.core.model.FileSystemEntry
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
+private const val FILE_LINE_PREVIEW_CHARS = 80
+
 /**
  * The file browser: `fs.list` navigation and `fs.read` viewing (plan §6, "File browser").
  *
@@ -480,7 +482,7 @@ private fun TextFileView(
                         .background(if (selected) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent)
                         .clickable { onSelectLine(line.number) }
                         .semantics {
-                            contentDescription = "${line.number}, ${line.text.take(80)}"
+                            contentDescription = "${line.number}, ${line.text.take(FILE_LINE_PREVIEW_CHARS)}"
                         }
                         .padding(horizontal = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,

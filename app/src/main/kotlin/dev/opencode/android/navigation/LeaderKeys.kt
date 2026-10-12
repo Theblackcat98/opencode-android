@@ -77,6 +77,8 @@ class LeaderKeyMachine(private val timeoutMillis: Long = LEADER_TIMEOUT_MILLIS) 
      * [altOrMeta] is whether Alt or Meta is held: a chord with either is not part of the sequence. [offered] is the list
      * the palette shows for the current state, and a mnemonic whose command is not in it is not run.
      */
+    // Each early outcome is a distinct state-machine result for one key-event class.
+    @Suppress("ReturnCount")
     fun onKeyEvent(
         key: Key,
         type: KeyEventType,

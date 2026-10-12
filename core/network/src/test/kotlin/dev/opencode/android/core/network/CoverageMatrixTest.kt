@@ -118,6 +118,8 @@ class CoverageMatrixTest {
             .toSet()
     }
 
+    // Each absent annotation component is skipped at the stage where that value becomes required.
+    @Suppress("LoopWithTooManyJumpStatements")
     private fun declaredPaths(): Set<String> {
         val out = mutableSetOf<String>()
         for (line in api.readLines()) {

@@ -37,6 +37,7 @@ import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.JsonPrimitive
 import okhttp3.OkHttpClient
 import org.junit.After
@@ -528,9 +529,11 @@ class LiveDrivingIntegrationTest {
      * carries the event types and sessions that did arrive rather than just "timed out".
      */
     private suspend fun awaitEvents(what: String, matches: (Event) -> Boolean) {
-        withTimeout(TURN_TIMEOUT) {
+        val completed = withTimeoutOrNull(TURN_TIMEOUT) {
             while (seen.none(matches)) delay(50)
+            true
         }
+        if (completed != true) throw AssertionError("Timed out waiting for $what. Events seen:\n${log()}")
     }
 
     /** Every event the stream carried, for a failure message. */
@@ -544,9 +547,11 @@ class LiveDrivingIntegrationTest {
      * frame can legitimately be missed; the projection is what plan §4.2 says covers that gap.
      */
     private suspend fun awaitProjection(what: String, predicate: suspend () -> Boolean) {
-        withTimeout(TURN_TIMEOUT) {
+        val completed = withTimeoutOrNull(TURN_TIMEOUT) {
             while (!predicate()) delay(100)
+            true
         }
+        if (completed != true) throw AssertionError("Timed out waiting for $what")
     }
 
     /** Waits for a polled value to satisfy [predicate], or fails naming the last value it saw. */
@@ -556,13 +561,15 @@ class LiveDrivingIntegrationTest {
         read: () -> T,
     ): T {
         var last: T? = null
-        withTimeout(TURN_TIMEOUT) {
+        val completed = withTimeoutOrNull(TURN_TIMEOUT) {
             while (true) {
-                last = read()
-                if (predicate(last)) return@withTimeout
+                val value = read()
+                last = value
+                if (predicate(value)) return@withTimeoutOrNull true
                 delay(50)
             }
         }
+        if (completed != true) throw AssertionError("Timed out waiting for $what; last value: $last")
         return last!!
     }
 

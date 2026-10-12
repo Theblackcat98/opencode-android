@@ -1,12 +1,7 @@
-package dev.opencode.android.core.data.review
+package dev.opencode.android.core.data.capability
 
 import dev.opencode.android.core.data.action.ActionError
 import dev.opencode.android.core.data.action.ActionErrorKind
-import dev.opencode.android.core.data.capability.CapabilityPolicy
-import dev.opencode.android.core.data.capability.ExperimentalRoute
-import dev.opencode.android.core.data.capability.HTTP_METHOD_NOT_ALLOWED
-import dev.opencode.android.core.data.capability.HTTP_NOT_FOUND
-import dev.opencode.android.core.data.capability.RouteAvailability
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull

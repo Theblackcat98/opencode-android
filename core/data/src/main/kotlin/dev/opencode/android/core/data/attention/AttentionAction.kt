@@ -216,7 +216,7 @@ class AttentionActionCodes {
 }
 
 /** A `RemoteInput` text as an answer, or `null` when there was nothing to answer with. */
-fun remoteInputAnswer(key: String, text: String?): JsonElement? {
+fun remoteInputAnswer(text: String?): JsonElement? {
     val trimmed = text?.trim().orEmpty()
     if (trimmed.isEmpty()) return null
     return JsonPrimitive(trimmed)

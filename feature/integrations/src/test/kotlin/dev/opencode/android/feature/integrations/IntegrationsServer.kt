@@ -133,21 +133,21 @@ internal object Envelopes {
 
 /** Fixtures shaped exactly like the 2.0.18 spec's examples. */
 internal object Fixtures {
-    val keyMethod =
+    const val KEY_METHOD =
         """{"type":"key","label":"API key","form":[{"key":"resourceName",""" +
             """"type":"string","title":"Resource name","required":true}]}"""
-    val oauthMethod = """{"type":"oauth","id":"oauth-default","label":"Sign in with Microsoft"}"""
-    val commandMethod = """{"type":"command","id":"cli","label":"Sign in with the CLI","command":["gh","auth","login"]}"""
-    val envMethod = """{"type":"env","names":["ANTHROPIC_API_KEY"]}"""
+    const val OAUTH_METHOD = """{"type":"oauth","id":"oauth-default","label":"Sign in with Microsoft"}"""
+    const val COMMAND_METHOD = """{"type":"command","id":"cli","label":"Sign in with the CLI","command":["gh","auth","login"]}"""
+    const val ENV_METHOD = """{"type":"env","names":["ANTHROPIC_API_KEY"]}"""
 
-    val credentialKey = """{"type":"credential","id":"cred_1","label":"work key","method":"key"}"""
-    val credentialOauth = """{"type":"credential","id":"cred_2","label":"personal","method":"oauth"}"""
-    val envConnection = """{"type":"env","name":"ANTHROPIC_API_KEY"}"""
+    const val CREDENTIAL_KEY = """{"type":"credential","id":"cred_1","label":"work key","method":"key"}"""
+    const val CREDENTIAL_OAUTH = """{"type":"credential","id":"cred_2","label":"personal","method":"oauth"}"""
+    const val ENV_CONNECTION = """{"type":"env","name":"ANTHROPIC_API_KEY"}"""
 
     fun integration(
         id: String = "placeholder-integration",
         name: String = "Anthropic",
-        methods: List<String> = listOf(keyMethod, oauthMethod, envMethod),
+        methods: List<String> = listOf(KEY_METHOD, OAUTH_METHOD, ENV_METHOD),
         connections: List<String> = emptyList(),
     ) = """{"id":"$id","name":"$name","methods":[${methods.joinToString(",")}],"connections":[${connections.joinToString(",")}]}"""
 
@@ -163,38 +163,40 @@ internal object Fixtures {
     fun status(state: String, extra: String = "") =
         """{"status":"$state"${if (extra.isEmpty()) "" else ",$extra"},"time":${Envelopes.ATTEMPT_TIME}}"""
 
-    val mcpConnected = """{"name":"files","status":{"status":"connected"}}"""
-    val mcpNeedsAuth = """{"name":"github","status":{"status":"needs_auth","error":"authorization required"},"integrationID":"github"}"""
-    val mcpFailed = """{"name":"broken","status":{"status":"failed","error":"spawn ENOENT"}}"""
+    const val MCP_CONNECTED = """{"name":"files","status":{"status":"connected"}}"""
+    const val MCP_NEEDS_AUTH =
+        """{"name":"github","status":{"status":"needs_auth","error":"authorization required"},""" +
+            """"integrationID":"github"}"""
+    const val MCP_FAILED = """{"name":"broken","status":{"status":"failed","error":"spawn ENOENT"}}"""
 
-    val resourceCatalog =
+    const val RESOURCE_CATALOG =
         """{"resources":[{"server":"files","name":"readme","uri":"file:///readme.md",""" +
             """"description":"The readme","mimeType":"text/markdown"}],""" +
             """"templates":[{"server":"files","name":"row","uriTemplate":"db://{table}/{id}"}]}"""
 
-    val providerCustom =
+    const val PROVIDER_CUSTOM =
         """{"id":"llama","name":"Llama","activation":"auto",""" +
             """"package":"@ai-sdk/local","settings":{"baseURL":"http://127.0.0.1:11434/v1",""" +
             """"timeout":false,"transport":"http"}}"""
-    val providerCloud =
+    const val PROVIDER_CLOUD =
         """{"id":"placeholder-integration","name":"A hosted provider","activation":"enabled",""" +
             """"package":"@ai-sdk/placeholder-integration","integrationID":"placeholder-integration",""" +
             """"canonical":"placeholder-integration"}"""
 
-    val pluginOutdated =
+    const val PLUGIN_OUTDATED =
         """{"id":"hooks","source":{"type":"package","target":"plugin-hooks","version":"1.2.0",""" +
             """"outdated":true},"features":{"server":true},"state":{"status":"active"}}"""
-    val pluginCurrent =
+    const val PLUGIN_CURRENT =
         """{"source":{"type":"package","target":"plugin-lint","version":"2.0.0"},""" +
             """"features":{"server":true,"rpc":true},"state":{"status":"active"}}"""
-    val pluginFailed =
+    const val PLUGIN_FAILED =
         """{"id":"broken","source":{"type":"local","path":"/work/plugin"},"features":{"tui":true},""" +
             """"state":{"status":"failed","error":"the plugin threw while loading"}}"""
 
-    val webSearchProviders =
+    const val WEB_SEARCH_PROVIDERS =
         """[{"id":"placeholder-search","name":"A search provider"},""" +
             """{"id":"placeholder-search-2","name":"Another search provider"}]"""
-    val webSearchResponse =
+    const val WEB_SEARCH_RESPONSE =
         """{"providerID":"placeholder-search","results":[{"url":"https://example.com/a",""" +
             """"title":"A result","content":"Some content",""" +
             """"time":{"published":1700000000000}}]}"""

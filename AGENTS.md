@@ -21,19 +21,20 @@ node tools/audit-matrix.test.mjs && node tools/audit-matrix.mjs  # every manual-
 
 `audit-viewmodels` exists because `hiltViewModel()` compiles for any `ViewModel` and fails only when the screen opens; seven screens crashed that way. It also fails on the two shapes that gave a screen a `ComposerViewModel` no session was opened in ("Undo to here" and the file browser's attachments did nothing): a `hiltViewModel()` default on the function that builds the `NavHost`, and a second `ComposerViewModel` default outside `SessionHost` without a `// audit-viewmodels: own-instance` claim. `:app` has no Hilt or Robolectric test wiring, so this is a source check, not a navigation test. Only `--strict`, `--check`, `audit-viewmodels` and `audit-matrix` fail on their own. **`audit-strings` and `audit-accessibility` always exit 0** — read the output. CI gates strings through a shell pipeline over `audit-strings --json` in `.github/workflows/ci.yml`, not through the tool.
 
-**Gradle gates** (this is what CI runs, in this order):
+**Gradle gates** (CI runs these in this order; keep this list aligned with `.github/workflows/ci.yml`):
 
 ```bash
+./gradlew spotlessCheck detekt # formatting and static-analysis gates
 ./gradlew unitTest        # the main gate; ~40s with a warm cache
 ./gradlew lintDebug
 ./gradlew assembleDebug   # play + fdroid
-./gradlew spotlessCheck   # ktlint — the formatting gate
-./gradlew verifyRoborazziDebug
 ```
 
-**`./gradlew check` is currently red.** detekt is pinned to `2.0.0-alpha.6` (`gradle/libs.versions.toml`) but `config/detekt/detekt.yml` uses the 1.x schema — `build.maxIssues`, `complexity>LongMethod>threshold` and `style>UnusedPrivateMember` are all rejected, so every module's `detekt` task fails on config validation. CI never runs `check` (only `unitTest`/`lintDebug`/`assembleDebug`), which is why nobody noticed. Do not "fix" this by adding a detekt baseline; the file's own header says a baseline is how a zero-findings claim is faked.
+`tools/test-quality-gates.sh` injects a temporary formatting and Detekt violation and requires each task to reject it; the probe is removed on exit. The project also attaches Spotless and Detekt to local `check`. Keep the Detekt 2.x configuration schema valid, and do not mask findings with a baseline.
 
-**There is no `ktlintCheck` task.** The ktlint gate is Spotless: `spotlessCheck` / `spotlessKotlinCheck`. `QualityConventionPlugin`'s KDoc says otherwise and is wrong.
+**There is no `ktlintCheck` task.** The ktlint gate is Spotless: `spotlessCheck` / `spotlessKotlinCheck`. `QualityConventionPlugin` documents the actual task names.
+
+**Additional local visual gate, not in CI:** `./gradlew verifyRoborazziDebug`.
 
 ## Test task names — the biggest footgun
 
@@ -128,7 +129,7 @@ ViewModels are uniformly `@HiltViewModel` + `@Inject constructor(ServerDataRegis
 - **Errors.** `catch (error: Throwable)` at every boundary is the house style; classify with `toActionError()` into `ActionError` / `ActionErrorKind` and throw `ActionFailure`. P6, P7 and P8 each invented a local `ActionFailure` and lost classification across subsystem boundaries; the old names now exist only as typealiases onto the one class. Do not add another.
 - **State.** "The server echoes; the client never guesses." No optimistic UI except inbox items, which the server echoes. `server.connected` invalidates rather than patches.
 - **Strings.** Every user-visible string goes in `strings.xml`. A literal in `Text()` or `contentDescription` fails CI.
-- **Line length — the two linters disagree.** ktlint is 140 and is the limit actually enforced (spotless); it is off in the explicitly listed `src/test` directories in `.editorconfig`. detekt's config declares 120 everywhere, but that task does not currently run (see above), so 140 is the soft ceiling and 120 is what the config will demand once detekt is repaired. Write to 120.
+- **Line length.** Spotless and Detekt both enforce a 140-column limit in production sources. Both exclude the explicitly listed `src/test` directories in `.editorconfig`; tests remain bounded by the relevant unit-test checks. Prefer 120 columns when readability permits, but do not exceed 140 in production code.
 - **detekt bans** `TODO:fixme:`, `FIXME:` and `STOPSHIP:` via `ForbiddenComment`. No detekt baseline, by policy.
 - **ktlint rule properties must be written twice** — in `.editorconfig` *and* in the `editorConfigOverride` map in `QualityConventionPlugin.kt`, because Spotless does not carry rule properties across from the editorconfig.
 - **`.editorconfig` section headers are globs.** `[*.{kt,kts}]` matches nothing; the sections are written out per extension for that reason.

@@ -220,8 +220,8 @@ class IntegrationStoreTest : IntegrationsServerTest() {
     @Test
     fun `mcp status changed refetches the servers but not the resource catalog`() = runBlocking {
         val surface = surface()
-        server.answer("GET /api/mcp", Envelopes.list(Fixtures.mcpConnected))
-        server.answer("GET /api/mcp/resource", Envelopes.one(Fixtures.resourceCatalog))
+        server.answer("GET /api/mcp", Envelopes.list(Fixtures.MCP_CONNECTED))
+        server.answer("GET /api/mcp/resource", Envelopes.one(Fixtures.RESOURCE_CATALOG))
         surface.mcpServers(server.directory).sync()
         surface.mcpResources(server.directory).sync()
         val serversBefore = server.countOf("api/mcp?")
@@ -246,7 +246,7 @@ class IntegrationStoreTest : IntegrationsServerTest() {
     @Test
     fun `mcp resources changed refetches the catalog`() = runBlocking {
         val surface = surface()
-        server.answer("GET /api/mcp/resource", Envelopes.one(Fixtures.resourceCatalog))
+        server.answer("GET /api/mcp/resource", Envelopes.one(Fixtures.RESOURCE_CATALOG))
         surface.mcpResources(server.directory).sync()
         val before = server.countOf("mcp/resource")
 
@@ -259,7 +259,7 @@ class IntegrationStoreTest : IntegrationsServerTest() {
     @Test
     fun `plugin updated refetches the plugin list`() = runBlocking {
         val surface = surface()
-        server.answer("GET /api/plugin", Envelopes.list(Fixtures.pluginOutdated))
+        server.answer("GET /api/plugin", Envelopes.list(Fixtures.PLUGIN_OUTDATED))
         surface.plugins(server.directory).sync()
         val before = server.countOf("api/plugin?")
 
@@ -272,7 +272,7 @@ class IntegrationStoreTest : IntegrationsServerTest() {
     @Test
     fun `provider updated refetches the providers and nothing else`() = runBlocking {
         val surface = surface()
-        server.answer("GET /api/provider", Envelopes.list(Fixtures.providerCloud))
+        server.answer("GET /api/provider", Envelopes.list(Fixtures.PROVIDER_CLOUD))
         server.answer("GET /api/integration", Envelopes.list(Fixtures.integration()))
         surface.providers(server.directory).sync()
         surface.integrations(server.directory).sync()

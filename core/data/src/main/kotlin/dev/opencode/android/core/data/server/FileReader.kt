@@ -187,7 +187,7 @@ class FileReader(
         // `text/plain` is a `415` from this route: verified against a live 2.0.18 server, which
         // accepts `application/octet-stream` and nothing else. The bytes are UTF-8 and the client is
         // the only thing that knows that, so the encoding is chosen here rather than asked for.
-        val mediaType = api.OCTET_STREAM.toMediaTypeOrNull()
+        val mediaType = api.octetStream.toMediaTypeOrNull()
         val written: Result<FileSystemWrite> = guarded {
             api.writeFile(
                 path = path,

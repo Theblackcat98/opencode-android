@@ -200,11 +200,13 @@ object ConfigExplorer {
  * what shows it. That is stated here rather than papered over, because the alternative is a row that
  * claims to know more than it does.
  */
+// This exhaustive presence map is paired with ConfigInfoCoverageTest and is intentionally explicit.
+@Suppress("CyclomaticComplexMethod")
 internal fun ConfigInfo.reportsProjection(name: String): Boolean = when (name) {
     "\$schema" -> schema != null
     "shell" -> shell != null
     "model" -> model != null
-    "default_agent" -> default_agent != null
+    "default_agent" -> defaultAgent != null
     "update" -> update != null
     "share" -> share != null
     "enterprise" -> enterprise != null
@@ -216,7 +218,7 @@ internal fun ConfigInfo.reportsProjection(name: String): Boolean = when (name) {
     "formatter" -> formatter != null
     "lsp" -> lsp != null
     "media" -> media != null
-    "tool_output" -> tool_output != null
+    "tool_output" -> toolOutput != null
     "mcp" -> mcp != null
     "compaction" -> compaction != null
     "skills" -> skills != null

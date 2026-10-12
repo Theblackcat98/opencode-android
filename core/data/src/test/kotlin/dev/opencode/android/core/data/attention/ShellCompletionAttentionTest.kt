@@ -5,6 +5,8 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
+private const val QUIET_HOURS_NOON = 1_700_000_000_000L
+
 /**
  * A finished shell command, as a notification (plan §6, "Shell commands"; plan §4, Phase 4).
  *
@@ -82,7 +84,7 @@ class ShellCompletionAttentionTest {
             state(
                 finishedShells = listOf(finished),
                 quietHours = QuietHours(enabled = true, startMinuteOfDay = 0, endMinuteOfDay = 1_439),
-                now = noon(),
+                now = QUIET_HOURS_NOON,
             ),
         )
         assertTrue(drafts.none { it.channel == AttentionChannel.SHELL_FINISHED })
@@ -115,8 +117,6 @@ class ShellCompletionAttentionTest {
     fun `a shell notification is not blocking, so auto-approve does not touch it`() {
         assertTrue(!AttentionChannel.SHELL_FINISHED.blocking)
     }
-
-    private fun noon(): Long = 1_700_000_000_000L
 
     private fun state(
         finishedShells: List<FinishedShell>,

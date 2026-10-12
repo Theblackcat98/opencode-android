@@ -84,14 +84,14 @@ class ComposerMemoryTest {
         val away = PromptHistory.older(history, PromptHistory.older(history, HistoryCursor(draft = "half a sentence")))
         assertEquals("second", away.text(history))
         assertEquals("half a sentence", away.draft)
-        val back = PromptHistory.newer(history, PromptHistory.newer(history, away))
+        val back = PromptHistory.newer(PromptHistory.newer(away))
         assertEquals("half a sentence", back.text(history))
         assertEquals(0, back.index)
     }
 
     @Test
     fun `walking forward past the draft stays at the draft`() {
-        val cursor = PromptHistory.newer(history, HistoryCursor(draft = "x"))
+        val cursor = PromptHistory.newer(HistoryCursor(draft = "x"))
         assertEquals(0, cursor.index)
         assertEquals("x", cursor.text(history))
     }

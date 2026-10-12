@@ -715,7 +715,7 @@ interface ServerApi {
     ): LocationScoped<FileSystemWrite>
 
     /** The media type `fs.write` accepts: the body is raw bytes, and `text/plain` is a `415`. */
-    val OCTET_STREAM: String get() = "application/octet-stream"
+    val octetStream: String get() = "application/octet-stream"
 
     /**
      * `experimental.session.export`: a session and its transcript.

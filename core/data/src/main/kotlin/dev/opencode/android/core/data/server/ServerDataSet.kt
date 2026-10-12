@@ -347,6 +347,8 @@ class ServerDataSet(
     }
 
     /** Applies one event, in the order the stores need. */
+    // Keep the server-event invalidation matrix exhaustive and ordered at its ownership boundary.
+    @Suppress("CyclomaticComplexMethod")
     fun apply(event: Event) {
         val payload = event.payload
         when (payload) {

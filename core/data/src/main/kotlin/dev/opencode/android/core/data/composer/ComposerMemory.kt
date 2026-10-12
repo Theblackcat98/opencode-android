@@ -68,7 +68,7 @@ object PromptHistory {
     }
 
     /** One step towards the live draft. */
-    fun newer(history: List<String>, cursor: HistoryCursor): HistoryCursor =
+    fun newer(cursor: HistoryCursor): HistoryCursor =
         if (cursor.index <= 0) cursor else cursor.copy(index = cursor.index - 1)
 }
 

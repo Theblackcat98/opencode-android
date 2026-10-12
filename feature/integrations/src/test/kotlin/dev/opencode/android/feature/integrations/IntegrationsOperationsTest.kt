@@ -48,7 +48,7 @@ class IntegrationsOperationsTest : IntegrationsServerTest() {
             "GET /api/integration",
             Envelopes.list(
                 Fixtures.integration(
-                    connections = listOf(Fixtures.credentialKey, Fixtures.envConnection),
+                    connections = listOf(Fixtures.CREDENTIAL_KEY, Fixtures.ENV_CONNECTION),
                 ),
             ),
         )
@@ -292,7 +292,7 @@ class IntegrationsOperationsTest : IntegrationsServerTest() {
 
     @Test
     fun `providers decode their activation, package and custom endpoint`() = runTest {
-        server.answer("GET /api/provider", Envelopes.list(Fixtures.providerCustom, Fixtures.providerCloud))
+        server.answer("GET /api/provider", Envelopes.list(Fixtures.PROVIDER_CUSTOM, Fixtures.PROVIDER_CLOUD))
 
         val providers = server.api.listProviders(server.directory).data
 
@@ -315,7 +315,7 @@ class IntegrationsOperationsTest : IntegrationsServerTest() {
 
     @Test
     fun `one provider is read by id`() = runTest {
-        server.answer("GET /api/provider/placeholder-integration", Envelopes.one(Fixtures.providerCloud))
+        server.answer("GET /api/provider/placeholder-integration", Envelopes.one(Fixtures.PROVIDER_CLOUD))
         val provider = server.api.getProvider("placeholder-integration", server.directory).data
         assertEquals("placeholder-integration", provider.id)
         assertSentDirectory(server.requests.single())
@@ -327,7 +327,7 @@ class IntegrationsOperationsTest : IntegrationsServerTest() {
     fun `mcp servers decode every status and name the integration a needs_auth server needs`() = runTest {
         server.answer(
             "GET /api/mcp",
-            Envelopes.list(Fixtures.mcpConnected, Fixtures.mcpNeedsAuth, Fixtures.mcpFailed),
+            Envelopes.list(Fixtures.MCP_CONNECTED, Fixtures.MCP_NEEDS_AUTH, Fixtures.MCP_FAILED),
         )
 
         val servers = server.api.listMcpServers(server.directory).data
@@ -343,7 +343,7 @@ class IntegrationsOperationsTest : IntegrationsServerTest() {
 
     @Test
     fun `the resource catalog separates resources from templates`() = runTest {
-        server.answer("GET /api/mcp/resource", Envelopes.one(Fixtures.resourceCatalog))
+        server.answer("GET /api/mcp/resource", Envelopes.one(Fixtures.RESOURCE_CATALOG))
         val catalog = server.api.getMcpResourceCatalog(server.directory).data
         assertEquals(1, catalog.resources.size)
         assertEquals("file:///readme.md", catalog.resources.single().uri)
@@ -420,7 +420,7 @@ class IntegrationsOperationsTest : IntegrationsServerTest() {
     fun `plugins decode their source, features and failure state`() = runTest {
         server.answer(
             "GET /api/plugin",
-            Envelopes.list(Fixtures.pluginOutdated, Fixtures.pluginCurrent, Fixtures.pluginFailed),
+            Envelopes.list(Fixtures.PLUGIN_OUTDATED, Fixtures.PLUGIN_CURRENT, Fixtures.PLUGIN_FAILED),
         )
 
         val plugins = server.api.listPlugins(server.directory).data
@@ -446,7 +446,7 @@ class IntegrationsOperationsTest : IntegrationsServerTest() {
 
     @Test
     fun `a plugin check posts a target or an empty body and answers the whole list`() = runTest {
-        server.answer("POST /api/plugin/check", Envelopes.list(Fixtures.pluginOutdated, Fixtures.pluginCurrent))
+        server.answer("POST /api/plugin/check", Envelopes.list(Fixtures.PLUGIN_OUTDATED, Fixtures.PLUGIN_CURRENT))
 
         val checked = server.api.checkPlugins(PluginCheckRequest("opencode-plugin-hooks"), server.directory).data
 
@@ -485,7 +485,7 @@ class IntegrationsOperationsTest : IntegrationsServerTest() {
         assertEquals(listOf("placeholder-search", "placeholder-search-2"), providers.map { it.id })
         assertSentDirectory(server.requests.single())
 
-        server.answer("POST /api/websearch", Envelopes.one(Fixtures.webSearchResponse))
+        server.answer("POST /api/websearch", Envelopes.one(Fixtures.WEB_SEARCH_RESPONSE))
         val response = server.api.queryWebSearch(
             WebSearchQueryRequest("kotlin coroutines", "placeholder-search"),
             server.directory,
@@ -500,7 +500,7 @@ class IntegrationsOperationsTest : IntegrationsServerTest() {
 
     @Test
     fun `a query with no provider sends no provider id`() = runTest {
-        server.answer("POST /api/websearch", Envelopes.one(Fixtures.webSearchResponse))
+        server.answer("POST /api/websearch", Envelopes.one(Fixtures.WEB_SEARCH_RESPONSE))
         server.api.queryWebSearch(WebSearchQueryRequest("kotlin"), server.directory)
         assertEquals("""{"query":"kotlin"}""", server.lastBody("websearch"))
     }

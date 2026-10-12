@@ -353,6 +353,8 @@ class EventStreamClient(
         call?.cancel()
     }
 
+    // Keep reconnect, foreground, and network transitions in the lifecycle state machine.
+    @Suppress("CyclomaticComplexMethod", "LoopWithTooManyJumpStatements")
     private suspend fun connectionLoop() {
         var attempt = 0
 
@@ -453,6 +455,8 @@ class EventStreamClient(
     }
 
     /** One connection attempt. It reports what happened instead of throwing. */
+    // A single attempt classifies every protocol and transport outcome at this boundary.
+    @Suppress("CyclomaticComplexMethod")
     private suspend fun streamOnce(): StreamOutcome = withContext(ioDispatcher) {
         val credential = try {
             credentialProvider(baseHttpUrl)

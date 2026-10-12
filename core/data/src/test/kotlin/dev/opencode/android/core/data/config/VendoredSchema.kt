@@ -26,7 +26,7 @@ object VendoredSchema {
 }
 
 /** The configuration file schema's top-level key names, in the file's own order. */
-fun topLevelPropertyNames(root: JsonObject): List<String> = VendoredSpec.topLevelConfigKeys()
+fun topLevelPropertyNames(): List<String> = VendoredSpec.topLevelConfigKeys()
 
 /** The `properties` map of one `$defs` entry of the configuration file schema. */
 fun propertiesOf(root: JsonObject, definition: String): Map<String, JsonElement> {
@@ -38,9 +38,9 @@ fun propertiesOf(root: JsonObject, definition: String): Map<String, JsonElement>
 
 /** Every keyword the vendored schema uses, with its local references followed. */
 object SchemaKeywords {
-    fun used(root: JsonObject): Set<String> = VendoredSpec.schemaKeywords().keywords
+    fun used(): Set<String> = VendoredSpec.schemaKeywords().keywords
 
-    fun walk(root: JsonObject): VendoredSpec.Walk = VendoredSpec.schemaKeywords()
+    fun walk(): VendoredSpec.Walk = VendoredSpec.schemaKeywords()
 }
 
 /** `Json.parseToJsonElement`, so a test can write a document as text. */

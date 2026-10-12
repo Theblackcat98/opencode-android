@@ -66,12 +66,12 @@ fun MarkdownText(
         blocks.forEach { block ->
             when (block) {
                 is MarkdownBlock.Paragraph -> Text(
-                    text = annotate(parseInline(block.text), style),
+                    text = annotate(parseInline(block.text)),
                     style = style,
                 )
 
                 is MarkdownBlock.Heading -> Text(
-                    text = annotate(parseInline(block.text), style),
+                    text = annotate(parseInline(block.text)),
                     style = when (block.level) {
                         1 -> MaterialTheme.typography.headlineSmall
                         2 -> MaterialTheme.typography.titleLarge
@@ -86,7 +86,7 @@ fun MarkdownText(
                     Row {
                         Text(stringResource(R.string.md_bullet_marker), style = style)
                         Text(
-                            text = annotate(parseInline(item.plainText()), style),
+                            text = annotate(parseInline(item.plainText())),
                             style = style,
                             modifier = Modifier.weight(1f),
                         )
@@ -97,7 +97,7 @@ fun MarkdownText(
                     Row {
                         Text("${block.start + position}.  ", style = style)
                         Text(
-                            text = annotate(parseInline(item.plainText()), style),
+                            text = annotate(parseInline(item.plainText())),
                             style = style,
                             modifier = Modifier.weight(1f),
                         )
@@ -115,7 +115,7 @@ fun MarkdownText(
                     block.lines.forEach { line ->
                         when (line) {
                             is MarkdownBlock.Paragraph -> Text(
-                                text = annotate(parseInline(line.text), style),
+                                text = annotate(parseInline(line.text)),
                                 style = style.copy(color = LocalContentColor.current.copy(alpha = 0.7f)),
                             )
 
@@ -145,20 +145,20 @@ fun MarkdownText(
 @Composable
 private fun MarkdownBlockView(block: MarkdownBlock, style: androidx.compose.ui.text.TextStyle) {
     when (block) {
-        is MarkdownBlock.Paragraph -> Text(text = annotate(parseInline(block.text), style), style = style)
+        is MarkdownBlock.Paragraph -> Text(text = annotate(parseInline(block.text)), style = style)
 
-        is MarkdownBlock.Heading -> Text(text = annotate(parseInline(block.text), style), style = style)
+        is MarkdownBlock.Heading -> Text(text = annotate(parseInline(block.text)), style = style)
 
         is MarkdownBlock.BulletList -> block.items.forEach {
             Text(
-                text = annotate(parseInline(stringResource(R.string.md_bullet_marker) + it.plainText()), style),
+                text = annotate(parseInline(stringResource(R.string.md_bullet_marker) + it.plainText())),
                 style = style,
             )
         }
 
         is MarkdownBlock.NumberedList -> block.items.forEach {
             Text(
-                text = annotate(parseInline(stringResource(R.string.md_number_marker) + it.plainText()), style),
+                text = annotate(parseInline(stringResource(R.string.md_number_marker) + it.plainText())),
                 style = style,
             )
         }
@@ -189,7 +189,7 @@ private fun Table(block: MarkdownBlock.Table, style: androidx.compose.ui.text.Te
             block.header.forEachIndexed { column, cell ->
                 val alignment = block.alignment.getOrNull(column) ?: ColumnAlignment.LEFT
                 Text(
-                    text = annotate(parseInline(cell.plainText()), style),
+                    text = annotate(parseInline(cell.plainText())),
                     style = style.copy(
                         fontWeight = FontWeight.SemiBold,
                         textAlign = alignment.toTextAlign(),
@@ -206,7 +206,7 @@ private fun Table(block: MarkdownBlock.Table, style: androidx.compose.ui.text.Te
                 row.forEachIndexed { column, cell ->
                     val alignment = block.alignment.getOrNull(column) ?: ColumnAlignment.LEFT
                     Text(
-                        text = annotate(parseInline(cell.plainText()), style),
+                        text = annotate(parseInline(cell.plainText())),
                         style = style.copy(textAlign = alignment.toTextAlign()),
                         modifier = Modifier
                             .width(160.dp)
@@ -304,7 +304,6 @@ fun rememberParsedMarkdown(markdown: String): List<MarkdownBlock> = remember(mar
 @Composable
 private fun annotate(
     inlines: List<MarkdownInline>,
-    style: androidx.compose.ui.text.TextStyle,
 ): AnnotatedString {
     val linkColor = MaterialTheme.colorScheme.primary
     return buildAnnotatedString {

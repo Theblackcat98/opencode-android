@@ -577,7 +577,7 @@ class ComposerViewModel(
             set.composerCatalogs.commands(directory).sync()
             set.composerCatalogs.skills(directory).sync()
             set.composerCatalogs.references(directory).sync()
-            restoreDraft(directory, sessionID)
+            restoreDraft(sessionID)
         }
     }
 
@@ -1167,7 +1167,7 @@ class ComposerViewModel(
         val cursor = if (older) {
             PromptHistory.older(history, current.historyCursor)
         } else {
-            PromptHistory.newer(history, current.historyCursor)
+            PromptHistory.newer(current.historyCursor)
         }
         val text = cursor.text(history)
         local.value = current.copy(historyCursor = cursor, text = text, cursor = text.length, problem = null)
@@ -1430,7 +1430,7 @@ class ComposerViewModel(
         }
     }
 
-    private fun restoreDraft(directory: String, session: String) {
+    private fun restoreDraft(session: String) {
         if (local.value.loadedDraft) return
         val serverId = active.value?.serverId ?: return
         viewModelScope.launch {

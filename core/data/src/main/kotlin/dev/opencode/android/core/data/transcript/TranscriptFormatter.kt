@@ -40,6 +40,8 @@ object TranscriptFormatter {
     }.trimEnd() + "\n"
 
     /** One message as text, headed by who produced it. */
+    // Keep each transcript message variant adjacent to its exact export representation.
+    @Suppress("CyclomaticComplexMethod")
     fun message(message: SessionMessage): String = when (message) {
         is SessionMessage.User -> buildString {
             appendLine("## You")

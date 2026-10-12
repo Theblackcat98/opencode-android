@@ -166,7 +166,7 @@ class NotificationActionReceiver : BroadcastReceiver() {
         val text = withTimeoutOrNull(ACTION_TIMEOUT_MILLIS) {
             RemoteInput.getResultsFromIntent(intent)?.getCharSequence(key)?.toString()
         }
-        val answer = remoteInputAnswer(key, text)
+        val answer = remoteInputAnswer(text)
         if (answer == null) {
             report(
                 context,

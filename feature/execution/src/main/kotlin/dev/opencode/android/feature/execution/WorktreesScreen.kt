@@ -48,6 +48,8 @@ import dev.opencode.android.core.model.Project
  * [WorktreesUiState.removeReason] and only then does the second button appear. A panel that asked
  * "delete uncommitted work?" before trying would ask about a risk that turns out not to exist.
  */
+// Keep creation, server-refusal detail, and the follow-up confirmation in one visible panel flow.
+@Suppress("LongMethod")
 @Composable
 fun WorktreesScreen(
     state: WorktreesUiState,

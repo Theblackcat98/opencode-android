@@ -453,7 +453,7 @@ class AdminScreenshotTest {
                 model = dev.opencode.android.core.model.ConfigModel.Ref("placeholder-provider", "other-model"),
                 shell = "/bin/zsh",
                 share = "disabled",
-                default_agent = "build",
+                defaultAgent = "build",
             ).copy(
                 permissions = listOf(PermissionRule("bash", "*", PermissionEffect.Ask)),
                 // The projection's own name, which is what `ConfigInfo` carries; `snapshot` is the

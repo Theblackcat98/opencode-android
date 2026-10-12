@@ -152,10 +152,9 @@ fun DiffTable(
             .semantics { contentDescription?.let { this.contentDescription = it } },
         verticalArrangement = Arrangement.spacedBy(0.dp),
     ) {
-        rows.forEachIndexed { index, row ->
+        rows.forEach { row ->
             DiffRowView(
                 row = row,
-                key = index.toString(),
                 colors = colors,
                 wrap = wrap,
                 showGutter = showGutter,
@@ -169,7 +168,6 @@ fun DiffTable(
 @Composable
 fun DiffRowView(
     row: DiffRow,
-    key: String,
     colors: DiffColors,
     modifier: Modifier = Modifier,
     wrap: Boolean = false,
@@ -385,7 +383,6 @@ fun SplitDiffTable(
                     pair.left?.let {
                         DiffRowView(
                             it,
-                            "l${it.newNumber ?: it.oldNumber}",
                             colors,
                             wrap = wrap,
                             showGutter = showGutter,
@@ -397,7 +394,6 @@ fun SplitDiffTable(
                     pair.right?.let {
                         DiffRowView(
                             it,
-                            "r${it.newNumber ?: it.oldNumber}",
                             colors,
                             wrap = wrap,
                             showGutter = showGutter,

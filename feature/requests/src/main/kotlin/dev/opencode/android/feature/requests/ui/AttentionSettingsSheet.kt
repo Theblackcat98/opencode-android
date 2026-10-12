@@ -51,6 +51,9 @@ import dev.opencode.android.feature.requests.R
 import dev.opencode.android.feature.requests.notifications.AttentionChannelSpec
 import dev.opencode.android.feature.requests.notifications.canPostNotifications
 
+private const val DEFAULT_QUIET_HOURS_START_MINUTE_OF_DAY = 22 * 60
+private const val DEFAULT_QUIET_HOURS_END_MINUTE_OF_DAY = 7 * 60
+
 /**
  * Notifications and background behaviour, and the per-session controls when a session is in hand.
  *
@@ -252,7 +255,18 @@ fun AttentionSettingsContent(
                 ?: stringResource(R.string.settings_quiet_hours_off),
             checked = state.quiet.enabled,
             enabled = state.serverId != null,
-            onChange = { onQuietHoursChange(if (it) QuietHours() else QuietHours.of(22 * 60, 7 * 60)) },
+            onChange = {
+                onQuietHoursChange(
+                    if (it) {
+                        QuietHours()
+                    } else {
+                        QuietHours.of(
+                            DEFAULT_QUIET_HOURS_START_MINUTE_OF_DAY,
+                            DEFAULT_QUIET_HOURS_END_MINUTE_OF_DAY,
+                        )
+                    },
+                )
+            },
         )
         ListItem(
             headlineContent = { Text(stringResource(R.string.settings_battery)) },

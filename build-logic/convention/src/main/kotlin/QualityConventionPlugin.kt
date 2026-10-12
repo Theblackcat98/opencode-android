@@ -1,11 +1,10 @@
 import com.diffplug.gradle.spotless.SpotlessExtension
+import dev.detekt.gradle.Detekt
+import dev.detekt.gradle.extensions.DetektExtension
 import dev.opencode.android.buildlogic.libs
 import dev.opencode.android.buildlogic.projectRoot
 import dev.opencode.android.buildlogic.version
-import dev.detekt.gradle.Detekt
-import dev.detekt.gradle.extensions.DetektExtension
 import org.gradle.api.Project
-import org.gradle.kotlin.dsl.withType
 import org.gradle.kotlin.dsl.configure
 import org.gradle.kotlin.dsl.withType
 
@@ -28,7 +27,7 @@ import org.gradle.kotlin.dsl.withType
  *    is how a "zero findings" claim is faked; every finding here is either fixed or the rule is
  *    turned off in the config below with a reason.
  *
- * `ktlintCheck` and `detekt` both run as part of `check`, so `./gradlew check` fails on them.
+ * `spotlessCheck` and `detekt` both run as part of `check`, so `./gradlew check` fails on them.
  */
 class QualityConventionPlugin : org.gradle.api.Plugin<Project> {
     override fun apply(target: Project) = with(target) {

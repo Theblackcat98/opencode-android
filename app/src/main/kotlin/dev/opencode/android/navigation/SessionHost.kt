@@ -87,6 +87,8 @@ import dev.opencode.android.feature.sessions.R as SessionsR
  * it may not know this graph. It emits a [ComposerEffect] and this function carries it out; that is
  * the same arrangement P3 used for the pickers, extended to the command palette.
  */
+// This is the composition boundary that routes session effects across otherwise isolated features.
+@Suppress("CyclomaticComplexMethod", "LongMethod")
 @Composable
 fun SessionHost(
     sessionId: String,

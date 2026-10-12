@@ -124,7 +124,11 @@ fun ReviewScreen(
 ) {
     val colors = DiffColors.of()
     var menuOpen by remember { mutableStateOf(false) }
-    Column(modifier = modifier.fillMaxSize()) {
+    Column(
+        modifier = modifier.fillMaxSize().semantics {
+            contentDescription?.let { this.contentDescription = it }
+        },
+    ) {
         OpenCodeTopAppBar(
             title = stringResource(R.string.review_title),
             onBack = onNavigateBack,

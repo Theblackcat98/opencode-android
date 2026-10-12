@@ -157,6 +157,8 @@ object TimelineReducer {
      * [sessionID] is the timeline's own session. An event for another session returns [state]
      * unchanged, so one dispatcher can feed every open timeline without pre-filtering.
      */
+    // Keep the exhaustive event-to-timeline projection together so transitions stay reviewable.
+    @Suppress("CyclomaticComplexMethod", "LongMethod")
     fun reduce(state: TimelineState, event: Event, sessionID: String): TimelineState {
         if ((event.payload as? EventPayload.SessionScoped)?.sessionID != sessionID) return state
         val draft = Draft(state)

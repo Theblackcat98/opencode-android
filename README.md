@@ -44,9 +44,10 @@ Built and tested in P10:
   performed.
 - **Every remaining coverage gap** the audit found: twelve operations with no production caller, and
   twenty-four more that production called but nothing asserted.
-- **Quality work that was owed.** ktlint and detekt are applied to every module and fail `check`; they
-  had been in the version catalog and applied to nothing for three phases. Every UI string is in
-  `strings.xml` and CI says so. The vendor identifiers left in the fixtures are gone.
+- **Quality work that was owed.** ktlint (through Spotless) and detekt are applied to every module
+  and fail local `check`; CI explicitly runs `spotlessCheck` and `detekt`, and verifies that each
+  rejects a representative violation. Every UI string is in `strings.xml` and CI says so. The vendor
+  identifiers left in the fixtures are gone.
 - **Release configuration**, gated on material that does not exist, and the audits.
 
 What worked before:
