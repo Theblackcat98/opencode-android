@@ -9,6 +9,7 @@ import dev.opencode.android.core.data.repository.AddServerErrorType
 import dev.opencode.android.core.data.repository.AddServerOutcome
 import dev.opencode.android.core.data.repository.DefaultServerRepository
 import dev.opencode.android.core.data.repository.ServerHealth
+import dev.opencode.android.core.data.repository.canonicalBaseUrl
 import dev.opencode.android.core.data.security.InMemoryCredentialStore
 import dev.opencode.android.core.database.OpenCodeDatabase
 import dev.opencode.android.core.network.AuthInterceptor
@@ -259,6 +260,24 @@ class PairingAndReconnectTest {
         assertTrue(
             "The reconnection must be visible in the connection history",
             connection.connectionLogs.value.count { it.type == ConnectionEventType.CONNECTED } >= 2,
+        )
+    }
+
+    @Test
+    fun canonicalBaseUrlRemovesOnlySchemeAppropriateDefaultPorts() {
+        assertEquals("http://example.com/path", canonicalBaseUrl("http://example.com:80/path"))
+        assertEquals("https://example.com/path", canonicalBaseUrl("https://example.com:443/path"))
+        assertEquals("http://example.com:443/path", canonicalBaseUrl("http://example.com:443/path"))
+        assertEquals("https://example.com:80/path", canonicalBaseUrl("https://example.com:80/path"))
+    }
+
+    @Test
+    fun canonicalBaseUrlKeepsCrossSchemeEndpointsDistinct() {
+        assertFalse(
+            canonicalBaseUrl("http://example.com:443/path") == canonicalBaseUrl("https://example.com/path"),
+        )
+        assertFalse(
+            canonicalBaseUrl("http://example.com/path") == canonicalBaseUrl("https://example.com:80/path"),
         )
     }
 

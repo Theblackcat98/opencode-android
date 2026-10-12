@@ -22,6 +22,16 @@ import kotlinx.coroutines.withContext
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import java.util.UUID
 
+internal fun canonicalBaseUrl(baseUrl: String): String {
+    val url = baseUrl.trimEnd('/').toHttpUrlOrNull() ?: return baseUrl.trimEnd('/')
+    val port = when {
+        url.scheme == "http" && url.port == 80 -> ""
+        url.scheme == "https" && url.port == 443 -> ""
+        else -> ":${url.port}"
+    }
+    return "${url.scheme}://${url.host}$port${url.encodedPath.trimEnd('/')}"
+}
+
 /** How a server attempt ended, in the classes the onboarding help maps to. */
 sealed interface AddServerOutcome {
     data class Success(val profile: ServerProfile) : AddServerOutcome
@@ -381,15 +391,6 @@ class DefaultServerRepository(
                 AddServerOutcome.Success(profile)
             }
         }
-    }
-
-    private fun canonicalBaseUrl(baseUrl: String): String {
-        val url = baseUrl.trimEnd('/').toHttpUrlOrNull() ?: return baseUrl.trimEnd('/')
-        val port = when (url.port) {
-            80, 443 -> ""
-            else -> ":${url.port}"
-        }
-        return "${url.scheme}://${url.host}$port${url.encodedPath.trimEnd('/')}"
     }
 
     override suspend fun addManualServer(
