@@ -22,6 +22,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
@@ -31,6 +32,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import dev.opencode.android.core.designsystem.R
 import dev.opencode.android.core.designsystem.code.CodeHighlighter
 import dev.opencode.android.core.designsystem.code.CodeLanguage
 import dev.opencode.android.core.designsystem.code.CodeTokenKind
@@ -191,6 +193,8 @@ fun DiffRowView(
     val text = remember(row.text, language, colors, textColor) {
         highlightedPlain(row.text, language, colors, textColor)
     }
+    // Resolved up front: the annotated builder below is not a @Composable context.
+    val noNewlineSuffix = stringResource(R.string.diff_no_newline_suffix)
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -232,7 +236,7 @@ fun DiffRowView(
         Text(
             text = buildAnnotatedString {
                 append(text)
-                if (row.noNewlineAtEnd) append(NO_NEWLINE_SUFFIX)
+                if (row.noNewlineAtEnd) append(noNewlineSuffix)
             },
             style = codeStyle(),
             color = textColor,
@@ -412,9 +416,6 @@ fun SplitDiffTable(
 
 /** One row of a split diff: the two halves, either of which may be absent. */
 data class DiffPair(val left: DiffRow?, val right: DiffRow?)
-
-/** The `\ No newline at end of file` note, which a viewer has to say out loud. */
-const val NO_NEWLINE_SUFFIX: String = "  \\ No newline at end of file"
 
 private val GUTTER_WIDTH = 56.dp
 private val MARKER_WIDTH = 16.dp

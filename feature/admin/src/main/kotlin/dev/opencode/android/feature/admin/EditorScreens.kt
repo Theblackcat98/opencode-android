@@ -220,12 +220,19 @@ fun TemplateSheet(
 
 @Composable
 private fun EffectChips(selected: String, onSelect: (String) -> Unit) {
+    // Resolved up front: a forEach lambda is not a @Composable context, so the labels cannot be
+    // read inside it. A map keeps the chip order stable.
+    val labels = mapOf(
+        "ask" to stringResource(R.string.admin_template_effect_ask),
+        "allow" to stringResource(R.string.admin_template_effect_allow),
+        "deny" to stringResource(R.string.admin_template_effect_deny),
+    )
     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        listOf("ask", "allow", "deny").forEach { effect ->
+        labels.forEach { (effect, label) ->
             FilterChip(
                 selected = selected == effect,
                 onClick = { onSelect(effect) },
-                label = { Text(effect) },
+                label = { Text(label) },
                 modifier = Modifier.testTag("template:effect:$effect"),
             )
         }
@@ -234,12 +241,17 @@ private fun EffectChips(selected: String, onSelect: (String) -> Unit) {
 
 @Composable
 private fun ModeChips(selected: String, onSelect: (String) -> Unit) {
+    val labels = mapOf(
+        "primary" to stringResource(R.string.admin_template_mode_primary),
+        "subagent" to stringResource(R.string.admin_template_mode_subagent),
+        "all" to stringResource(R.string.admin_template_mode_all),
+    )
     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        listOf("primary", "subagent", "all").forEach { mode ->
+        labels.forEach { (mode, label) ->
             FilterChip(
                 selected = selected == mode,
                 onClick = { onSelect(mode) },
-                label = { Text(mode) },
+                label = { Text(label) },
                 modifier = Modifier.testTag("template:mode:$mode"),
             )
         }

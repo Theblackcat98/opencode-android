@@ -242,7 +242,11 @@ private fun RuleSummary(index: Int, rule: dev.opencode.android.core.model.Permis
         modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).testTag(AdminTags.rule(index)),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Text(text = rule.effect.value, style = MaterialTheme.typography.labelMedium, color = effectColor(rule.effect))
+        Text(
+            text = effectLabel(rule.effect),
+            style = MaterialTheme.typography.labelMedium,
+            color = effectColor(rule.effect),
+        )
         Text(text = rule.action, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
         Text(text = rule.resource, style = MaterialTheme.typography.bodySmall)
     }
@@ -280,7 +284,7 @@ private fun RuleEditor(
                 FilterChip(
                     selected = draft.effect == effect,
                     onClick = { onChange { it.copy(effect = effect) } },
-                    label = { Text(effect.value) },
+                    label = { Text(effectLabel(effect)) },
                     modifier = Modifier.testTag("permissions:effect:$index:${effect.value}"),
                 )
             }
@@ -293,6 +297,21 @@ private fun effectColor(effect: PermissionEffect) = when (effect) {
     PermissionEffect.Deny -> MaterialTheme.colorScheme.error
     PermissionEffect.Allow -> MaterialTheme.colorScheme.primary
     else -> MaterialTheme.colorScheme.tertiary
+}
+
+/**
+ * A permission effect as UI copy, not a wire value.
+ *
+ * `PermissionEffect.of()` explicitly anticipates a server that grows a fourth effect, so an
+ * unknown value falls back to the raw string rather than vanishing — a label the user cannot
+ * read is worse than one that is merely untranslated.
+ */
+@Composable
+private fun effectLabel(effect: PermissionEffect): String = when (effect) {
+    PermissionEffect.Ask -> stringResource(R.string.admin_effect_ask)
+    PermissionEffect.Allow -> stringResource(R.string.admin_effect_allow)
+    PermissionEffect.Deny -> stringResource(R.string.admin_effect_deny)
+    else -> effect.value
 }
 
 @Composable
