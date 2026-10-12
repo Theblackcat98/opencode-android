@@ -22,6 +22,8 @@ import mockwebserver3.MockResponse
 import mockwebserver3.MockWebServer
 import mockwebserver3.RecordedRequest
 import okhttp3.OkHttpClient
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 
 /**
  * A real [ServerApi] over a [MockWebServer], so cursors, ordering and the location parameter are
@@ -48,6 +50,8 @@ class FakeServer(
         ),
     )
     var sessions: List<SessionInfo> = emptyList()
+    var pagedSessionRequestStarted: CountDownLatch? = null
+    var releasePagedSessionRequest: CountDownLatch? = null
     var messagePage: List<SessionMessage> = emptyList()
     var messageCursorNext: String? = null
 
@@ -66,7 +70,13 @@ class FakeServer(
                         Paged(messagePage, Paged.Cursor(null, messageCursorNext)),
                     )
 
-                    path.startsWith("/api/session?") -> sessionsPage(path)
+                    path.startsWith("/api/session?") -> {
+                        if (query(path, "cursor") != null) {
+                            pagedSessionRequestStarted?.countDown()
+                            releasePagedSessionRequest?.await(5, TimeUnit.SECONDS)
+                        }
+                        sessionsPage(path)
+                    }
 
                     path.matches(Regex("/api/session/ses_[^/?]+")) -> dataResponse(
                         encodeJson(

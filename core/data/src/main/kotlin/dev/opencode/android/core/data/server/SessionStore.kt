@@ -81,6 +81,7 @@ class SessionStore(
     val paging: StateFlow<PagingState> = _paging.asStateFlow()
 
     private val pages = HashMap<SessionFilter, SessionPage>()
+    private var filterGeneration = 0L
 
     /** Direct children per session id, derived from the sessions the client has seen. */
     val childCounts: StateFlow<Map<String, Int>> = _info
@@ -115,9 +116,14 @@ class SessionStore(
     /** Sets the filter and loads its first page, reusing an already loaded one. */
     fun setFilter(filter: SessionFilter) {
         if (_filter.value == filter) return
+        filterGeneration++
         _filter.value = filter
         _paging.value = PagingState()
-        scope.launch { page(filter).refresh() }
+        val generation = filterGeneration
+        scope.launch {
+            page(filter).refresh()
+            if (generation == filterGeneration) _paging.value = page(filter).paging.value
+        }
     }
 
     /** Loads the active filter's first page, showing the cached copy first when there is one. */
@@ -133,11 +139,12 @@ class SessionStore(
     fun loadMore() {
         val current = _paging.value
         if (current.loading || !current.hasMore) return
+        val generation = filterGeneration
+        val active = page(_filter.value)
         _paging.value = current.copy(loading = true)
         scope.launch {
-            val active = page(_filter.value)
-            active.loadMore()
-            _paging.value = active.paging.value
+            active.loadMore(generation)
+            if (generation == filterGeneration) _paging.value = active.paging.value
         }
     }
 
@@ -339,8 +346,10 @@ class SessionStore(
     }
 
     private fun page(filter: SessionFilter): SessionPage = pages.getOrPut(filter) {
-        SessionPage(serverId, api, scope, cache, filter, pageSize) { sessions ->
-            _info.value = _info.value + sessions.associateBy { it.id }
+        SessionPage(serverId, api, scope, cache, filter, pageSize) { generation, sessions ->
+            if (generation == null || generation == filterGeneration) {
+                _info.value = _info.value + sessions.associateBy { it.id }
+            }
         }
     }
 

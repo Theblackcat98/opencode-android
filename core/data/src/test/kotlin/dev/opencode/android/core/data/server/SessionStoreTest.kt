@@ -25,6 +25,8 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 
 /**
  * The session list over a real HTTP server: paging, filtering, the badges, and the live events.
@@ -169,6 +171,38 @@ class SessionStoreTest {
         store.setFilter(SessionFilter(projectId = "p2"))
         awaitQuiescent()
         assertEquals(listOf("ses_b"), store.visibleRows.value.map { it.id })
+    }
+
+    @Test
+    fun `outdated filter paging results do not publish into the new filter`() = runBlocking {
+        val store = newStore(pageSize = 2)
+        server.sessions = listOf(
+            sessionFixture("ses_a1", title = "alpha one", updated = 30L),
+            sessionFixture("ses_a2", title = "alpha two", updated = 20L),
+            sessionFixture("ses_a3", title = "alpha three", updated = 10L),
+            sessionFixture("ses_b", title = "beta", updated = 40L),
+        )
+        store.setFilter(SessionFilter(search = "alpha"))
+        awaitQuiescent()
+        assertEquals(listOf("ses_a1", "ses_a2"), store.visibleRows.value.map { it.id })
+
+        val started = CountDownLatch(1)
+        val release = CountDownLatch(1)
+        server.pagedSessionRequestStarted = started
+        server.releasePagedSessionRequest = release
+        store.loadMore()
+        assertTrue("the old filter's page was never started", started.await(STATE_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS))
+
+        store.setFilter(SessionFilter(search = "beta"))
+        awaitState("the new filter request never started") {
+            server.requests().any { it.url.query?.contains("search=beta") == true }
+        }
+        release.countDown()
+        awaitQuiescent()
+
+        assertEquals(listOf("ses_b"), store.visibleRows.value.map { it.id })
+        assertFalse("the old filter page must not change the new paging state", store.paging.value.hasMore)
+        assertFalse("the old filter page must not publish its session", store.info.value.containsKey("ses_a3"))
     }
 
     @Test
