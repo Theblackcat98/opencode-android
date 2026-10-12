@@ -263,6 +263,40 @@ class PairingAndReconnectTest {
     }
 
     @Test
+    fun aPairingLinkWithDifferentHostCaseIsAcceptedAsARepair() = runBlocking {
+        val id = repository.addServer("Workstation", baseUrl(), "old-token")
+        server.dispatcher = object : Dispatcher() {
+            override fun dispatch(request: RecordedRequest): MockResponse = when {
+                request.url.encodedPath.endsWith("/auth/connect/code-abc") ->
+                    json("""{"token":"new-token"}""")
+
+                request.url.encodedPath.endsWith("/api/info") ->
+                    json(serverInfo())
+
+                else -> notFound()
+            }
+        }
+
+        val host = server.hostName.uppercase()
+        val link = PairingLink("http://$host:${server.port}", "code-abc")
+        val outcome = repository.rePairServer(id, link)
+
+        assertTrue("Expected host case to compare equivalent, got $outcome", outcome is AddServerOutcome.Success)
+        assertEquals("new-token", credentialStore.getCredential(id))
+    }
+
+    @Test
+    fun aPairingLinkWithDifferentPathCaseIsRefusedAsARepair() = runBlocking {
+        val id = repository.addServer("Workstation", "${baseUrl()}/Tenant", "old-token")
+        val link = PairingLink("${baseUrl()}/tenant", "code-abc")
+
+        val outcome = repository.rePairServer(id, link)
+
+        assertTrue("Expected path case to differ, got $outcome", outcome is AddServerOutcome.Failure)
+        assertEquals("old-token", credentialStore.getCredential(id))
+    }
+
+    @Test
     fun aPairingLinkForAnotherAddressIsRefusedAsARepair() = runBlocking {
         val id = repository.addServer("Workstation", baseUrl(), "token")
         val elsewhere = PairingLink(baseUrl = "http://192.168.9.9:4096", code = "code-abc")

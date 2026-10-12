@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.withContext
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import java.util.UUID
 
 /** How a server attempt ended, in the classes the onboarding help maps to. */
@@ -340,7 +341,7 @@ class DefaultServerRepository(
             technicalDetail = "The server to re-pair no longer exists",
         )
         val linkBaseUrl = pairingLink.baseUrl.trimEnd('/')
-        if (!linkBaseUrl.equals(existing.baseUrl.trimEnd('/'), ignoreCase = true)) {
+        if (canonicalBaseUrl(linkBaseUrl) != canonicalBaseUrl(existing.baseUrl)) {
             return@withContext AddServerOutcome.Failure(
                 errorType = AddServerErrorType.UNREACHABLE,
                 technicalDetail = "The pairing link points at $linkBaseUrl, not at ${existing.baseUrl}",
@@ -380,6 +381,15 @@ class DefaultServerRepository(
                 AddServerOutcome.Success(profile)
             }
         }
+    }
+
+    private fun canonicalBaseUrl(baseUrl: String): String {
+        val url = baseUrl.trimEnd('/').toHttpUrlOrNull() ?: return baseUrl.trimEnd('/')
+        val port = when (url.port) {
+            80, 443 -> ""
+            else -> ":${url.port}"
+        }
+        return "${url.scheme}://${url.host}$port${url.encodedPath.trimEnd('/')}"
     }
 
     override suspend fun addManualServer(
