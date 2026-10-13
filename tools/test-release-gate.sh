@@ -47,17 +47,20 @@ keytool -genkeypair \
   -dname 'CN=OpenCode CI Release Test' \
   -noprompt >/dev/null
 
-if ! env \
-  OPENCODE_KEYSTORE="$KEYSTORE" \
-  OPENCODE_STORE_PASSWORD="$STORE_PASSWORD" \
-  OPENCODE_KEY_ALIAS='test-release' \
-  OPENCODE_KEY_PASSWORD="$KEY_PASSWORD" \
-  "$ROOT/gradlew" :app:verifyPublishableRelease --no-daemon --no-configuration-cache --console=plain >>"$LOG" 2>&1; then
+export OPENCODE_KEYSTORE="$KEYSTORE"
+export OPENCODE_STORE_PASSWORD="$STORE_PASSWORD"
+export OPENCODE_KEY_ALIAS='test-release'
+export OPENCODE_KEY_PASSWORD="$KEY_PASSWORD"
+
+if ! "$ROOT/gradlew" :app:verifyPublishableRelease --no-daemon --no-configuration-cache --console=plain >>"$LOG" 2>&1; then
   printf 'verifyPublishableRelease unexpectedly failed with ephemeral signing material\n' >&2
   printf 'Keystore file: %s (exists: ' "$KEYSTORE" >&2
   [[ -f "$KEYSTORE" ]] && echo "yes)" >&2 || echo "no)" >&2
   cat "$LOG" >&2
   exit 1
 fi
+
+# Unset so they don't leak into later steps
+unset OPENCODE_KEYSTORE OPENCODE_STORE_PASSWORD OPENCODE_KEY_ALIAS OPENCODE_KEY_PASSWORD
 
 printf 'Publishable release gate verified signed APKs with an ephemeral test key.\n'
