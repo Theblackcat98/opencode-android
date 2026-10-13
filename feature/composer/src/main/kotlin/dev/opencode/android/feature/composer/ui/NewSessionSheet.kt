@@ -490,5 +490,3 @@ private fun BrowserRow(entry: FileSystemEntry, onClick: () -> Unit) {
         },
     )
 }
-
-

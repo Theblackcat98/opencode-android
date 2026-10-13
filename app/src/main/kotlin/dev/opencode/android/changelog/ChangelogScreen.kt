@@ -244,6 +244,7 @@ private fun AnnotatedString.Builder.appendInlines(
     for (inline in inlines) {
         when (inline) {
             is ChangelogInline.Text -> append(inline.text)
+
             is ChangelogInline.Bold -> withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
                 append(inline.text)
             }

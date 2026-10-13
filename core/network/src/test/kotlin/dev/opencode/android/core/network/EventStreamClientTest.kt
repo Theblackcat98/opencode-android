@@ -163,7 +163,8 @@ class EventStreamClientTest {
     }
 
     @Test
-    fun sendsNoCredentialWhenTheServerHasNoPassword() = eventStreamTest {        server.enqueue(sseResponse(SERVER_CONNECTED_FRAME))
+    fun sendsNoCredentialWhenTheServerHasNoPassword() = eventStreamTest {
+        server.enqueue(sseResponse(SERVER_CONNECTED_FRAME))
         client = newClient(credential = null)
         client.start(scope)
         awaitConnected()

@@ -65,30 +65,29 @@ fun SessionTabStrip(
                 stringResource(R.string.session_tab_label, tab.title, index + 1, tabs.size)
             }
             val closeLabel = stringResource(R.string.session_tab_close, tab.title)
-            Tab(
-                selected = tab.selected,
-                onClick = { onSelect(tab.id) },
-                modifier = Modifier.semantics { contentDescription = label },
-                text = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Tab(
+                    selected = tab.selected,
+                    onClick = { onSelect(tab.id) },
+                    modifier = Modifier.semantics { contentDescription = label },
+                    text = {
                         Text(
                             text = tab.title,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.widthIn(max = 160.dp),
                         )
-                        // The close button is nested inside the tab's content. Compose delivers
-                        // the tap to the innermost clickable, so closing never selects first.
-                        // Sized to 48dp per the touch-target floor.
-                        IconButton(
-                            onClick = { onClose(tab.id) },
-                            modifier = Modifier.size(48.dp),
-                        ) {
-                            Icon(Icons.Filled.Close, contentDescription = closeLabel)
-                        }
-                    }
-                },
-            )
+                    },
+                )
+                // Keep this as a sibling of Tab: its separate semantics and 48dp target must not
+                // override the tab's own selection action.
+                IconButton(
+                    onClick = { onClose(tab.id) },
+                    modifier = Modifier.size(48.dp),
+                ) {
+                    Icon(Icons.Filled.Close, contentDescription = closeLabel)
+                }
+            }
         }
     }
 }

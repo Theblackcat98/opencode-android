@@ -784,7 +784,7 @@ hardware in this environment.
   - Per-session drafts, prompt history, and stash (stash, pop, list).
   - A full-screen editor, and large pastes collapsed into a compact chip.
   - Voice dictation.
-  - A share-sheet target, "Send to OpenCode", that puts text or images into a new or existing session.
+  - A text-only share target that passes shared text to server setup; sharing arbitrary text or images into sessions is deferred (issue #42).
 - **Session environment variables.** An editor in session settings, backed by `session.environment`.
 
 **API.** `command.list`, `session.command`, `skill.list`, `experimental.session.skill`, `fs.find`, `reference.list`,
@@ -795,7 +795,7 @@ hardware in this environment.
 - Every TUI composer feature is available: `/`, `@`, `!`, attachments, `/btw`, `/compact`, history and stash.
 - Fake-provider assertions confirm that attachments reach the model.
 
-**Status.** Complete. Verified with 735 JVM unit-test executions and no failures — 220 of them added
+**Status.** Composer and attachment flows are implemented; generic share-to-session routing is deferred. `ACTION_SEND text/plain` only primes server setup, and images are not advertised. Verified with 735 JVM unit-test executions and no failures — 220 of them added
 by this phase, plus 11 live integration tests against a real `opencode serve` 2.0.18 driven by the
 scripted fake provider. Android Lint is clean, both `play` and `fdroid` debug APKs assemble, and
 Roborazzi compares 51 screenshots (10 of them new). The second exit criterion is settled end to end:
@@ -925,10 +925,9 @@ phone cannot be decided here, and there is no emulator and no device.
 - **A draft is written after a pause and lost if the process dies inside it.** A DataStore write is a
   write, and a phone that is killed inside 400 ms of the last keystroke loses that sentence; the
   window is the price of not writing a preference file per keystroke.
-- **The share-sheet target is declared and its filter is tested; nothing routes a shared payload into
-  a session yet.** `MainActivity` already handles a `SEND` intent for pairing links, and the composer
-  accepts text and an image, but the wiring that opens a new or existing session from a shared image
-  is Phase 6's "review comments" work, which is where a shared text or diff is most useful.
+- **Shared intents do not open a session.** A single `ACTION_SEND text/plain` filter passes shared text
+  to server setup; `ACTION_VIEW` handles pairing links. Incoming images and routing arbitrary shared
+  text into a session remain deferred, so the manifest does not advertise `image/*` (issue #42).
 
 ---
 

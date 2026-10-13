@@ -58,12 +58,14 @@ class ScreenFlowComposerTest {
                         modelID = "gpt-5",
                         providerID = "openai",
                         name = "GPT-5",
+                        limit = ModelInfo.Limit(context = 200_000, output = 8_192),
                     ),
                     ModelInfo(
                         id = "claude-opus-4",
                         modelID = "claude-opus-4-20250514",
                         providerID = "anthropic",
                         name = "Claude Opus 4",
+                        limit = ModelInfo.Limit(context = 200_000, output = 8_192),
                     ),
                 ),
                 agents = listOf(

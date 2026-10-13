@@ -10,8 +10,9 @@ import dev.opencode.android.core.data.repository.AddServerOutcome
 import dev.opencode.android.core.data.repository.DefaultServerRepository
 import dev.opencode.android.core.data.repository.ServerHealth
 import dev.opencode.android.core.data.repository.ServerRepository
-import dev.opencode.android.core.data.security.InMemoryCredentialStore
+import dev.opencode.android.core.data.repository.sameServerEndpoint
 import dev.opencode.android.core.data.security.CredentialStoreUnavailableException
+import dev.opencode.android.core.data.security.InMemoryCredentialStore
 import dev.opencode.android.core.data.security.SecureCredentialStore
 import dev.opencode.android.core.database.OpenCodeDatabase
 import dev.opencode.android.core.network.PairingClient
@@ -34,7 +35,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
-import dev.opencode.android.core.data.repository.sameServerEndpoint
 
 @RunWith(AndroidJUnit4::class)
 class ServerRepositoryTest {

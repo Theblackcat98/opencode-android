@@ -58,7 +58,6 @@ import dev.opencode.android.feature.requests.ui.RequestActions
 import dev.opencode.android.feature.requests.ui.RequestDock
 import dev.opencode.android.feature.requests.ui.messageRes
 import dev.opencode.android.feature.requests.ui.takesArgument
-import dev.opencode.android.R as AppR
 import dev.opencode.android.feature.sessions.R
 import dev.opencode.android.feature.sessions.ui.SessionActionsSheet
 import dev.opencode.android.feature.sessions.ui.SessionLogDialog
@@ -72,6 +71,7 @@ import dev.opencode.android.feature.sessions.ui.SessionViewModel
 import dev.opencode.android.feature.sessions.ui.SyntheticNoteDialog
 import dev.opencode.android.feature.sessions.ui.UserMessageActions
 import dev.opencode.android.feature.sessions.ui.WaitingForIdleDialog
+import dev.opencode.android.R as AppR
 import dev.opencode.android.feature.sessions.R as SessionsR
 
 /**

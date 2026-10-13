@@ -16,8 +16,10 @@ import com.github.takahirom.roborazzi.captureRoboImage
 import dev.opencode.android.core.data.repository.ServerHealth
 import dev.opencode.android.core.data.repository.ServerProfile
 import dev.opencode.android.core.designsystem.theme.OpenCodeTheme
+import dev.opencode.android.core.model.LocationRef
 import dev.opencode.android.core.model.event.Event
 import dev.opencode.android.core.model.event.EventPayload
+import dev.opencode.android.core.model.event.SessionCreated
 import dev.opencode.android.core.network.ConnectionState
 import dev.opencode.android.core.network.InspectedEvent
 import org.junit.Rule
@@ -223,7 +225,7 @@ class ScreenFlowServersTest {
                     event = Event(
                         id = "evt-1",
                         type = "server.connected",
-                        payload = EventPayload.InstallationUpdated(version = "2.0.18"),
+                        payload = EventPayload.ServerConnected,
                     ),
                 ),
                 InspectedEvent(
@@ -235,7 +237,14 @@ class ScreenFlowServersTest {
                     event = Event(
                         id = "evt-2",
                         type = "session.created",
-                        payload = EventPayload.InstallationUpdated(version = "2.0.18"),
+                        payload = SessionCreated(
+                            sessionID = "ses_abc123",
+                            projectID = "prj-1",
+                            location = LocationRef(directory = "/home/dev/opencode-android"),
+                            slug = "fix-login",
+                            title = "Fix the login bug",
+                            version = "2.0.18",
+                        ),
                     ),
                 ),
             ),

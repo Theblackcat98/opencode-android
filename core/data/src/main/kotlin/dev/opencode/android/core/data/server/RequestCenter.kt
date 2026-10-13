@@ -190,7 +190,7 @@ class RequestCenter(
             if (forms != null) {
                 pendingForms.value =
                     pendingForms.value.filterValues { it.sessionID !in sessions } +
-                        forms.filter { it.id !in dropped }.associateBy(FormInfo::id)
+                    forms.filter { it.id !in dropped }.associateBy(FormInfo::id)
             }
         } finally {
             if (resyncDepth.decrementAndGet() == 0) resyncTombstones.clear()

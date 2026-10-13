@@ -36,6 +36,9 @@ private val INTEGRATION_ENV = mapOf(
 
 internal fun Project.configureTests() {
     val integration = integrationMode
+    val hasIntegrationTestSources = fileTree("src/test").matching {
+        include("**/integration/**/*.kt", "**/integration/**/*.java")
+    }.files.isNotEmpty()
     tasks.withType(Test::class.java).configureEach {
         testLogging {
             events(TestLogEvent.FAILED, TestLogEvent.SKIPPED)
@@ -52,9 +55,9 @@ internal fun Project.configureTests() {
         )
         filter.isFailOnNoMatchingTests = false
         if (integration) {
-            // Fail if no integration tests match — silently passing with zero tests
-            // executed masks configuration failures (issue #54).
-            filter.isFailOnNoMatchingTests = true
+            // Only modules with integration sources should fail when the package filter matches
+            // nothing; the aggregate task also visits modules that own no live tests.
+            filter.isFailOnNoMatchingTests = hasIntegrationTestSources
             filter.includeTestsMatching(INTEGRATION_PATTERN)
             INTEGRATION_ENV.forEach { (env, property) ->
                 val fromProperty = providers.gradleProperty(property).orNull

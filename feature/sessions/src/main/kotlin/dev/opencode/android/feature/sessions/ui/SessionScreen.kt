@@ -253,5 +253,3 @@ private fun Subtitle(state: SessionUiState) {
         Text(text = line, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
-
-

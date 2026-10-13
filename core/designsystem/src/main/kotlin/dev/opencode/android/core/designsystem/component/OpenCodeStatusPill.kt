@@ -20,6 +20,7 @@ import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
 
 /** What a [OpenCodeStatusPill] reports. */
 enum class StatusKind { Running, Retrying, Idle, Success, Failure }
+
 /**
  * A small status badge: a dot (or a spinner while running) and a label, on the state's container color.
  *

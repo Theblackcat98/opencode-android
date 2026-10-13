@@ -14,13 +14,11 @@ import com.github.takahirom.roborazzi.captureRoboImage
 import dev.opencode.android.core.data.server.SessionActivity
 import dev.opencode.android.core.data.server.SessionRow
 import dev.opencode.android.core.designsystem.theme.OpenCodeTheme
-import dev.opencode.android.core.model.Location
+import dev.opencode.android.core.model.LocationPublicRef
 import dev.opencode.android.core.model.ModelRef
 import dev.opencode.android.core.model.Project
 import dev.opencode.android.core.model.SessionInfo
-import dev.opencode.android.core.model.SessionMetadata
 import dev.opencode.android.core.model.SessionStatus
-import dev.opencode.android.core.model.Time
 import dev.opencode.android.core.model.TokenUsage
 import org.junit.Rule
 import org.junit.Test
@@ -55,13 +53,13 @@ class ScreenFlowScreenshotTest {
                 serverId = "server-1",
                 groups = listOf(
                     ProjectGroup(
-                        project = Project(id = "prj-1", canonical = "/work/app", name = "app"),
+                        project = project("prj-1", "/work/app", "app"),
                         sessions = listOf(sessionRow("ses-1", "Fix the login bug"), sessionRow("ses-2", "Add dark mode")),
                         total = 2,
                         running = 1,
                     ),
                     ProjectGroup(
-                        project = Project(id = "prj-2", canonical = "/work/docs", name = "docs"),
+                        project = project("prj-2", "/work/docs", "docs"),
                         sessions = listOf(sessionRow("ses-3", "Update README")),
                         total = 1,
                         running = 0,
@@ -87,8 +85,8 @@ class ScreenFlowScreenshotTest {
                     sessionRow("ses-3", "Update README"),
                 ),
                 projects = listOf(
-                    Project(id = "prj-1", canonical = "/work/app", name = "app"),
-                    Project(id = "prj-2", canonical = "/work/docs", name = "docs"),
+                    project("prj-1", "/work/app", "app"),
+                    project("prj-2", "/work/docs", "docs"),
                 ),
                 now = 1_700_000_000_000,
             ),
@@ -144,6 +142,18 @@ class ScreenFlowScreenshotTest {
         compose.onRoot().captureRoboImage("$ROBO_PATH/$name.png")
     }
 
+    private fun project(id: String, canonical: String, name: String) = Project(
+        id = id,
+        canonical = canonical,
+        name = name,
+        time = Project.Time(
+            created = 1_700_000_000_000,
+            updated = 1_700_000_000_000,
+            active = 1_700_000_000_000,
+        ),
+        sandboxes = emptyList(),
+    )
+
     private fun sessionRow(id: String, title: String) = SessionRow(
         session = SessionInfo(
             id = id,
@@ -151,11 +161,15 @@ class ScreenFlowScreenshotTest {
             agent = "build",
             model = ModelRef("placeholder-provider", "placeholder-model"),
             cost = 0.12,
-            tokens = TokenUsage(input = 1000, output = 500, reasoning = 0, cacheRead = 0, cacheWrite = 0),
-            time = Time(created = 1_700_000_000_000, updated = 1_700_000_000_000),
+            tokens = TokenUsage(
+                input = 1000,
+                output = 500,
+                reasoning = 0,
+                cache = TokenUsage.Cache(read = 0, write = 0),
+            ),
+            time = SessionInfo.Time(created = 1_700_000_000_000, updated = 1_700_000_000_000),
             title = title,
-            location = Location.PublicRef(directory = "/work/app"),
-            metadata = SessionMetadata(slug = "s", version = 1),
+            location = LocationPublicRef(directory = "/work/app"),
         ),
         activity = SessionActivity.Idle,
         status = SessionStatus.Idle,

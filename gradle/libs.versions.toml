@@ -30,7 +30,7 @@ kotlinxCoroutines = "1.11.0"
 kotlinxSerialization = "1.11.0"
 
 # Networking
-okhttp = "5.5.0"
+okhttp = "5.4.0"
 zxing = "3.5.3"
 retrofit = "3.0.0"
 

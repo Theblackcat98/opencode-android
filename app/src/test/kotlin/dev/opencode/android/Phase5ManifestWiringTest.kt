@@ -72,16 +72,15 @@ class Phase5ManifestWiringTest {
     }
 
     @Test
-    fun `the app is a share target for text and for an image in one filter`() {
-        // "Send to OpenCode" (features doc §38). One filter carrying both types, so the chooser shows
-        // the app once rather than twice.
+    fun `the app exposes one text share filter and does not advertise images`() {
+        // Shared text primes server setup; generic text/image sharing into a session is not wired.
         val sendFilters = mainActivity()
             .elements("intent-filter")
             .filter { it.elements("action").any { a -> a.attribute("name") == "android.intent.action.SEND" } }
         val withMime = sendFilters.filter { it.elements("data").isNotEmpty() }
         val types = withMime.flatMap { filter -> filter.elements("data").map { it.attribute("mimeType") } }
-        assertTrue("text/plain" in types)
-        assertTrue("image/*" in types)
+        assertEquals(1, withMime.size)
+        assertEquals(listOf("text/plain"), types)
     }
 
     @Test

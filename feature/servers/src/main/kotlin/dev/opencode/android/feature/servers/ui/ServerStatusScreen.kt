@@ -677,7 +677,8 @@ private val ConnectionEventType.labelRes: Int
     }
 
 @Composable
-private fun ConnectionLogItem(log: ConnectionLogEntry) {    val timeFormat = ClockFormatter.timeWithMillis(log.timestamp)
+private fun ConnectionLogItem(log: ConnectionLogEntry) {
+    val timeFormat = ClockFormatter.timeWithMillis(log.timestamp)
     val formattedTime = timeFormat.format(Date(log.timestamp))
     val badgeColor = when (log.type) {
         ConnectionEventType.CONNECTED, ConnectionEventType.RESYNC -> MaterialTheme.colorScheme.primaryContainer

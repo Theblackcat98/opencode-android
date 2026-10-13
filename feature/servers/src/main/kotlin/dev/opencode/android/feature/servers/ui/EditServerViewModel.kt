@@ -28,8 +28,7 @@ data class EditServerUiState(
     val error: AddServerErrorType? = null,
     val errorTechnicalDetail: String? = null,
     val saved: Boolean = false,
-) {
-}
+)
 
 /**
  * Edits one saved server: name, address, credential, default flag and user-CA trust.
