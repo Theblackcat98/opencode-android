@@ -59,7 +59,7 @@ enum class AdminCatalog(val id: String) {
  * in the screen; a row type makes "the agents tab shows these fields" one line each and keeps the
  * `LazyColumn` single, which is what lets all four share stable keys and one scroll position.
  */
-private data class CatalogRow(
+internal data class CatalogRow(
     val key: String,
     val title: String,
     val subtitle: String? = null,
@@ -76,7 +76,7 @@ private data class CatalogRow(
  * handful of client-rendered constants ("yes", "unknown", "in the command file"), which are
  * resources too, because a label that translates next to a value that does not is half a fix.
  */
-private data class CatalogFact(
+internal data class CatalogFact(
     @StringRes val label: Int,
     val value: String? = null,
     @StringRes val valueRes: Int? = null,
