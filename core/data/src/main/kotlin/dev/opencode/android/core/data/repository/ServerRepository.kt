@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.withContext
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import java.util.UUID
 
 /** How a server attempt ended, in the classes the onboarding help maps to. */
@@ -340,7 +341,7 @@ class DefaultServerRepository(
             technicalDetail = "The server to re-pair no longer exists",
         )
         val linkBaseUrl = pairingLink.baseUrl.trimEnd('/')
-        if (!linkBaseUrl.equals(existing.baseUrl.trimEnd('/'), ignoreCase = true)) {
+        if (!sameServerEndpoint(linkBaseUrl, existing.baseUrl.trimEnd('/'))) {
             return@withContext AddServerOutcome.Failure(
                 errorType = AddServerErrorType.UNREACHABLE,
                 technicalDetail = "The pairing link points at $linkBaseUrl, not at ${existing.baseUrl}",
@@ -543,4 +544,21 @@ fun ValidationErrorType.toAddServerErrorType(): AddServerErrorType = when (this)
     ValidationErrorType.SERVER_ERROR -> AddServerErrorType.SERVER_ERROR
     ValidationErrorType.MALFORMED_RESPONSE -> AddServerErrorType.SERVER_ERROR
     ValidationErrorType.UNKNOWN -> AddServerErrorType.UNREACHABLE
+}
+
+/**
+ * Whether two server base URLs identify the same endpoint.
+ *
+ * Hosts are case-insensitive per RFC 3986, but paths are case-sensitive: `/Tenant` and `/tenant`
+ * can route to different tenants behind a reverse proxy, so a case-folded comparison could let a
+ * pairing link for one tenant replace another's credential. Scheme and port compare exactly
+ * (normalized by [toServerBaseUrl] upstream); the path compares byte-for-byte.
+ */
+internal fun sameServerEndpoint(a: String, b: String): Boolean {
+    val urlA = a.toHttpUrlOrNull() ?: return false
+    val urlB = b.toHttpUrlOrNull() ?: return false
+    return urlA.scheme.equals(urlB.scheme, ignoreCase = true) &&
+        urlA.host.equals(urlB.host, ignoreCase = true) &&
+        urlA.port == urlB.port &&
+        urlA.encodedPath == urlB.encodedPath
 }

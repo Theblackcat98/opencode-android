@@ -32,6 +32,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
+import dev.opencode.android.core.data.repository.sameServerEndpoint
 
 @RunWith(AndroidJUnit4::class)
 class ServerRepositoryTest {
@@ -396,4 +397,27 @@ class ServerRepositoryTest {
 
     private fun serverInfoJson(baseUrl: String) =
         """{"version":"2.0.18","pid":4321,"urls":["$baseUrl"],"paths":{"tmp":"/tmp"}}"""
+
+    @Test
+    fun `sameServerEndpoint ignores host case but not path case`() {
+        // Hosts are case-insensitive per RFC 3986; these are the same endpoint.
+        assertTrue(sameServerEndpoint("https://HOST:4096/opencode", "https://host:4096/opencode"))
+        assertTrue(sameServerEndpoint("https://host:4096/", "https://host:4096"))
+        // Paths are case-sensitive: /Tenant and /tenant can route to different tenants.
+        assertFalse(sameServerEndpoint("https://host/Tenant", "https://host/tenant"))
+        assertFalse(sameServerEndpoint("https://host:4096/Tenant", "https://host:4096/tenant"))
+    }
+
+    @Test
+    fun `sameServerEndpoint distinguishes ports and schemes`() {
+        assertFalse(sameServerEndpoint("https://host:4096/opencode", "https://host:4097/opencode"))
+        assertFalse(sameServerEndpoint("https://host/opencode", "http://host/opencode"))
+        assertFalse(sameServerEndpoint("https://host/a", "https://host/b"))
+    }
+
+    @Test
+    fun `sameServerEndpoint rejects malformed urls`() {
+        assertFalse(sameServerEndpoint("not a url", "https://host/"))
+        assertFalse(sameServerEndpoint("https://host/", "also not a url"))
+    }
 }
