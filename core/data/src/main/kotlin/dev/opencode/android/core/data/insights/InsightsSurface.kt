@@ -260,12 +260,7 @@ class InsightsSurface(private val api: ServerApi) {
 
     // ------------------------------------------------------------------ plumbing
 
-    private fun invalidSegment(segment: String): String? = when {
-        segment.isBlank() -> segment
-        segment == "." || segment == ".." -> segment
-        segment.contains('/') || segment.contains('?') || segment.contains('#') -> segment
-        else -> null
-    }
+    private fun invalidSegment(segment: String): String? = invalidRpcSegment(segment)
 
     private suspend inline fun <T> guarded(crossinline block: suspend () -> T): Result<T> = try {
         Result.success(block())
@@ -297,4 +292,18 @@ class InsightsSurface(private val api: ServerApi) {
             else -> Unit
         }
     }
+}
+
+/**
+ * Validates an RPC id or method as a URL path segment (issue #17).
+ *
+ * Returns the offending segment if it cannot be used in a URL path, null if valid.
+ * A blank segment, "." or ".." would resolve to the wrong path; a separator ('/', '?', '#')
+ * would break out of the segment and corrupt the request URL.
+ */
+internal fun invalidRpcSegment(segment: String): String? = when {
+    segment.isBlank() -> segment
+    segment == "." || segment == ".." -> segment
+    segment.contains('/') || segment.contains('?') || segment.contains('#') -> segment
+    else -> null
 }
