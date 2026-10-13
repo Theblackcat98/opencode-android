@@ -148,6 +148,9 @@ fun AttachSourceSheet(
                 Text(stringResource(dev.opencode.android.feature.composer.R.string.composer_dismiss))
             }
         },
+        // No confirm action: this is a picker, not a confirmation. M3 requires the slot, so it
+        // stays empty and Dismiss lives in dismissButton where it belongs.
+        confirmButton = {},
     )
 }
 

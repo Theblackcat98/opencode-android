@@ -1,6 +1,5 @@
 package dev.opencode.android.navigation
 
-import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -19,7 +18,6 @@ import dev.opencode.android.feature.sessions.ui.SessionListRoute
  * The home graph: the server picker, the add-server flow, and a server's three top-level
  * screens — home, chat and the session list.
  */
-@Composable
 fun NavGraphBuilder.homeGraph(deps: NavGraphDeps) {
     navigation<HomeGraph>(startDestination = ServersRoute) {
         composable<ServersRoute>(

@@ -1,6 +1,5 @@
 package dev.opencode.android.navigation
 
-import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
@@ -13,7 +12,6 @@ import dev.opencode.android.feature.sessions.ui.SettingsRoute
  * The settings graph: the settings tab and the per-directory manage destinations —
  * accounts, MCP, plugins, providers and web search.
  */
-@Composable
 fun NavGraphBuilder.settingsGraph(deps: NavGraphDeps) {
     val resourceAttachedText = stringResource(IntegrationsR.string.mcp_resource_attached)
     navigation<SettingsGraph>(startDestination = SettingsRoute) {

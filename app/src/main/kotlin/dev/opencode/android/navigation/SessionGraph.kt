@@ -24,7 +24,6 @@ import dev.opencode.android.feature.sessions.ui.SessionTabUi
  * The session graph: a session and everything pushed above it — the review, the file
  * browser, the pending-requests inbox, shells, terminals, subagents, worktrees and project settings.
  */
-@Composable
 fun NavGraphBuilder.sessionGraph(deps: NavGraphDeps) {
     navigation<SessionGraph>(startDestination = SessionRoute) {
         composable<SessionRoute> { entry ->
@@ -186,7 +185,7 @@ fun NavGraphBuilder.sessionGraph(deps: NavGraphDeps) {
             if (listShown) {
                 Row(Modifier.fillMaxSize()) {
                     SessionListPaneHost(
-                        deps.serverDataSets = deps.serverDataSets,
+                        serverDataSets = deps.serverDataSets,
                         untitledTitle = deps.untitledSession,
                         selectedId = route.sessionId,
                         listState = deps.sessionListState,

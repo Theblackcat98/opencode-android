@@ -1,6 +1,5 @@
 package dev.opencode.android.navigation
 
-import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -28,7 +27,6 @@ import kotlinx.coroutines.launch
  * explorer and editor, definitions, catalogs, permissions, instructions, maintenance, the
  * changelog, usage, quick ask, the RPC console and device pairing.
  */
-@Composable
 fun NavGraphBuilder.adminGraph(deps: NavGraphDeps) {
     navigation<AdminGraph>(startDestination = ConfigRoute) {
         composable<ServerStatusRoute> {            ServerStatusScreen(
@@ -136,8 +134,8 @@ fun NavGraphBuilder.adminGraph(deps: NavGraphDeps) {
                 dataSet?.composerCatalogs?.references(directory)?.sync()
             }
             LaunchedEffect(directory) { syncCatalogs() }
-            LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { syncCatalogs() }
             val reloadScope = rememberCoroutineScope()
+            LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { reloadScope.launch { syncCatalogs() } }
             CatalogHost(
                 state = CatalogUiState(
                     tab = tab,
