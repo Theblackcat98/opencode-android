@@ -84,7 +84,15 @@ class RpcConsoleViewModel @Inject constructor(
             set.insights.callRpc(current.rpcID.trim(), current.method.trim(), parsed)
                 .onSuccess { body ->
                     val output = PRETTY.encodeToString(JsonObject.serializer(), body)
-                    _state.value = _state.value.copy(calling = false, output = output)
+                    // Bound the rendered output: a plugin can return megabytes of JSON, which would
+                    // freeze the composition. Truncate with a marker so the cut is visible.
+                    val bounded = if (output.length <= MAX_OUTPUT_CHARS) {
+                        output
+                    } else {
+                        output.take(MAX_OUTPUT_CHARS) +
+                            "\n… [output truncated: ${output.length - MAX_OUTPUT_CHARS} more characters]"
+                    }
+                    _state.value = _state.value.copy(calling = false, output = bounded)
                 }
                 .onFailure { failure ->
                     val error = (failure as? ActionFailure)?.error ?: failure.toActionError()
@@ -99,5 +107,13 @@ class RpcConsoleViewModel @Inject constructor(
 
     private companion object {
         val PRETTY = Json { prettyPrint = true }
+
+        /**
+         * Maximum characters of RPC output rendered (issue #17).
+         *
+         * A plugin method can return an arbitrarily large JSON payload; composing megabytes of text
+         * freezes the UI. Ten thousand characters is several screens of pretty-printed JSON.
+         */
+        const val MAX_OUTPUT_CHARS = 10_000
     }
 }
