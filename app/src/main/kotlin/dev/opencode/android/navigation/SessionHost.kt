@@ -58,6 +58,7 @@ import dev.opencode.android.feature.requests.ui.RequestActions
 import dev.opencode.android.feature.requests.ui.RequestDock
 import dev.opencode.android.feature.requests.ui.messageRes
 import dev.opencode.android.feature.requests.ui.takesArgument
+import dev.opencode.android.R as AppR
 import dev.opencode.android.feature.sessions.R
 import dev.opencode.android.feature.sessions.ui.SessionActionsSheet
 import dev.opencode.android.feature.sessions.ui.SessionLogDialog
@@ -164,7 +165,7 @@ fun SessionHost(
     val clipboard = LocalClipboardManager.current
     val uriHandler = LocalUriHandler.current
     val menu = stringResource(R.string.session_menu)
-    val search = stringResource(R.string.session_command_palette)
+    val search = stringResource(AppR.string.session_command_palette)
     var actionsOpen by rememberSaveable { mutableStateOf(false) }
     var attentionOpen by rememberSaveable { mutableStateOf(false) }
     var historyOpen by rememberSaveable { mutableStateOf(false) }
@@ -183,8 +184,8 @@ fun SessionHost(
     // reverting files is a dangerous action, so it asks).
     var undoTarget by rememberSaveable { mutableStateOf<String?>(null) }
 
-    val cameraUnavailableText = stringResource(R.string.session_camera_unavailable)
-    val attachUnavailableText = stringResource(R.string.session_attach_unavailable)
+    val cameraUnavailableText = stringResource(AppR.string.session_camera_unavailable)
+    val attachUnavailableText = stringResource(AppR.string.session_attach_unavailable)
     val pickAttachment = rememberAttachmentPicker(
         onPicked = composer::attachImage,
         // A missing camera or attach source is a dead end the user should hear about, not a silent close.

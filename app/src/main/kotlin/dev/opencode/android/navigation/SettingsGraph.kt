@@ -13,7 +13,6 @@ import dev.opencode.android.feature.sessions.ui.SettingsRoute
  * accounts, MCP, plugins, providers and web search.
  */
 fun NavGraphBuilder.settingsGraph(deps: NavGraphDeps) {
-    val resourceAttachedText = stringResource(IntegrationsR.string.mcp_resource_attached)
     navigation<SettingsGraph>(startDestination = SettingsRoute) {
         composable<SettingsRoute>(
             enterTransition = { DestinationTransitions.TopLevel.enter },
@@ -40,6 +39,8 @@ fun NavGraphBuilder.settingsGraph(deps: NavGraphDeps) {
 
         composable<McpRoute> { entry ->
             val route = entry.toRoute<McpRoute>()
+            // Read here, not at the graph top level: stringResource needs a @Composable context.
+            val resourceAttachedText = stringResource(IntegrationsR.string.mcp_resource_attached)
             McpHost(
                 directory = route.directory,
                 onNavigateBack = { deps.navController.popBackStack() },
