@@ -16,8 +16,28 @@ on:
       - 'tools/update-screen-flow-shots.mjs'
 
 jobs:
+  # Prefer the self-hosted runner (veritas) when it's online; fall back to
+  # GitHub-hosted otherwise. A queued-forever job is worse than a slower one.
+  pick-runner:
+    runs-on: ubuntu-latest
+    outputs:
+      runner: ${{ steps.pick.outputs.runner }}
+    steps:
+      - id: pick
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          STATUS=$(gh api "repos/${{ github.repository }}/actions/runners" \
+            --jq '.runners[] | select(.name == "veritas") | .status')
+          if [ "$STATUS" = "online" ]; then
+            echo "runner=self-hosted" >> "$GITHUB_OUTPUT"
+          else
+            echo "runner=ubuntu-latest" >> "$GITHUB_OUTPUT"
+          fi
+
   update-screenshots:
-    runs-on: self-hosted
+    needs: pick-runner
+    runs-on: ${{ needs.pick-runner.outputs.runner }}
     permissions:
       contents: write
     steps:
@@ -44,7 +64,11 @@ jobs:
       - name: Install ImageMagick
         run: |
           if ! command -v magick &> /dev/null; then
-            sudo dnf install -y ImageMagick
+            if command -v dnf &> /dev/null; then
+              sudo dnf install -y ImageMagick
+            else
+              sudo apt-get update -qq && sudo apt-get install -y -qq imagemagick
+            fi
           fi
 
       - name: Record Roborazzi screenshots
