@@ -47,15 +47,6 @@ val hasReleaseSigning: Boolean = listOf(
     releaseKeyPassword,
 ).all { it != null }
 
-// Temporary debug for CI failure investigation
-if (System.getenv("CI") == "true") {
-    System.err.println("[DEBUG] releaseStoreFile=${releaseStoreFile} exists=${releaseStoreFile?.exists()}")
-    System.err.println("[DEBUG] releaseStorePassword set=${releaseStorePassword != null}")
-    System.err.println("[DEBUG] releaseKeyAlias set=${releaseKeyAlias != null}")
-    System.err.println("[DEBUG] releaseKeyPassword set=${releaseKeyPassword != null}")
-    System.err.println("[DEBUG] OPENCODE_KEYSTORE env=${System.getenv("OPENCODE_KEYSTORE")}")
-}
-
 android {
     defaultConfig {
         versionCode = 1
