@@ -89,6 +89,43 @@ fun ServersScreen(
     viewModel: ServersViewModel = hiltViewModel(),
 ) {
     val servers by viewModel.servers.collectAsStateWithLifecycle()
+    ServersContent(
+        servers = servers,
+        onAddServerClick = onAddServerClick,
+        onServerClick = onServerClick,
+        onHomeClick = onHomeClick,
+        onEditServerClick = onEditServerClick,
+        onPairAgainClick = onPairAgainClick,
+        onInspectorClick = onInspectorClick,
+        onOpenChangelog = onOpenChangelog,
+        onOpenCommandPalette = onOpenCommandPalette,
+        onSetDefault = viewModel::setDefaultServer,
+        onDelete = viewModel::deleteServer,
+        modifier = modifier,
+    )
+}
+
+/**
+ * The server registry for a given [servers] list, with no view model behind it.
+ *
+ * Separate from [ServersScreen] so a screenshot can stand in for the repository flow.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ServersContent(
+    servers: List<ServerProfile>,
+    onAddServerClick: () -> Unit,
+    onServerClick: (String) -> Unit,
+    onHomeClick: (String) -> Unit,
+    onEditServerClick: (String) -> Unit,
+    onPairAgainClick: (String) -> Unit,
+    onInspectorClick: () -> Unit,
+    onOpenChangelog: (() -> Unit)? = null,
+    onOpenCommandPalette: (() -> Unit)? = null,
+    onSetDefault: (String) -> Unit,
+    onDelete: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
     var serverToDelete by remember { mutableStateOf<ServerProfile?>(null) }
     val inspectorLabel = stringResource(R.string.inspector_title)
     val changelogLabel = stringResource(R.string.servers_changelog)
@@ -167,7 +204,7 @@ fun ServersScreen(
                         onStatus = { onServerClick(server.id) },
                         onHome = { onHomeClick(server.id) },
                         onEdit = { onEditServerClick(server.id) },
-                        onSetDefault = { viewModel.setDefaultServer(server.id) },
+                        onSetDefault = { onSetDefault(server.id) },
                         onPairAgain = { onPairAgainClick(server.id) },
                         onDelete = { serverToDelete = server },
                     )
@@ -186,7 +223,7 @@ fun ServersScreen(
             confirmButton = {
                 TextButton(
                     onClick = {
-                        viewModel.deleteServer(server.id)
+                        onDelete(server.id)
                         serverToDelete = null
                     },
                 ) {

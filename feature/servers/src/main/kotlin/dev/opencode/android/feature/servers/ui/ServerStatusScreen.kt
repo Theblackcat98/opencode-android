@@ -77,9 +77,57 @@ fun ServerStatusScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val hostState by host.state.collectAsStateWithLifecycle()
-    val profile = uiState.profile
 
     LaunchedEffect(Unit) { host.open() }
+
+    ServerStatusContent(
+        uiState = uiState,
+        hostState = hostState,
+        onNavigateBack = onNavigateBack,
+        onEditServer = onEditServer,
+        onOpenInspector = onOpenInspector,
+        onPairAgain = onPairAgain,
+        onTestConnection = viewModel::testConnection,
+        onReconnect = viewModel::reconnectNow,
+        onSetDefault = viewModel::setDefault,
+        onClearLogs = viewModel::clearLogs,
+        onClearCheckError = viewModel::clearCheckError,
+        onRequestShutdown = host::requestShutdown,
+        onCancelShutdown = host::cancelShutdown,
+        onConfirmShutdown = host::confirmShutdown,
+        onHandoff = host::handoff,
+        onDismissNotice = host::dismissNotice,
+        modifier = modifier,
+    )
+}
+
+/**
+ * Everything known about one server for a given [uiState], with no view model behind it.
+ *
+ * Separate from [ServerStatusScreen] so a screenshot can stand in for the live connection state.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ServerStatusContent(
+    uiState: ServerStatusUiState,
+    hostState: HostLifecycleState,
+    onNavigateBack: () -> Unit,
+    onEditServer: (String) -> Unit,
+    onOpenInspector: (String) -> Unit,
+    onPairAgain: (String) -> Unit,
+    onTestConnection: () -> Unit,
+    onReconnect: () -> Unit,
+    onSetDefault: () -> Unit,
+    onClearLogs: () -> Unit,
+    onClearCheckError: () -> Unit,
+    onRequestShutdown: () -> Unit,
+    onCancelShutdown: () -> Unit,
+    onConfirmShutdown: () -> Unit,
+    onHandoff: () -> Unit,
+    onDismissNotice: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val profile = uiState.profile
 
     Scaffold(
         modifier = modifier.testTag(ServerStatusTags.SCREEN),
@@ -130,10 +178,10 @@ fun ServerStatusScreen(
                 item(key = "header") {
                     StatusHeaderCard(
                         uiState = uiState,
-                        onTest = viewModel::testConnection,
-                        onReconnect = viewModel::reconnectNow,
+                        onTest = onTestConnection,
+                        onReconnect = onReconnect,
                         onEdit = { onEditServer(profile.id) },
-                        onSetDefault = viewModel::setDefault,
+                        onSetDefault = onSetDefault,
                     )
                 }
 
@@ -153,11 +201,11 @@ fun ServerStatusScreen(
                 item(key = "host-lifecycle") {
                     HostLifecycleCard(
                         state = hostState,
-                        onRequestShutdown = host::requestShutdown,
-                        onCancelShutdown = host::cancelShutdown,
-                        onConfirmShutdown = host::confirmShutdown,
-                        onHandoff = host::handoff,
-                        onDismissNotice = host::dismissNotice,
+                        onRequestShutdown = onRequestShutdown,
+                        onCancelShutdown = onCancelShutdown,
+                        onConfirmShutdown = onConfirmShutdown,
+                        onHandoff = onHandoff,
+                        onDismissNotice = onDismissNotice,
                     )
                 }
 
@@ -174,7 +222,7 @@ fun ServerStatusScreen(
                             style = MaterialTheme.typography.titleMedium,
                         )
                         if (uiState.connectionLogs.isNotEmpty()) {
-                            TextButton(onClick = viewModel::clearLogs) {
+                            TextButton(onClick = onClearLogs) {
                                 Text(stringResource(R.string.status_clear_logs))
                             }
                         }
@@ -202,13 +250,13 @@ fun ServerStatusScreen(
             error = error,
             technicalDetail = uiState.checkTechnicalDetail,
             onPairAgain = {
-                viewModel.clearCheckError()
+                onClearCheckError()
                 if (currentProfile != null) onPairAgain(currentProfile.id)
             },
-            onDismiss = viewModel::clearCheckError,
+            onDismiss = onClearCheckError,
             onEditServer = if (currentProfile != null) {
                 {
-                    viewModel.clearCheckError()
+                    onClearCheckError()
                     onEditServer(currentProfile.id)
                 }
             } else {
