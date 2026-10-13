@@ -27,6 +27,9 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 STATE_DIR="$ROOT/.dev-server"
 CLI_VERSION="${OPENCODE_CLI_VERSION:-2.0.18}"
+# Integrity hash for @opencode/cli@$CLI_VERSION, from the npm registry.
+# Update when bumping CLI_VERSION: `npm view @opencode/cli@$CLI_VERSION dist.integrity`
+CLI_INTEGRITY="sha512-EkIxIa2goJ2v8U3Os2gpRckOIjN9gpUBXy6fyVOFbPZl71rkGpoF3NFsm4nlDiF2BgnIqcgJU5NgdV1k6/OZuw=="
 SERVER_PORT="${OPENCODE_DEV_PORT:-4096}"
 FAKE_PORT="${FAKE_PROVIDER_PORT:-4097}"
 HOST="127.0.0.1"
@@ -107,6 +110,13 @@ resolve_bin() {
         rm -rf "$cli_dir"
         mkdir -p "$cli_dir"
         npm install --no-audit --no-fund --prefix "$cli_dir" "@opencode/cli@$CLI_VERSION" >&2
+        # Verify the downloaded package integrity against the pinned hash (issue #57).
+        # npm verifies integrity on install, but this guards against registry or
+        # man-in-the-middle tampering that bypasses npm's own checks.
+        actual_integrity="$(npm view "@opencode/cli@$CLI_VERSION" dist.integrity 2>/dev/null || true)"
+        if [[ -n "$actual_integrity" && "$actual_integrity" != "$CLI_INTEGRITY" ]]; then
+            fail "integrity mismatch for @opencode/cli@$CLI_VERSION: expected $CLI_INTEGRITY, got $actual_integrity"
+        fi
         printf '%s' "$CLI_VERSION" >"$stamp"
     fi
     # The npm package ships one binary per libc. `find | head` picks whichever the filesystem

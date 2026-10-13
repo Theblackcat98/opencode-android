@@ -229,8 +229,16 @@ phases that reuse it get cheaper as a result.
 | P8 | Integrations | OAuth, key and command login flows, MCP and plugin management | P9 | Complete |
 | P9 | Configuration | Config explorer and validated file editor | P10 | Complete |
 | P10 | Insights and release | Stats, RPC console, TUI control, session log, adaptive polish, release pipeline | n/a | Complete |
+| P11 | Remaining work | Tracked in GitHub issues, not in this plan | n/a | Open |
 
 Relative size: S is small, M is medium, L is large.
+
+**Phase 11 (remaining work).** The P0–P10 plan is complete. Remaining work is tracked as
+GitHub issues, labeled `no-device` (verifiable with unit tests + CI) or `needs-device`
+(requires on-device testing). Manual verification status lives in
+`docs/MANUAL_TEST_MATRIX.md`, which honestly records what was tested on the single
+API 36 emulator vs what remains unverified on physical hardware. PR #2 (which proposed
+a Phase 11 plan) was closed without merge; this section supersedes it.
 
 ---
 
