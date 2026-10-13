@@ -54,6 +54,8 @@ if ! env \
   OPENCODE_KEY_PASSWORD="$KEY_PASSWORD" \
   "$ROOT/gradlew" :app:verifyPublishableRelease --no-daemon --no-configuration-cache --console=plain >>"$LOG" 2>&1; then
   printf 'verifyPublishableRelease unexpectedly failed with ephemeral signing material\n' >&2
+  printf 'Keystore file: %s (exists: ' "$KEYSTORE" >&2
+  [[ -f "$KEYSTORE" ]] && echo "yes)" >&2 || echo "no)" >&2
   cat "$LOG" >&2
   exit 1
 fi
