@@ -16,32 +16,13 @@ on:
       - 'tools/update-screen-flow-shots.mjs'
 
 permissions:
-  actions: read
   contents: write
 
 jobs:
-  # Prefer the self-hosted runner (veritas) when it's online; fall back to
-  # GitHub-hosted otherwise. A queued-forever job is worse than a slower one.
-  pick-runner:
-    runs-on: ubuntu-latest
-    outputs:
-      runner: ${{ steps.pick.outputs.runner }}
-    steps:
-      - id: pick
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          STATUS=$(gh api "repos/${{ github.repository }}/actions/runners" \
-            --jq '.runners[] | select(.name == "veritas") | .status')
-          if [ "$STATUS" = "online" ]; then
-            echo "runner=self-hosted" >> "$GITHUB_OUTPUT"
-          else
-            echo "runner=ubuntu-latest" >> "$GITHUB_OUTPUT"
-          fi
-
   update-screenshots:
-    needs: pick-runner
-    runs-on: ${{ needs.pick-runner.outputs.runner }}
+    # Set the USE_SELF_HOSTED repo variable to 'true' to prefer veritas when
+    # it's online; anything else (or unset) uses GitHub-hosted runners.
+    runs-on: ${{ vars.USE_SELF_HOSTED == 'true' && 'self-hosted' || 'ubuntu-latest' }}
     permissions:
       contents: write
     steps:
