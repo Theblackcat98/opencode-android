@@ -350,10 +350,13 @@ class LiveReviewIntegrationTest {
         // Verified live: the harness work directory sits inside this repository, so `vcs.get` really
         // does report a branch — and `vcs.base` really does answer `503 Choose a review base`,
         // because the server cannot infer a review base for a branch with no mainline of its own.
-        if (vcs.state.value.isRepository) {
+        // Detached HEAD (CI's PR checkouts) legitimately reports no branch; the assertion only
+        // applies when git can name one.
+        val info = vcs.state.value
+        if (info.isRepository && (info.branch != null || info.defaultBranch != null)) {
             assertNotNull(
-                "a repository has a current or a default branch: ${vcs.state.value.info}",
-                vcs.state.value.branch ?: vcs.state.value.defaultBranch,
+                "a repository has a current or a default branch: ${info.info}",
+                info.branch ?: info.defaultBranch,
             )
         }
     }
