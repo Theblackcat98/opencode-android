@@ -355,6 +355,31 @@ class AdminScreenshotTest {
         )
     }
 
+    // ------------------------------------------------------------------ docs screen flow
+
+    /**
+     * Captures for `docs/app_screen_flow.html`, one per flow node. The `docs-screen-` prefix keeps
+     * these baselines separate from the phase-9 coverage above; the update script maps node IDs to
+     * these files. Same placeholder-data discipline as the rest of this file.
+     */
+    @Test
+    fun docsScreenConfig() = capture("docs-screen-config") { ConfigScreenFixture(configState()) }
+
+    @Test
+    fun docsScreenCatalog() = capture("docs-screen-catalog") {
+        CatalogScreenFixture(catalogState(AdminCatalog.AGENTS))
+    }
+
+    @Test
+    fun docsScreenPermissions() = capture("docs-screen-permissions") {
+        PermissionsScreenFixture(permissionsState())
+    }
+
+    @Test
+    fun docsScreenMaintenance() = capture("docs-screen-maintenance") {
+        MaintenanceScreenFixture(maintenanceState())
+    }
+
     // ------------------------------------------------------------------ instructions
 
     @Test

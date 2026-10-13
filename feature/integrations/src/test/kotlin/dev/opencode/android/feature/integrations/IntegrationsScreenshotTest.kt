@@ -214,6 +214,29 @@ class IntegrationsScreenshotTest {
     @Test
     fun webSearchResults() = capture("websearch-results") { WebSearchScreenFixture(webSearchState()) }
 
+    // ------------------------------------------------------------------ docs screen flow
+
+    /**
+     * Captures for `docs/app_screen_flow.html`, one per flow node. The `docs-screen-` prefix keeps
+     * these baselines separate from the phase-8 coverage above; the update script maps node IDs to
+     * these files. Same fake-data discipline as the rest of this file: placeholders only, never
+     * real credentials.
+     */
+    @Test
+    fun docsScreenConnect() = capture("docs-screen-connect") { ConnectScreenFixture(connectState()) }
+
+    @Test
+    fun docsScreenProviders() = capture("docs-screen-providers") { ProvidersScreenFixture(providersState()) }
+
+    @Test
+    fun docsScreenMcp() = capture("docs-screen-mcp") { McpScreenFixture(mcpState()) }
+
+    @Test
+    fun docsScreenPlugins() = capture("docs-screen-plugins") { PluginsScreenFixture(pluginsState()) }
+
+    @Test
+    fun docsScreenWebSearch() = capture("docs-screen-web_search") { WebSearchScreenFixture(webSearchState()) }
+
     // ------------------------------------------------------------------ fixtures
 
     private fun connectState(
