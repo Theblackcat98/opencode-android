@@ -11,4 +11,5 @@ dependencies {
     // do. The set's on-device cache is `core:database`'s interface, which the data layer keeps off this classpath.
     testImplementation(projects.core.database)
     testImplementation(libs.okhttp.mockwebserver)
+    testImplementation(libs.robolectric)
 }
