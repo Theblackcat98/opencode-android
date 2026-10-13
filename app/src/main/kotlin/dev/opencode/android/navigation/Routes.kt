@@ -470,7 +470,7 @@ fun OpenCodeApp(
         Column(Modifier.fillMaxSize()) {
             NavHost(
                 navController = navController,
-                startDestination = ServersRoute,
+                startDestination = HomeGraph,
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth()

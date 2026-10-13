@@ -13,7 +13,7 @@ import dev.opencode.android.feature.sessions.ui.SettingsRoute
  * accounts, MCP, plugins, providers and web search.
  */
 fun NavGraphBuilder.settingsGraph(deps: NavGraphDeps) {
-    navigation<SettingsGraph>(startDestination = SettingsRoute) {
+    navigation<SettingsGraph>(startDestination = SettingsRoute::class) {
         composable<SettingsRoute>(
             enterTransition = { DestinationTransitions.TopLevel.enter },
             exitTransition = { DestinationTransitions.TopLevel.exit },

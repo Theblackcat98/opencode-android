@@ -28,7 +28,7 @@ import kotlinx.coroutines.launch
  * changelog, usage, quick ask, the RPC console and device pairing.
  */
 fun NavGraphBuilder.adminGraph(deps: NavGraphDeps) {
-    navigation<AdminGraph>(startDestination = ConfigRoute) {
+    navigation<AdminGraph>(startDestination = ConfigRoute::class) {
         composable<ServerStatusRoute> {            ServerStatusScreen(
                 onNavigateBack = { deps.navController.popBackStack() },
                 onEditServer = { serverId -> deps.navController.navigate(EditServerRoute(serverId)) { launchSingleTop = true } },
