@@ -147,6 +147,35 @@ class PtySocketTest {
     }
 
     @Test
+    fun `an oversized binary frame is dropped before decoding and is counted`() {
+        val decoder = PtyFrameDecoder()
+        // One byte over the cap, so the check fires without allocating a 128 KiB string in the test.
+        val frame = ByteArray(PtyFrameDecoder.MAX_FRAME_BYTES + 1) { 'x'.code.toByte() }
+        assertEquals(emptyList<PtyFrame>(), decoder.decode(frame))
+        assertEquals(1L, decoder.oversizedFrames.value)
+        // A frame at exactly the cap still decodes: the bound is inclusive.
+        val atCap = ByteArray(PtyFrameDecoder.MAX_FRAME_BYTES) { 'y'.code.toByte() }
+        assertEquals(1, decoder.decode(atCap).size)
+        assertEquals(1L, decoder.oversizedFrames.value)
+    }
+
+    @Test
+    fun `an oversized text frame is dropped before the second allocation and is counted`() {
+        val decoder = PtyFrameDecoder()
+        val text = "z".repeat(PtyFrameDecoder.MAX_FRAME_BYTES + 1)
+        assertEquals(emptyList<PtyFrame>(), decoder.decode(text))
+        assertEquals(1L, decoder.oversizedFrames.value)
+    }
+
+    @Test
+    fun `repeated oversized frames are each counted`() {
+        val decoder = PtyFrameDecoder()
+        val frame = ByteArray(PtyFrameDecoder.MAX_FRAME_BYTES + 100) { 0 }
+        repeat(5) { decoder.decode(frame) }
+        assertEquals(5L, decoder.oversizedFrames.value)
+    }
+
+    @Test
     fun `the replay chunk size is the protocol's 64 KiB`() {
         assertEquals(65_536, PtyFrameDecoder.REPLAY_CHUNK_BYTES)
     }
@@ -352,6 +381,30 @@ class PtySocketTest {
         assertEquals(500L, PtySocket.defaultBackoff(2))
         assertEquals(2_000L, PtySocket.defaultBackoff(4))
         assertEquals(10_000L, PtySocket.defaultBackoff(20))
+    }
+
+    @Test
+    fun `frames dropped when the consumer cannot keep up are counted`() = runBlocking {
+        serveWebSocket()
+        val socket = socket()
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        try {
+            socket.open(scope)
+            val peer = awaitPeer()
+            // No collector is attached, so the 64-frame buffer fills and the rest drop.
+            // Each send is a separate WebSocket message, decoded and offered to the buffer.
+            repeat(PtySocket.OUTPUT_BUFFER + 10) { i ->
+                peer.send("frame-$i")
+            }
+            // Give the listener's dispatch a moment to run on OkHttp's threads.
+            val dropped = awaitValue("dropped frames") {
+                socket.droppedFrames.value.takeIf { it > 0 }
+            }
+            assertTrue("expected drops, got $dropped", dropped > 0)
+        } finally {
+            socket.close()
+            scope.cancel()
+        }
     }
 
     private fun PtySocket.socketUrlForTest(): String = socketUrl()
