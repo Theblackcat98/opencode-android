@@ -4,6 +4,8 @@ Native Android client for [OpenCode](https://opencode.ai) **V2** (`@opencode/cli
 
 **The build is the source of truth, not the documents.** This repo asserts claims with gates rather than prose, and several documents are parsed by tooling. When docs and a script disagree, the script wins — and a document that is wrong is a bug to fix, not to work around.
 
+**Tooling index.** `tools/` holds the audit gates, fixture recorders, and docs generators; `scripts/` holds the dev-server and SDK harnesses. Each folder has its own `AGENTS.md` with the full per-script table — read that before grepping for what a script does.
+
 ## Verify in two tiers
 
 **Fast gates** — Node, no Gradle, no network, ~1s each. Run these first and after every contract change:
