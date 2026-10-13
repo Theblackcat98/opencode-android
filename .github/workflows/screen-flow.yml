@@ -15,6 +15,10 @@ on:
       - 'app/src/main/**'
       - 'tools/update-screen-flow-shots.mjs'
 
+permissions:
+  actions: read
+  contents: write
+
 jobs:
   # Prefer the self-hosted runner (veritas) when it's online; fall back to
   # GitHub-hosted otherwise. A queued-forever job is worse than a slower one.

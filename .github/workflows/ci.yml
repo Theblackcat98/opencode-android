@@ -10,6 +10,9 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  actions: read
+
 jobs:
   # Prefer the self-hosted runner (veritas) when it's online; fall back to
   # GitHub-hosted otherwise. A queued-forever job is worse than a slower one.
