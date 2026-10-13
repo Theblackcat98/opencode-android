@@ -5,7 +5,9 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
@@ -17,6 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
 
 /**
  * Quick ask: one prompt, one answer, and nothing kept (matrix H5).
@@ -34,8 +37,8 @@ fun QuickAskScreen(
     modifier: Modifier = Modifier,
 ) {
     Column(
-        modifier = modifier.fillMaxSize().padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        modifier = modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(OpenCodeThemeExtras.spacing.lg),
+        verticalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.md),
     ) {
         if (!state.available) {
             Text(stringResource(R.string.quick_ask_absent), style = MaterialTheme.typography.bodyMedium)
@@ -81,7 +84,7 @@ fun QuickAskScreen(
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.sm),
             ) {
                 CircularProgressIndicator()
                 Text(stringResource(R.string.quick_ask_asking), style = MaterialTheme.typography.bodyMedium)
@@ -92,7 +95,7 @@ fun QuickAskScreen(
 
         state.answer?.let { answer ->
             Card(modifier = Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(16.dp)) {
+                Column(Modifier.padding(OpenCodeThemeExtras.spacing.lg)) {
                     Text(stringResource(R.string.quick_ask_answer), style = MaterialTheme.typography.titleSmall)
                     SelectionContainer {
                         Text(answer, style = MaterialTheme.typography.bodyLarge)

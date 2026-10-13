@@ -17,6 +17,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import dev.opencode.android.core.data.repository.ServerHealth
+import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
 import dev.opencode.android.feature.servers.R
 
 /**
@@ -94,7 +95,7 @@ private fun Badge(
     Box(
         modifier = modifier
             .background(container, RoundedCornerShape(4.dp))
-            .padding(horizontal = 6.dp, vertical = 2.dp)
+            .padding(horizontal = 6.dp, vertical = OpenCodeThemeExtras.spacing.xxs)
             .then(semanticsModifier),
     ) {
         Text(text = text, style = MaterialTheme.typography.labelSmall, color = content)

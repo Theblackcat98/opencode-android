@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -29,10 +30,8 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Comment
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DoneAll
-import androidx.compose.material.icons.filled.FirstPage
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.InsertDriveFile
-import androidx.compose.material.icons.filled.LastPage
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Badge
@@ -68,6 +67,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import dev.opencode.android.core.data.action.ActionError
 import dev.opencode.android.core.data.review.DiffHunk
 import dev.opencode.android.core.data.review.DiffLine
 import dev.opencode.android.core.data.review.DiffLineKind
@@ -116,11 +116,11 @@ fun ReviewScreen(
     onSelectBase: (String?) -> Unit,
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier,
-    contentDescription: String? = null,
     onOpenFiles: () -> Unit = {},
     onOpenTree: () -> Unit = {},
     onOpenComments: () -> Unit = {},
     onRemoveComment: (Int) -> Unit = {},
+    onRetry: () -> Unit = {},
 ) {
     val colors = DiffColors.of()
     var menuOpen by remember { mutableStateOf(false) }
@@ -182,6 +182,16 @@ fun ReviewScreen(
         }
 
         FileSelector(state = state, onOpenTree = onOpenTree, onToggleReviewed = onToggleReviewed)
+
+        // A failed load must not masquerade as a clean review: the two "empty for a reason" errors
+        // keep their empty messages below, and anything else gets an error with a retry.
+        val loadError = state.error?.takeUnless { error ->
+            error.message == REVIEW_STORE_NO_SESSION || error.message == REVIEW_STORE_NO_LOCATION
+        }
+        if (loadError != null) {
+            ReviewLoadError(error = loadError, onRetry = onRetry)
+            return@Column
+        }
 
         if (state.isEmpty) {
             Text(
@@ -292,11 +302,11 @@ fun CommentListContent(
     onRemove: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier = modifier.fillMaxWidth().padding(bottom = 24.dp)) {
+    Column(modifier = modifier.fillMaxWidth().padding(bottom = OpenCodeThemeExtras.spacing.xl)) {
         Text(
             text = stringResource(R.string.review_comment_count, comments.size),
             style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            modifier = Modifier.padding(horizontal = OpenCodeThemeExtras.spacing.lg, vertical = OpenCodeThemeExtras.spacing.sm),
         )
         HorizontalDivider()
         comments.forEachIndexed { index, comment ->
@@ -323,17 +333,17 @@ fun FileTreeContent(
     onOpenFile: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier = modifier.fillMaxWidth().padding(bottom = 24.dp)) {
+    Column(modifier = modifier.fillMaxWidth().padding(bottom = OpenCodeThemeExtras.spacing.xl)) {
         Text(
             text = stringResource(R.string.review_file_tree),
             style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            modifier = Modifier.padding(horizontal = OpenCodeThemeExtras.spacing.lg, vertical = OpenCodeThemeExtras.spacing.sm),
         )
         Text(
             text = stringResource(R.string.review_progress, state.reviewed.size, state.files.size),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(horizontal = 16.dp),
+            modifier = Modifier.padding(horizontal = OpenCodeThemeExtras.spacing.lg),
         )
         HorizontalDivider()
         ReviewFileTree(state = state, onOpenFile = onOpenFile)
@@ -345,7 +355,7 @@ fun FileTreeContent(
 private fun ScopeRow(state: ReviewUiState, onSelectScope: (ReviewScope) -> Unit, onOpenBasePicker: () -> Unit) {
     LazyRow(
         modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
-        contentPadding = PaddingValues(horizontal = 12.dp),
+        contentPadding = PaddingValues(horizontal = OpenCodeThemeExtras.spacing.md),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         items(state.scopes, key = { it.id }) { scope ->
@@ -386,10 +396,11 @@ private fun vcsSummary(state: ReviewUiState): String = if (state.vcs.isRepositor
  */
 @Composable
 private fun FileSelector(state: ReviewUiState, onOpenTree: () -> Unit, onToggleReviewed: () -> Unit) {
+    val spacing = OpenCodeThemeExtras.spacing
     val file = state.currentFile
     val index = file?.let { current -> state.files.indexOfFirst { it.file == current.file } } ?: -1
     Row(
-        modifier = Modifier.fillMaxWidth().padding(start = 12.dp, end = 4.dp, bottom = 4.dp),
+        modifier = Modifier.fillMaxWidth().padding(start = spacing.md, end = spacing.xs, bottom = spacing.xs),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Surface(
@@ -399,7 +410,7 @@ private fun FileSelector(state: ReviewUiState, onOpenTree: () -> Unit, onToggleR
             modifier = Modifier.weight(1f),
         ) {
             Row(
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                modifier = Modifier.padding(horizontal = spacing.md, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 if (index >= 0 && state.files.size > 1) {
@@ -433,10 +444,10 @@ private fun FileSelector(state: ReviewUiState, onOpenTree: () -> Unit, onToggleR
                 modifier = Modifier
                     .toggleable(value = state.currentReviewed, role = Role.Checkbox, onValueChange = { onToggleReviewed() })
                     .semantics(mergeDescendants = true) { contentDescription = progress }
-                    .padding(start = 4.dp),
+                    .padding(start = spacing.xs),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Checkbox(checked = state.currentReviewed, onCheckedChange = null, modifier = Modifier.padding(12.dp))
+                Checkbox(checked = state.currentReviewed, onCheckedChange = null, modifier = Modifier.padding(spacing.md))
             }
         }
     }
@@ -454,13 +465,16 @@ private fun ReviewNavigationBar(
     onPreviousHunk: () -> Unit,
     onNextHunk: () -> Unit,
 ) {
+    val spacing = OpenCodeThemeExtras.spacing
     Surface(color = MaterialTheme.colorScheme.surfaceContainerLow) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 2.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = spacing.xs, vertical = spacing.xxs),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            // File steps use the same chevrons as the hunk steps: FirstPage/LastPage read as
+            // "jump to the ends", not "previous/next".
             IconButton(onClick = onPreviousFile, enabled = severalFiles) {
-                Icon(Icons.Filled.FirstPage, stringResource(R.string.review_previous_file))
+                Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, stringResource(R.string.review_previous_file))
             }
             TextButton(onClick = onPreviousHunk, modifier = Modifier.weight(1f)) {
                 Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = null)
@@ -471,7 +485,7 @@ private fun ReviewNavigationBar(
                 Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)
             }
             IconButton(onClick = onNextFile, enabled = severalFiles) {
-                Icon(Icons.Filled.LastPage, stringResource(R.string.review_next_file))
+                Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, stringResource(R.string.review_next_file))
             }
         }
     }
@@ -497,7 +511,7 @@ private fun DiffBody(
             text = stringResource(R.string.review_empty),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = modifier.padding(16.dp),
+            modifier = modifier.padding(OpenCodeThemeExtras.spacing.lg),
         )
         return
     }
@@ -506,7 +520,7 @@ private fun DiffBody(
             text = stringResource(R.string.review_file_binary),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = modifier.padding(16.dp),
+            modifier = modifier.padding(OpenCodeThemeExtras.spacing.lg),
         )
         return
     }
@@ -538,7 +552,7 @@ private fun DiffBody(
                         text = line,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.padding(horizontal = 8.dp),
+                        modifier = Modifier.padding(horizontal = OpenCodeThemeExtras.spacing.sm),
                     )
                 }
             }
@@ -546,7 +560,6 @@ private fun DiffBody(
                 item(key = row.key) {
                     DiffRowView(
                         row = row.row,
-                        key = row.key,
                         colors = colors,
                         wrap = state.wrap,
                         language = language,
@@ -647,6 +660,27 @@ internal fun ReviewScope.labelRes(): Int = when (this) {
     ReviewScope.All -> R.string.review_scope_all
 }
 
+/**
+ * A failed diff load, which must not look like a clean review. The message is the failure's own
+ * words; the retry re-runs the load.
+ */
+@Composable
+private fun ReviewLoadError(error: ActionError, onRetry: () -> Unit, modifier: Modifier = Modifier) {
+    val spacing = OpenCodeThemeExtras.spacing
+    Surface(
+        modifier = modifier.fillMaxWidth().padding(spacing.lg),
+        color = MaterialTheme.colorScheme.errorContainer,
+        contentColor = MaterialTheme.colorScheme.onErrorContainer,
+        shape = MaterialTheme.shapes.medium,
+    ) {
+        Column(modifier = Modifier.padding(spacing.lg), verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
+            Text(text = stringResource(R.string.review_load_failed), style = MaterialTheme.typography.titleSmall)
+            Text(text = error.message, style = MaterialTheme.typography.bodyMedium)
+            TextButton(onClick = onRetry) { Text(stringResource(R.string.action_retry)) }
+        }
+    }
+}
+
 /** The sentence for an empty review, which differs by scope because the reasons differ. */
 @Composable
 internal fun emptyMessage(state: ReviewUiState): String = when {
@@ -703,14 +737,16 @@ private fun FileTreeRow(
     onOpenFile: (String) -> Unit,
 ) {
     val background = if (current) MaterialTheme.colorScheme.secondaryContainer else androidx.compose.ui.graphics.Color.Transparent
+    val directoryDesc = stringResource(R.string.review_tree_directory_desc, node.name)
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .defaultMinSize(minHeight = 48.dp)
             .background(background)
-            .clickable(enabled = !node.isDirectory) { onOpenFile(node.path) }
-            .padding(horizontal = 12.dp, vertical = 8.dp)
+            .clickable(enabled = !node.isDirectory, role = Role.Button) { onOpenFile(node.path) }
+            .padding(horizontal = OpenCodeThemeExtras.spacing.md, vertical = OpenCodeThemeExtras.spacing.sm)
             .semantics {
-                contentDescription = node.name + if (node.isDirectory) ", directory" else ""
+                contentDescription = if (node.isDirectory) directoryDesc else node.name
             },
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -725,7 +761,7 @@ private fun FileTreeRow(
             style = MaterialTheme.typography.bodyMedium,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f).padding(start = 8.dp),
+            modifier = Modifier.weight(1f).padding(start = OpenCodeThemeExtras.spacing.sm),
         )
         if (reviewed) {
             Icon(

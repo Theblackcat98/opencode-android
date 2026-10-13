@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -20,7 +21,6 @@ import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -36,6 +36,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
@@ -43,6 +44,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.opencode.android.core.designsystem.format.Formatters
 import dev.opencode.android.core.designsystem.text.SyncedTextField
+import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
 import dev.opencode.android.core.model.FileSystemEntry
 import dev.opencode.android.core.model.ModelRef
 import dev.opencode.android.feature.composer.R
@@ -187,14 +189,15 @@ private fun NewSessionForm(
     onSelectModel: (ModelRef) -> Unit,
     onModelSearchChange: (String) -> Unit,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.sm)) {
         Text(stringResource(R.string.new_session_title), style = MaterialTheme.typography.titleMedium)
         SyncedTextField(
             value = state.title,
             onValueChange = onTitleChange,
             label = { Text(stringResource(R.string.new_session_title_hint)) },
             singleLine = true,
-            keyboardOptions = KeyboardOptions.Default,
+            // Next moves to the path field below; the sheet is a short form, not a chat box.
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
             modifier = Modifier.fillMaxWidth(),
         )
         LocationSection(state, onSelectProject, onSelectDirectory, onOpenBrowser, onPathDraftChange, onPathCommit)
@@ -215,7 +218,7 @@ private fun LocationSection(
 ) {
     val draft = state.pathDraft.trim()
     val draftValid = isAbsoluteServerPath(draft)
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.xs)) {
         Text(
             text = stringResource(R.string.new_session_where),
             style = MaterialTheme.typography.titleSmall,
@@ -297,11 +300,15 @@ private fun LocationSection(
 @Composable
 private fun LocationRow(title: String, subtitle: String, selected: Boolean, onClick: () -> Unit) {
     Row(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 4.dp),
+        // A radio option, not a generic tap target: TalkBack announces the checked state.
+        modifier = Modifier
+            .fillMaxWidth()
+            .selectable(selected = selected, onClick = onClick, role = Role.RadioButton)
+            .padding(vertical = OpenCodeThemeExtras.spacing.xs),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         RadioButton(selected = selected, onClick = null)
-        Column(Modifier.padding(start = 8.dp)) {
+        Column(Modifier.padding(start = OpenCodeThemeExtras.spacing.sm)) {
             Text(title, style = MaterialTheme.typography.bodyMedium)
             Text(
                 text = subtitle,
@@ -317,7 +324,7 @@ private fun LocationRow(title: String, subtitle: String, selected: Boolean, onCl
 /** The agent, with its description. An empty list means the server decides. */
 @Composable
 private fun AgentSection(state: NewSessionUiState, onSelectAgent: (String) -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.xs)) {
         ModelSectionHeader(stringResource(R.string.new_session_agent))
         if (state.primaryAgents.isEmpty()) {
             Text(
@@ -350,7 +357,7 @@ private fun ModelSection(
     onSelectModel: (ModelRef) -> Unit,
 ) {
     val groups = state.modelGroups(favorites, recents, search)
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.xs)) {
         ModelSectionHeader(stringResource(R.string.new_session_model))
         // A server can list a hundred models across a dozen providers, so finding one by scrolling is the
         // slow way; the filter is the same one the model picker applies.
@@ -377,7 +384,7 @@ private fun ModelSection(
                 text = group.providerID,
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(start = 16.dp, top = 4.dp),
+                modifier = Modifier.padding(start = OpenCodeThemeExtras.spacing.lg, top = OpenCodeThemeExtras.spacing.xs),
             )
             group.entries.forEach { entry ->
                 val current = state.model
@@ -417,8 +424,8 @@ fun DirectoryBrowser(
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState, modifier = modifier) {
         Column(
-            Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
+            Modifier.fillMaxWidth().padding(horizontal = OpenCodeThemeExtras.spacing.lg).padding(bottom = OpenCodeThemeExtras.spacing.xl),
+            verticalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.xs),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = onUp) {
@@ -437,7 +444,7 @@ fun DirectoryBrowser(
             HorizontalDivider()
             if (state.browserLoading) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    CircularProgressIndicator(Modifier.padding(8.dp))
+                    CircularProgressIndicator(Modifier.padding(OpenCodeThemeExtras.spacing.sm))
                     Text(stringResource(R.string.new_session_browse_loading))
                 }
             } else if (state.entries.isEmpty()) {
@@ -484,8 +491,4 @@ private fun BrowserRow(entry: FileSystemEntry, onClick: () -> Unit) {
     )
 }
 
-/** A filter chip reused by the model picker; kept here so the sheet and the picker agree. */
-@Composable
-fun VariantChip(variant: String, selected: Boolean, onClick: () -> Unit) {
-    FilterChip(selected = selected, onClick = onClick, label = { Text(variant) })
-}
+

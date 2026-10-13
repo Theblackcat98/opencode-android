@@ -1,14 +1,23 @@
 package dev.opencode.android.navigation
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.SearchOff
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -32,12 +41,15 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.role
-import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import dev.opencode.android.R
+import dev.opencode.android.core.designsystem.component.OpenCodeEmptyState
+import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
 
 /**
  * The command palette: a search field over the commands the app can run from here.
@@ -49,6 +61,8 @@ import dev.opencode.android.R
  * **The query is kept with `rememberSaveable`**, so a rotation keeps what was typed. The commands are a
  * parameter rather than read here, so the caller decides which ones exist and the dialog cannot offer a
  * command the caller would not run.
+ *
+ * The dialog is width-capped, so on a tablet it reads as a palette rather than a full-bleed sheet.
  */
 @Composable
 fun CommandPaletteDialog(
@@ -56,11 +70,26 @@ fun CommandPaletteDialog(
     onRun: (PaletteCommand) -> Unit,
     onDismiss: () -> Unit,
 ) {
+    val spacing = OpenCodeThemeExtras.spacing
     var query by rememberSaveable { mutableStateOf("") }
     val labels = commands.associateWith { stringResource(it.labelRes) }
     val matches = filterCommands(commands, query) { labels.getValue(it) }
     val focusRequester = remember { FocusRequester() }
-    var selectedIndex by remember(matches) { mutableStateOf(0) }
+    // Saveable, keyed on the matches: a rotation keeps the position, a new query resets it.
+    var selectedIndex by rememberSaveable(matches) { mutableStateOf(0) }
+    val listState = rememberLazyListState()
+    // Keep the arrow-key selection visible: without this, arrowing past the fold moves state the
+    // user cannot see.
+    LaunchedEffect(selectedIndex) {
+        if (matches.isNotEmpty()) listState.scrollToItem(selectedIndex)
+    }
+    // The soft keyboard's action button runs the top match: without an imeAction it does nothing on a phone.
+    val runSelected: () -> Unit = {
+        matches.getOrNull(selectedIndex)?.let {
+            onRun(it)
+            onDismiss()
+        }
+    }
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -71,11 +100,11 @@ fun CommandPaletteDialog(
         LaunchedEffect(Unit) { focusRequester.requestFocus() }
 
         Surface(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+            modifier = Modifier.widthIn(max = 560.dp).fillMaxWidth().padding(horizontal = spacing.lg),
             shape = MaterialTheme.shapes.extraLarge,
             color = MaterialTheme.colorScheme.surfaceContainerHigh,
         ) {
-            Column(modifier = Modifier.padding(16.dp)) {
+            Column(modifier = Modifier.padding(spacing.lg)) {
                 OutlinedTextField(
                     value = query,
                     onValueChange = {
@@ -83,7 +112,26 @@ fun CommandPaletteDialog(
                         selectedIndex = 0
                     },
                     label = { Text(stringResource(R.string.palette_search_label)) },
+                    leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+                    trailingIcon = {
+                        if (query.isNotEmpty()) {
+                            IconButton(onClick = { query = ""; selectedIndex = 0 }) {
+                                Icon(
+                                    Icons.Filled.Clear,
+                                    contentDescription = stringResource(R.string.palette_clear),
+                                )
+                            }
+                        }
+                    },
                     singleLine = true,
+                    // A command field, not prose: no autocorrect, no capitalization, and the keyboard's
+                    // action button searches.
+                    keyboardOptions = KeyboardOptions(
+                        capitalization = KeyboardCapitalization.None,
+                        autoCorrectEnabled = false,
+                        imeAction = ImeAction.Search,
+                    ),
+                    keyboardActions = KeyboardActions(onSearch = { runSelected() }),
                     modifier = Modifier
                         .fillMaxWidth()
                         .focusRequester(focusRequester)
@@ -108,12 +156,9 @@ fun CommandPaletteDialog(
                                         }
                                     }
 
-                                    Key.Enter -> {
-                                        matches.getOrNull(selectedIndex)?.let {
-                                            onRun(it)
-                                            onDismiss()
-                                            true
-                                        } ?: false
+                                    Key.Enter, Key.NumPadEnter -> {
+                                        runSelected()
+                                        matches.getOrNull(selectedIndex) != null
                                     }
 
                                     else -> false
@@ -124,14 +169,16 @@ fun CommandPaletteDialog(
                         },
                 )
                 if (matches.isEmpty()) {
-                    Text(
-                        text = stringResource(R.string.palette_no_match),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(vertical = 16.dp),
+                    OpenCodeEmptyState(
+                        title = stringResource(R.string.palette_no_match),
+                        icon = Icons.Filled.SearchOff,
+                        modifier = Modifier.padding(vertical = spacing.md),
                     )
                 }
-                LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 480.dp)) {
+                LazyColumn(
+                    modifier = Modifier.fillMaxWidth().heightIn(max = 480.dp),
+                    state = listState,
+                ) {
                     itemsIndexed(matches, key = { _, command -> command.id }) { index, command ->
                         val isSelected = index == selectedIndex
                         val containerColor = if (isSelected) {
@@ -153,12 +200,18 @@ fun CommandPaletteDialog(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .background(color = containerColor, shape = MaterialTheme.shapes.small)
-                                .clickable {
-                                    onRun(command)
-                                    onDismiss()
-                                }
-                                .semantics { role = Role.Button }
-                                .padding(horizontal = 8.dp, vertical = 14.dp),
+                                // `selectable` rather than `clickable`: the arrow-key selection is state a
+                                // TalkBack user must hear, and this publishes it where `clickable` plus a
+                                // manual role would stay silent about which row is current.
+                                .selectable(
+                                    selected = isSelected,
+                                    onClick = {
+                                        onRun(command)
+                                        onDismiss()
+                                    },
+                                    role = Role.Button,
+                                )
+                                .padding(horizontal = spacing.sm, vertical = spacing.md + spacing.xxs),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Text(
@@ -173,7 +226,7 @@ fun CommandPaletteDialog(
                                     text = stringResource(R.string.palette_leader_hint, letter),
                                     style = MaterialTheme.typography.labelLarge,
                                     color = hintColor,
-                                    modifier = Modifier.padding(start = 16.dp),
+                                    modifier = Modifier.padding(start = spacing.lg),
                                 )
                             }
                         }

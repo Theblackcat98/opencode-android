@@ -6,6 +6,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
@@ -14,10 +16,13 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import dev.opencode.android.core.data.catalog.ModelCatalog
 import dev.opencode.android.core.designsystem.text.SyncedTextField
+import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
 import dev.opencode.android.core.model.ModelRef
 import dev.opencode.android.feature.composer.R
 
@@ -49,20 +54,25 @@ fun ModelPickerSheet(
     favorites: List<ModelRef> = emptyList(),
     recents: List<ModelRef> = emptyList(),
 ) {
+    val spacing = OpenCodeThemeExtras.spacing
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val focusManager = LocalFocusManager.current
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState, modifier = modifier) {
-        Column(Modifier.fillMaxWidth().padding(horizontal = 8.dp).padding(bottom = 24.dp)) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = spacing.sm).padding(bottom = spacing.xl)) {
             Text(
                 text = stringResource(R.string.model_picker_title),
                 style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.padding(horizontal = 8.dp),
+                modifier = Modifier.padding(horizontal = spacing.sm),
             )
             SyncedTextField(
                 value = search,
                 onValueChange = onSearchChange,
                 label = { Text(stringResource(R.string.model_search)) },
                 singleLine = true,
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp),
+                // Search dismisses the keyboard: the list below already filters as you type.
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                keyboardActions = KeyboardActions(onSearch = { focusManager.clearFocus() }),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = spacing.sm, vertical = spacing.sm),
             )
             if (groups.isEmpty()) {
                 ModelEmptyState(query = search)
@@ -182,11 +192,11 @@ fun AgentPickerSheet(
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState, modifier = modifier) {
-        Column(Modifier.fillMaxWidth().padding(bottom = 24.dp)) {
+        Column(Modifier.fillMaxWidth().padding(bottom = OpenCodeThemeExtras.spacing.xl)) {
             Text(
                 text = stringResource(R.string.agent_picker_title),
                 style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                modifier = Modifier.padding(horizontal = OpenCodeThemeExtras.spacing.lg, vertical = OpenCodeThemeExtras.spacing.sm),
             )
             AgentPicker(agents = agents, selected = selected, onSelect = onSelect)
         }

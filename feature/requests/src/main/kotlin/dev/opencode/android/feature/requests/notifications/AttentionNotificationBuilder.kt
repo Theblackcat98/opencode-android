@@ -71,6 +71,9 @@ class AttentionNotificationBuilder(
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(words.title)
             .setContentText(words.body)
+            // Bodies carry the details the user acts on (resources, the question, the patterns that
+            // would be stored); one line in the shade truncates them, so the expanded form shows all.
+            .setStyle(NotificationCompat.BigTextStyle().bigText(words.body))
             .setWhen(draft.timestampMillis)
             .setShowWhen(draft.timestampMillis > 0)
             .setPriority(priorityOf(draft.channel.priority))
@@ -215,7 +218,9 @@ class AttentionNotificationBuilder(
             .setAllowFreeFormInput(true)
             .build()
         return NotificationCompat.Action.Builder(
-            android.R.drawable.ic_menu_edit,
+            // The app's own reply glyph, not the system edit icon: notification actions render
+            // monochrome from the icon's alpha, and a framework drawable is the wrong visual voice.
+            R.drawable.ic_notification_reply,
             context.getString(R.string.action_answer),
             actionPendingIntent(action),
         ).addRemoteInput(remoteInput)

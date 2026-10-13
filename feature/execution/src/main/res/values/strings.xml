@@ -88,9 +88,13 @@
     <string name="session_terminals_state_absent">not supported</string>
     <string name="session_terminals_state_unknown">not checked</string>
     <string name="session_terminals_off_body">Session terminals are an experimental feature and are switched off for this installation. Turn them on in the experimental settings.</string>
+    <string name="session_terminals_open_settings">Open settings</string>
     <string name="session_terminals_absent_body">This server does not have the experimental terminal routes. Nothing was sent.</string>
     <string name="session_terminals_host_down_body">This server has the terminal routes, but its persistent-terminal host is not running. Start it on the server machine.</string>
     <string name="session_terminals_empty_body">This session has no persistent terminal. Create one to give the agent a terminal it can read.</string>
+    <string name="session_terminals_remove_title">Remove this terminal?</string>
+    <string name="session_terminals_remove_body">The terminal is removed and its scrollback is discarded. Anything running in it stops.</string>
+    <string name="session_terminals_remove_confirm">Remove it</string>
 
     <!-- Worktrees -->
     <string name="worktrees_title">Worktrees</string>
@@ -107,6 +111,9 @@
     <string name="worktrees_force_warning">The server has uncommitted work here. Removing it anyway deletes those changes.</string>
     <string name="worktrees_move_session">Move a session here</string>
     <string name="worktrees_empty">No worktrees for this project.</string>
+    <string name="worktrees_creating">Creating the worktree…</string>
+    <string name="worktrees_loading">Loading worktrees…</string>
+    <string name="worktrees_notice">Worktree change completed: %1$s</string>
     <string name="worktrees_strategy">Strategy: %1$s</string>
     <string name="worktrees_failed">Worktree change failed: %1$s</string>
 

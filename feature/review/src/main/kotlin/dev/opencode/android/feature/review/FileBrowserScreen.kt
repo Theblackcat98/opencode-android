@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -50,6 +51,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
@@ -61,6 +63,7 @@ import dev.opencode.android.core.data.composer.LineRange
 import dev.opencode.android.core.designsystem.code.CodeHighlighter
 import dev.opencode.android.core.designsystem.code.CodeLanguage
 import dev.opencode.android.core.designsystem.component.OpenCodeTopAppBar
+import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
 import dev.opencode.android.core.model.FileSystemEntry
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -392,7 +395,7 @@ private fun FileContent(
             text = if (file.truncated) tooLargeSentence(file) else stringResource(R.string.files_binary),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = modifier.padding(16.dp),
+            modifier = modifier.padding(OpenCodeThemeExtras.spacing.lg),
         )
     }
 }
@@ -431,7 +434,7 @@ private fun TruncationNotice(file: FileReadResult, modifier: Modifier = Modifier
         },
         style = MaterialTheme.typography.labelMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+        modifier = modifier.padding(horizontal = OpenCodeThemeExtras.spacing.lg, vertical = OpenCodeThemeExtras.spacing.sm),
     )
 }
 
@@ -474,15 +477,18 @@ private fun TextFileView(
         ) {
             items(lines, key = { it.number }) { line ->
                 val selected = selection.contains(line.number)
+                val lineDesc = stringResource(
+                    R.string.file_browser_line_desc,
+                    line.number,
+                    line.text.take(80),
+                )
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .background(if (selected) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent)
                         .clickable { onSelectLine(line.number) }
-                        .semantics {
-                            contentDescription = "${line.number}, ${line.text.take(80)}"
-                        }
-                        .padding(horizontal = 8.dp),
+                        .semantics { contentDescription = lineDesc }
+                        .padding(horizontal = OpenCodeThemeExtras.spacing.sm),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
@@ -508,7 +514,7 @@ private fun TextFileView(
                         text = stringResource(R.string.files_too_large, window.hidden.toString()),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        modifier = Modifier.padding(horizontal = OpenCodeThemeExtras.spacing.sm, vertical = OpenCodeThemeExtras.spacing.xs),
                     )
                 }
             }
@@ -518,7 +524,7 @@ private fun TextFileView(
                         text = stringResource(R.string.files_line_range, range.toSuffix()),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        modifier = Modifier.padding(horizontal = OpenCodeThemeExtras.spacing.sm, vertical = OpenCodeThemeExtras.spacing.xs),
                     )
                 }
             }
@@ -548,7 +554,7 @@ private fun ImageFileView(
             text = tooLargeSentence(file),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = modifier.padding(16.dp),
+            modifier = modifier.padding(OpenCodeThemeExtras.spacing.lg),
         )
         return
     }
@@ -562,7 +568,7 @@ private fun ImageFileView(
             text = stringResource(R.string.files_binary),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = modifier.padding(16.dp),
+            modifier = modifier.padding(OpenCodeThemeExtras.spacing.lg),
         )
         return
     }
@@ -570,7 +576,7 @@ private fun ImageFileView(
         modifier = modifier
             .fillMaxWidth()
             .heightIn(max = VIEWER_MAX_HEIGHT)
-            .padding(8.dp),
+            .padding(OpenCodeThemeExtras.spacing.sm),
         contentAlignment = Alignment.Center,
     ) {
         bitmap?.let {
@@ -589,10 +595,11 @@ private fun FileRow(entry: FileSystemEntry, reading: String?, onClick: () -> Uni
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onClick() }
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .defaultMinSize(minHeight = 48.dp)
+            .clickable(role = Role.Button) { onClick() }
+            .padding(horizontal = OpenCodeThemeExtras.spacing.lg, vertical = OpenCodeThemeExtras.spacing.md),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.md),
     ) {
         Icon(
             imageVector = if (entry.isDirectory) Icons.Filled.Folder else Icons.Filled.InsertDriveFile,
@@ -634,9 +641,10 @@ private fun FileActions(
     onDownload: () -> Unit,
     onWrite: (FileReadResult, String) -> Unit,
 ) {
+    val spacing = OpenCodeThemeExtras.spacing
     var editing by remember { mutableStateOf(false) }
     val whole = !file.truncated
-    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = spacing.lg, vertical = spacing.sm)) {
         Text(
             text = file.label,
             style = MaterialTheme.typography.bodyMedium,
@@ -652,7 +660,7 @@ private fun FileActions(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(spacing.sm)) {
             TextButton(onClick = onAttach) { Text(stringResource(R.string.files_attach)) }
             if (file.kind == FileContentKind.TEXT) {
                 TextButton(onClick = onAttachLines) { Text(stringResource(R.string.files_attach_lines)) }
@@ -784,7 +792,7 @@ fun CommentDraftContent(
     onTextChange: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.sm)) {
         Text(
             text = draft.path,
             style = MaterialTheme.typography.labelMedium,
@@ -838,17 +846,17 @@ fun BaseBranchContent(
     onSelect: (String?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier = modifier.fillMaxWidth().padding(bottom = 24.dp)) {
+    Column(modifier = modifier.fillMaxWidth().padding(bottom = OpenCodeThemeExtras.spacing.xl)) {
         Text(
             text = stringResource(R.string.review_choose_base),
             style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            modifier = Modifier.padding(horizontal = OpenCodeThemeExtras.spacing.lg, vertical = OpenCodeThemeExtras.spacing.sm),
         )
         Text(
             text = stringResource(R.string.review_choose_base_body),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(horizontal = 16.dp),
+            modifier = Modifier.padding(horizontal = OpenCodeThemeExtras.spacing.lg),
         )
         TextButton(onClick = { onSelect(null) }) {
             Text(stringResource(R.string.review_base_default))
@@ -859,7 +867,11 @@ fun BaseBranchContent(
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Text(
-                    text = if (branch == selected) "✓ $branch" else branch,
+                    text = if (branch == selected) {
+                        stringResource(R.string.review_base_selected, branch)
+                    } else {
+                        branch
+                    },
                     modifier = Modifier.fillMaxWidth(),
                 )
             }

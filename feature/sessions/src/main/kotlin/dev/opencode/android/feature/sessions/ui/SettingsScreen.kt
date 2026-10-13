@@ -35,13 +35,10 @@ import androidx.compose.material.icons.outlined.SmartToy
 import androidx.compose.material.icons.outlined.SwapHoriz
 import androidx.compose.material.icons.outlined.Terminal
 import androidx.compose.material.icons.outlined.Timeline
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -53,6 +50,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.opencode.android.core.designsystem.component.OpenCodeChip
+import dev.opencode.android.core.designsystem.component.OpenCodeTopAppBar
 import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
 import dev.opencode.android.core.model.Project
 import dev.opencode.android.feature.sessions.R
@@ -150,7 +148,6 @@ data class SettingsUiState(
  * listed, which was whichever directory the server saw first. Here it is the one the user picks, remembered per
  * server, and those rows are disabled while there is no project at all.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     state: SettingsUiState,
@@ -158,29 +155,19 @@ fun SettingsScreen(
     onOpen: (ManageDestination) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val spacing = OpenCodeThemeExtras.spacing
     Scaffold(
         modifier = modifier,
         topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(stringResource(R.string.settings_title), style = MaterialTheme.typography.titleLarge)
-                        state.serverName?.let {
-                            Text(
-                                text = it,
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface),
+            OpenCodeTopAppBar(
+                title = stringResource(R.string.settings_title),
+                subtitle = state.serverName?.let { name -> { Text(name) } },
             )
         },
     ) { padding ->
         LazyColumn(
             modifier = Modifier.padding(padding).fillMaxSize(),
-            contentPadding = PaddingValues(bottom = 24.dp),
+            contentPadding = PaddingValues(bottom = spacing.xl),
         ) {
             item(key = "project") {
                 ProjectScope(state, onSelectProject)
@@ -192,7 +179,7 @@ fun SettingsScreen(
                         style = MaterialTheme.typography.labelLarge,
                         color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier
-                            .padding(start = 24.dp, end = 24.dp, top = 24.dp, bottom = 4.dp)
+                            .padding(start = spacing.xl, end = spacing.xl, top = spacing.xl, bottom = spacing.xs)
                             .semantics { heading() },
                     )
                 }
@@ -215,24 +202,25 @@ object SettingsTags {
 
 @Composable
 private fun ProjectScope(state: SettingsUiState, onSelectProject: (String) -> Unit) {
-    Column(modifier = Modifier.padding(top = 8.dp)) {
+    val spacing = OpenCodeThemeExtras.spacing
+    Column(modifier = Modifier.padding(top = spacing.sm)) {
         Text(
             text = stringResource(R.string.settings_project_scope),
             style = MaterialTheme.typography.labelLarge,
             color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp).semantics { heading() },
+            modifier = Modifier.padding(horizontal = spacing.xl, vertical = spacing.xs).semantics { heading() },
         )
         if (state.projects.isEmpty()) {
             Text(
                 text = stringResource(R.string.settings_project_none),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 24.dp),
+                modifier = Modifier.padding(horizontal = spacing.xl),
             )
         } else {
             LazyRow(
-                contentPadding = PaddingValues(horizontal = 24.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                contentPadding = PaddingValues(horizontal = spacing.xl),
+                horizontalArrangement = Arrangement.spacedBy(spacing.sm),
             ) {
                 items(items = state.projects, key = { it.id }) { project ->
                     OpenCodeChip(
@@ -249,7 +237,7 @@ private fun ProjectScope(state: SettingsUiState, onSelectProject: (String) -> Un
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 6.dp),
+                    modifier = Modifier.padding(horizontal = spacing.xl, vertical = 6.dp),
                 )
             }
         }
@@ -264,7 +252,7 @@ private fun SettingsRow(destination: ManageDestination, enabled: Boolean, onClic
             .fillMaxWidth()
             .clickable(enabled = enabled, onClick = onClick)
             .testTag(SettingsTags.row(destination))
-            .padding(horizontal = 24.dp, vertical = 14.dp),
+            .padding(horizontal = OpenCodeThemeExtras.spacing.xl, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(
@@ -286,5 +274,3 @@ private fun SettingsRow(destination: ManageDestination, enabled: Boolean, onClic
         )
     }
 }
-
-private const val DISABLED_ALPHA = 0.38f

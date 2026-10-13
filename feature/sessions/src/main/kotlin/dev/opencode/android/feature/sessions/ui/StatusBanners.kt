@@ -17,6 +17,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
 import dev.opencode.android.core.model.FinishReason
 import dev.opencode.android.core.model.StructuredError
 import dev.opencode.android.feature.sessions.R
@@ -38,6 +39,7 @@ fun RetryBanner(
     onOpenLink: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val spacing = OpenCodeThemeExtras.spacing
     val remaining = (retry.next - now).coerceAtLeast(0L)
     val countdown = formatCountdown(remaining)
     val headline = stringResource(R.string.sessions_retry_in, countdown)
@@ -46,11 +48,13 @@ fun RetryBanner(
         color = MaterialTheme.colorScheme.errorContainer,
         contentColor = MaterialTheme.colorScheme.onErrorContainer,
     ) {
-        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Column(Modifier.padding(spacing.md), verticalArrangement = Arrangement.spacedBy(spacing.xs)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = headline,
-                    style = MaterialTheme.typography.titleSmall,
+                    // Tabular numerals: the countdown ticks every second, and proportional digits
+                    // would make the headline jitter as the widths change.
+                    style = MaterialTheme.typography.titleSmall.copy(fontFeatureSettings = "tnum"),
                     modifier = Modifier.weight(1f),
                 )
                 Text(
@@ -82,12 +86,13 @@ fun ErrorCard(
     modifier: Modifier = Modifier,
     onRetry: (() -> Unit)? = null,
 ) {
+    val spacing = OpenCodeThemeExtras.spacing
     Surface(
         modifier = modifier.fillMaxWidth(),
         color = MaterialTheme.colorScheme.errorContainer,
         contentColor = MaterialTheme.colorScheme.onErrorContainer,
     ) {
-        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Column(Modifier.padding(spacing.md), verticalArrangement = Arrangement.spacedBy(spacing.xs)) {
             Text(error.message, style = MaterialTheme.typography.bodyMedium)
             Text(
                 text = stringResource(R.string.step_error_type, error.type, error.status ?: 0),
@@ -102,7 +107,7 @@ fun ErrorCard(
 @Composable
 fun BusyBanner(modifier: Modifier = Modifier) {
     val label = stringResource(R.string.sessions_running_description)
-    Column(modifier.fillMaxWidth().padding(4.dp)) {
+    Column(modifier.fillMaxWidth().padding(OpenCodeThemeExtras.spacing.xs)) {
         LinearProgressIndicator(Modifier.fillMaxWidth().semantics { contentDescription = label })
     }
 }

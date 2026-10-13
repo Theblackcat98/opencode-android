@@ -1,5 +1,6 @@
 package dev.opencode.android.feature.admin
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
@@ -20,6 +21,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -32,13 +34,16 @@ import androidx.compose.ui.unit.dp
 import dev.opencode.android.core.data.action.toActionError
 import dev.opencode.android.core.data.sync.SyncStatus
 import dev.opencode.android.core.data.sync.SyncedState
+import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
 import dev.opencode.android.core.model.AgentInfo
 import dev.opencode.android.core.model.CommandInfo
 import dev.opencode.android.core.model.ReferenceInfo
 import dev.opencode.android.core.model.ReferenceSource
 import dev.opencode.android.core.model.SkillInfo
+import kotlinx.serialization.Serializable
 
 /** Which catalog the browser is showing. */
+@Serializable
 enum class AdminCatalog(val id: String) {
     AGENTS("agents"),
     COMMANDS("commands"),
@@ -54,15 +59,32 @@ enum class AdminCatalog(val id: String) {
  * in the screen; a row type makes "the agents tab shows these fields" one line each and keeps the
  * `LazyColumn` single, which is what lets all four share stable keys and one scroll position.
  */
-data class CatalogRow(
+internal data class CatalogRow(
     val key: String,
     val title: String,
     val subtitle: String? = null,
-    val facts: List<Pair<String, String>> = emptyList(),
+    val facts: List<CatalogFact> = emptyList(),
     /** The body the row expands to show, for a skill or an agent's prompt. */
     val body: String? = null,
     val tag: String,
 )
+
+/**
+ * One label/value line of a catalog row.
+ *
+ * The label is always a string resource. The value is server data shown verbatim — except for the
+ * handful of client-rendered constants ("yes", "unknown", "in the command file"), which are
+ * resources too, because a label that translates next to a value that does not is half a fix.
+ */
+internal data class CatalogFact(
+    @StringRes val label: Int,
+    val value: String? = null,
+    @StringRes val valueRes: Int? = null,
+) {
+    init {
+        require(value != null || valueRes != null) { "A catalog fact needs a value" }
+    }
+}
 
 /** The browser's state: which tab, and the four catalogs. */
 data class CatalogUiState(
@@ -85,7 +107,7 @@ data class CatalogUiState(
             AdminCatalog.REFERENCES -> references.status
         }
 
-    val rows: List<CatalogRow> by lazy {
+    internal val rows: List<CatalogRow> by lazy {
         val needle = search.trim().lowercase()
         fun keep(key: String) = needle.isEmpty() || key.lowercase().contains(needle)
         when (tab) {
@@ -126,12 +148,14 @@ private fun agentRow(agent: AgentInfo) = CatalogRow(
     title = agent.name,
     subtitle = agent.description,
     facts = buildList {
-        add("Mode" to agent.mode)
-        agent.model?.let { add("Model" to it.id) }
-        agent.steps?.let { add("Steps" to it.toString()) }
-        agent.color?.let { add("Color" to it) }
-        if (agent.hidden) add("Hidden" to "yes")
-        agent.permissions?.let { add("Permissions" to showValue("permission", it)) }
+        add(CatalogFact(R.string.admin_fact_mode, value = agent.mode))
+        agent.model?.let { add(CatalogFact(R.string.admin_fact_model, value = it.id)) }
+        agent.steps?.let { add(CatalogFact(R.string.admin_fact_steps, value = it.toString())) }
+        agent.color?.let { add(CatalogFact(R.string.admin_fact_color, value = it)) }
+        if (agent.hidden) add(CatalogFact(R.string.admin_fact_hidden, valueRes = R.string.admin_fact_yes))
+        agent.permissions?.let {
+            add(CatalogFact(R.string.admin_fact_permissions, value = showValue("permission", it)))
+        }
     },
     body = agent.system,
     tag = AdminTags.agent(agent.name),
@@ -149,7 +173,7 @@ private fun commandRow(command: CommandInfo) = CatalogRow(
     key = command.name,
     title = "/${command.name}",
     subtitle = command.description,
-    facts = listOf("Template" to "in the command file"),
+    facts = listOf(CatalogFact(R.string.admin_fact_template, valueRes = R.string.admin_fact_template_in_file)),
     tag = AdminTags.command(command.name),
 )
 
@@ -158,8 +182,10 @@ private fun skillRow(skill: SkillInfo) = CatalogRow(
     title = skill.name,
     subtitle = skill.description,
     facts = buildList {
-        add("Path" to skill.path)
-        if (skill.autoinvoke == true) add("Autoinvoke" to "yes")
+        add(CatalogFact(R.string.admin_fact_path, value = skill.path))
+        if (skill.autoinvoke == true) {
+            add(CatalogFact(R.string.admin_fact_autoinvoke, valueRes = R.string.admin_fact_yes))
+        }
     },
     body = skill.content,
     tag = AdminTags.skill(skill.name),
@@ -171,16 +197,17 @@ private fun referenceRow(reference: ReferenceInfo) = CatalogRow(
     subtitle = reference.description,
     facts = buildList {
         when (val source = reference.source) {
-            is ReferenceSource.Local -> add("Path" to source.path)
+            is ReferenceSource.Local -> add(CatalogFact(R.string.admin_fact_path, value = source.path))
 
             is ReferenceSource.Git -> {
-                add("Repository" to source.repository)
-                source.branch?.let { add("Branch" to it) }
+                add(CatalogFact(R.string.admin_fact_repository, value = source.repository))
+                source.branch?.let { add(CatalogFact(R.string.admin_fact_branch, value = it)) }
             }
 
-            is ReferenceSource.Unknown -> add("Source" to "unknown")
+            is ReferenceSource.Unknown ->
+                add(CatalogFact(R.string.admin_fact_source, valueRes = R.string.admin_fact_unknown))
         }
-        if (reference.hidden == true) add("Hidden" to "yes")
+        if (reference.hidden == true) add(CatalogFact(R.string.admin_fact_hidden, valueRes = R.string.admin_fact_yes))
     },
     tag = AdminTags.reference(reference.name),
 )
@@ -200,11 +227,17 @@ fun CatalogScreen(
     onTabChange: (AdminCatalog) -> Unit,
     onSearchChange: (String) -> Unit,
     modifier: Modifier = Modifier,
+    /**
+     * Re-runs the catalog sync after a failure. The host wires this to the same sync the entry
+     * effect runs; until it does, the retry button is inert.
+     */
+    onReload: () -> Unit = {},
 ) {
+    val spacing = OpenCodeThemeExtras.spacing
     Column(modifier = modifier.fillMaxSize()) {
         FlowRow(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = spacing.lg, vertical = spacing.sm),
+            horizontalArrangement = Arrangement.spacedBy(spacing.sm),
         ) {
             AdminCatalog.entries.forEach { tab ->
                 FilterChip(
@@ -220,18 +253,22 @@ fun CatalogScreen(
             value = state.search,
             onValueChange = onSearchChange,
             tag = "catalog:search",
+            // The field owns no padding; this screen's root column has none to give.
+            modifier = Modifier.padding(horizontal = spacing.lg),
         )
         HorizontalDivider()
         when (val status = state.currentStatus) {
             is SyncStatus.Failed -> {
                 // A catalog read fails as a raw `Throwable`; the screen reports the class of it rather
                 // than the request, which for these routes would name a directory the user chose.
-                ErrorLine(error = status.error.toActionError(), onDismiss = { })
+                // Dismissing a failed sync would leave the failure on screen with no way back, so the
+                // action is a retry of the sync.
+                ErrorLine(error = status.error.toActionError(), onDismiss = { }, onRetry = onReload)
             }
 
             SyncStatus.Loading -> Row(
-                modifier = Modifier.fillMaxWidth().padding(16.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.fillMaxWidth().padding(spacing.lg),
+                horizontalArrangement = Arrangement.spacedBy(spacing.md),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 CircularProgressIndicator()
@@ -243,7 +280,7 @@ fun CatalogScreen(
                     Text(
                         text = stringResource(R.string.admin_catalog_empty),
                         style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.padding(16.dp),
+                        modifier = Modifier.padding(spacing.lg),
                     )
                 } else {
                     LazyColumn(modifier = Modifier.weight(1f)) {
@@ -259,32 +296,31 @@ fun CatalogScreen(
 
 @Composable
 private fun CatalogRowCard(row: CatalogRow) {
-    Card(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp).testTag(row.tag),
+    val spacing = OpenCodeThemeExtras.spacing
+    AdminCard(
+        title = row.title,
+        modifier = Modifier.padding(horizontal = spacing.lg, vertical = spacing.xs).testTag(row.tag),
     ) {
-        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        row.subtitle?.let {
+            Text(text = it, style = MaterialTheme.typography.bodySmall)
+        }
+        row.facts.forEach { fact ->
+            // The init require guarantees exactly one of the two is set.
+            val value = fact.value ?: stringResource(fact.valueRes!!)
+            Fact(label = stringResource(fact.label), value = value, monospace = true)
+        }
+        row.body?.let { body ->
+            HorizontalDivider(modifier = Modifier.padding(vertical = spacing.xs))
             Text(
-                text = row.title,
-                style = MaterialTheme.typography.titleSmall,
-                modifier = Modifier.semantics { heading() },
+                text = body,
+                style = MaterialTheme.typography.bodySmall,
+                fontFamily = FontFamily.Monospace,
+                // Bounded, so a long system prompt or skill body does not push the rest of the
+                // list off the screen and leave the user with one enormous card.
+                modifier = Modifier
+                    .heightIn(max = 220.dp)
+                    .verticalScroll(rememberScrollState()),
             )
-            row.subtitle?.let {
-                Text(text = it, style = MaterialTheme.typography.bodySmall)
-            }
-            row.facts.forEach { (label, value) -> Fact(label = label, value = value, monospace = true) }
-            row.body?.let { body ->
-                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-                Text(
-                    text = body,
-                    style = MaterialTheme.typography.bodySmall,
-                    fontFamily = FontFamily.Monospace,
-                    // Bounded, so a long system prompt or skill body does not push the rest of the
-                    // list off the screen and leave the user with one enormous card.
-                    modifier = Modifier
-                        .heightIn(max = 220.dp)
-                        .verticalScroll(rememberScrollState()),
-                )
-            }
         }
     }
 }

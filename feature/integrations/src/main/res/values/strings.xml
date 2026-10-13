@@ -112,6 +112,7 @@
     <string name="mcp_timeout_startup">Startup s</string>
     <string name="mcp_timeout_catalog">Catalog s</string>
     <string name="mcp_timeout_execution">Execution s</string>
+    <string name="mcp_timeout_bad">Use a whole number of seconds, or leave it blank.</string>
     <string name="mcp_add_runtime_only">Added for this run only. It is gone when the server restarts unless it is also written into the configuration.</string>
     <string name="mcp_add_confirm">Add it</string>
 
@@ -134,6 +135,9 @@
     <string name="plugins_source_local">Loaded from %1$s</string>
     <string name="plugins_source_sdk">Loaded through the SDK</string>
     <string name="plugins_features">Server, TUI, RPC</string>
+    <string name="plugins_feature_server">server</string>
+    <string name="plugins_feature_tui">tui</string>
+    <string name="plugins_feature_rpc">rpc</string>
     <string name="plugins_failed">Failed: %1$s</string>
     <string name="plugins_read_only">Nothing to update</string>
     <string name="plugins_up_to_date">Every plugin is up to date</string>
@@ -149,6 +153,13 @@
     <string name="providers_endpoint">Endpoint %1$s</string>
     <string name="providers_needs_integration">Needs an account from the Accounts screen.</string>
     <string name="providers_config_only">Activation, endpoint and headers are configuration. Change them in the configuration editor.</string>
+    <string name="provider_detail_id">id</string>
+    <string name="provider_detail_activation">activation</string>
+    <string name="provider_detail_package">package</string>
+    <string name="provider_detail_canonical">canonical</string>
+    <string name="provider_detail_base_url">base URL</string>
+    <string name="provider_detail_transport">transport</string>
+    <string name="provider_detail_compaction">compaction</string>
 
     <!-- Web search -->
 
@@ -167,4 +178,5 @@
       label. Without it a screen reader says nothing and the row looks stuck.
     -->
     <string name="connect_waiting_for_sign_in">Waiting for the sign-in</string>
+    <string name="mcp_resource_attached">Attached to the next prompt</string>
 </resources>

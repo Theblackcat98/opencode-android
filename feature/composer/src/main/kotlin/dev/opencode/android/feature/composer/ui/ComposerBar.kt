@@ -32,8 +32,6 @@ import androidx.compose.material.icons.outlined.Inbox
 import androidx.compose.material.icons.outlined.Memory
 import androidx.compose.material.icons.outlined.SmartToy
 import androidx.compose.material.icons.outlined.Tune
-import androidx.compose.material3.AssistChip
-import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -58,6 +56,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.isCtrlPressed
+import androidx.compose.ui.input.key.isMetaPressed
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -164,7 +169,24 @@ fun ComposerBar(
     }
     var actionsOpen by remember { mutableStateOf(false) }
     Surface(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .onPreviewKeyEvent { event ->
+                // Ctrl+Enter / Cmd+Enter sends, the desktop-chat gesture. Preview so the field never
+                // sees it as a newline, and the same canSend guard as the Send button: a chord that
+                // cannot send must not steal the key from anything else.
+                if (
+                    event.type == KeyEventType.KeyDown &&
+                    (event.isCtrlPressed || event.isMetaPressed) &&
+                    (event.key == Key.Enter || event.key == Key.NumPadEnter) &&
+                    state.canSend
+                ) {
+                    onSend()
+                    true
+                } else {
+                    false
+                }
+            },
         color = MaterialTheme.colorScheme.surface,
         shadowElevation = 0.dp,
         tonalElevation = 0.dp,
@@ -294,8 +316,9 @@ private fun ContextChips(
     onResumeChange: (Boolean) -> Unit,
     onOpenInbox: () -> Unit,
 ) {
+    val spacing = OpenCodeThemeExtras.spacing
     Row(
-        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 4.dp, vertical = 2.dp),
+        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = spacing.xs, vertical = spacing.xxs),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -353,8 +376,9 @@ private fun ComposerActionsSheet(
     onCycleAgent: () -> Unit,
     onCycleVariant: () -> Unit,
 ) {
+    val spacing = OpenCodeThemeExtras.spacing
     ModalBottomSheet(onDismissRequest = onDismiss) {
-        Column(Modifier.padding(bottom = 24.dp)) {
+        Column(Modifier.padding(bottom = spacing.xl)) {
             val run: (() -> Unit) -> () -> Unit = { action ->
                 {
                     onDismiss()
@@ -364,7 +388,7 @@ private fun ComposerActionsSheet(
             SheetAction(Icons.Filled.AttachFile, stringResource(R.string.composer_attach), run(onAttach))
             SheetAction(Icons.Filled.AutoAwesome, stringResource(R.string.composer_add_skill), run(onOpenSkills))
             SheetAction(Icons.Filled.OpenInFull, stringResource(R.string.composer_editor), run(onOpenEditor))
-            HorizontalDivider(Modifier.padding(vertical = 4.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+            HorizontalDivider(Modifier.padding(vertical = spacing.xs), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
             SheetAction(Icons.Filled.KeyboardArrowUp, stringResource(R.string.composer_history_older), run(onOlderHistory))
             SheetAction(Icons.Filled.KeyboardArrowDown, stringResource(R.string.composer_history_newer), run(onNewerHistory))
             SheetAction(
@@ -380,7 +404,10 @@ private fun ComposerActionsSheet(
                 enabled = state.stash.isNotEmpty(),
             )
             if (state.nextAgent != null || state.nextVariant?.let { it != state.variant } == true) {
-                HorizontalDivider(Modifier.padding(vertical = 4.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+                HorizontalDivider(
+                    modifier = Modifier.padding(vertical = spacing.xs),
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+                )
             }
             // The cycle buttons the plan asks for: one tap to the next agent or the next reasoning effort.
             if (state.nextAgent != null) {
@@ -400,7 +427,7 @@ private fun SheetAction(icon: ImageVector, label: String, onClick: () -> Unit, e
         modifier = Modifier
             .fillMaxWidth()
             .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
-            .padding(horizontal = 24.dp, vertical = 14.dp),
+            .padding(horizontal = OpenCodeThemeExtras.spacing.xl, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = alpha))
@@ -422,8 +449,8 @@ private const val DISABLED_ALPHA = 0.38f
 @Composable
 private fun RunningTurnActions(onInterrupt: () -> Unit, onBackground: () -> Unit, modifier: Modifier = Modifier) {
     FlowRow(
-        modifier = modifier.fillMaxWidth().padding(top = 4.dp),
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        modifier = modifier.fillMaxWidth().padding(top = OpenCodeThemeExtras.spacing.xs),
+        horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.xs),
     ) {
         TextButton(onClick = onInterrupt) { Text(stringResource(R.string.composer_interrupt)) }
         TextButton(onClick = onBackground) { Text(stringResource(R.string.composer_background)) }
@@ -476,7 +503,7 @@ fun SendButton(
     val container = if (enabled) {
         MaterialTheme.colorScheme.primaryContainer
     } else {
-        MaterialTheme.colorScheme.surfaceVariant
+        MaterialTheme.colorScheme.surfaceContainerHighest
     }
     val content = if (enabled) {
         MaterialTheme.colorScheme.onPrimaryContainer
@@ -515,13 +542,14 @@ fun SendButton(
 /** A failed action, with the wording the composition root resolved. */
 @Composable
 private fun ErrorRow(message: String, onDismiss: () -> Unit) {
+    val spacing = OpenCodeThemeExtras.spacing
     Surface(
-        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+        modifier = Modifier.fillMaxWidth().padding(bottom = spacing.sm),
         color = MaterialTheme.colorScheme.errorContainer,
         contentColor = MaterialTheme.colorScheme.onErrorContainer,
     ) {
         Row(
-            modifier = Modifier.padding(start = 12.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
+            modifier = Modifier.padding(start = spacing.md, end = spacing.xs, top = spacing.xs, bottom = spacing.xs),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
@@ -537,12 +565,13 @@ private fun ErrorRow(message: String, onDismiss: () -> Unit) {
 /** The "no model available" state, which is the plan's one empty state a user can act on. */
 @Composable
 fun NoModelAvailable(modifier: Modifier = Modifier) {
+    val spacing = OpenCodeThemeExtras.spacing
     Surface(
-        modifier = modifier.fillMaxWidth().padding(12.dp),
+        modifier = modifier.fillMaxWidth().padding(spacing.md),
         color = MaterialTheme.colorScheme.errorContainer,
         contentColor = MaterialTheme.colorScheme.onErrorContainer,
     ) {
-        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Column(Modifier.padding(spacing.md), verticalArrangement = Arrangement.spacedBy(spacing.xs)) {
             Text(stringResource(R.string.model_none_available), style = MaterialTheme.typography.titleSmall)
             Text(stringResource(R.string.model_none_available_body), style = MaterialTheme.typography.bodySmall)
         }

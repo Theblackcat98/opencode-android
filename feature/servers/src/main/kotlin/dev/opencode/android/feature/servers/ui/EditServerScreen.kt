@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.opencode.android.core.designsystem.text.SyncedTextField
+import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
 import dev.opencode.android.feature.servers.R
 
 /**
@@ -123,8 +124,8 @@ internal fun EditServerContent(
                     .fillMaxSize()
                     .padding(padding)
                     .verticalScroll(rememberScrollState())
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
+                    .padding(OpenCodeThemeExtras.spacing.lg),
+                verticalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.lg),
             ) {
                 SyncedTextField(
                     value = uiState.name,
@@ -215,9 +216,9 @@ private fun DefaultServerToggle(
             .fillMaxWidth()
             .toggleable(value = checked, enabled = enabled, role = Role.Checkbox, onValueChange = onCheckedChange)
             .semantics { contentDescription = label }
-            .padding(vertical = 4.dp),
+            .padding(vertical = OpenCodeThemeExtras.spacing.xs),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.md),
     ) {
         androidx.compose.material3.Checkbox(checked = checked, onCheckedChange = null, enabled = enabled)
         Text(text = label, style = MaterialTheme.typography.bodyMedium)

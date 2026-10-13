@@ -35,7 +35,6 @@ import androidx.compose.material.icons.outlined.FolderOpen
 import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.Terminal
 import androidx.compose.material.icons.outlined.TravelExplore
-import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -219,7 +218,7 @@ private fun ToolBody(
                         subject
                     },
                     style = OpenCodeThemeExtras.code.small,
-                    modifier = Modifier.padding(8.dp).horizontalScroll(rememberScrollState()),
+                    modifier = Modifier.padding(OpenCodeThemeExtras.spacing.sm).horizontalScroll(rememberScrollState()),
                 )
             }
         }
@@ -232,7 +231,7 @@ private fun ToolBody(
                     wrap = true,
                     showGutter = false,
                     language = diff.language,
-                    modifier = Modifier.padding(vertical = 4.dp),
+                    modifier = Modifier.padding(vertical = OpenCodeThemeExtras.spacing.xs),
                 )
             }
             if (diff.hiddenRows > 0) {
@@ -278,7 +277,7 @@ private fun ToolOutput(text: String) {
         Text(
             text = shown.joinToString("\n"),
             style = OpenCodeThemeExtras.code.small,
-            modifier = Modifier.padding(8.dp).horizontalScroll(rememberScrollState()),
+            modifier = Modifier.padding(OpenCodeThemeExtras.spacing.sm).horizontalScroll(rememberScrollState()),
         )
     }
     if (lines.size > MAX_OUTPUT_LINES) {
@@ -308,7 +307,7 @@ private fun CodeSurface(content: @Composable () -> Unit) {
 @Composable
 private fun TodoList(card: ToolCard, todos: List<TodoItem>) {
     val done = todos.count { it.done }
-    Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
+    Column(modifier = Modifier.padding(horizontal = OpenCodeThemeExtras.spacing.md, vertical = 10.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(
                 Icons.Outlined.Checklist,
@@ -478,7 +477,7 @@ private fun FailureReason(reason: String, modifier: Modifier = Modifier) {
             maxLines = if (expanded) Int.MAX_VALUE else MAX_FAILURE_LINES,
             overflow = TextOverflow.Ellipsis,
             onTextLayout = { layout -> if (layout.hasVisualOverflow) foldable = true },
-            modifier = Modifier.padding(top = 2.dp),
+            modifier = Modifier.padding(top = OpenCodeThemeExtras.spacing.xxs),
         )
         if (foldable) {
             Text(
@@ -486,7 +485,7 @@ private fun FailureReason(reason: String, modifier: Modifier = Modifier) {
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onErrorContainer,
-                modifier = Modifier.padding(top = 4.dp),
+                modifier = Modifier.padding(top = OpenCodeThemeExtras.spacing.xs),
             )
         }
     }
@@ -500,38 +499,6 @@ private fun ToolStatus.labelRes(): Int = when (this) {
     is ToolStatus.Failed -> R.string.tool_failed
 }
 
-/** The subagent chip, shown under its parent's tool card. */
-@Composable
-fun SubagentChip(sessionID: String, modifier: Modifier = Modifier) {
-    AssistChip(
-        onClick = {},
-        label = {
-            Text(
-                text = stringResource(R.string.tool_child_session, sessionID),
-                style = MaterialTheme.typography.labelSmall,
-            )
-        },
-        modifier = modifier.padding(top = 4.dp),
-    )
-}
 
-/** The answers a `question` tool recorded, shown as chips. */
-@Composable
-fun AnswerChips(answers: List<String>, modifier: Modifier = Modifier) {
-    Row(
-        modifier = modifier.padding(top = 4.dp),
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
-        answers.forEach { answer ->
-            AssistChip(
-                onClick = {},
-                label = {
-                    Text(
-                        text = stringResource(R.string.tool_answers, answer),
-                        style = MaterialTheme.typography.labelSmall,
-                    )
-                },
-            )
-        }
-    }
-}
+
+

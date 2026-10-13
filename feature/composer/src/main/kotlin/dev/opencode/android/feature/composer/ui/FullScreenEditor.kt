@@ -1,6 +1,7 @@
 package dev.opencode.android.feature.composer.ui
 
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
@@ -20,11 +21,18 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.isCtrlPressed
+import androidx.compose.ui.input.key.isMetaPressed
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
 import dev.opencode.android.feature.composer.R
 
 /**
@@ -65,19 +73,37 @@ fun FullScreenEditor(
                         TextButton(onClick = { onDone(text) }) {
                             Icon(Icons.Filled.Check, contentDescription = null)
                             Text(
-                                text = stringResource(R.string.composer_send),
-                                modifier = Modifier.padding(start = 8.dp),
+                                text = stringResource(R.string.composer_editor_done),
+                                modifier = Modifier.padding(start = OpenCodeThemeExtras.spacing.sm),
                             )
                         }
                     },
                 )
             },
         ) { insets ->
-            Surface(Modifier.fillMaxSize().padding(insets)) {
+            // The editor runs in its own Dialog window, so the activity's adjustResize does not
+            // reliably apply: without this the keyboard can cover the text being edited.
+            Surface(Modifier.fillMaxSize().padding(insets).imePadding()) {
                 OutlinedTextField(
                     value = text,
                     onValueChange = { edited: String -> text = edited },
-                    modifier = Modifier.fillMaxSize().padding(12.dp),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(OpenCodeThemeExtras.spacing.md)
+                        .onPreviewKeyEvent { event ->
+                            // Ctrl+Enter / Cmd+Enter confirms, matching the composer's send chord.
+                            // Preview so the field never sees it as a newline.
+                            if (
+                                event.type == KeyEventType.KeyDown &&
+                                (event.isCtrlPressed || event.isMetaPressed) &&
+                                (event.key == Key.Enter || event.key == Key.NumPadEnter)
+                            ) {
+                                onDone(text)
+                                true
+                            } else {
+                                false
+                            }
+                        },
                     maxLines = 40,
                 )
             }

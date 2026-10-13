@@ -6,11 +6,13 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -32,17 +34,25 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import dev.opencode.android.core.data.integrations.McpConfigProblem
 import dev.opencode.android.core.data.sync.SyncStatus
+import dev.opencode.android.core.designsystem.component.OpenCodeEmptyState
+import dev.opencode.android.core.designsystem.component.OpenCodeStatusPill
+import dev.opencode.android.core.designsystem.component.StatusKind
 import dev.opencode.android.core.designsystem.text.SyncedTextField
+import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
 import dev.opencode.android.core.model.McpProtocol
 import dev.opencode.android.core.model.McpResource
 import dev.opencode.android.core.model.McpServer
@@ -88,16 +98,28 @@ fun McpScreen(
                         onDismiss = onDismissError,
                     )
 
-                    SyncStatus.Loading -> Row(
-                        modifier = Modifier.fillMaxWidth().padding(16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        CircularProgressIndicator()
-                        Text(stringResource(R.string.mcp_loading))
+                    SyncStatus.Loading -> {
+                        // Read here rather than inside the `semantics` block, which is not a
+                        // composable scope, so the description is the same string the visible
+                        // label uses and cannot drift from it.
+                        val loading = stringResource(R.string.mcp_loading)
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(OpenCodeThemeExtras.spacing.lg)
+                                .semantics { contentDescription = loading },
+                            horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.md),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            CircularProgressIndicator()
+                            Text(loading)
+                        }
                     }
 
-                    else -> if (state.rows.isEmpty()) EmptyNote(stringResource(R.string.mcp_empty))
+                    else -> if (state.rows.isEmpty()) {
+                        OpenCodeEmptyState(
+                            title = stringResource(R.string.mcp_empty),
+                            icon = Icons.Filled.Link,
+                        )
+                    }
                 }
             }
             items(state.rows, key = { it.name }) { server ->
@@ -136,7 +158,10 @@ fun McpScreen(
     }
 
     if (state.addSheetOpen) {
-        ModalBottomSheet(onDismissRequest = onDismissAdd) {
+        // skipPartiallyExpanded: a half-open sheet hides the form's add button behind the drag
+        // handle's dead zone; the sheet always opens fully.
+        val addSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        ModalBottomSheet(onDismissRequest = onDismissAdd, sheetState = addSheetState) {
             McpAddSheetContent(
                 draft = state.draft,
                 problems = state.problems,
@@ -148,7 +173,10 @@ fun McpScreen(
     }
 
     if (state.resourcesOpen) {
-        ModalBottomSheet(onDismissRequest = onCloseResources) {
+        // skipPartiallyExpanded: the catalog is the point of this sheet; a half-open sheet
+        // would show the title and one row.
+        val resourcesSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        ModalBottomSheet(onDismissRequest = onCloseResources, sheetState = resourcesSheetState) {
             McpResourceSheetContent(
                 resources = state.catalog,
                 templates = state.templates,
@@ -171,16 +199,23 @@ private fun McpServerView(
     onRemove: () -> Unit,
 ) {
     Column(
-        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+        modifier = Modifier.padding(horizontal = OpenCodeThemeExtras.spacing.lg, vertical = OpenCodeThemeExtras.spacing.sm)
             .testTag(IntegrationsTags.server(server.name)),
     ) {
         Text(text = server.name, style = MaterialTheme.typography.titleMedium)
-        Text(
-            text = statusText(server),
-            style = MaterialTheme.typography.bodySmall,
-            color = statusColour(server),
+        OpenCodeStatusPill(
+            kind = when (server.status) {
+                is McpStatus.Connected -> StatusKind.Success
+                is McpStatus.Pending -> StatusKind.Running
+                is McpStatus.Disabled -> StatusKind.Idle
+                is McpStatus.Failed -> StatusKind.Failure
+                is McpStatus.NeedsAuth -> StatusKind.Retrying
+                is McpStatus.Unknown -> StatusKind.Idle
+            },
+            label = statusText(server),
+            modifier = Modifier.padding(top = OpenCodeThemeExtras.spacing.xxs),
         )
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.sm)) {
             when {
                 // A `needs_auth` server is fixed by opening the *integration's* login, which is only
                 // possible when the server named one. Without it there is no flow this client could
@@ -224,14 +259,6 @@ private fun statusText(server: McpServer): String = when (val status = server.st
     is McpStatus.Unknown -> stringResource(R.string.mcp_status_unknown, status.declaredStatus.orEmpty())
 }
 
-/** A failed or `needs_auth` server is the one the user has to act on, so it is the coloured one. */
-@Composable
-private fun statusColour(server: McpServer) = when (server.status) {
-    is McpStatus.Failed, is McpStatus.NeedsAuth -> MaterialTheme.colorScheme.error
-    is McpStatus.Connected -> MaterialTheme.colorScheme.onSurfaceVariant
-    else -> MaterialTheme.colorScheme.onSurfaceVariant
-}
-
 /** The actions under the list: the resource browser and "add a server". */
 @Composable
 private fun McpActions(
@@ -241,15 +268,15 @@ private fun McpActions(
     onOpenAdd: () -> Unit,
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(16.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.fillMaxWidth().padding(OpenCodeThemeExtras.spacing.lg),
+        horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.sm),
     ) {
         TextButton(onClick = onOpenResources, enabled = hasResources) {
             Text(stringResource(R.string.mcp_resources))
         }
         TextButton(onClick = onOpenAdd, enabled = runtimeUsable) {
             Icon(Icons.Filled.Add, contentDescription = null)
-            Text(stringResource(R.string.mcp_add), modifier = Modifier.padding(start = 4.dp))
+            Text(stringResource(R.string.mcp_add), modifier = Modifier.padding(start = OpenCodeThemeExtras.spacing.xs))
         }
     }
 }
@@ -279,10 +306,11 @@ fun McpAddSheetContent(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp)
+            .padding(horizontal = OpenCodeThemeExtras.spacing.lg)
             .verticalScroll(rememberScrollState())
-            .padding(bottom = 24.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+            .imePadding()
+            .padding(bottom = OpenCodeThemeExtras.spacing.xl),
+        verticalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.sm),
     ) {
         Text(stringResource(R.string.mcp_add), style = MaterialTheme.typography.titleLarge)
         SyncedTextField(
@@ -293,7 +321,7 @@ fun McpAddSheetContent(
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.selectableGroup()) {
+        Row(horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.sm), modifier = Modifier.selectableGroup()) {
             dev.opencode.android.core.data.integrations.McpServerDraft.Kind.entries.forEach { kind ->
                 FilterChip(
                     selected = draft.kind == kind,
@@ -354,15 +382,24 @@ fun McpAddSheetContent(
                 modifier = Modifier.fillMaxWidth().heightIn(min = 72.dp),
             )
         }
-        TimeoutFields(draft = draft, onChange = onChange, invalid = McpConfigProblem.NOT_A_POSITIVE_INTEGER in problems)
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Switch(checked = draft.codemode, onCheckedChange = { onChange(draft.copy(codemode = it)) })
+        TimeoutFields(draft = draft, onChange = onChange)
+        // The whole row is the toggle: the label is the tap target, not just the switch, and the
+        // Switch itself is the indicator, not a second control.
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.toggleable(
+                value = draft.codemode,
+                onValueChange = { onChange(draft.copy(codemode = it)) },
+                role = Role.Button,
+            ),
+        ) {
+            Switch(checked = draft.codemode, onCheckedChange = null)
             Text(
                 text = stringResource(R.string.mcp_add_codemode),
-                modifier = Modifier.padding(start = 12.dp),
+                modifier = Modifier.padding(start = OpenCodeThemeExtras.spacing.md),
             )
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.sm)) {
             McpProtocol.ALL.forEach { protocol ->
                 FilterChip(
                     selected = draft.protocol == protocol,
@@ -385,14 +422,19 @@ fun McpAddSheetContent(
 private fun TimeoutFields(
     draft: dev.opencode.android.core.data.integrations.McpServerDraft,
     onChange: (dev.opencode.android.core.data.integrations.McpServerDraft) -> Unit,
-    invalid: Boolean,
 ) {
     val labels = listOf(
         R.string.mcp_timeout_startup to draft.startupTimeout,
         R.string.mcp_timeout_catalog to draft.catalogTimeout,
         R.string.mcp_timeout_execution to draft.executionTimeout,
     )
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    // Per-field, not the aggregated `invalid`: only the box with the bad value goes red, so the
+    // user knows which one to fix. The rule mirrors McpConfigForm's — blank is the server default,
+    // anything else must be a positive whole number.
+    val bad = labels.map { (_, value) ->
+        value.isNotBlank() && value.trim().toLongOrNull()?.let { it > 0 } != true
+    }
+    Row(horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.sm)) {
         labels.forEachIndexed { index, (label, value) ->
             SyncedTextField(
                 value = value,
@@ -406,7 +448,12 @@ private fun TimeoutFields(
                     )
                 },
                 label = { Text(stringResource(label)) },
-                isError = invalid,
+                isError = bad[index],
+                supportingText = {
+                    if (bad[index]) {
+                        Text(stringResource(R.string.mcp_timeout_bad))
+                    }
+                },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 singleLine = true,
                 modifier = Modifier.weight(1f),
@@ -435,16 +482,19 @@ fun McpResourceSheetContent(
     LazyColumn(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp)
-            .padding(bottom = 24.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
+            .padding(horizontal = OpenCodeThemeExtras.spacing.lg)
+            .padding(bottom = OpenCodeThemeExtras.spacing.xl),
+        verticalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.xs),
     ) {
         item {
             Text(stringResource(R.string.mcp_resources), style = MaterialTheme.typography.titleLarge)
         }
         if (resources.isEmpty() && templates.isEmpty()) {
             item {
-                EmptyNote(stringResource(R.string.mcp_resources_empty))
+                OpenCodeEmptyState(
+                    title = stringResource(R.string.mcp_resources_empty),
+                    icon = Icons.Filled.Link,
+                )
             }
         }
         items(resources, key = { it.uri }) { resource ->
@@ -470,7 +520,7 @@ fun McpResourceSheetContent(
                         ),
                     ) {
                         Icon(Icons.Filled.Link, contentDescription = null)
-                        Text(stringResource(R.string.mcp_attach), modifier = Modifier.padding(start = 4.dp))
+                        Text(stringResource(R.string.mcp_attach), modifier = Modifier.padding(start = OpenCodeThemeExtras.spacing.xs))
                     }
                 },
             )

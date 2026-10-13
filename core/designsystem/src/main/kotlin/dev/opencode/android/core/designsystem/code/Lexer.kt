@@ -29,7 +29,12 @@ internal class Lexer(
         // that opened it, so the first run here is the rest of the literal, and the closing marker
         // is what ends it.
         if (carry.open) {
-            val closed = consumeUntilClose(from = 0, delimiter = carry.openStringDelimiter!!, triple = carry.triple)
+            val closed = consumeUntilClose(
+                from = 0,
+                delimiter = carry.openStringDelimiter!!,
+                triple = carry.triple,
+                escape = true,
+            )
             // The rest of the literal is a run in its own right: the line is the inside of a string
             // from its first character, and a renderer that painted it as plain text would be
             // showing a multi-line literal as if each line were code.
@@ -66,7 +71,12 @@ internal class Lexer(
             return text.length
         }
         rules.blockComment.firstOrNull { text.startsWith(it.first, index) }?.let { (open, close) ->
-            val result = consumeUntilClose(from = index + open.length, delimiter = close, triple = false)
+            val result = consumeUntilClose(
+                from = index + open.length,
+                delimiter = close,
+                triple = false,
+                escape = false,
+            )
             add(CodeTokenKind.COMMENT, index, result.index)
             return result.index
         }
@@ -87,7 +97,7 @@ internal class Lexer(
         if (ch in rules.stringDelimiters) {
             val triple = rules.tripleQuote && text.startsWith("$ch$ch$ch", index)
             val open = if (triple) "$ch$ch$ch" else ch.toString()
-            val result = consumeUntilClose(from = index + open.length, delimiter = open, triple = triple)
+            val result = consumeUntilClose(from = index + open.length, delimiter = open, triple = triple, escape = true)
             add(CodeTokenKind.STRING, index, result.index)
             // Only a language that *has* multi-line literals can leave one open.
             pendingCarry = if (triple && !result.closed && rules.tripleQuote) {
@@ -98,13 +108,13 @@ internal class Lexer(
             return result.index
         }
         if (rules.backtickTemplate && ch == '`') {
-            val result = consumeUntilClose(from = index + 1, delimiter = "`", triple = false)
+            val result = consumeUntilClose(from = index + 1, delimiter = "`", triple = false, escape = true)
             add(CodeTokenKind.STRING, index, result.index)
             pendingCarry = LineCarry.NONE
             return result.index
         }
         if (ch == '"' && !rules.stringDelimiters.contains('"')) {
-            val result = consumeUntilClose(from = index + 1, delimiter = "\"", triple = false)
+            val result = consumeUntilClose(from = index + 1, delimiter = "\"", triple = false, escape = true)
             add(CodeTokenKind.STRING, index, result.index)
             return result.index
         }
@@ -180,10 +190,6 @@ internal class Lexer(
             if (rest > markerEnd) add(CodeTokenKind.PLAIN, markerEnd, rest)
             return rest
         }
-        if (rules.leadingDashKey && (ch == '-' || ch == ':' || ch == '?')) {
-            add(CodeTokenKind.MARKER, index, index + 1)
-            return index + 1
-        }
         if (rules.quotePrefix && ch == '>') {
             add(CodeTokenKind.MARKER, index, index + 1)
             return index + 1
@@ -212,19 +218,24 @@ internal class Lexer(
      * A delimiter that is not there means the literal runs to the end of the line, and
      * [Close.closed] says so — which is the only thing the caller needs in order to decide whether
      * the *next* line is still inside the literal.
+     *
+     * When [escape] is set, a backslash quotes the character after it, so an escaped delimiter
+     * does not close the literal: `"a\"b"` is one string, not `"a\"` plus `b"`. Block comments do
+     * not escape this way, so their scans pass `false`.
      */
-    private fun consumeUntilClose(from: Int, delimiter: String, triple: Boolean): Close {
+    private fun consumeUntilClose(from: Int, delimiter: String, triple: Boolean, escape: Boolean): Close {
         var at = from
         while (at < text.length) {
-            val found = text.indexOf(delimiter, at)
-            if (found < 0) return Close(text.length, closed = false)
-            at = found + delimiter.length
-            if (triple) {
-                // A triple-quoted literal may contain a shorter run of quotes, so only the full
-                // delimiter closes it — which is why the scan above searched for the full one.
-                return Close(at, closed = true)
+            if (escape && text[at] == '\\' && at + 1 < text.length) {
+                at += 2
+                continue
             }
-            return Close(at, closed = true)
+            // startsWith, not indexOf: a triple-quoted literal may contain a shorter run of quotes,
+            // so only the full delimiter closes it.
+            if (text.startsWith(delimiter, at)) {
+                return Close(at + delimiter.length, closed = true)
+            }
+            at++
         }
         return Close(text.length, closed = false)
     }

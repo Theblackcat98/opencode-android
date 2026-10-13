@@ -26,6 +26,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import dev.opencode.android.core.data.timeline.PendingInboxItem
+import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
 import dev.opencode.android.core.model.Delivery
 import dev.opencode.android.core.model.InboxItem
 import dev.opencode.android.feature.composer.R
@@ -54,9 +55,9 @@ fun InboxPanel(
         LazyColumn(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp)
-                .padding(bottom = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+                .padding(horizontal = OpenCodeThemeExtras.spacing.lg)
+                .padding(bottom = OpenCodeThemeExtras.spacing.xl),
+            verticalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.sm),
         ) {
             item {
                 Text(stringResource(R.string.inbox_title), style = MaterialTheme.typography.titleMedium)
@@ -88,7 +89,7 @@ private fun InboxRow(
 ) {
     val delivery = pending.item.delivery
     val isQueue = delivery == Delivery.Queue
-    Column(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+    Column(Modifier.fillMaxWidth().padding(vertical = OpenCodeThemeExtras.spacing.sm)) {
         Text(
             text = stringResource(R.string.inbox_pending),
             style = MaterialTheme.typography.labelSmall,
@@ -100,9 +101,9 @@ private fun InboxRow(
             maxLines = 3,
         )
         Row(
-            modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+            modifier = Modifier.fillMaxWidth().padding(top = OpenCodeThemeExtras.spacing.xs),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.xs),
         ) {
             val other = if (isQueue) Delivery.Steer else Delivery.Queue
             AssistChip(

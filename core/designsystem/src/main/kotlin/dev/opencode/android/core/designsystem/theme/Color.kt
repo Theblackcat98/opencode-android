@@ -85,15 +85,6 @@ object OpenCodePalette {
     val OnTertiaryFixedVariant: Color = Color(0xFF54348B)
 
     // Legacy Neutrals (for compatibility)
-    val Ink0: Color = SurfaceContainerLowest
-    val Ink1: Color = SurfaceContainerLow
-    val Ink2: Color = SurfaceContainer
-    val Ink3: Color = SurfaceContainerHigh
-    val Ink4: Color = OutlineVariant
-    val Ink5: Color = Outline
-    val Ink6: Color = OnSurfaceVariant
-    val Ink7: Color = OnSurface
-
     val Paper0: Color = Color(0xFFFFFFFF)
     val Paper1: Color = Color(0xFFFAFAFA)
     val Paper2: Color = Color(0xFFF3F3F3)
@@ -132,6 +123,10 @@ internal val OpenCodeDarkColors: ColorScheme = darkColorScheme(
     surfaceContainer = OpenCodePalette.SurfaceContainer,
     surfaceContainerHigh = OpenCodePalette.SurfaceContainerHigh,
     surfaceContainerHighest = OpenCodePalette.SurfaceContainerHighest,
+    surfaceDim = OpenCodePalette.SurfaceDim,
+    surfaceBright = OpenCodePalette.SurfaceBright,
+    surfaceTint = OpenCodePalette.SurfaceTint,
+    scrim = Color.Black,
     outline = OpenCodePalette.Outline,
     outlineVariant = OpenCodePalette.OutlineVariant,
     inverseSurface = OpenCodePalette.InverseSurface,
@@ -167,6 +162,10 @@ internal val OpenCodeLightColors: ColorScheme = lightColorScheme(
     surfaceContainer = OpenCodePalette.Paper2,
     surfaceContainerHigh = OpenCodePalette.Paper3,
     surfaceContainerHighest = OpenCodePalette.Paper4,
+    surfaceDim = OpenCodePalette.Paper3,
+    surfaceBright = OpenCodePalette.Paper0,
+    surfaceTint = OpenCodePalette.SurfaceTint,
+    scrim = Color.Black,
     outline = OpenCodePalette.Paper5,
     outlineVariant = OpenCodePalette.Paper4,
     inverseSurface = OpenCodePalette.Paper7,

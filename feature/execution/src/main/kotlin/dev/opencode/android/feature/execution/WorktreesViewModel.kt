@@ -95,6 +95,8 @@ class WorktreesViewModel(
             projectID = next.projectID ?: _state.value.projectID,
             directories = next.directories,
             resolved = next.resolved.map { ResolvedRow(it.directory, it.previous, it.adopted) },
+            // The store has answered: whatever open() was waiting on is over.
+            loading = false,
         )
     }
 

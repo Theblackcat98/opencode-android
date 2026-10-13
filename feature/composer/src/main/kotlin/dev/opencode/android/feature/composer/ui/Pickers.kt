@@ -20,6 +20,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
@@ -27,6 +28,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import dev.opencode.android.core.data.catalog.AgentCatalog
 import dev.opencode.android.core.designsystem.format.Formatters
+import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
 import dev.opencode.android.core.model.AgentInfo
 import dev.opencode.android.core.model.ModelRef
 import dev.opencode.android.feature.composer.R
@@ -49,13 +51,13 @@ fun AgentPicker(
     if (agents.isEmpty()) {
         Text(
             text = stringResource(R.string.agent_no_selectable),
-            modifier = modifier.padding(16.dp),
+            modifier = modifier.padding(OpenCodeThemeExtras.spacing.lg),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         return
     }
-    LazyColumn(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    LazyColumn(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.xs)) {
         items(agents, key = { it.id }) { agent ->
             val label = AgentCatalog.label(agent)
             val description = agent.description ?: stringResource(R.string.agent_no_description)
@@ -63,7 +65,7 @@ fun AgentPicker(
                 modifier = Modifier
                     .fillMaxWidth()
                     .selectable(selected = agent.id == selected, onClick = { onSelect(agent.id) })
-                    .padding(vertical = 8.dp, horizontal = 12.dp)
+                    .padding(vertical = OpenCodeThemeExtras.spacing.sm, horizontal = OpenCodeThemeExtras.spacing.md)
                     .semantics(mergeDescendants = true) {
                         contentDescription = "$label. $description"
                     },
@@ -73,10 +75,10 @@ fun AgentPicker(
                     text = "●",
                     color = agentColor(agent),
                     style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.padding(end = 12.dp),
+                    modifier = Modifier.padding(end = OpenCodeThemeExtras.spacing.md),
                 )
                 RadioButton(selected = agent.id == selected, onClick = null)
-                Column(Modifier.padding(start = 8.dp)) {
+                Column(Modifier.padding(start = OpenCodeThemeExtras.spacing.sm)) {
                     Text(label, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
                     Text(
                         text = description,
@@ -114,17 +116,22 @@ fun ModelRow(
     onToggleFavorite: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val spacing = OpenCodeThemeExtras.spacing
     Column(modifier = modifier.fillMaxWidth()) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(start = 12.dp, end = 4.dp, top = 8.dp),
+            // The whole header is the tap target, like AgentPicker: the RadioButton is the
+            // indicator, not the control.
+            modifier = Modifier
+                .fillMaxWidth()
+                .selectable(selected = selected, onClick = onSelect, role = Role.RadioButton)
+                .padding(start = spacing.md, end = spacing.xs, top = spacing.sm)
+                .semantics(mergeDescendants = true) {
+                    contentDescription = "$name. $ref"
+                },
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            RadioButton(
-                selected = selected,
-                onClick = onSelect,
-                modifier = Modifier.semantics(mergeDescendants = true) {},
-            )
-            Column(Modifier.weight(1f).padding(start = 8.dp)) {
+            RadioButton(selected = selected, onClick = null)
+            Column(Modifier.weight(1f).padding(start = spacing.sm)) {
                 Text(name, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
                 Text(
                     text = ref.toString(),
@@ -141,8 +148,8 @@ fun ModelRow(
             }
         }
         Row(
-            modifier = Modifier.fillMaxWidth().padding(start = 52.dp, end = 12.dp, bottom = 4.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.fillMaxWidth().padding(start = 52.dp, end = spacing.md, bottom = spacing.xs),
+            horizontalArrangement = Arrangement.spacedBy(spacing.sm),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             if (supportsTools) Badge(stringResource(R.string.model_capability_tools))
@@ -158,8 +165,8 @@ fun ModelRow(
         }
         if (variants.size > 1) {
             Row(
-                modifier = Modifier.fillMaxWidth().padding(start = 52.dp, end = 12.dp, bottom = 4.dp),
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                modifier = Modifier.fillMaxWidth().padding(start = 52.dp, end = spacing.md, bottom = spacing.xs),
+                horizontalArrangement = Arrangement.spacedBy(spacing.xs),
             ) {
                 variants.forEach { variant ->
                     FilterChip(
@@ -191,8 +198,8 @@ fun ModelSectionHeader(text: String, modifier: Modifier = Modifier) {
     Text(
         text = text,
         style = MaterialTheme.typography.labelLarge,
-        color = MaterialTheme.colorScheme.primary,
-        modifier = modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = modifier.padding(horizontal = OpenCodeThemeExtras.spacing.lg, vertical = OpenCodeThemeExtras.spacing.sm),
     )
 }
 
@@ -207,7 +214,7 @@ fun ModelEmptyState(modifier: Modifier = Modifier, query: String = "") {
         } else {
             stringResource(R.string.model_no_match, query.trim())
         },
-        modifier = modifier.padding(16.dp),
+        modifier = modifier.padding(OpenCodeThemeExtras.spacing.lg),
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )

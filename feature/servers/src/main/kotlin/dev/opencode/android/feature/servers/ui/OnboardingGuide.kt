@@ -1,5 +1,6 @@
 package dev.opencode.android.feature.servers.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -15,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
+import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
 import dev.opencode.android.feature.servers.R
 
 /**
@@ -37,8 +39,8 @@ fun OnboardingGuideCard(
         shape = RoundedCornerShape(16.dp),
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+            modifier = Modifier.padding(OpenCodeThemeExtras.spacing.lg),
+            verticalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.lg),
         ) {
             Text(
                 text = stringResource(R.string.onboarding_guide_title),
@@ -115,7 +117,13 @@ private fun GuideStep(
                 fontFamily = FontFamily.Monospace,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(8.dp),
+                    // onTertiaryContainer is only legible on tertiaryContainer: the old code drew
+                    // it on the card's surfaceVariant, which breaks contrast in both schemes.
+                    .background(
+                        color = MaterialTheme.colorScheme.tertiaryContainer,
+                        shape = OpenCodeThemeExtras.shapes.codeBlock,
+                    )
+                    .padding(OpenCodeThemeExtras.spacing.sm),
                 color = MaterialTheme.colorScheme.onTertiaryContainer,
             )
         }

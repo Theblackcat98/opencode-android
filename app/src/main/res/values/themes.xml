@@ -3,6 +3,8 @@
     <!-- Window theme only; all UI is Compose (see OpenCodeTheme). -->
     <style name="Theme.OpenCode" parent="android:Theme.Material.Light.NoActionBar">
         <item name="android:windowBackground">@color/opencode_paper</item>
+        <!-- Edge-to-edge (MainActivity.enableEdgeToEdge) draws under the cutout on short edges. -->
+        <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
     </style>
 
     <style name="Theme.OpenCode.Splash" parent="Theme.SplashScreen">

@@ -9,9 +9,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
@@ -31,6 +32,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
 import dev.opencode.android.core.model.InstructionEntry
 import dev.opencode.android.core.model.LoadedLocation
 import dev.opencode.android.core.model.MigrationStatus
@@ -88,14 +90,14 @@ fun PermissionsScreen(
                     stringResource(
                         if (state.projectID == null) R.string.admin_saved_all else R.string.admin_saved_project,
                     ),
-                    modifier = Modifier.padding(horizontal = 16.dp),
+                    modifier = Modifier.padding(horizontal = OpenCodeThemeExtras.spacing.lg),
                 )
             }
             if (state.loading && !state.savedLoaded) {
                 item(key = "saved-loading") {
                     Row(
-                        modifier = Modifier.fillMaxWidth().padding(16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier.fillMaxWidth().padding(OpenCodeThemeExtras.spacing.lg),
+                        horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.md),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         CircularProgressIndicator()
@@ -111,7 +113,7 @@ fun PermissionsScreen(
                     Text(
                         text = stringResource(R.string.admin_saved_empty),
                         style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.padding(16.dp),
+                        modifier = Modifier.padding(OpenCodeThemeExtras.spacing.lg),
                     )
                 }
             }
@@ -126,7 +128,7 @@ fun PermissionsScreen(
             onDismissRequest = onCancelRemove,
             title = { Text(stringResource(R.string.admin_saved_remove_title)) },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.xs)) {
                     Text(stringResource(R.string.admin_saved_remove_body, target.action, target.resource))
                     Text(
                         text = stringResource(R.string.admin_saved_remove_consequence),
@@ -156,24 +158,16 @@ fun PermissionsScreen(
  */
 @Composable
 private fun PrecedenceWarning() {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp)
-            .testTag(AdminTags.RULES_PRECEDENCE_WARNING),
+    val spacing = OpenCodeThemeExtras.spacing
+    AdminCard(
+        title = stringResource(R.string.admin_rules_warning_title),
+        modifier = Modifier.padding(spacing.lg).testTag(AdminTags.RULES_PRECEDENCE_WARNING),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.tertiaryContainer,
             contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
         ),
     ) {
-        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(
-                text = stringResource(R.string.admin_rules_warning_title),
-                style = MaterialTheme.typography.titleSmall,
-                modifier = Modifier.semantics { heading() },
-            )
-            Text(text = stringResource(R.string.admin_rules_warning_body), style = MaterialTheme.typography.bodySmall)
-        }
+        Text(text = stringResource(R.string.admin_rules_warning_body), style = MaterialTheme.typography.bodySmall)
     }
 }
 
@@ -187,7 +181,7 @@ private fun RuleSection(
     onRemoveRule: (Int) -> Unit,
     onSaveRules: () -> Unit,
 ) {
-    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = OpenCodeThemeExtras.spacing.lg)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 text = stringResource(R.string.admin_rules_title),
@@ -196,7 +190,7 @@ private fun RuleSection(
             )
             TextButton(
                 onClick = if (state.editing) onCancelEditing else onStartEditing,
-                modifier = Modifier.testTag("permissions:toggle-editing"),
+                modifier = Modifier.testTag(AdminTags.TOGGLE_EDITING),
             ) { Text(stringResource(if (state.editing) R.string.admin_cancel else R.string.admin_rules_edit)) }
         }
         if (!state.editing) {
@@ -220,7 +214,7 @@ private fun RuleSection(
                 onRemove = { onRemoveRule(index) },
             )
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.sm)) {
             TextButton(onClick = onAddRule, modifier = Modifier.testTag(AdminTags.ADD_RULE)) {
                 Text(stringResource(R.string.admin_rules_add))
             }
@@ -239,10 +233,14 @@ private fun RuleSection(
 @Composable
 private fun RuleSummary(index: Int, rule: dev.opencode.android.core.model.PermissionRule) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).testTag(AdminTags.rule(index)),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.fillMaxWidth().padding(vertical = OpenCodeThemeExtras.spacing.xs).testTag(AdminTags.rule(index)),
+        horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.sm),
     ) {
-        Text(text = rule.effect.value, style = MaterialTheme.typography.labelMedium, color = effectColor(rule.effect))
+        Text(
+            text = effectLabel(rule.effect),
+            style = MaterialTheme.typography.labelMedium,
+            color = effectColor(rule.effect),
+        )
         Text(text = rule.action, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
         Text(text = rule.resource, style = MaterialTheme.typography.bodySmall)
     }
@@ -256,18 +254,19 @@ private fun RuleEditor(
     onRemove: () -> Unit,
 ) {
     Column(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).testTag(AdminTags.rule(index)),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
+        modifier = Modifier.fillMaxWidth().padding(vertical = OpenCodeThemeExtras.spacing.xs).testTag(AdminTags.rule(index)),
+        verticalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.xs),
     ) {
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.sm), verticalAlignment = Alignment.CenterVertically) {
             LabelledField(
                 label = stringResource(R.string.admin_template_action),
                 value = draft.action,
                 onValueChange = { value -> onChange { it.copy(action = value) } },
                 modifier = Modifier.weight(1f),
             )
-            IconButton(onClick = onRemove, modifier = Modifier.testTag("permissions:remove-rule:$index")) {
-                Text(text = "×", style = MaterialTheme.typography.titleMedium)
+            IconButton(onClick = onRemove, modifier = Modifier.testTag(AdminTags.removeRule(index))) {
+                // A real icon button, not a text glyph: TalkBack announces the action instead of "times".
+                Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.admin_remove_rule))
             }
         }
         LabelledField(
@@ -275,13 +274,13 @@ private fun RuleEditor(
             value = draft.resource,
             onValueChange = { value -> onChange { it.copy(resource = value) } },
         )
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.sm)) {
             listOf(PermissionEffect.Ask, PermissionEffect.Allow, PermissionEffect.Deny).forEach { effect ->
                 FilterChip(
                     selected = draft.effect == effect,
                     onClick = { onChange { it.copy(effect = effect) } },
-                    label = { Text(effect.value) },
-                    modifier = Modifier.testTag("permissions:effect:$index:${effect.value}"),
+                    label = { Text(effectLabel(effect)) },
+                    modifier = Modifier.testTag(AdminTags.ruleEffect(index, effect.value)),
                 )
             }
         }
@@ -293,6 +292,21 @@ private fun effectColor(effect: PermissionEffect) = when (effect) {
     PermissionEffect.Deny -> MaterialTheme.colorScheme.error
     PermissionEffect.Allow -> MaterialTheme.colorScheme.primary
     else -> MaterialTheme.colorScheme.tertiary
+}
+
+/**
+ * A permission effect as UI copy, not a wire value.
+ *
+ * `PermissionEffect.of()` explicitly anticipates a server that grows a fourth effect, so an
+ * unknown value falls back to the raw string rather than vanishing — a label the user cannot
+ * read is worse than one that is merely untranslated.
+ */
+@Composable
+private fun effectLabel(effect: PermissionEffect): String = when (effect) {
+    PermissionEffect.Ask -> stringResource(R.string.admin_effect_ask)
+    PermissionEffect.Allow -> stringResource(R.string.admin_effect_allow)
+    PermissionEffect.Deny -> stringResource(R.string.admin_effect_deny)
+    else -> effect.value
 }
 
 @Composable

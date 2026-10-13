@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import dev.opencode.android.core.data.forms.FormEngine
 import dev.opencode.android.core.data.forms.FormFieldState
 import dev.opencode.android.core.designsystem.text.SyncedTextField
+import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
 import dev.opencode.android.core.model.FormAnswer
 import dev.opencode.android.core.model.FormField
 import dev.opencode.android.core.model.FormOption
@@ -74,7 +75,7 @@ fun FormFields(
     showProblems: Boolean = false,
 ) {
     val states = FormEngine.fieldStates(fields, answers)
-    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.md)) {
         states.filter { it.visible }.forEach { state ->
             FormFieldRow(
                 state = state,
@@ -160,7 +161,7 @@ private fun StringFieldRow(
 ) {
     val text = (state.value as? JsonPrimitive)?.takeIf { it.isString }?.content.orEmpty()
     val customOnly = field.options.isEmpty() || !typedIntoOptions(text, field.options)
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.xs)) {
         FieldLabel(state)
         if (field.options.isNotEmpty()) {
             Column(Modifier.selectableGroup()) {
@@ -205,7 +206,7 @@ private fun NumberFieldRow(
     onAnswerChange: (String, JsonElement?) -> Unit,
 ) {
     val text = (state.value as? JsonPrimitive)?.content.orEmpty()
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.xs)) {
         FieldLabel(state)
         SyncedTextField(
             value = text,
@@ -270,14 +271,14 @@ private fun MultiselectFieldRow(
     onAnswerChange: (String, JsonElement?) -> Unit,
 ) {
     val selected = (state.value as? JsonArray)?.mapNotNull { (it as? JsonPrimitive)?.content }.orEmpty()
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.xs)) {
         FieldLabel(state)
         val selectedCount = stringResource(R.string.form_selected_count, selected.size)
         // Chips are content-width and wrap: a chip stretched to the full row reads as a text field,
         // and three of them do not fit on a phone at a large font scale.
         FlowRow(
             modifier = Modifier.selectableGroup().semantics { contentDescription = selectedCount },
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.xs),
         ) {
             field.options.forEach { option ->
                 val isSelected = option.value in selected
@@ -299,7 +300,7 @@ private fun MultiselectFieldRow(
 /** An external field: a link the user has to open, and nothing to answer. */
 @Composable
 private fun ExternalFieldRow(field: FormField.ExternalField, onOpenLink: (String) -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.xs)) {
         Text(
             text = field.labelOrKey(),
             style = MaterialTheme.typography.labelLarge,
@@ -363,11 +364,11 @@ private fun OptionRow(
         modifier = Modifier
             .fillMaxWidth()
             .selectable(selected = selected, enabled = enabled, role = Role.RadioButton, onClick = onSelect)
-            .padding(vertical = 4.dp),
+            .padding(vertical = OpenCodeThemeExtras.spacing.xs),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         RadioButton(selected = selected, onClick = null, enabled = enabled)
-        Column(Modifier.padding(start = 8.dp)) {
+        Column(Modifier.padding(start = OpenCodeThemeExtras.spacing.sm)) {
             Text(option.label, style = MaterialTheme.typography.bodyMedium)
             option.description?.let {
                 Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -400,7 +401,7 @@ fun ConsentRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Checkbox(checked = checked, onCheckedChange = null, enabled = enabled)
-        Text(label, Modifier.padding(start = 8.dp))
+        Text(label, Modifier.padding(start = OpenCodeThemeExtras.spacing.sm))
     }
 }
 

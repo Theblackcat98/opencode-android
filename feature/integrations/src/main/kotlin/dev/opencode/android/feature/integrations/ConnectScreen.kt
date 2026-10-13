@@ -6,7 +6,9 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -22,9 +24,9 @@ import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -34,6 +36,7 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -54,7 +57,11 @@ import dev.opencode.android.core.data.integrations.ConnectAttemptState
 import dev.opencode.android.core.data.integrations.CredentialAction
 import dev.opencode.android.core.data.integrations.IntegrationFlow
 import dev.opencode.android.core.data.sync.SyncStatus
+import dev.opencode.android.core.designsystem.component.OpenCodeCard
+import dev.opencode.android.core.designsystem.component.OpenCodeEmptyState
+import dev.opencode.android.core.designsystem.component.OpenCodeTextButton
 import dev.opencode.android.core.designsystem.text.SyncedTextField
+import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
 import dev.opencode.android.core.model.ConnectionInfo
 import dev.opencode.android.core.model.FormValues
 import dev.opencode.android.core.model.IntegrationMethod
@@ -109,23 +116,32 @@ fun ConnectScreen(
                         onDismiss = onDismissError,
                     )
 
-                    SyncStatus.Loading -> Row(
-                        modifier = Modifier.fillMaxWidth().padding(16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        CircularProgressIndicator()
-                        Text(stringResource(R.string.connect_loading))
+                    SyncStatus.Loading -> {
+                        // Read here rather than inside the `semantics` block, which is not a
+                        // composable scope, so the description is the same string the visible
+                        // label uses and cannot drift from it.
+                        val loading = stringResource(R.string.connect_loading)
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(OpenCodeThemeExtras.spacing.lg)
+                                .semantics { contentDescription = loading },
+                            horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.md),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            CircularProgressIndicator()
+                            Text(loading)
+                        }
                     }
 
                     else -> if (state.rows.isEmpty()) {
-                        EmptyNote(stringResource(R.string.connect_empty))
+                        OpenCodeEmptyState(
+                            title = stringResource(R.string.connect_empty),
+                            icon = Icons.Filled.Add,
+                        )
                     }
                 }
             }
             items(state.rows, key = { it.id }) { row ->
                 IntegrationCard(row = row, onMethodClick = onMethodClick, onCredentialAction = onCredentialAction)
-                HorizontalDivider()
             }
             if (state.wellknownUsable) {
                 item {
@@ -161,7 +177,10 @@ fun ConnectScreen(
 
     val active = state.active
     if (active != null) {
-        ModalBottomSheet(onDismissRequest = onDismissConnect) {
+        // skipPartiallyExpanded: a half-open sheet hides the form's submit row behind the drag
+        // handle's dead zone; the sheet always opens fully.
+        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        ModalBottomSheet(onDismissRequest = onDismissConnect, sheetState = sheetState) {
             ConnectSheetContent(
                 state = state,
                 onLabelChange = onLabelChange,
@@ -179,14 +198,21 @@ fun ConnectScreen(
     }
 }
 
-/** One integration: its name, the ways in, and the logins that already exist. */
+/** One integration: its name, the ways in, and the logins that already exist, contained in a card. */
 @Composable
 private fun IntegrationCard(
     row: IntegrationRow,
     onMethodClick: (IntegrationMethod) -> Unit,
     onCredentialAction: (ConnectionInfo.Credential, CredentialAction) -> Unit,
 ) {
-    Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+    OpenCodeCard(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(
+                horizontal = OpenCodeThemeExtras.spacing.lg,
+                vertical = OpenCodeThemeExtras.spacing.sm,
+            ),
+    ) {
         Text(text = row.info.name, style = MaterialTheme.typography.titleMedium)
         if (row.info.methods.isEmpty()) {
             Text(
@@ -203,7 +229,7 @@ private fun IntegrationCard(
                 text = stringResource(R.string.connect_accounts),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 8.dp),
+                modifier = Modifier.padding(top = OpenCodeThemeExtras.spacing.sm),
             )
         }
         row.info.credentials.forEach { credential ->
@@ -280,11 +306,16 @@ private fun CredentialRow(
             Text(stringResource(if (credential.isKey) R.string.connect_via_key else R.string.connect_via_oauth))
         },
         trailingContent = {
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                TextButton(onClick = { onAction(credential, CredentialAction.ACTIVATE) }) {
+            // OpenCodeTextButtons carry the 48dp minimum target: two raw TextButtons side by side
+            // are the dense 40dp rows the audit flagged.
+            Row(horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.xs)) {
+                OpenCodeTextButton(onClick = { onAction(credential, CredentialAction.ACTIVATE) }) {
                     Text(stringResource(R.string.connect_activate))
                 }
-                TextButton(onClick = { onAction(credential, CredentialAction.REMOVE) }) {
+                OpenCodeTextButton(
+                    onClick = { onAction(credential, CredentialAction.REMOVE) },
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                ) {
                     Text(stringResource(R.string.connect_remove))
                 }
             }
@@ -329,10 +360,11 @@ fun ConnectSheetContent(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp)
+            .padding(horizontal = OpenCodeThemeExtras.spacing.lg)
             .verticalScroll(rememberScrollState())
-            .padding(bottom = 24.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+            .imePadding()
+            .padding(bottom = OpenCodeThemeExtras.spacing.xl),
+        verticalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.md),
     ) {
         Text(text = active.integrationName, style = MaterialTheme.typography.titleLarge)
         Text(
@@ -393,7 +425,7 @@ fun ConnectSheetContent(
 
         state.error?.let { ErrorLine(text = it.message, onDismiss = onDismiss) }
 
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.sm)) {
             Button(onClick = onSubmit, enabled = state.canSubmit && !state.busy) {
                 Text(stringResource(R.string.connect_connect))
             }
@@ -452,7 +484,7 @@ private fun IntegrationFormFields(
         active.method,
         state.formAnswers,
     )
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.sm)) {
         fields
             .filter { dev.opencode.android.core.data.forms.FormEngine.isVisible(it, state.formAnswers) }
             .forEach { field ->
@@ -495,7 +527,7 @@ private fun OAuthProgress(
     onSubmitCode: () -> Unit,
     onCancel: () -> Unit,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.sm)) {
         // The server's own words. Untrusted text, shown verbatim and never interpreted as markup.
         if (state.oauthInstructions.isNotBlank()) {
             Text(text = state.oauthInstructions, style = MaterialTheme.typography.bodyMedium)
@@ -509,7 +541,7 @@ private fun OAuthProgress(
                 Icon(Icons.Filled.OpenInNew, contentDescription = null)
                 Text(
                     text = stringResource(R.string.connect_open_provider),
-                    modifier = Modifier.padding(start = 8.dp),
+                    modifier = Modifier.padding(start = OpenCodeThemeExtras.spacing.sm),
                 )
             }
         }
@@ -532,8 +564,8 @@ private fun OAuthProgress(
 /** The command half: what the host printed, and a copy button for a device code in it. */
 @Composable
 private fun CommandProgress(state: ConnectUiState, onCopyCode: (String) -> Unit, onCancel: () -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Surface(color = MaterialTheme.colorScheme.surfaceVariant) {
+    Column(verticalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.sm)) {
+        Surface(color = MaterialTheme.colorScheme.surfaceContainerHighest) {
             SelectionContainer {
                 Text(
                     text = state.progress.output.ifBlank { stringResource(R.string.connect_command_waiting) },
@@ -542,7 +574,7 @@ private fun CommandProgress(state: ConnectUiState, onCopyCode: (String) -> Unit,
                     modifier = Modifier
                         .fillMaxWidth()
                         .heightIn(min = 80.dp, max = 240.dp)
-                        .padding(8.dp),
+                        .padding(OpenCodeThemeExtras.spacing.sm),
                 )
             }
         }
@@ -561,17 +593,17 @@ private fun CommandProgress(state: ConnectUiState, onCopyCode: (String) -> Unit,
 /** The spinner, the cancel button and the reason, which are the same for both flows. */
 @Composable
 private fun AttemptProgress(state: ConnectUiState, onCancel: () -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.xs)) {
         if (state.isPolling) {
             // Read here rather than inside the `semantics` block, which is not a composable scope,
             // so the description is the same string the visible label uses and cannot drift from it.
             val waiting = stringResource(R.string.connect_waiting_for_sign_in)
             Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.md),
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.semantics { contentDescription = waiting },
             ) {
-                CircularProgressIndicator(modifier = Modifier.heightIn(max = 20.dp))
+                CircularProgressIndicator(modifier = Modifier.size(20.dp))
                 Text(
                     text = stringResource(R.string.connect_waiting),
                     style = MaterialTheme.typography.bodySmall,
@@ -606,8 +638,8 @@ private fun WellknownSourceCard(
     onAdd: () -> Unit,
 ) {
     Column(
-        modifier = Modifier.padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.padding(OpenCodeThemeExtras.spacing.lg),
+        verticalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.sm),
     ) {
         Text(text = stringResource(R.string.connect_wellknown_title), style = MaterialTheme.typography.titleSmall)
         Text(
@@ -646,7 +678,7 @@ private fun CredentialConfirmDialog(
         onDismissRequest = onCancel,
         title = { Text(stringResource(titleFor(pending.action))) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.sm)) {
                 Text(stringResource(bodyFor(pending.action), pending.connection.label))
                 if (pending.action == CredentialAction.RENAME) {
                     SyncedTextField(
@@ -659,7 +691,18 @@ private fun CredentialConfirmDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = onConfirm) { Text(stringResource(R.string.connect_confirm)) }
+            // Removing a credential has no undo: the confirm reads as destructive, not as a
+            // dismissal. Rename and activate keep the default emphasis.
+            val destructive = pending.action == CredentialAction.REMOVE
+            TextButton(
+                onClick = onConfirm,
+                colors = ButtonDefaults.textButtonColors(
+                    contentColor = if (destructive) MaterialTheme.colorScheme.error
+                    else MaterialTheme.colorScheme.primary,
+                ),
+            ) {
+                Text(stringResource(R.string.connect_confirm))
+            }
         },
         dismissButton = {
             TextButton(onClick = onCancel) { Text(stringResource(R.string.connect_cancel)) }
@@ -679,26 +722,41 @@ private fun bodyFor(action: CredentialAction) = when (action) {
     CredentialAction.REMOVE -> R.string.connect_remove_body
 }
 
+/** A failure the panel's writes produced, on the error container so it reads as an error, not a note. */
 @Composable
 internal fun ErrorLine(text: String, onDismiss: () -> Unit) {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(16.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically,
+    Surface(
+        color = MaterialTheme.colorScheme.errorContainer,
+        contentColor = MaterialTheme.colorScheme.onErrorContainer,
+        shape = OpenCodeThemeExtras.shapes.card,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(
+                horizontal = OpenCodeThemeExtras.spacing.lg,
+                vertical = OpenCodeThemeExtras.spacing.sm,
+            ),
     ) {
-        Text(text = text, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
-        TextButton(onClick = onDismiss) { Text(stringResource(R.string.connect_dismiss)) }
+        Row(
+            modifier = Modifier.padding(
+                horizontal = OpenCodeThemeExtras.spacing.md,
+                vertical = OpenCodeThemeExtras.spacing.xs,
+            ),
+            horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.sm),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = text,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.weight(1f),
+            )
+            TextButton(
+                onClick = onDismiss,
+                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+            ) {
+                Text(stringResource(R.string.connect_dismiss))
+            }
+        }
     }
-}
-
-@Composable
-internal fun EmptyNote(text: String) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.bodyMedium,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(16.dp),
-    )
 }
 
 /** The string a form problem is shown with. */

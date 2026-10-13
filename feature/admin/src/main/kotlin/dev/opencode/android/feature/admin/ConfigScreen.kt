@@ -1,16 +1,13 @@
 package dev.opencode.android.feature.admin
 
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -20,22 +17,25 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.unit.dp
 import dev.opencode.android.core.data.config.ConfigKey
 import dev.opencode.android.core.data.config.ConfigRow
 import dev.opencode.android.core.data.config.ConfigSource
 import dev.opencode.android.core.data.config.WritePlan
+import dev.opencode.android.core.designsystem.component.OpenCodeTextButton
 import dev.opencode.android.core.designsystem.text.SyncedTextField
+import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
 
 /**
  * The config explorer (plan §6, "Config explorer").
@@ -69,6 +69,10 @@ fun ConfigScreen(
     configuredOnly: Boolean = false,
     onConfiguredOnlyChange: (Boolean) -> Unit = {},
 ) {
+    val spacing = OpenCodeThemeExtras.spacing
+    // A pure UI filter: the rows already arrived, so the query lives here in rememberSaveable,
+    // not in the ViewModel — the same pattern the P2 list blesses for catalog tab/search state.
+    var search by rememberSaveable { mutableStateOf("") }
     Column(modifier = modifier.fillMaxSize()) {
         ConfigToolbar(
             state = state,
@@ -79,13 +83,22 @@ fun ConfigScreen(
             onConfiguredOnlyChange = onConfiguredOnlyChange,
         )
         HorizontalDivider()
+        // Thirty-six keys in schema order is a list you scan, not one you read: the field narrows
+        // it by key name, case-insensitively.
+        LabelledField(
+            label = stringResource(R.string.admin_config_search),
+            value = search,
+            onValueChange = { search = it },
+            tag = "config:search",
+            modifier = Modifier.padding(horizontal = spacing.lg),
+        )
         when {
             state.loading && !state.loaded -> Row(
-                modifier = Modifier.fillMaxWidth().padding(24.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.fillMaxWidth().padding(spacing.xl),
+                horizontalArrangement = Arrangement.spacedBy(spacing.md),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                CircularProgressIndicator(modifier = Modifier.padding(4.dp))
+                CircularProgressIndicator(modifier = Modifier.padding(spacing.xs))
                 Text(stringResource(R.string.admin_config_loading))
             }
 
@@ -104,8 +117,14 @@ fun ConfigScreen(
                     ShellCard(state = state, onShellChange = onShellChange, onShellRequest = onShellRequest)
                 }
                 val rows = if (configuredOnly) state.configuredRows else state.rows
+                val visible = if (search.isBlank()) {
+                    rows
+                } else {
+                    val needle = search.trim()
+                    rows.filter { row -> row.key.key.contains(needle, ignoreCase = true) }
+                }
                 items(
-                    items = rows,
+                    items = visible,
                     // Namespaced, and keyed on the file's own name rather than the index. The namespace
                     // is load-bearing: `shell` is both one of the schema's keys and the row of the
                     // setting above, and two items in one `LazyColumn` with one key is a crash the
@@ -114,12 +133,12 @@ fun ConfigScreen(
                 ) { row ->
                     ConfigKeyCard(row = row)
                 }
-                if (rows.isEmpty()) {
+                if (visible.isEmpty()) {
                     item(key = FIXED_EMPTY) {
                         Text(
                             text = stringResource(R.string.admin_config_empty),
                             style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.padding(16.dp),
+                            modifier = Modifier.padding(spacing.lg),
                         )
                     }
                 }
@@ -140,23 +159,23 @@ private fun ConfigToolbar(
     configuredOnly: Boolean,
     onConfiguredOnlyChange: (Boolean) -> Unit,
 ) {
-    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            TextButton(onClick = onReload, enabled = !state.loading) { Text(stringResource(R.string.admin_reload)) }
-            TextButton(
+    val spacing = OpenCodeThemeExtras.spacing
+    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = spacing.lg, vertical = spacing.sm)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(spacing.sm)) {
+            OpenCodeTextButton(onClick = onReload, enabled = !state.loading) {
+                Text(stringResource(R.string.admin_reload))
+            }
+            OpenCodeTextButton(
                 onClick = onOpenEditor,
                 enabled = state.writesUsable,
-                modifier = Modifier.semantics {
-                    contentDescription = ""
-                },
             ) { Text(stringResource(R.string.admin_config_editor)) }
-            TextButton(onClick = onOpenDefinitions, enabled = state.writesUsable) {
+            OpenCodeTextButton(onClick = onOpenDefinitions, enabled = state.writesUsable) {
                 Text(stringResource(R.string.admin_definitions))
             }
         }
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(spacing.sm),
         ) {
             FilterChip(
                 selected = configuredOnly,
@@ -181,7 +200,8 @@ private fun ConfigToolbar(
  */
 @Composable
 private fun SourceSummary(state: ConfigUiState) {
-    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+    val spacing = OpenCodeThemeExtras.spacing
+    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = spacing.lg, vertical = spacing.sm)) {
         SectionHeading(stringResource(R.string.admin_sources))
         if (state.documentsRead.isEmpty() && state.searched.isEmpty()) {
             Text(
@@ -222,49 +242,44 @@ private fun ShellCard(
     onShellChange: (String) -> Unit,
     onShellRequest: () -> Unit,
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+    val spacing = OpenCodeThemeExtras.spacing
+    AdminCard(
+        title = stringResource(R.string.admin_shell_title),
+        modifier = Modifier.padding(horizontal = spacing.lg, vertical = spacing.xs),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
         ),
     ) {
-        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            text = stringResource(R.string.admin_shell_help),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        SyncedTextField(
+            value = state.shellChoice ?: state.currentShell.orEmpty(),
+            onValueChange = onShellChange,
+            label = { Text(stringResource(R.string.admin_shell_field)) },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth().testTag(AdminTags.SHELL_FIELD),
+        )
+        if (!state.shellUsable) {
             Text(
-                text = stringResource(R.string.admin_shell_title),
-                style = MaterialTheme.typography.titleSmall,
-                modifier = Modifier.semantics { heading() },
-            )
-            Text(
-                text = stringResource(R.string.admin_shell_help),
+                // Two different reasons, and only the first is the user's to fix: a switch that is off is
+                // turned on in Experimental features, a route the server does not have is not turned on
+                // anywhere, and telling that user to flip a switch they already flipped is a circle.
+                text = stringResource(
+                    if (state.shellAllowed) R.string.admin_shell_absent else R.string.admin_shell_off,
+                ),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            SyncedTextField(
-                value = state.shellChoice ?: state.currentShell.orEmpty(),
-                onValueChange = onShellChange,
-                label = { Text(stringResource(R.string.admin_shell_field)) },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth().testTag(AdminTags.SHELL_FIELD),
-            )
-            if (!state.shellUsable) {
-                Text(
-                    // Two different reasons, and only the first is the user's to fix: a switch that is off is
-                    // turned on in Experimental features, a route the server does not have is not turned on
-                    // anywhere, and telling that user to flip a switch they already flipped is a circle.
-                    text = stringResource(
-                        if (state.shellAllowed) R.string.admin_shell_absent else R.string.admin_shell_off,
-                    ),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            Button(
-                onClick = onShellRequest,
-                enabled = state.shellUsable &&
-                    (state.shellChoice ?: "").trim().isNotEmpty() &&
-                    (state.shellChoice ?: "").trim() != state.currentShell,
-            ) { Text(stringResource(R.string.admin_shell_apply)) }
         }
+        Button(
+            onClick = onShellRequest,
+            enabled = state.shellUsable &&
+                (state.shellChoice ?: "").trim().isNotEmpty() &&
+                (state.shellChoice ?: "").trim() != state.currentShell,
+        ) { Text(stringResource(R.string.admin_shell_apply)) }
     }
 }
 
@@ -277,16 +292,17 @@ private fun ShellCard(
  */
 @Composable
 private fun ConfigKeyCard(row: ConfigRow) {
+    val spacing = OpenCodeThemeExtras.spacing
     val key = row.key
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 4.dp)
-            .testTag(AdminTags.configKey(key.key)),
-    ) {
-        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(text = key.key, style = MaterialTheme.typography.titleSmall, fontFamily = FontFamily.Monospace)
+    AdminCard(
+        titleContent = {
+            Row(horizontalArrangement = Arrangement.spacedBy(spacing.xs)) {
+                Text(
+                    text = key.key,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontFamily = FontFamily.Monospace,
+                    modifier = Modifier.semantics { heading() },
+                )
                 if (key.hidden) {
                     AssistChip(
                         onClick = {},
@@ -295,30 +311,34 @@ private fun ConfigKeyCard(row: ConfigRow) {
                     )
                 }
             }
+        },
+        modifier = Modifier
+            .padding(horizontal = spacing.lg, vertical = spacing.xs)
+            .testTag(AdminTags.configKey(key.key)),
+    ) {
+        Text(
+            text = key.typeName,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        if (row.isReadOnly) {
             Text(
-                text = key.typeName,
+                text = stringResource(R.string.admin_key_read_only),
                 style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = MaterialTheme.colorScheme.tertiary,
             )
-            if (row.isReadOnly) {
-                Text(
-                    text = stringResource(R.string.admin_key_read_only),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.tertiary,
-                )
-            }
-            key.description?.let { description ->
-                Text(text = description, style = MaterialTheme.typography.bodySmall)
-            }
-            key.allowedValues.takeIf { it.isNotEmpty() }?.let { allowed ->
-                Fact(
-                    label = stringResource(R.string.admin_key_one_of),
-                    value = allowed.joinToString(", "),
-                )
-            }
-            EffectiveValue(row = row)
-            SourceList(row = row)
         }
+        key.description?.let { description ->
+            Text(text = description, style = MaterialTheme.typography.bodySmall)
+        }
+        key.allowedValues.takeIf { it.isNotEmpty() }?.let { allowed ->
+            Fact(
+                label = stringResource(R.string.admin_key_one_of),
+                value = allowed.joinToString(", "),
+            )
+        }
+        EffectiveValue(row = row)
+        SourceList(row = row)
     }
 }
 
@@ -392,31 +412,6 @@ private fun SourceList(row: ConfigRow) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-    }
-}
-
-/** The horizontal scroll a long list of chips needs, kept here so the screens agree on its shape. */
-@Composable
-internal fun ChipRow(content: @Composable () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .horizontalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp, vertical = 4.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        content = { content() },
-    )
-}
-
-/** The key's own name, for a screen that lists keys rather than rows. */
-@Composable
-internal fun KeyChip(key: ConfigKey, selected: Boolean, onClick: () -> Unit) {
-    FlowRow(modifier = Modifier.padding(2.dp)) {
-        FilterChip(
-            selected = selected,
-            onClick = onClick,
-            label = { Text(key.key, fontFamily = FontFamily.Monospace) },
-        )
     }
 }
 

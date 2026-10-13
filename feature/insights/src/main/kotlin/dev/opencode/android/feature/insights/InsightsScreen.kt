@@ -35,6 +35,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
 import dev.opencode.android.core.model.Project
 import dev.opencode.android.core.model.SessionStats
 import dev.opencode.android.core.model.SessionStatsTools
@@ -71,7 +72,7 @@ fun InsightsScreen(
         Text(
             stringResource(R.string.insights_absent),
             style = MaterialTheme.typography.bodyMedium,
-            modifier = modifier.fillMaxWidth().padding(16.dp),
+            modifier = modifier.fillMaxWidth().padding(OpenCodeThemeExtras.spacing.lg),
         )
         return
     }
@@ -79,8 +80,8 @@ fun InsightsScreen(
     val stats = state.stats
     LazyColumn(
         modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+        contentPadding = PaddingValues(OpenCodeThemeExtras.spacing.lg),
+        verticalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.lg),
     ) {
         item { RangePicker(state.range, onRangeChange) }
         // No row without projects: a single "All projects" chip would filter nothing.
@@ -90,7 +91,7 @@ fun InsightsScreen(
 
         if (state.loading && stats == null) {
             item {
-                Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
+                Box(Modifier.fillMaxWidth().padding(OpenCodeThemeExtras.spacing.xxl), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()
                 }
             }
@@ -120,7 +121,7 @@ fun InsightsScreen(
 @Composable
 private fun RangePicker(current: StatsRange, onChange: (StatsRange) -> Unit) {
     Row(
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.sm),
         modifier = Modifier.selectableGroup(),
     ) {
         for (range in StatsRange.offered) {
@@ -144,7 +145,7 @@ private fun RangePicker(current: StatsRange, onChange: (StatsRange) -> Unit) {
 private fun ProjectPicker(projects: List<Project>, selected: String?, onChange: (String?) -> Unit) {
     // A FilterChip is 32 dp tall and does not reach the 48 dp target on its own, so the minimum is set here.
     val target = Modifier.defaultMinSize(minHeight = 48.dp)
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.sm)) {
         FilterChip(
             selected = selected == null,
             onClick = { onChange(null) },
@@ -168,8 +169,9 @@ private fun Project.label(): String = name?.takeIf { it.isNotBlank() }
 
 @Composable
 private fun TotalsCard(stats: SessionStats) {
+    val spacing = OpenCodeThemeExtras.spacing
     Card(modifier = Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(Modifier.padding(spacing.lg), verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
             Text(
                 text = stringResource(R.string.insights_totals),
                 style = MaterialTheme.typography.titleMedium,
@@ -194,8 +196,9 @@ private fun StatRow(label: String, value: String) {
 
 @Composable
 private fun HeatmapCard(stats: SessionStats) {
+    val spacing = OpenCodeThemeExtras.spacing
     Card(modifier = Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(Modifier.padding(spacing.lg), verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
             Text(
                 text = stringResource(R.string.insights_activity),
                 style = MaterialTheme.typography.titleMedium,
@@ -226,7 +229,7 @@ private fun HeatmapCard(stats: SessionStats) {
                     .clearAndSetSemantics { contentDescription = description },
             ) {
                 for (week in stats.activity.chunked(CELLS_PER_ROW)) {
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(spacing.xs)) {
                         for (day in week) HeatCell(day.steps, busiest)
                         repeat(CELLS_PER_ROW - week.size) { Box(Modifier.size(CELL.dp)) }
                     }
@@ -255,8 +258,9 @@ private fun HeatCell(steps: Long, busiest: Long) {
 
 @Composable
 private fun TokenCard(tokens: TokenUsage) {
+    val spacing = OpenCodeThemeExtras.spacing
     Card(modifier = Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Column(Modifier.padding(spacing.lg), verticalArrangement = Arrangement.spacedBy(spacing.xs)) {
             Text(
                 text = stringResource(R.string.insights_tokens),
                 style = MaterialTheme.typography.titleMedium,
@@ -283,8 +287,9 @@ private fun TokenCard(tokens: TokenUsage) {
 
 @Composable
 private fun ModelsCard(stats: SessionStats) {
+    val spacing = OpenCodeThemeExtras.spacing
     Card(modifier = Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(Modifier.padding(spacing.lg), verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
             Text(
                 text = stringResource(R.string.insights_models),
                 style = MaterialTheme.typography.titleMedium,
@@ -292,7 +297,7 @@ private fun ModelsCard(stats: SessionStats) {
             )
             val sortedModels = remember(stats.models) { stats.models.sortedByDescending { it.steps } }
             for (usage in sortedModels) {
-                Column(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                Column(Modifier.fillMaxWidth().padding(vertical = spacing.xs)) {
                     StatRow(usage.model.toString(), formatUsd(usage.cost))
                     Text(
                         stringResource(R.string.insights_model_steps, usage.steps),
@@ -321,8 +326,9 @@ private fun ToolReliabilityCard(
     expanded: Boolean,
     onToggleDetail: () -> Unit,
 ) {
+    val spacing = OpenCodeThemeExtras.spacing
     Card(modifier = Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(Modifier.padding(spacing.lg), verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
             Text(
                 text = stringResource(R.string.insights_tools),
                 style = MaterialTheme.typography.titleMedium,
@@ -383,7 +389,7 @@ private fun ToolTotalsBlock(
 
 @Composable
 private fun ToolRow(usage: ToolUsage) {
-    Column(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+    Column(Modifier.fillMaxWidth().padding(vertical = OpenCodeThemeExtras.spacing.xs)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text(usage.name, style = MaterialTheme.typography.bodyMedium)
             Text(usage.calls.toString(), style = MaterialTheme.typography.bodyMedium)
@@ -411,7 +417,7 @@ internal fun InsightsErrorCard(message: String, onDismiss: () -> Unit) {
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
     ) {
         Row(
-            Modifier.fillMaxWidth().padding(16.dp),
+            Modifier.fillMaxWidth().padding(OpenCodeThemeExtras.spacing.lg),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {

@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -26,6 +27,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.ExpandMore
@@ -41,6 +43,7 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -52,6 +55,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
@@ -89,7 +93,7 @@ fun TimelineList(
     onLoadOlder: () -> Unit,
     modifier: Modifier = Modifier,
     listState: LazyListState = rememberLazyListState(),
-    contentPadding: PaddingValues = PaddingValues(12.dp),
+    contentPadding: PaddingValues = PaddingValues(OpenCodeThemeExtras.spacing.md),
     onOpenChangedFile: ((String) -> Unit)? = null,
     messageActions: (@Composable (String) -> Unit)? = null,
     /** Opens a subagent's session from its tool row. Null shows the session id instead of a link. */
@@ -108,7 +112,7 @@ fun TimelineList(
         state = listState,
         modifier = modifier.fillMaxWidth(),
         contentPadding = contentPadding,
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.md),
     ) {
         item(key = "older") {
             OlderMessagesRow(loadingOlder = loadingOlder, hasMore = hasMore, onLoadOlder = onLoadOlder)
@@ -151,20 +155,15 @@ private fun OlderMessagesRow(
                 )
             }
 
-            hasMore -> Text(
-                text = stringResource(R.string.session_load_older),
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier
-                    .clickable(onClick = onLoadOlder)
-                    .padding(8.dp),
-            )
+            hasMore -> TextButton(onClick = onLoadOlder) {
+                Text(stringResource(R.string.session_load_older))
+            }
 
             else -> Text(
                 text = stringResource(R.string.session_start_of_history),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(8.dp),
+                modifier = Modifier.padding(OpenCodeThemeExtras.spacing.sm),
             )
         }
     }
@@ -248,7 +247,10 @@ private fun UserMessageCard(message: SessionMessage.User, modifier: Modifier = M
             shape = RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp, bottomStart = 18.dp, bottomEnd = 4.dp),
         ) {
             Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
-                Text(text = message.text, style = MaterialTheme.typography.bodyLarge)
+                // Long-press to copy: message text is the thing people quote back to the agent.
+                SelectionContainer {
+                    Text(text = message.text, style = MaterialTheme.typography.bodyLarge)
+                }
                 message.files?.takeIf { it.isNotEmpty() }?.let { files ->
                     Spacer(Modifier.height(6.dp))
                     files.forEach { file ->
@@ -263,7 +265,7 @@ private fun UserMessageCard(message: SessionMessage.User, modifier: Modifier = M
                     Text(
                         text = stringResource(R.string.timeline_agents_mentioned, agents.joinToString(", ") { it.name }),
                         style = MaterialTheme.typography.labelSmall,
-                        modifier = Modifier.padding(top = 4.dp),
+                        modifier = Modifier.padding(top = OpenCodeThemeExtras.spacing.xs),
                     )
                 }
                 message.skills?.takeIf { it.isNotEmpty() }?.let { skills ->
@@ -304,7 +306,7 @@ private fun AttachmentChip(label: String, isImage: Boolean, data: String) {
                 contentDescription = description,
                 contentScale = ContentScale.Fit,
                 modifier = Modifier
-                    .padding(top = 4.dp)
+                    .padding(top = OpenCodeThemeExtras.spacing.xs)
                     .size(160.dp)
                     .clickable { fullSize = true },
             )
@@ -320,7 +322,7 @@ private fun AttachmentChip(label: String, isImage: Boolean, data: String) {
             label = { Text(label, style = MaterialTheme.typography.labelSmall) },
             colors = AssistChipDefaults.assistChipColors(),
             modifier = Modifier
-                .padding(top = 4.dp)
+                .padding(top = OpenCodeThemeExtras.spacing.xs)
                 .semantics { contentDescription = description },
         )
         if (noPreview) {
@@ -328,7 +330,7 @@ private fun AttachmentChip(label: String, isImage: Boolean, data: String) {
                 text = stringResource(R.string.timeline_attachment_no_preview),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 4.dp),
+                modifier = Modifier.padding(top = OpenCodeThemeExtras.spacing.xs),
             )
         }
     }
@@ -406,7 +408,9 @@ private fun AssistantMessageCard(
 
                 is AssistantBlock.Part -> when (val part = block.part) {
                     is AssistantContent.Text -> if (part.text.isNotBlank()) {
-                        MarkdownText(markdown = part.text, style = MaterialTheme.typography.bodyLarge)
+                        SelectionContainer {
+                            MarkdownText(markdown = part.text, style = MaterialTheme.typography.bodyLarge)
+                        }
                     }
 
                     is AssistantContent.Reasoning -> ReasoningBlock(part)
@@ -459,8 +463,9 @@ fun ReasoningBlock(part: AssistantContent.Reasoning, modifier: Modifier = Modifi
         Row(
             modifier = Modifier
                 .clip(OpenCodeThemeExtras.shapes.chip)
-                .clickable(onClickLabel = toggleLabel) { expanded = !expanded }
-                .padding(vertical = 4.dp, horizontal = 2.dp)
+                .clickable(onClickLabel = toggleLabel, role = Role.Button) { expanded = !expanded }
+                .defaultMinSize(minHeight = 48.dp)
+                .padding(vertical = OpenCodeThemeExtras.spacing.xs, horizontal = OpenCodeThemeExtras.spacing.xxs)
                 .semantics(mergeDescendants = true) { contentDescription = "$title, $toggleLabel" },
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -512,6 +517,7 @@ private fun NoticeCard(
     description: String?,
     modifier: Modifier = Modifier,
 ) {
+    val spacing = OpenCodeThemeExtras.spacing
     Row(modifier = modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
         Box(
             Modifier
@@ -520,7 +526,7 @@ private fun NoticeCard(
                 .clip(OpenCodeThemeExtras.shapes.pill)
                 .background(MaterialTheme.colorScheme.tertiary.copy(alpha = 0.6f)),
         )
-        Column(modifier = Modifier.padding(start = 12.dp, top = 2.dp, bottom = 2.dp)) {
+        Column(modifier = Modifier.padding(start = spacing.md, top = spacing.xxs, bottom = spacing.xxs)) {
             Text(text = title, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.tertiary)
             description?.let {
                 Text(
@@ -540,7 +546,7 @@ private fun ShellMessageCard(message: SessionMessage.Shell, modifier: Modifier =
         modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
+        Column(modifier = Modifier.padding(OpenCodeThemeExtras.spacing.md)) {
             Text(
                 text = stringResource(R.string.timeline_shell_command),
                 style = MaterialTheme.typography.labelMedium,
@@ -579,7 +585,7 @@ private fun ShellMessageCard(message: SessionMessage.Shell, modifier: Modifier =
                         text = output.output,
                         style = OpenCodeThemeExtras.code.small,
                         modifier = Modifier
-                            .padding(8.dp)
+                            .padding(OpenCodeThemeExtras.spacing.sm)
                             .horizontalScroll(rememberScrollState()),
                     )
                 }
@@ -599,7 +605,7 @@ private fun CompactionCard(message: SessionMessage.Compaction, modifier: Modifie
         modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
+        Column(modifier = Modifier.padding(OpenCodeThemeExtras.spacing.md)) {
             Text(text = title, style = MaterialTheme.typography.labelMedium)
             Text(
                 text = stringResource(
@@ -619,7 +625,7 @@ private fun CompactionCard(message: SessionMessage.Compaction, modifier: Modifie
                 Text(text = summary, style = MaterialTheme.typography.bodySmall)
             }
             message.error?.let { error ->
-                StepErrorCard(error, Modifier.padding(top = 4.dp))
+                StepErrorCard(error, Modifier.padding(top = OpenCodeThemeExtras.spacing.xs))
             }
         }
     }
@@ -726,7 +732,7 @@ fun StepErrorCard(error: dev.opencode.android.core.model.StructuredError, modifi
         color = MaterialTheme.colorScheme.errorContainer,
         shape = RoundedCornerShape(8.dp),
     ) {
-        Column(modifier = Modifier.padding(8.dp)) {
+        Column(modifier = Modifier.padding(OpenCodeThemeExtras.spacing.sm)) {
             Text(
                 text = stringResource(R.string.step_error),
                 style = MaterialTheme.typography.labelMedium,
@@ -753,7 +759,7 @@ fun UnknownMessage(message: SessionMessage.Unknown, modifier: Modifier = Modifie
         modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
+        Column(modifier = Modifier.padding(OpenCodeThemeExtras.spacing.md)) {
             Text(
                 text = stringResource(R.string.unknown_message_type, message.discriminator ?: "?"),
                 style = MaterialTheme.typography.labelMedium,
@@ -777,7 +783,7 @@ private fun UnknownTool(part: AssistantContent.Unknown, modifier: Modifier = Mod
         Text(
             text = stringResource(R.string.unknown_tool_type, part.discriminator ?: "?"),
             style = MaterialTheme.typography.labelMedium,
-            modifier = Modifier.padding(12.dp),
+            modifier = Modifier.padding(OpenCodeThemeExtras.spacing.md),
         )
     }
 }

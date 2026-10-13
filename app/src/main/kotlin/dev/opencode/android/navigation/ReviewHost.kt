@@ -99,6 +99,7 @@ fun ReviewHost(
             onOpenTree = review::toggleTree,
             onOpenComments = review::toggleComments,
             onRemoveComment = review::removeComment,
+            onRetry = review::load,
         )
     }
 

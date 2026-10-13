@@ -5,6 +5,7 @@
     <string name="composer_hint">Message the agent</string>
     <string name="composer_dismiss">Dismiss</string>
     <string name="composer_send">Send</string>
+    <string name="composer_editor_done">Done</string>
     <string name="composer_sending">Sending</string>
     <string name="composer_delivery_steer">Steer</string>
     <string name="composer_delivery_queue">Queue</string>

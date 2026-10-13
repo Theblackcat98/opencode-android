@@ -59,6 +59,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.opencode.android.core.designsystem.text.SyncedTextField
+import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
 import dev.opencode.android.core.model.json.OpenCodeJson
 import dev.opencode.android.core.network.ConnectionState
 import dev.opencode.android.core.network.InspectedEvent
@@ -169,7 +170,7 @@ fun EventInspectorScreen(
                 },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                    .padding(horizontal = OpenCodeThemeExtras.spacing.lg, vertical = OpenCodeThemeExtras.spacing.sm)
                     .testTag(EventInspectorTags.SEARCH_INPUT),
                 singleLine = true,
             )
@@ -187,7 +188,7 @@ fun EventInspectorScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .background(MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f))
-                        .padding(horizontal = 16.dp, vertical = 6.dp)
+                        .padding(horizontal = OpenCodeThemeExtras.spacing.lg, vertical = 6.dp)
                         .semantics { contentDescription = label },
                 ) {
                     Text(
@@ -207,8 +208,8 @@ fun EventInspectorScreen(
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    contentPadding = PaddingValues(OpenCodeThemeExtras.spacing.lg),
+                    verticalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.sm),
                 ) {
                     items(events, key = { it.index }) { event ->
                         EventRow(
@@ -257,7 +258,7 @@ private fun EmptyInspector(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .padding(32.dp),
+            .padding(OpenCodeThemeExtras.spacing.xxl),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
@@ -298,7 +299,7 @@ private fun EventRow(
         ),
     ) {
         Column(
-            modifier = Modifier.padding(12.dp),
+            modifier = Modifier.padding(OpenCodeThemeExtras.spacing.md),
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             Row(
@@ -310,7 +311,7 @@ private fun EventRow(
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.sm),
                 ) {
                     Text(
                         text = "#${entry.index}",
@@ -324,7 +325,7 @@ private fun EventRow(
                                 color = MaterialTheme.colorScheme.primaryContainer,
                                 shape = RoundedCornerShape(4.dp),
                             )
-                            .padding(horizontal = 6.dp, vertical = 2.dp),
+                            .padding(horizontal = 6.dp, vertical = OpenCodeThemeExtras.spacing.xxs),
                     ) {
                         Text(
                             text = entry.type,
@@ -362,9 +363,9 @@ private fun EventDetailSheet(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 24.dp, vertical = 16.dp)
+            .padding(horizontal = OpenCodeThemeExtras.spacing.xl, vertical = OpenCodeThemeExtras.spacing.lg)
             .verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+        verticalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.lg),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -428,7 +429,7 @@ private fun EventDetailSheet(
                     color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
                     shape = RoundedCornerShape(8.dp),
                 )
-                .padding(12.dp),
+                .padding(OpenCodeThemeExtras.spacing.md),
         ) {
             Text(
                 text = prettyJson(entry.rawJson),

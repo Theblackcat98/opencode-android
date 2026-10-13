@@ -1,5 +1,9 @@
 package dev.opencode.android.core.designsystem.format
 
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
+import dev.opencode.android.core.designsystem.R
 import java.util.Locale
 
 /**
@@ -15,7 +19,8 @@ object Formatters {
     fun cost(value: Double): String = when {
         value <= 0.0 -> "$0.00"
         value < 0.01 -> "$" + String.format(Locale.US, "%.4f", value)
-        value < 1000.0 -> "$" + String.format(Locale.US, "%.2f", value)
+        // Round before tiering: $999.999 formats as $1,000, not $1000.00.
+        value < 999.995 -> "$" + String.format(Locale.US, "%.2f", value)
         else -> "$" + String.format(Locale.US, "%,.0f", value)
     }
 
@@ -28,9 +33,11 @@ object Formatters {
     fun tokens(value: Long): String = when {
         value < 0 -> "0"
         value < 1_000 -> value.toString()
-        value < 1_000_000 -> trim(value / 1_000.0) + "k"
-        value < 1_000_000_000 -> trim(value / 1_000_000.0) + "M"
-        else -> trim(value / 1_000_000_000.0) + "B"
+        // Bump the tier when rounding hits 1000: 999_999 is "1M", not "1000k".
+        value < 999_950 -> trim(value / 1_000.0) + "k"
+        value < 999_950_000 -> trim(value / 1_000_000.0) + "M"
+        value < 999_950_000_000 -> trim(value / 1_000_000_000.0) + "B"
+        else -> trim(value / 1_000_000_000_000.0) + "T"
     }
 
     /** A percentage of a limit, clamped, for the context gauge. */
@@ -52,9 +59,14 @@ object Formatters {
         return trim(size) + " " + units[unit]
     }
 
-    /** A duration in milliseconds, as a tool or a reasoning block takes. */
+    /**
+     * A duration in milliseconds, as a tool or a reasoning block takes.
+     *
+     * Unknown or negative durations render as an em dash, not an empty string: callers join this
+     * into meta lines, and an empty string would collapse the separators into a confusing gap.
+     */
     fun duration(millis: Long?): String {
-        if (millis == null || millis < 0) return ""
+        if (millis == null || millis < 0) return "—"
         if (millis < 1_000) return "${millis}ms"
         val seconds = millis / 1_000.0
         if (seconds < 60) return trim(seconds) + "s"
@@ -114,24 +126,25 @@ object Formatters {
  *
  * TalkBack cannot use the abbreviation, so the screen passes this instead and a sighted user never
  * sees it.
+ *
+ * A `@Composable` rather than a pure function like the rest of [Formatters]: the units are
+ * pluralized per locale, and English's "one/many" rule is not every language's. Both call sites
+ * already run in a composable scope, so the signature change needs no call-site edits.
  */
+@Composable
 fun relativeTimeDescription(then: Long, now: Long): String {
     val delta = (now - then).coerceAtLeast(0)
     val minutes = delta / 60_000
-    val value: Long = when {
-        delta < 60_000 -> 0
-        minutes < 60 -> minutes
-        minutes < 60 * 24 -> minutes / 60
-        else -> minutes / (60 * 24)
-    }
-    val unit = when {
-        delta < 3_600_000 -> "minute"
-        delta < 86_400_000 -> "hour"
-        else -> "day"
-    }
-    val plural = if (value == 1L) "" else "s"
-    return when (value) {
-        0L -> "just now"
-        else -> "$value $unit$plural ago"
+    return when {
+        delta < 60_000 -> stringResource(R.string.relative_time_just_now)
+        minutes < 60 -> pluralStringResource(R.plurals.relative_time_minutes_ago, minutes.toInt(), minutes)
+        minutes < 60 * 24 -> {
+            val hours = minutes / 60
+            pluralStringResource(R.plurals.relative_time_hours_ago, hours.toInt(), hours)
+        }
+        else -> {
+            val days = minutes / (60 * 24)
+            pluralStringResource(R.plurals.relative_time_days_ago, days.toInt(), days)
+        }
     }
 }

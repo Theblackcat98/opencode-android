@@ -29,7 +29,6 @@ data class EditServerUiState(
     val errorTechnicalDetail: String? = null,
     val saved: Boolean = false,
 ) {
-    val showUrlHint: Boolean get() = url.isEmpty()
 }
 
 /**

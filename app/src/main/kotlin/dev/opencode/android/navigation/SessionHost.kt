@@ -1,9 +1,11 @@
 package dev.opencode.android.navigation
 
+import androidx.compose.foundation.layout.Row
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Dvr
 import androidx.compose.material.icons.automirrored.outlined.Rule
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.AccountTree
 import androidx.compose.material.icons.outlined.Difference
 import androidx.compose.material.icons.outlined.FolderOpen
@@ -26,6 +28,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalUriHandler
@@ -55,6 +58,7 @@ import dev.opencode.android.feature.requests.ui.RequestActions
 import dev.opencode.android.feature.requests.ui.RequestDock
 import dev.opencode.android.feature.requests.ui.messageRes
 import dev.opencode.android.feature.requests.ui.takesArgument
+import dev.opencode.android.R as AppR
 import dev.opencode.android.feature.sessions.R
 import dev.opencode.android.feature.sessions.ui.SessionActionsSheet
 import dev.opencode.android.feature.sessions.ui.SessionLogDialog
@@ -94,6 +98,10 @@ fun SessionHost(
     onSessionDeleted: () -> Unit,
     onOpenChild: (String) -> Unit = {},
     onOpenSessionList: () -> Unit = {},
+    /** Opens the command palette: the session screen's touch trigger for it. */
+    onOpenCommandPalette: () -> Unit = {},
+    /** Shows a transient message on the graph's snackbar (camera unavailable, etc.). */
+    showSnackbar: (String) -> Unit = {},
     onNewSession: () -> Unit = {},
     onOpenReview: (String?) -> Unit = {},
     /** The session's file browser, from the tools sheet's Files tile. */
@@ -157,27 +165,38 @@ fun SessionHost(
     val clipboard = LocalClipboardManager.current
     val uriHandler = LocalUriHandler.current
     val menu = stringResource(R.string.session_menu)
-    var actionsOpen by remember { mutableStateOf(false) }
-    var attentionOpen by remember { mutableStateOf(false) }
-    var historyOpen by remember { mutableStateOf(false) }
-    var experimentalOpen by remember { mutableStateOf(false) }
-    var eventHistoryOpen by remember { mutableStateOf(false) }
-    var syntheticOpen by remember { mutableStateOf(false) }
-    var inboxOpen by remember { mutableStateOf(false) }
-    var agentPickerOpen by remember { mutableStateOf(false) }
-    var modelPickerOpen by remember { mutableStateOf(false) }
-    var skillsOpen by remember { mutableStateOf(false) }
-    var stashOpen by remember { mutableStateOf(false) }
+    val search = stringResource(AppR.string.session_command_palette)
+    var actionsOpen by rememberSaveable { mutableStateOf(false) }
+    var attentionOpen by rememberSaveable { mutableStateOf(false) }
+    var historyOpen by rememberSaveable { mutableStateOf(false) }
+    var experimentalOpen by rememberSaveable { mutableStateOf(false) }
+    var eventHistoryOpen by rememberSaveable { mutableStateOf(false) }
+    var syntheticOpen by rememberSaveable { mutableStateOf(false) }
+    var inboxOpen by rememberSaveable { mutableStateOf(false) }
+    var agentPickerOpen by rememberSaveable { mutableStateOf(false) }
+    var modelPickerOpen by rememberSaveable { mutableStateOf(false) }
+    var skillsOpen by rememberSaveable { mutableStateOf(false) }
+    var stashOpen by rememberSaveable { mutableStateOf(false) }
     var editorOpen by rememberSaveable { mutableStateOf(false) }
-    var attachOpen by remember { mutableStateOf(false) }
+    var attachOpen by rememberSaveable { mutableStateOf(false) }
     var modelSearch by rememberSaveable { mutableStateOf("") }
     // The message an undo is aimed at, held between the menu row and the confirmation (plan §5.2:
     // reverting files is a dangerous action, so it asks).
-    var undoTarget by remember { mutableStateOf<String?>(null) }
+    var undoTarget by rememberSaveable { mutableStateOf<String?>(null) }
 
+    val cameraUnavailableText = stringResource(AppR.string.session_camera_unavailable)
+    val attachUnavailableText = stringResource(AppR.string.session_attach_unavailable)
     val pickAttachment = rememberAttachmentPicker(
         onPicked = composer::attachImage,
-        onCameraUnavailable = { attachOpen = false },
+        // A missing camera or attach source is a dead end the user should hear about, not a silent close.
+        onCameraUnavailable = {
+            attachOpen = false
+            showSnackbar(cameraUnavailableText)
+        },
+        onSourceUnavailable = {
+            attachOpen = false
+            showSnackbar(attachUnavailableText)
+        },
     )
 
     // A fork produced a new session id; the graph is what knows how to open one. Taking it here
@@ -356,8 +375,15 @@ fun SessionHost(
             )
         },
         menuSlot = {
-            IconButton(onClick = { actionsOpen = true }) {
-                Icon(Icons.Filled.MoreVert, contentDescription = menu)
+            // The palette's touch trigger on the session screen: the keyboard shortcut is undiscoverable
+            // for touch users, so it gets a button next to the overflow menu.
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = onOpenCommandPalette) {
+                    Icon(Icons.Filled.Search, contentDescription = search)
+                }
+                IconButton(onClick = { actionsOpen = true }) {
+                    Icon(Icons.Filled.MoreVert, contentDescription = menu)
+                }
             }
         },
     )
@@ -615,6 +641,8 @@ fun SessionHost(
  * It shows the prompt that is about to be rolled back, because "undo" without saying *which turn*
  * is a confirmation of nothing: the user cannot tell a two-turn-old prompt from the last one.
  */
+private const val REVERT_PREVIEW_MAX_CHARS = 280
+
 @Composable
 private fun RevertConfirmationDialog(
     preview: String,
@@ -627,7 +655,7 @@ private fun RevertConfirmationDialog(
         title = { Text(stringResource(SessionsR.string.timeline_revert_here)) },
         text = {
             Text(
-                text = preview.take(280),
+                text = preview.take(REVERT_PREVIEW_MAX_CHARS),
                 style = MaterialTheme.typography.bodyMedium,
                 maxLines = 6,
             )

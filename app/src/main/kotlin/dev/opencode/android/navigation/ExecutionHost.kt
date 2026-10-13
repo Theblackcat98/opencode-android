@@ -257,6 +257,7 @@ fun SessionTerminalsHost(
             onInspect = viewModel::inspect,
             onResize = viewModel::resize,
             onRemove = viewModel::remove,
+            onDismissError = viewModel::dismissError,
             modifier = Modifier.padding(padding),
         )
     }

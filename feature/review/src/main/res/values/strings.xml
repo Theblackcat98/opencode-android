@@ -13,6 +13,7 @@
     <string name="review_empty_all">No changes against the review base.</string>
     <string name="review_no_session">Open a session to review its last turn.</string>
     <string name="review_no_location">This project has no directory to diff against.</string>
+    <string name="review_load_failed">The diff failed to load.</string>
 
     <!-- Review: navigation -->
     <string name="review_view_options">View options</string>
@@ -51,6 +52,8 @@
     <string name="review_choose_base">Review base</string>
     <string name="review_choose_base_body">The diff is taken against this branch.</string>
     <string name="review_base_default">Server default</string>
+    <string name="review_base_selected">✓ %1$s</string>
+    <string name="review_tree_directory_desc">%1$s, directory</string>
     <string name="review_branch_source_reflog">inferred from the reflog</string>
     <string name="review_branch_source_default">the repository default</string>
 
@@ -80,6 +83,7 @@
     <string name="files_search">Search files</string>
     <string name="files_open">Files</string>
     <string name="files_up">Up one directory</string>
+    <string name="file_browser_line_desc">%1$d, %2$s</string>
     <string name="files_empty">This directory is empty.</string>
     <string name="files_unreadable">This directory could not be read.</string>
     <string name="files_attach">Attach file</string>
@@ -120,6 +124,7 @@
     <string name="history_export_done">Exported %1$d messages.</string>
     <string name="history_import">Import</string>
     <string name="history_import_done">Imported as %1$s.</string>
+    <string name="history_error_unknown">Something went wrong.</string>
     <string name="context_title">Context</string>
     <string name="context_body">%1$d messages after the last compaction, %2$d characters.</string>
     <string name="context_empty">Nothing after the last compaction.</string>

@@ -3,17 +3,22 @@ package dev.opencode.android.feature.integrations
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CloudOff
+import androidx.compose.material.icons.filled.Extension
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
@@ -31,9 +36,11 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.unit.dp
 import dev.opencode.android.core.data.sync.SyncStatus
+import dev.opencode.android.core.designsystem.component.OpenCodeBadge
+import dev.opencode.android.core.designsystem.component.OpenCodeEmptyState
 import dev.opencode.android.core.designsystem.text.SyncedTextField
+import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
 import dev.opencode.android.core.model.PluginInfo
 import dev.opencode.android.core.model.PluginSource
 import dev.opencode.android.core.model.PluginState
@@ -76,22 +83,34 @@ fun PluginsScreen(
                         onDismiss = onDismissError,
                     )
 
-                    SyncStatus.Loading -> Row(
-                        modifier = Modifier.fillMaxWidth().padding(16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        CircularProgressIndicator()
-                        Text(stringResource(R.string.plugins_loading))
+                    SyncStatus.Loading -> {
+                        // Read here rather than inside the `semantics` block, which is not a
+                        // composable scope, so the description is the same string the visible
+                        // label uses and cannot drift from it.
+                        val loading = stringResource(R.string.plugins_loading)
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(OpenCodeThemeExtras.spacing.lg)
+                                .semantics { contentDescription = loading },
+                            horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.md),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            CircularProgressIndicator()
+                            Text(loading)
+                        }
                     }
 
-                    else -> if (state.rows.isEmpty()) EmptyNote(stringResource(R.string.plugins_empty))
+                    else -> if (state.rows.isEmpty()) {
+                        OpenCodeEmptyState(
+                            title = stringResource(R.string.plugins_empty),
+                            icon = Icons.Filled.Extension,
+                        )
+                    }
                 }
                 state.status?.let { line ->
                     Text(
                         text = line,
                         style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                        modifier = Modifier.padding(horizontal = OpenCodeThemeExtras.spacing.lg, vertical = OpenCodeThemeExtras.spacing.xs),
                     )
                 }
                 state.error?.let { ErrorLine(text = it.message, onDismiss = onDismissError) }
@@ -117,13 +136,13 @@ private fun PluginActions(
     onSelectAll: () -> Unit,
     onClearSelection: () -> Unit,
 ) {
-    Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+    Column(modifier = Modifier.padding(horizontal = OpenCodeThemeExtras.spacing.lg, vertical = OpenCodeThemeExtras.spacing.sm)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.sm), verticalAlignment = Alignment.CenterVertically) {
             TextButton(onClick = onCheck, enabled = !state.checking && !state.updating) {
                 Icon(Icons.Filled.Refresh, contentDescription = null)
                 Text(
                     text = stringResource(if (state.checking) R.string.plugins_checking else R.string.plugins_check),
-                    modifier = Modifier.padding(start = 4.dp),
+                    modifier = Modifier.padding(start = OpenCodeThemeExtras.spacing.xs),
                 )
             }
             Button(onClick = onUpdate, enabled = state.canUpdate) {
@@ -131,14 +150,14 @@ private fun PluginActions(
             }
         }
         if (state.outdatedCount > 0) {
-            Text(
+            OpenCodeBadge(
                 text = stringResource(R.string.plugins_outdated_badge, state.outdatedCount),
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                containerColor = OpenCodeThemeExtras.status.warning,
+                contentColor = OpenCodeThemeExtras.status.onWarning,
             )
         }
         if (state.selected.isNotEmpty()) {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.sm)) {
                 TextButton(onClick = onSelectAll) { Text(stringResource(R.string.plugins_select_all)) }
                 TextButton(onClick = onClearSelection) { Text(stringResource(R.string.plugins_clear)) }
             }
@@ -168,10 +187,13 @@ private fun PluginRow(
                     },
                     style = MaterialTheme.typography.bodySmall,
                 )
+                val serverLabel = stringResource(R.string.plugins_feature_server)
+                val tuiLabel = stringResource(R.string.plugins_feature_tui)
+                val rpcLabel = stringResource(R.string.plugins_feature_rpc)
                 val features = buildList {
-                    if (plugin.features.server) add("server")
-                    if (plugin.features.tui) add("tui")
-                    if (plugin.features.rpc) add("rpc")
+                    if (plugin.features.server) add(serverLabel)
+                    if (plugin.features.tui) add(tuiLabel)
+                    if (plugin.features.rpc) add(rpcLabel)
                 }
                 if (features.isNotEmpty()) {
                     Text(
@@ -217,15 +239,14 @@ private fun PluginRow(
  *
  * **No activation switch, and the screen says where the control is instead.** Activation, `settings`,
  * `headers` and `body` are all configuration (features doc §9), so a switch here would either not
- * take effect or would need the experimental config writer that Phase 9 owns. The row links to the
- * editor rather than pretending to be one.
+ * take effect or would need the experimental config writer that Phase 9 owns. Tapping a row opens
+ * the provider's detail below the search field rather than pretending to edit it.
  */
 @Composable
 fun ProvidersScreen(
     state: ProvidersUiState,
     onSearchChange: (String) -> Unit,
     onSelect: (ProviderInfo?) -> Unit,
-    onOpenProvider: (ProviderInfo) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier.fillMaxSize()) {
@@ -234,7 +255,7 @@ fun ProvidersScreen(
             onValueChange = onSearchChange,
             label = { Text(stringResource(R.string.providers_search)) },
             singleLine = true,
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            modifier = Modifier.fillMaxWidth().padding(OpenCodeThemeExtras.spacing.lg),
         )
         val selected = state.selected
         if (selected != null) {
@@ -249,16 +270,28 @@ fun ProvidersScreen(
                         onDismiss = {},
                     )
 
-                    SyncStatus.Loading -> Row(
-                        modifier = Modifier.fillMaxWidth().padding(16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        CircularProgressIndicator()
-                        Text(stringResource(R.string.providers_loading))
+                    SyncStatus.Loading -> {
+                        // Read here rather than inside the `semantics` block, which is not a
+                        // composable scope, so the description is the same string the visible
+                        // label uses and cannot drift from it.
+                        val loading = stringResource(R.string.providers_loading)
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(OpenCodeThemeExtras.spacing.lg)
+                                .semantics { contentDescription = loading },
+                            horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.md),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            CircularProgressIndicator()
+                            Text(loading)
+                        }
                     }
 
-                    else -> if (state.rows.isEmpty()) EmptyNote(stringResource(R.string.providers_empty))
+                    else -> if (state.rows.isEmpty()) {
+                        OpenCodeEmptyState(
+                            title = stringResource(R.string.providers_empty),
+                            icon = Icons.Filled.CloudOff,
+                        )
+                    }
                 }
             }
             items(state.rows, key = { it.id }) { provider ->
@@ -293,7 +326,9 @@ fun ProvidersScreen(
                     },
                     modifier = Modifier
                         .testTag(IntegrationsTags.provider(provider.id))
-                        .clickable { onOpenProvider(provider) },
+                        // Tapping a row opens the provider's detail above the list; the screen is
+                        // read-only, so there is nothing else a tap could honestly do.
+                        .clickable { onSelect(provider) },
                 )
                 HorizontalDivider()
             }
@@ -306,18 +341,18 @@ private fun ProviderDetail(provider: ProviderInfo, onClose: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(16.dp)
+            .padding(OpenCodeThemeExtras.spacing.lg)
             .verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.sm),
     ) {
         Text(text = provider.name, style = MaterialTheme.typography.titleLarge)
-        DetailLine("id", provider.id)
-        DetailLine("activation", provider.activation)
-        DetailLine("package", provider.packageName)
-        provider.canonical?.let { DetailLine("canonical", it) }
-        provider.endpoint?.let { DetailLine("baseURL", it) }
-        provider.settings.transport?.let { DetailLine("transport", it) }
-        provider.settings.compaction?.let { DetailLine("compaction", it) }
+        DetailLine(stringResource(R.string.provider_detail_id), provider.id)
+        DetailLine(stringResource(R.string.provider_detail_activation), provider.activation)
+        DetailLine(stringResource(R.string.provider_detail_package), provider.packageName)
+        provider.canonical?.let { DetailLine(stringResource(R.string.provider_detail_canonical), it) }
+        provider.endpoint?.let { DetailLine(stringResource(R.string.provider_detail_base_url), it) }
+        provider.settings.transport?.let { DetailLine(stringResource(R.string.provider_detail_transport), it) }
+        provider.settings.compaction?.let { DetailLine(stringResource(R.string.provider_detail_compaction), it) }
         // The whole point of the detail: why there is no switch here.
         Text(
             text = stringResource(R.string.providers_config_only),
@@ -330,7 +365,7 @@ private fun ProviderDetail(provider: ProviderInfo, onClose: () -> Unit) {
 
 @Composable
 private fun DetailLine(label: String, value: String) {
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    Row(horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.sm)) {
         Text(text = label, style = MaterialTheme.typography.labelMedium)
         SelectionContainer {
             Text(
@@ -360,16 +395,24 @@ fun WebSearchScreen(
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier.fillMaxSize()) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        // A LazyRow, not a Row: the provider list is unbounded and a Row would push chips off
+        // screen with no way to reach them.
+        LazyRow(
+            modifier = Modifier.fillMaxWidth(),
+            contentPadding = PaddingValues(
+                horizontal = OpenCodeThemeExtras.spacing.lg,
+                vertical = OpenCodeThemeExtras.spacing.sm,
+            ),
+            horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.sm),
         ) {
-            androidx.compose.material3.FilterChip(
-                selected = state.selected == null,
-                onClick = { onSelect(null) },
-                label = { Text(stringResource(R.string.websearch_default)) },
-            )
-            state.rows.forEach { provider ->
+            item {
+                androidx.compose.material3.FilterChip(
+                    selected = state.selected == null,
+                    onClick = { onSelect(null) },
+                    label = { Text(stringResource(R.string.websearch_default)) },
+                )
+            }
+            items(state.rows, key = { it.id }) { provider ->
                 androidx.compose.material3.FilterChip(
                     selected = state.selected == provider.id,
                     onClick = { onSelect(provider.id) },
@@ -378,8 +421,8 @@ fun WebSearchScreen(
             }
         }
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = OpenCodeThemeExtras.spacing.lg),
+            horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.sm),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             SyncedTextField(
@@ -395,27 +438,37 @@ fun WebSearchScreen(
         }
         state.error?.let { ErrorLine(text = it.message, onDismiss = onDismissError) }
         state.response?.let { response ->
-            WebSearchResults(response = response)
+            WebSearchResults(response = response, modifier = Modifier.weight(1f))
         }
         if (state.rows.isEmpty() && state.providers.hasValue) {
-            EmptyNote(stringResource(R.string.websearch_empty))
+            OpenCodeEmptyState(
+                title = stringResource(R.string.websearch_empty),
+                icon = Icons.Filled.Search,
+            )
         }
     }
 }
 
 @Composable
-private fun WebSearchResults(response: WebSearchResponse) {
-    LazyColumn(modifier = Modifier.fillMaxSize()) {
+private fun WebSearchResults(response: WebSearchResponse, modifier: Modifier = Modifier) {
+    // weight, not fillMaxSize: the list shares its Column with the query row and the error
+    // line, and a fillMaxSize child would crowd them out of measurement.
+    LazyColumn(modifier = modifier.fillMaxWidth()) {
         item {
             Text(
                 text = stringResource(R.string.websearch_served_by, response.providerID),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(16.dp),
+                modifier = Modifier.padding(OpenCodeThemeExtras.spacing.lg),
             )
         }
         if (response.results.isEmpty()) {
-            item { EmptyNote(stringResource(R.string.websearch_no_results)) }
+            item {
+                OpenCodeEmptyState(
+                    title = stringResource(R.string.websearch_no_results),
+                    icon = Icons.Filled.Search,
+                )
+            }
         }
         items(response.results, key = { it.url }) { result ->
             ListItem(

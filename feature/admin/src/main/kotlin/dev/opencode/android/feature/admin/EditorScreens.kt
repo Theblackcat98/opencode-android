@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
@@ -17,7 +18,6 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -26,10 +26,11 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import dev.opencode.android.core.data.config.DefinitionKind
+import dev.opencode.android.core.designsystem.component.OpenCodeTextButton
 import dev.opencode.android.core.designsystem.text.SyncedTextField
+import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
 
 /**
  * The guided templates sheet (plan §6).
@@ -64,7 +65,7 @@ fun TemplateSheet(
         text = {
             Column(
                 modifier = Modifier.verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
+                verticalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.xs),
             ) {
                 when (draft.choice) {
                     ConfigTemplateChoice.MODEL -> {
@@ -112,7 +113,7 @@ fun TemplateSheet(
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.error,
                             modifier = Modifier
-                                .padding(top = 4.dp)
+                                .padding(top = OpenCodeThemeExtras.spacing.xs)
                                 .testTag(AdminTags.RULES_PRECEDENCE_WARNING),
                         )
                     }
@@ -149,7 +150,7 @@ fun TemplateSheet(
                             text = stringResource(R.string.admin_template_mcp_kind),
                             style = MaterialTheme.typography.labelMedium,
                         )
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.sm)) {
                             FilterChip(
                                 selected = draft.mcpKind == "remote",
                                 onClick = { onChange { it.copy(mcpKind = "remote") } },
@@ -211,22 +212,29 @@ fun TemplateSheet(
         },
         confirmButton = {
             val ready = outcome is dev.opencode.android.core.data.config.TemplateOutcome.Ready
-            TextButton(onClick = onApply, enabled = !ready) { Text(stringResource(R.string.admin_template_check)) }
-            TextButton(onClick = onInsert, enabled = ready) { Text(stringResource(R.string.admin_template_insert)) }
+            OpenCodeTextButton(onClick = onApply, enabled = !ready) { Text(stringResource(R.string.admin_template_check)) }
+            OpenCodeTextButton(onClick = onInsert, enabled = ready) { Text(stringResource(R.string.admin_template_insert)) }
         },
-        dismissButton = { TextButton(onClick = onClose) { Text(stringResource(R.string.admin_cancel)) } },
+        dismissButton = { OpenCodeTextButton(onClick = onClose) { Text(stringResource(R.string.admin_cancel)) } },
     )
 }
 
 @Composable
 private fun EffectChips(selected: String, onSelect: (String) -> Unit) {
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        listOf("ask", "allow", "deny").forEach { effect ->
+    // Resolved up front: a forEach lambda is not a @Composable context, so the labels cannot be
+    // read inside it. A map keeps the chip order stable.
+    val labels = mapOf(
+        "ask" to stringResource(R.string.admin_template_effect_ask),
+        "allow" to stringResource(R.string.admin_template_effect_allow),
+        "deny" to stringResource(R.string.admin_template_effect_deny),
+    )
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.sm)) {
+        labels.forEach { (effect, label) ->
             FilterChip(
                 selected = selected == effect,
                 onClick = { onSelect(effect) },
-                label = { Text(effect) },
-                modifier = Modifier.testTag("template:effect:$effect"),
+                label = { Text(label) },
+                modifier = Modifier.testTag(AdminTags.templateEffect(effect)),
             )
         }
     }
@@ -234,13 +242,18 @@ private fun EffectChips(selected: String, onSelect: (String) -> Unit) {
 
 @Composable
 private fun ModeChips(selected: String, onSelect: (String) -> Unit) {
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        listOf("primary", "subagent", "all").forEach { mode ->
+    val labels = mapOf(
+        "primary" to stringResource(R.string.admin_template_mode_primary),
+        "subagent" to stringResource(R.string.admin_template_mode_subagent),
+        "all" to stringResource(R.string.admin_template_mode_all),
+    )
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.sm)) {
+        labels.forEach { (mode, label) ->
             FilterChip(
                 selected = selected == mode,
                 onClick = { onSelect(mode) },
-                label = { Text(mode) },
-                modifier = Modifier.testTag("template:mode:$mode"),
+                label = { Text(label) },
+                modifier = Modifier.testTag(AdminTags.templateMode(mode)),
             )
         }
     }
@@ -272,9 +285,12 @@ fun DefinitionScreen(
     onDismissError: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val spacing = OpenCodeThemeExtras.spacing
+    // Read in the composable context: stringResource cannot be called inside the semantics block below.
+    val savingDescription = stringResource(R.string.admin_saving)
     Column(modifier = modifier.fillMaxSize()) {
-        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = spacing.lg, vertical = spacing.sm)) {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(spacing.sm)) {
                 DefinitionKind.entries.forEach { kind ->
                     FilterChip(
                         selected = state.kind == kind,
@@ -298,7 +314,7 @@ fun DefinitionScreen(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp)
+                .padding(horizontal = spacing.lg)
                 // `fill = false`, for the same reason the editor's header has it: a scrolling child
                 // without it takes the whole column and the body field and the save row fall off the
                 // bottom of the screen.
@@ -326,18 +342,24 @@ fun DefinitionScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f)
-                .padding(16.dp)
+                .padding(spacing.lg)
                 .heightIn(min = 180.dp)
                 .testTag(AdminTags.DEFINITION_BODY),
         )
         HorizontalDivider()
         Row(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.fillMaxWidth().padding(spacing.lg),
+            horizontalArrangement = Arrangement.spacedBy(spacing.sm),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            if (state.saving) CircularProgressIndicator(modifier = Modifier.heightIn(max = 20.dp))
-            Button(onClick = onSave, enabled = state.canSave, modifier = Modifier.testTag("definition:save")) {
+            // A fixed square (heightIn alone squeezes elliptical), announced: unlike the loading
+            // rows elsewhere, no text says a save is in flight, so the spinner must say it.
+            if (state.saving) CircularProgressIndicator(
+                modifier = Modifier
+                    .size(20.dp)
+                    .semantics { contentDescription = savingDescription },
+            )
+            Button(onClick = onSave, enabled = state.canSave, modifier = Modifier.testTag(AdminTags.DEFINITION_SAVE)) {
                 Text(stringResource(R.string.admin_save))
             }
         }
@@ -350,12 +372,12 @@ fun DefinitionScreen(
             onDismissRequest = onDismissOutcome,
             title = { Text(stringResource(R.string.admin_write_title)) },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(spacing.xs)) {
                     Text(outcome.summary)
                     outcome.diagnostics.forEach { DiagnosticRow(diagnostic = it) }
                 }
             },
-            confirmButton = { TextButton(onClick = onDismissOutcome) { Text(stringResource(R.string.admin_dismiss)) } },
+            confirmButton = { OpenCodeTextButton(onClick = onDismissOutcome) { Text(stringResource(R.string.admin_dismiss)) } },
         )
     }
 }
@@ -365,10 +387,4 @@ internal fun kindLabel(kind: DefinitionKind): Int = when (kind) {
     DefinitionKind.COMMAND -> R.string.admin_definition_command
     DefinitionKind.SKILL -> R.string.admin_definition_skill
     DefinitionKind.INSTRUCTIONS -> R.string.admin_definition_instructions
-}
-
-/** A monospace line, for a path or a value the user has to read exactly. */
-@Composable
-internal fun MonoLine(value: String) {
-    Text(text = value, style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace)
 }

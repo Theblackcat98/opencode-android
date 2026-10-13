@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -17,12 +18,14 @@ import androidx.compose.material.icons.filled.DriveFileMove
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -34,6 +37,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.opencode.android.core.designsystem.text.SyncedTextField
+import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
 import dev.opencode.android.core.model.Project
 
 /**
@@ -64,9 +68,10 @@ fun WorktreesScreen(
     onDismissError: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val spacing = OpenCodeThemeExtras.spacing
     Column(modifier = modifier.fillMaxSize()) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = spacing.lg, vertical = spacing.sm),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
@@ -83,8 +88,8 @@ fun WorktreesScreen(
         }
 
         Column(
-            modifier = Modifier.padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.padding(horizontal = spacing.lg),
+            verticalArrangement = Arrangement.spacedBy(spacing.sm),
         ) {
             SyncedTextField(
                 value = state.draftFrom,
@@ -119,8 +124,26 @@ fun WorktreesScreen(
                 Icon(Icons.Filled.Add, contentDescription = null)
                 Text(
                     text = stringResource(R.string.worktrees_create),
-                    modifier = Modifier.padding(start = 8.dp),
+                    modifier = Modifier.padding(start = spacing.sm),
                 )
+            }
+            // Creating runs the project's setup script on the server, which takes a while; the
+            // button alone greying out says nothing about the wait, so the progress gets its own row.
+            if (state.creating) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(spacing.sm),
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        strokeWidth = 2.dp,
+                    )
+                    Text(
+                        text = stringResource(R.string.worktrees_creating),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
             // Every failure the panel's writes produce lands in state.error, so it is shown here, next to the
             // form the user is correcting, until they dismiss it. The drafts are kept beside it on a refusal.
@@ -137,20 +160,47 @@ fun WorktreesScreen(
                     }
                 }
             }
+            // A completed write says which directory it landed on, in the server's words: the server
+            // chooses the path, and the notice is the receipt. It stays until the next write or
+            // refresh, like the error beside it; it is informational, so it carries no dismiss of
+            // its own.
+            state.notice?.let { notice ->
+                Text(
+                    text = stringResource(R.string.worktrees_notice, notice),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.testTag(WorktreeTags.NOTICE),
+                )
+            }
         }
 
-        HorizontalDivider(modifier = Modifier.padding(top = 8.dp))
+        HorizontalDivider(modifier = Modifier.padding(top = spacing.sm))
 
-        if (state.directories.isEmpty()) {
+        if (state.loading) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(spacing.sm),
+                modifier = Modifier.padding(spacing.xl),
+            ) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(20.dp),
+                    strokeWidth = 2.dp,
+                )
+                Text(
+                    text = stringResource(R.string.worktrees_loading),
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            }
+        } else if (state.directories.isEmpty()) {
             Text(
                 text = stringResource(R.string.worktrees_empty),
                 style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.padding(24.dp),
+                modifier = Modifier.padding(spacing.xl),
             )
         } else {
             LazyColumn(
                 modifier = Modifier.fillMaxSize().testTag(WorktreeTags.LIST),
-                contentPadding = PaddingValues(bottom = 24.dp),
+                contentPadding = PaddingValues(bottom = spacing.xl),
             ) {
                 items(state.directories, key = { it.directory }) { entry ->
                     ListItem(
@@ -203,7 +253,7 @@ fun WorktreesScreen(
             onDismissRequest = onCancelRemove,
             title = { Text(stringResource(R.string.worktrees_remove_title)) },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
                     Text(
                         text = target,
                         style = MaterialTheme.typography.bodySmall,
@@ -223,8 +273,10 @@ fun WorktreesScreen(
                 }
             },
             confirmButton = {
+                // Destructive: the error color is the whole signal that this is not a dismissal.
                 TextButton(
                     onClick = { if (state.forceArmed) onForceRemove() else onRemove() },
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
                     modifier = Modifier.testTag(WorktreeTags.FORCE),
                 ) {
                     Text(
@@ -252,4 +304,5 @@ object WorktreeTags {
     const val CREATE: String = "worktrees-create"
     const val FORCE: String = "worktrees-force"
     const val ERROR: String = "worktrees-error"
+    const val NOTICE: String = "worktrees-notice"
 }

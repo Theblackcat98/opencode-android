@@ -12,18 +12,17 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.CallSplit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.Difference
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -48,11 +47,12 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import dev.opencode.android.core.designsystem.component.OpenCodeStatusDot
 import dev.opencode.android.core.designsystem.component.OpenCodeStatusPill
 import dev.opencode.android.core.designsystem.component.OpenCodeTopAppBar
-import dev.opencode.android.core.designsystem.component.StatusDot
 import dev.opencode.android.core.designsystem.component.StatusKind
 import dev.opencode.android.core.designsystem.format.Formatters
+import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
 import dev.opencode.android.feature.sessions.R
 import dev.opencode.android.feature.sessions.ui.timeline.TimelineList
 import kotlinx.coroutines.launch
@@ -112,6 +112,7 @@ fun SessionScreen(
     onSelectTab: (String) -> Unit = {},
     onCloseTab: (String) -> Unit = {},
 ) {
+    val spacing = OpenCodeThemeExtras.spacing
     val listState = rememberLazyListState()
     val atBottom by remember {
         derivedStateOf {
@@ -162,9 +163,15 @@ fun SessionScreen(
                 },
             )
         },
-        bottomBar = { composerSlot() },
+        bottomBar = {
+            // The keyboard overlaps the composer without this; the activity's adjustResize alone does
+            // not move the bottom bar, which sits outside the inset-consuming content.
+            Box(modifier = Modifier.imePadding()) { composerSlot() }
+        },
         floatingActionButton = {
             AnimatedVisibility(visible = !atBottom, enter = fadeIn(), exit = fadeOut()) {
+                // The M3 small-FAB spec: default shape and secondaryContainer. The old CircleShape +
+                // surfaceContainerHighest read as a custom chip, not a FAB.
                 SmallFloatingActionButton(
                     onClick = {
                         onFollowChange(true)
@@ -172,9 +179,6 @@ fun SessionScreen(
                             scope.launch { listState.scrollToItem(jumpTarget) }
                         }
                     },
-                    shape = CircleShape,
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                    contentColor = MaterialTheme.colorScheme.onSurface,
                 ) {
                     Icon(
                         Icons.Filled.KeyboardArrowDown,
@@ -198,7 +202,7 @@ fun SessionScreen(
                 following = state.following,
                 onLoadOlder = onLoadOlder,
                 listState = listState,
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+                contentPadding = PaddingValues(horizontal = spacing.lg, vertical = spacing.md),
                 modifier = Modifier.weight(1f).fillMaxWidth(),
                 onOpenChangedFile = onOpenChangedFile,
                 messageActions = messageActions,
@@ -232,7 +236,7 @@ private fun Subtitle(state: SessionUiState) {
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         when (val activity = state.activity) {
-            is SessionActivityUi.Running -> StatusDot(StatusKind.Running)
+            is SessionActivityUi.Running -> OpenCodeStatusDot(StatusKind.Running)
 
             is SessionActivityUi.Retrying -> OpenCodeStatusPill(
                 StatusKind.Retrying,
@@ -250,17 +254,4 @@ private fun Subtitle(state: SessionUiState) {
     }
 }
 
-/** The offline notice: shown when the timeline came from the cache and no server has answered. */
-@Composable
-fun OfflineNotice(modifier: Modifier = Modifier) {
-    Surface(
-        modifier = modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.tertiaryContainer,
-    ) {
-        Text(
-            text = stringResource(R.string.session_offline_notice),
-            style = MaterialTheme.typography.labelMedium,
-            modifier = Modifier.padding(8.dp),
-        )
-    }
-}
+

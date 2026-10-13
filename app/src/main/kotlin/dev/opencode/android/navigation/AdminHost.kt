@@ -1,5 +1,6 @@
 package dev.opencode.android.navigation
 
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -66,13 +67,17 @@ data class ConfigEditorRoute(val serverId: String? = null, val directory: String
 data class DefinitionRoute(
     val serverId: String? = null,
     val directory: String,
-    val kind: String = "agent",
+    val kind: DefinitionKind = DefinitionKind.AGENT,
     val name: String = "",
 )
 
 /** The catalog browsers: agents, commands, skills and references. */
 @Serializable
-data class CatalogRoute(val serverId: String? = null, val directory: String, val tab: String = "agents")
+data class CatalogRoute(
+    val serverId: String? = null,
+    val directory: String,
+    val tab: AdminCatalog = AdminCatalog.AGENTS,
+)
 
 /** The permissions admin, with the session's own rules when one is named. */
 @Serializable
@@ -80,12 +85,12 @@ data class PermissionsRoute(
     val serverId: String? = null,
     val directory: String,
     val projectID: String? = null,
-    val sessionID: String? = null,
+    val sessionId: String? = null,
 )
 
 /** A session's durable instruction entries. */
 @Serializable
-data class InstructionsRoute(val serverId: String? = null, val sessionID: String)
+data class InstructionsRoute(val serverId: String? = null, val sessionId: String)
 
 /** The maintenance screen. */
 @Serializable
@@ -198,6 +203,9 @@ fun DefinitionHost(
     val state by viewModel.state.collectAsStateWithLifecycle()
 
     LaunchedEffect(directory, kind, name) { viewModel.open(directory, kind, name) }
+    // No ON_RESUME re-read: this is a draft editor, and re-opening would clobber unsaved edits.
+    // The definition is re-read when its identity changes (the effect above), which is the only
+    // refresh that does not destroy work.
 
     AdminScaffold(
         title = stringResource(R.string.admin_definition_title),
@@ -233,6 +241,7 @@ fun CatalogHost(
     state: CatalogUiState,
     onTabChange: (AdminCatalog) -> Unit,
     onSearchChange: (String) -> Unit,
+    onReload: () -> Unit = {},
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -245,6 +254,7 @@ fun CatalogHost(
             state = state,
             onTabChange = onTabChange,
             onSearchChange = onSearchChange,
+            onReload = onReload,
             modifier = Modifier.padding(padding),
         )
     }
@@ -255,14 +265,14 @@ fun CatalogHost(
 fun PermissionsHost(
     directory: String,
     projectID: String?,
-    sessionID: String?,
+    sessionId: String?,
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: PermissionsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
 
-    LaunchedEffect(directory, projectID, sessionID) { viewModel.open(directory, projectID, sessionID) }
+    LaunchedEffect(directory, projectID, sessionId) { viewModel.open(directory, projectID, sessionId) }
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.resume() }
 
     AdminScaffold(
@@ -290,14 +300,14 @@ fun PermissionsHost(
 /** A session's durable instruction entries. */
 @Composable
 fun InstructionsHost(
-    sessionID: String,
+    sessionId: String,
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: InstructionsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
 
-    LaunchedEffect(sessionID) { viewModel.open(sessionID) }
+    LaunchedEffect(sessionId) { viewModel.open(sessionId) }
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.resume() }
 
     AdminScaffold(
@@ -362,6 +372,9 @@ fun UsageHost(
     val state by viewModel.state.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) { viewModel.open() }
+    // Usage numbers change while the screen is away (the server keeps counting), so returning
+    // re-reads rather than showing the stale cards.
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.refresh() }
 
     AdminScaffold(
         title = stringResource(R.string.admin_usage_title),
@@ -391,6 +404,8 @@ fun QuickAskHost(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
 
+    // No ON_RESUME effect: this is a form, not a data screen. There is nothing to re-read, and
+    // re-asking on return would fire a model call the user did not make.
     AdminScaffold(
         title = stringResource(R.string.admin_quick_ask_title),
         modifier = modifier,
@@ -422,6 +437,8 @@ fun PairDeviceHost(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
 
+    // No ON_RESUME effect: the screen shows one minted pairing code, and re-generating on return
+    // would invalidate the code (and its QR) the user may be in the middle of redeeming.
     AdminScaffold(
         title = stringResource(R.string.admin_pair_device_title),
         modifier = modifier,
@@ -448,6 +465,8 @@ fun RpcConsoleHost(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
 
+    // No ON_RESUME effect: this is a form, not a data screen. There is nothing to re-read, and
+    // re-firing the last call on return would run a plugin method the user did not invoke.
     AdminScaffold(
         title = stringResource(R.string.admin_rpc_title),
         modifier = modifier,
@@ -472,6 +491,7 @@ private fun AdminScaffold(
     title: String,
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier,
+    actions: @Composable RowScope.() -> Unit = {},
     content: @Composable (androidx.compose.foundation.layout.PaddingValues) -> Unit,
 ) {
     Scaffold(
@@ -484,6 +504,7 @@ private fun AdminScaffold(
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.admin_navigate_back))
                     }
                 },
+                actions = actions,
             )
         },
         content = content,
@@ -492,19 +513,4 @@ private fun AdminScaffold(
 
 /**
  * The four catalog lists, resolved from the data set, for [CatalogHost].
- * The definition kinds a route may name, so a bad value is a default rather than a crash.
  */
-internal fun definitionKindOf(id: String): DefinitionKind = when (id) {
-    DefinitionKind.COMMAND.id -> DefinitionKind.COMMAND
-    DefinitionKind.SKILL.id -> DefinitionKind.SKILL
-    DefinitionKind.INSTRUCTIONS.id -> DefinitionKind.INSTRUCTIONS
-    else -> DefinitionKind.AGENT
-}
-
-/** The catalog tabs a route may name. */
-internal fun catalogOf(id: String): AdminCatalog = when (id) {
-    AdminCatalog.COMMANDS.id -> AdminCatalog.COMMANDS
-    AdminCatalog.SKILLS.id -> AdminCatalog.SKILLS
-    AdminCatalog.REFERENCES.id -> AdminCatalog.REFERENCES
-    else -> AdminCatalog.AGENTS
-}

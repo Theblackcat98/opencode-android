@@ -29,6 +29,7 @@ import androidx.compose.material.icons.outlined.NotificationsActive
 import androidx.compose.material.icons.outlined.Science
 import androidx.compose.material.icons.outlined.Timeline
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -258,6 +259,8 @@ fun SessionActionsSheet(
                         confirmingDelete = false
                         onDelete()
                     },
+                    // The destructive action wears the error color so it is not mistaken for a dismissal.
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
                 ) {
                     Text(stringResource(R.string.session_delete_confirm))
                 }
@@ -311,7 +314,7 @@ fun WaitingForIdleDialog(onStop: () -> Unit) {
         onDismissRequest = onStop,
         title = { Text(stringResource(R.string.session_wait_idle_title)) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.md)) {
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
                 Text(stringResource(R.string.session_wait_idle_body))
             }
@@ -346,7 +349,7 @@ fun SyntheticNoteDialog(
         onDismissRequest = { if (!sending) onDismiss() },
         title = { Text(stringResource(R.string.session_synthetic_title)) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.md)) {
                 Text(stringResource(R.string.session_synthetic_explain), style = MaterialTheme.typography.bodyMedium)
                 OutlinedTextField(
                     value = text,
@@ -393,7 +396,7 @@ private fun FollowDesktopRow(on: Boolean, onClick: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .toggleable(value = on, role = Role.Switch, onValueChange = { onClick() })
-            .padding(horizontal = 24.dp, vertical = 10.dp),
+            .padding(horizontal = OpenCodeThemeExtras.spacing.xl, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(Icons.Outlined.Devices, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -412,11 +415,12 @@ private fun FollowDesktopRow(on: Boolean, onClick: () -> Unit) {
 
 @Composable
 private fun SheetSection(titleRes: Int) {
+    val spacing = OpenCodeThemeExtras.spacing
     Text(
         text = stringResource(titleRes),
         style = MaterialTheme.typography.labelLarge,
         color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 20.dp, bottom = 6.dp).semantics { heading() },
+        modifier = Modifier.padding(start = spacing.xl, end = spacing.xl, top = 20.dp, bottom = 6.dp).semantics { heading() },
     )
 }
 
@@ -440,7 +444,7 @@ fun SessionMenuRow(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
-            .padding(horizontal = 24.dp, vertical = 14.dp),
+            .padding(horizontal = OpenCodeThemeExtras.spacing.xl, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (icon != null) {
@@ -478,7 +482,7 @@ fun SessionToolTile(
             .semantics(mergeDescendants = true) {
                 if (!enabled && disabledReason != null) stateDescription = disabledReason
             }
-            .padding(vertical = 12.dp, horizontal = 4.dp),
+            .padding(vertical = OpenCodeThemeExtras.spacing.md, horizontal = OpenCodeThemeExtras.spacing.xs),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurface.copy(alpha = alpha))
@@ -493,7 +497,8 @@ fun SessionToolTile(
     }
 }
 
-private const val DISABLED_ALPHA = 0.38f
+/** The alpha for disabled controls; shared with SettingsScreen in the same package. */
+internal const val DISABLED_ALPHA = 0.38f
 private const val TILES_PER_ROW = 4
 private val TILE_WIDTH = 80.dp
 

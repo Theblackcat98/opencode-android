@@ -28,6 +28,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -48,8 +49,8 @@ fun PairDeviceScreen(
     modifier: Modifier = Modifier,
 ) {
     Column(
-        modifier = modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        modifier = modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(OpenCodeThemeExtras.spacing.lg),
+        verticalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.md),
     ) {
         if (!state.available) {
             Text(stringResource(R.string.pair_absent), style = MaterialTheme.typography.bodyMedium)
@@ -98,7 +99,7 @@ fun PairDeviceScreen(
         if (state.generating) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.md),
             ) {
                 CircularProgressIndicator()
                 Text(stringResource(R.string.pair_generating), style = MaterialTheme.typography.bodyMedium)

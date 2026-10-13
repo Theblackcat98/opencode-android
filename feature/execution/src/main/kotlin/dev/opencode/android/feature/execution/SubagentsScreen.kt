@@ -48,6 +48,7 @@ import dev.opencode.android.core.designsystem.component.OpenCodeAvatar
 import dev.opencode.android.core.designsystem.component.OpenCodeStatusPill
 import dev.opencode.android.core.designsystem.component.StatusKind
 import dev.opencode.android.core.designsystem.format.Formatters
+import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
 
 /**
  * The session family tree (plan §6, "Subagents").
@@ -71,9 +72,10 @@ fun SubagentsScreen(
     onNext: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val spacing = OpenCodeThemeExtras.spacing
     Column(modifier = modifier.fillMaxSize()) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = spacing.sm, vertical = spacing.xs),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             IconButton(onClick = onParent, enabled = state.canGoToParent) {
@@ -109,14 +111,14 @@ fun SubagentsScreen(
             Text(
                 text = stringResource(R.string.subagents_empty),
                 style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.padding(24.dp),
+                modifier = Modifier.padding(spacing.xl),
             )
             return@Column
         }
 
         LazyColumn(
             modifier = Modifier.fillMaxSize().testTag(SubagentTags.TREE),
-            contentPadding = PaddingValues(bottom = 24.dp),
+            contentPadding = PaddingValues(bottom = spacing.xl),
         ) {
             items(state.nodes, key = { it.id }) { node ->
                 SubagentNodeRow(node = node, selected = node.id == state.selected, onClick = { onSelect(node.id) })
@@ -127,7 +129,7 @@ fun SubagentsScreen(
             Text(
                 text = stringResource(R.string.subagents_incomplete, state.missingChildren),
                 style = MaterialTheme.typography.labelSmall,
-                modifier = Modifier.padding(12.dp),
+                modifier = Modifier.padding(spacing.md),
             )
         }
     }
@@ -149,20 +151,20 @@ private fun SubagentNodeRow(node: SessionNode, selected: Boolean, onClick: () ->
             .background(if (selected) scheme.secondaryContainer.copy(alpha = 0.35f) else scheme.surface)
             .clickable(onClick = onClick)
             .testTag(SubagentTags.NODE + node.id)
-            .padding(start = 12.dp, end = 12.dp),
+            .padding(start = OpenCodeThemeExtras.spacing.md, end = OpenCodeThemeExtras.spacing.md),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         repeat(node.depth) {
             Box(
                 Modifier
-                    .padding(start = 10.dp, end = 12.dp)
+                    .padding(start = 10.dp, end = OpenCodeThemeExtras.spacing.md)
                     .width(1.dp)
                     .fillMaxHeight()
                     .background(scheme.outlineVariant),
             )
         }
         OpenCodeAvatar(key = row.agent ?: node.id, label = row.agent ?: node.title, size = 28.dp)
-        Column(modifier = Modifier.weight(1f).padding(horizontal = 12.dp, vertical = 10.dp)) {
+        Column(modifier = Modifier.weight(1f).padding(horizontal = OpenCodeThemeExtras.spacing.md, vertical = 10.dp)) {
             Text(
                 text = node.title,
                 style = MaterialTheme.typography.bodyLarge,
@@ -232,49 +234,51 @@ fun SubagentStrip(
         ) {
             items(state.children, key = { it.sessionID }) { child ->
                 val busy = state.interrupting == child.sessionID
-                AssistChip(
-                    onClick = { onOpen(child.sessionID) },
-                    label = {
-                        Text(
-                            text = child.title,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    },
-                    leadingIcon = {
-                        // One glyph, and the name carries the state. A stop glyph on a *retrying* child
-                        // and a play glyph on a *running* one read as the opposite of what they mean;
-                        // both chips are interrupt targets, and "running" versus "retrying" is a
-                        // distinction TalkBack makes from the content description and a sighted user
-                        // makes from the spinner the row shows.
-                        Icon(
-                            imageVector = Icons.Filled.Stop,
-                            contentDescription = if (child.isRetrying) {
-                                stringResource(R.string.subagents_retrying)
-                            } else {
-                                stringResource(R.string.subagents_running)
-                            },
-                        )
-                    },
-                    trailingIcon = {
-                        IconButton(
-                            onClick = { onInterrupt(child.sessionID) },
-                            enabled = !busy,
-                            modifier = Modifier.size(24.dp).testTag(SubagentTags.INTERRUPT + child.sessionID),
-                        ) {
-                            if (busy) {
-                                CircularProgressIndicator(Modifier.size(14.dp), strokeWidth = 2.dp)
-                            } else {
-                                Icon(
-                                    Icons.Filled.Stop,
-                                    stringResource(R.string.subagents_interrupt),
-                                    modifier = Modifier.size(16.dp),
-                                )
-                            }
+                // The interrupt sits beside the chip, not inside it: a 24dp button nested in a
+                // clickable chip's trailing icon is a TalkBack hazard (chip opens, button
+                // interrupts — adjacent targets, one tiny). Its own 48dp target ends the nesting.
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    AssistChip(
+                        onClick = { onOpen(child.sessionID) },
+                        label = {
+                            Text(
+                                text = child.title,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        },
+                        leadingIcon = {
+                            // One glyph, and the name carries the state. A stop glyph on a *retrying* child
+                            // and a play glyph on a *running* one read as the opposite of what they mean;
+                            // both chips are interrupt targets, and "running" versus "retrying" is a
+                            // distinction TalkBack makes from the content description and a sighted user
+                            // makes from the spinner the row shows.
+                            Icon(
+                                imageVector = Icons.Filled.Stop,
+                                contentDescription = if (child.isRetrying) {
+                                    stringResource(R.string.subagents_retrying)
+                                } else {
+                                    stringResource(R.string.subagents_running)
+                                },
+                            )
+                        },
+                        colors = AssistChipDefaults.assistChipColors(),
+                    )
+                    IconButton(
+                        onClick = { onInterrupt(child.sessionID) },
+                        enabled = !busy,
+                        modifier = Modifier.size(48.dp).testTag(SubagentTags.INTERRUPT + child.sessionID),
+                    ) {
+                        if (busy) {
+                            CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                        } else {
+                            Icon(
+                                Icons.Filled.Stop,
+                                stringResource(R.string.subagents_interrupt),
+                            )
                         }
-                    },
-                    colors = AssistChipDefaults.assistChipColors(),
-                )
+                    }
+                }
             }
         }
         // The interrupt's own failure. A strip that swallowed it would show a chip that stopped
@@ -311,5 +315,3 @@ object SubagentTags {
     const val IDLE: String = "subagents-idle"
     const val ERROR: String = "subagents-error"
 }
-
-private const val INDENT_DP = 16

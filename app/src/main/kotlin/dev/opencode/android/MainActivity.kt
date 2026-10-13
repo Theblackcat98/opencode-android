@@ -59,9 +59,10 @@ class MainActivity : ComponentActivity() {
     private var openShortcut by mutableStateOf<OpenShortcutTarget?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        installSplashScreen()
-        enableEdgeToEdge()
         super.onCreate(savedInstanceState)
+        installSplashScreen()
+        // After super.onCreate: the window exists by now, and edge-to-edge needs it.
+        enableEdgeToEdge()
 
         // The attention layer is started in the application too; starting it here as well is harmless
         // because both calls are idempotent, and it means a launcher icon press with the process

@@ -123,4 +123,28 @@ object AdminTags {
 
     /** Opens the tab for one catalog. */
     fun tab(id: String): String = "catalog:tab:$id"
+
+    /** Saves the config editor. */
+    const val CONFIG_SAVE: String = "config:save"
+
+    /** Saves a definition. */
+    const val DEFINITION_SAVE: String = "definition:save"
+
+    /** Removes an instruction entry, which is confirmed first. */
+    fun removeInstruction(key: String): String = "instructions:remove:$key"
+
+    /** Toggles the permission-rules editor. */
+    const val TOGGLE_EDITING: String = "permissions:toggle-editing"
+
+    /** Removes a permission rule, by its position among the *server's* rules. */
+    fun removeRule(index: Int): String = "permissions:remove-rule:$index"
+
+    /** One rule-effect chip, by rule position and effect value. */
+    fun ruleEffect(index: Int, effect: String): String = "permissions:effect:$index:$effect"
+
+    /** One template-effect chip, by effect. */
+    fun templateEffect(effect: String): String = "template:effect:$effect"
+
+    /** One template-mode chip, by mode. */
+    fun templateMode(mode: String): String = "template:mode:$mode"
 }

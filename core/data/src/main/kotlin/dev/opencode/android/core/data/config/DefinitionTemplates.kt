@@ -1,5 +1,7 @@
 package dev.opencode.android.core.data.config
 
+import kotlinx.serialization.Serializable
+
 /**
  * Where a definition file lives relative to a location, and what kind of file it is.
  *
@@ -15,6 +17,7 @@ package dev.opencode.android.core.data.config
  * this wrong produces a file the server reads and ignores, which is why the templates are built
  * per kind rather than from one shape.
  */
+@Serializable
 enum class DefinitionKind(val id: String) {
 
     /** `.opencode/agents/<name>.md` — the agent's front matter plus its system prompt. */

@@ -38,6 +38,7 @@ import dev.opencode.android.core.data.composer.AttachmentKind
 import dev.opencode.android.core.data.composer.Completion
 import dev.opencode.android.core.data.composer.CompletionKind
 import dev.opencode.android.core.designsystem.format.Formatters
+import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
 import dev.opencode.android.feature.composer.R
 
 /**
@@ -66,7 +67,6 @@ fun CompletionList(
     ) {
         LazyColumn(
             modifier = Modifier.fillMaxWidth().heightIn(max = MAX_LIST_HEIGHT),
-            verticalArrangement = Arrangement.spacedBy(0.dp),
         ) {
             items(completions, key = { it.key }) { completion ->
                 CompletionRow(completion = completion, onSelect = { onSelect(completion) })
@@ -83,7 +83,7 @@ private fun CompletionRow(completion: Completion, onSelect: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onSelect)
-            .padding(horizontal = 12.dp, vertical = 10.dp)
+            .padding(horizontal = OpenCodeThemeExtras.spacing.md, vertical = 10.dp)
             .clearAndSetSemantics {
                 // One announcement per row: kind, label and target, in that order, because that is
                 // the order a person deciding between them needs them.
@@ -163,8 +163,8 @@ fun AttachmentChips(
         color = MaterialTheme.colorScheme.surfaceContainer,
     ) {
         Column(
-            Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
+            Modifier.padding(horizontal = OpenCodeThemeExtras.spacing.md, vertical = OpenCodeThemeExtras.spacing.sm),
+            verticalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.xs),
         ) {
             attachments.forEach { attachment ->
                 AttachmentChip(attachment = attachment, onRemove = { onRemove(attachment.id) })
@@ -248,7 +248,7 @@ private fun AttachmentKind.glyph(): String = when (this) {
 @Composable
 fun SearchProgress(visible: Boolean, modifier: Modifier = Modifier) {
     if (!visible) return
-    Box(modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp)) {
+    Box(modifier.fillMaxWidth().padding(horizontal = OpenCodeThemeExtras.spacing.md, vertical = OpenCodeThemeExtras.spacing.xs)) {
         LinearProgressIndicator(Modifier.fillMaxWidth())
     }
 }

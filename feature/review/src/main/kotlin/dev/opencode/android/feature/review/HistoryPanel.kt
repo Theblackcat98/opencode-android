@@ -27,8 +27,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import dev.opencode.android.core.data.action.ActionError
 import dev.opencode.android.core.data.server.SessionContextInspector
+import dev.opencode.android.core.designsystem.component.OpenCodeTextButton
 import dev.opencode.android.core.designsystem.text.SyncedTextField
+import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
 
 /**
  * The history panel: jump between prompts, search, export, import, and the context inspector
@@ -55,6 +58,12 @@ fun HistoryPanel(
     onExportMarkdown: () -> Unit,
     onImport: () -> Unit,
     onDismissTransfer: () -> Unit,
+    /**
+     * Clears the failure row. The host passes `HistoryViewModel::dismissError`; the default keeps
+     * existing call sites compiling, but a host that leaves it defaulted ships a Dismiss button that
+     * does nothing, which is the dead-control defect the codebase's own KDoc warns about.
+     */
+    onDismissError: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
@@ -128,12 +137,10 @@ fun HistoryPanel(
             HorizontalDivider()
         }
 
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            TextButton(onClick = onOpenContext) { Text(stringResource(R.string.context_title)) }
-        }
+        OpenCodeTextButton(
+            onClick = onOpenContext,
+            modifier = Modifier.padding(horizontal = OpenCodeThemeExtras.spacing.sm),
+        ) { Text(stringResource(R.string.context_title)) }
 
         // The transfer actions are their own row because three buttons plus the context row do not
         // fit a 360 dp phone in one line, and a button that has been pushed off the end of a row is
@@ -181,6 +188,10 @@ fun HistoryPanel(
             TransferNotice(result = result, onDismiss = onDismissTransfer)
         }
 
+        state.error?.let { error ->
+            HistoryErrorNotice(error = error, onDismiss = onDismissError)
+        }
+
         if (state.contextOpen) {
             HorizontalDivider()
             ContextSection(state = state, onClose = onCloseContext)
@@ -201,9 +212,10 @@ fun ContextSection(
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val spacing = OpenCodeThemeExtras.spacing
     Column(modifier = modifier.fillMaxWidth()) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = spacing.lg, vertical = spacing.sm),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(modifier = Modifier.weight(1f)) {
@@ -230,7 +242,7 @@ fun ContextSection(
                 text = stringResource(R.string.context_empty),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                modifier = Modifier.padding(horizontal = spacing.lg, vertical = spacing.xs),
             )
         }
         LazyColumn(modifier = Modifier.fillMaxWidth()) {
@@ -273,7 +285,7 @@ private fun TransferNotice(result: TransferResult, onDismiss: () -> Unit) {
         is TransferResult.Refused -> stringResource(R.string.experimental_unavailable)
     }
     Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = OpenCodeThemeExtras.spacing.lg, vertical = OpenCodeThemeExtras.spacing.xs),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
@@ -284,6 +296,30 @@ private fun TransferNotice(result: TransferResult, onDismiss: () -> Unit) {
             } else {
                 MaterialTheme.colorScheme.onSurfaceVariant
             },
+            modifier = Modifier.weight(1f),
+        )
+        TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_dismiss)) }
+    }
+}
+
+/**
+ * The last transfer or context action's failure, in the server's own words when it gave any.
+ *
+ * It sits beside the transfer notice rather than under the buttons it came from: the error is the
+ * transfer's outcome, and a row next to that outcome reads as the outcome's shadow rather than a new
+ * control to learn. The error color is the whole signal, which matches the transfer row's refusal
+ * styling one row above it.
+ */
+@Composable
+private fun HistoryErrorNotice(error: ActionError, onDismiss: () -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = OpenCodeThemeExtras.spacing.lg, vertical = OpenCodeThemeExtras.spacing.xs),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = error.serverMessage ?: stringResource(R.string.history_error_unknown),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.error,
             modifier = Modifier.weight(1f),
         )
         TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_dismiss)) }

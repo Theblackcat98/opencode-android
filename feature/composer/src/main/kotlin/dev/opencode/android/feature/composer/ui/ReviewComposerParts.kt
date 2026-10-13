@@ -27,6 +27,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.opencode.android.core.data.composer.LineRange
 import dev.opencode.android.core.data.review.ReviewComment
+import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
 import dev.opencode.android.feature.composer.R
 
 /**
@@ -50,6 +51,7 @@ fun StagedRevertBanner(
     onRedo: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val spacing = OpenCodeThemeExtras.spacing
     if (!state.isStaged) return
     Surface(
         modifier = modifier.fillMaxWidth().semantics { liveRegion = LiveRegionMode.Polite },
@@ -59,7 +61,7 @@ fun StagedRevertBanner(
     ) {
         // The title and Redo share a row, so at a large font the action stays beside the words that explain it
         // instead of being squeezed into a column of one-word lines beside the hint.
-        Column(modifier = Modifier.padding(start = 12.dp, end = 4.dp, bottom = 8.dp)) {
+        Column(modifier = Modifier.padding(start = spacing.md, end = spacing.xs, bottom = spacing.sm)) {
             Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = stringResource(R.string.composer_staged_banner),
@@ -71,7 +73,7 @@ fun StagedRevertBanner(
                     Text(stringResource(R.string.composer_redo))
                 }
             }
-            Column(modifier = Modifier.padding(end = 8.dp)) {
+            Column(modifier = Modifier.padding(end = spacing.sm)) {
                 Text(
                     text = if (state.restoredFiles.isEmpty()) {
                         stringResource(R.string.composer_staged_none)
@@ -85,8 +87,8 @@ fun StagedRevertBanner(
                     // that scrolls sideways shows one of them. The count above says how many there are and the
                     // review screen has the paths.
                     LazyRow(
-                        modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier.fillMaxWidth().padding(top = spacing.xxs),
+                        horizontalArrangement = Arrangement.spacedBy(spacing.md),
                     ) {
                         items(state.restoredFiles, key = { it.file }) { file ->
                             Text(
@@ -101,7 +103,7 @@ fun StagedRevertBanner(
                 Text(
                     text = stringResource(R.string.composer_revert_commit_first),
                     style = MaterialTheme.typography.labelSmall,
-                    modifier = Modifier.padding(top = 4.dp),
+                    modifier = Modifier.padding(top = spacing.xs),
                 )
             }
         }
@@ -147,13 +149,14 @@ fun ReviewCommentChips(
     onRemove: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val spacing = OpenCodeThemeExtras.spacing
     if (comments.isEmpty()) return
-    Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(spacing.xs)) {
         Text(
             text = stringResource(R.string.composer_comment_count, comments.size),
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(horizontal = 4.dp),
+            modifier = Modifier.padding(horizontal = spacing.xs),
         )
         comments.forEachIndexed { index, comment ->
             Surface(
@@ -162,7 +165,7 @@ fun ReviewCommentChips(
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Row(
-                    modifier = Modifier.padding(start = 12.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
+                    modifier = Modifier.padding(start = spacing.md, end = spacing.xs, top = spacing.xs, bottom = spacing.xs),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(

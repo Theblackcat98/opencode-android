@@ -19,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
+import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
 
 /**
  * The plugin RPC console (matrix H6 and H7).
@@ -38,8 +39,8 @@ fun RpcConsoleScreen(
     modifier: Modifier = Modifier,
 ) {
     Column(
-        modifier = modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        modifier = modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(OpenCodeThemeExtras.spacing.lg),
+        verticalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.md),
     ) {
         Text(
             stringResource(R.string.rpc_help),
@@ -93,7 +94,7 @@ fun RpcConsoleScreen(
 
         state.output?.let { output ->
             Card(modifier = Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(16.dp)) {
+                Column(Modifier.padding(OpenCodeThemeExtras.spacing.lg)) {
                     Text(stringResource(R.string.rpc_output), style = MaterialTheme.typography.titleSmall)
                     SelectionContainer {
                         Text(output, style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace)

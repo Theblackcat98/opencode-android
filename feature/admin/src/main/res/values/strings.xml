@@ -6,7 +6,10 @@
     <string name="admin_confirm">Confirm</string>
     <string name="admin_cancel">Cancel</string>
     <string name="admin_dismiss">Dismiss</string>
+    <string name="admin_retry">Retry</string>
+    <string name="admin_remove_rule">Remove rule</string>
     <string name="admin_save">Save</string>
+    <string name="admin_saving">Saving…</string>
     <string name="admin_reload">Reload</string>
     <string name="admin_done">Done</string>
     <string name="admin_error_class">The server refused that (%1$s)</string>
@@ -30,6 +33,7 @@
     <string name="admin_config_title">Configuration</string>
     <string name="admin_config_loading">Reading the server\'s configuration…</string>
     <string name="admin_config_empty">This server reported no configuration keys.</string>
+    <string name="admin_config_search">Search keys</string>
     <string name="admin_configured_only">Configured only</string>
     <string name="admin_key_count">%1$d keys, %2$d in use</string>
     <string name="admin_sources">Where the configuration comes from</string>
@@ -91,6 +95,12 @@
     <string name="admin_template_resource">Resource</string>
     <string name="admin_template_resource_help">Use * for every resource.</string>
     <string name="admin_template_effect">Effect</string>
+    <string name="admin_template_effect_ask">Ask</string>
+    <string name="admin_template_effect_allow">Allow</string>
+    <string name="admin_template_effect_deny">Deny</string>
+    <string name="admin_template_mode_primary">Primary</string>
+    <string name="admin_template_mode_subagent">Subagent</string>
+    <string name="admin_template_mode_all">All</string>
     <string name="admin_template_permission_warning">This is a permission rule. The agent will be able to do what it allows, and the server evaluates file rules before session rules.</string>
     <string name="admin_template_agent_name">Agent name</string>
     <string name="admin_template_model_ref">Model (optional)</string>
@@ -121,6 +131,9 @@
     <string name="admin_definition_body">Body</string>
 
     <!-- Permissions. -->
+    <string name="admin_effect_ask">Ask</string>
+    <string name="admin_effect_allow">Allow</string>
+    <string name="admin_effect_deny">Deny</string>
     <string name="admin_permissions_title">Permissions</string>
     <string name="admin_rules_title">This session\'s rules</string>
     <string name="admin_rules_edit">Edit</string>
@@ -194,4 +207,22 @@
     <string name="admin_catalog_search">Search</string>
     <string name="admin_catalog_loading">Reading…</string>
     <string name="admin_catalog_empty">Nothing here.</string>
+
+    <!-- Catalog row facts. Labels are resources; values are server data shown verbatim, except the
+      handful of client-rendered constants below, which are resources too. -->
+    <string name="admin_fact_mode">Mode</string>
+    <string name="admin_fact_model">Model</string>
+    <string name="admin_fact_steps">Steps</string>
+    <string name="admin_fact_color">Color</string>
+    <string name="admin_fact_hidden">Hidden</string>
+    <string name="admin_fact_yes">yes</string>
+    <string name="admin_fact_permissions">Permissions</string>
+    <string name="admin_fact_path">Path</string>
+    <string name="admin_fact_autoinvoke">Autoinvoke</string>
+    <string name="admin_fact_template">Template</string>
+    <string name="admin_fact_template_in_file">in the command file</string>
+    <string name="admin_fact_repository">Repository</string>
+    <string name="admin_fact_branch">Branch</string>
+    <string name="admin_fact_source">Source</string>
+    <string name="admin_fact_unknown">unknown</string>
 </resources>

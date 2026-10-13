@@ -23,6 +23,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import dev.opencode.android.core.designsystem.text.SyncedTextField
+import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
 import dev.opencode.android.core.network.LanFound
 import dev.opencode.android.feature.servers.R
 
@@ -44,7 +45,7 @@ internal fun LanDiscoverySection(
     onUseServer: (LanFound) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.md)) {
         Text(
             text = stringResource(R.string.lan_section_title),
             style = MaterialTheme.typography.titleMedium,
@@ -61,7 +62,7 @@ internal fun LanDiscoverySection(
                 .toggleable(value = state.enabled, role = Role.Switch, onValueChange = onEnabledChange)
                 .semantics { contentDescription = switchDescription },
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.md),
         ) {
             Switch(checked = state.enabled, onCheckedChange = null)
             Column(modifier = Modifier.weight(1f)) {
@@ -151,7 +152,7 @@ private fun FoundServerRow(server: LanFound, onUse: () -> Unit) {
             .fillMaxWidth()
             .heightIn(min = 48.dp)
             .clickable(role = Role.Button, onClickLabel = useLabel, onClick = onUse)
-            .padding(horizontal = 4.dp),
+            .padding(horizontal = OpenCodeThemeExtras.spacing.xs),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(

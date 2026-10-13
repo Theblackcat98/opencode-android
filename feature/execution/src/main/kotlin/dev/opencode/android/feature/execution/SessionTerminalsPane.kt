@@ -1,24 +1,29 @@
 package dev.opencode.android.feature.execution
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -29,13 +34,20 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import dev.opencode.android.core.designsystem.component.OpenCodeTextButton
+import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
 import dev.opencode.android.core.model.SessionTerminalRead
 
 /**
@@ -60,8 +72,15 @@ fun SessionTerminalsPane(
     onInspect: (String) -> Unit,
     onResize: (String, Int, Int) -> Unit,
     onRemove: (String) -> Unit,
+    onDismissError: () -> Unit = {},
     modifier: Modifier = Modifier,
+    /**
+     * Opens the experimental settings. Null because navigation lives in the app module; when null
+     * the "switched off" notice is text-only rather than a dead button.
+     */
+    onOpenExperimentalSettings: (() -> Unit)? = null,
 ) {
+    var removeTarget by remember { mutableStateOf<TerminalRow?>(null) }
     Column(modifier = modifier.fillMaxSize()) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
@@ -86,10 +105,42 @@ fun SessionTerminalsPane(
         }
         HorizontalDivider()
 
+        // The terminal operations all report failures into state.error; without this row they
+        // vanish, because every other branch of the `when` below renders something else.
+        state.error?.let { message ->
+            Surface(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+                color = MaterialTheme.colorScheme.errorContainer,
+                contentColor = MaterialTheme.colorScheme.onErrorContainer,
+                shape = MaterialTheme.shapes.small,
+            ) {
+                Row(
+                    modifier = Modifier.padding(start = 12.dp, top = 4.dp, end = 4.dp, bottom = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = message,
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.weight(1f),
+                    )
+                    IconButton(onClick = onDismissError) {
+                        Icon(Icons.Filled.Close, stringResource(R.string.action_close))
+                    }
+                }
+            }
+        }
+
         when {
             !state.allowedBySetting -> Notice(
                 stringResource(R.string.session_terminals_off_body),
                 SessionTerminalTags.OFF,
+                action = onOpenExperimentalSettings?.let { openSettings ->
+                    {
+                        OpenCodeTextButton(onClick = openSettings) {
+                            Text(stringResource(R.string.session_terminals_open_settings))
+                        }
+                    }
+                },
             )
 
             !state.usable -> Notice(
@@ -109,8 +160,11 @@ fun SessionTerminalsPane(
             )
 
             else -> {
+                // Tapping a row inspects it: the snapshot below shows the tapped terminal, so the
+                // rows are the pickers the onInspect callback was always meant to serve.
+                val selectedId = state.inspected ?: state.latest?.id
                 LazyColumn(
-                    modifier = Modifier.weight(1f).testTag(SessionTerminalTags.LIST),
+                    modifier = Modifier.weight(0.4f).testTag(SessionTerminalTags.LIST),
                     contentPadding = PaddingValues(bottom = 8.dp),
                 ) {
                     items(state.terminals, key = { it.id }) { terminal ->
@@ -130,10 +184,15 @@ fun SessionTerminalsPane(
                                 )
                             },
                             trailingContent = {
-                                IconButton(onClick = { onRemove(terminal.id) }) {
+                                IconButton(onClick = { removeTarget = terminal }) {
                                     Icon(Icons.Filled.Delete, stringResource(R.string.session_terminals_remove))
                                 }
                             },
+                            modifier = Modifier.selectable(
+                                selected = terminal.id == selectedId,
+                                onClick = { onInspect(terminal.id) },
+                                role = Role.RadioButton,
+                            ),
                         )
                         HorizontalDivider()
                     }
@@ -142,10 +201,32 @@ fun SessionTerminalsPane(
                     state = state,
                     onRead = onRead,
                     onResize = onResize,
-                    modifier = Modifier.weight(1f),
+                    // The snapshot is the thing being read: on short screens it takes the weight,
+                    // not an even split with the list above it.
+                    modifier = Modifier.weight(0.6f),
                 )
             }
         }
+    }
+    removeTarget?.let { target ->
+        AlertDialog(
+            onDismissRequest = { removeTarget = null },
+            title = { Text(stringResource(R.string.session_terminals_remove_title)) },
+            text = { Text(stringResource(R.string.session_terminals_remove_body)) },
+            confirmButton = {
+                // Destructive: the error color is the whole signal that this is not a dismissal.
+                TextButton(
+                    onClick = {
+                        onRemove(target.id)
+                        removeTarget = null
+                    },
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                ) { Text(stringResource(R.string.session_terminals_remove_confirm)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { removeTarget = null }) { Text(stringResource(R.string.action_close)) }
+            },
+        )
     }
 }
 
@@ -170,7 +251,7 @@ private fun TerminalScreenText(
 ) {
     val screen = state.screen
     val inspected = state.terminals.firstOrNull { it.id == state.inspected } ?: state.latest
-    Column(modifier = modifier.fillMaxWidth().padding(12.dp)) {
+    Column(modifier = modifier.fillMaxWidth().padding(OpenCodeThemeExtras.spacing.md)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 text = stringResource(R.string.session_terminals_screen),
@@ -183,7 +264,7 @@ private fun TerminalScreenText(
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.xs),
             ) {
                 Text(
                     text = "${inspected.cols}×${inspected.rows}",
@@ -243,7 +324,7 @@ private fun TerminalScreenText(
                     style = MaterialTheme.typography.bodySmall,
                     fontFamily = FontFamily.Monospace,
                     modifier = Modifier
-                        .padding(8.dp)
+                        .padding(OpenCodeThemeExtras.spacing.sm)
                         .verticalScroll(rememberScrollState())
                         .horizontalScroll(rememberScrollState())
                         .testTag(SessionTerminalTags.SCREEN),
@@ -254,15 +335,27 @@ private fun TerminalScreenText(
 }
 
 @Composable
-private fun Notice(text: String, tag: String, modifier: Modifier = Modifier) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.bodyMedium,
+private fun Notice(
+    text: String,
+    tag: String,
+    modifier: Modifier = Modifier,
+    action: (@Composable () -> Unit)? = null,
+) {
+    Column(
         modifier = modifier
             .fillMaxWidth()
-            .padding(24.dp)
-            .testTag(SessionTerminalTags.NOTICE + tag),
-    )
+            .padding(OpenCodeThemeExtras.spacing.xl),
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.testTag(SessionTerminalTags.NOTICE + tag),
+        )
+        action?.let {
+            Spacer(modifier = Modifier.height(OpenCodeThemeExtras.spacing.sm))
+            it()
+        }
+    }
 }
 
 /** The tags the tests and the baselines address. */
@@ -273,7 +366,6 @@ object SessionTerminalTags {
     const val TALLER: String = "session-terminals-taller"
     const val SHORTER: String = "session-terminals-shorter"
     const val LIST: String = "session-terminals-list"
-    const val TERMINAL: String = "session-terminals-row-"
     const val SCREEN: String = "session-terminals-screen"
     const val AVAILABILITY: String = "session-terminals-availability"
     const val NOTICE: String = "session-terminals-notice-"

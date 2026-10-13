@@ -10,9 +10,10 @@ import androidx.camera.view.PreviewView
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -37,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
 import dev.opencode.android.feature.servers.R
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
@@ -156,10 +158,12 @@ fun QrCodeScannerView(
         )
 
         // The framing rectangle tells the user where to hold the code, which matters on a phone
-        // held at an angle over a terminal.
+        // held at an angle over a terminal. It is a fraction of the width, not a fixed dp, so it
+        // scales on tablets and foldables instead of shrinking into a corner.
         Canvas(
             modifier = Modifier
-                .size(260.dp)
+                .fillMaxWidth(0.7f)
+                .aspectRatio(1f)
                 .align(Alignment.Center),
         ) {
             val strokeWidth = 4.dp.toPx()
@@ -179,7 +183,7 @@ fun QrCodeScannerView(
                 style = MaterialTheme.typography.bodyLarge,
                 modifier = Modifier
                     .align(Alignment.Center)
-                    .padding(32.dp),
+                    .padding(OpenCodeThemeExtras.spacing.xxl),
             )
             LaunchedEffect(Unit) { onCameraUnavailable() }
         }

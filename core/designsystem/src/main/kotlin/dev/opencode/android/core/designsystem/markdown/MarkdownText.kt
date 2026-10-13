@@ -4,14 +4,18 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -21,7 +25,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -45,6 +53,8 @@ import dev.opencode.android.core.designsystem.code.CodeLanguage
 import dev.opencode.android.core.designsystem.diff.DiffColors
 import dev.opencode.android.core.designsystem.diff.highlighted
 import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
+import java.util.Locale
+import kotlinx.coroutines.delay
 
 /**
  * Renders an assistant answer (plan §5.4).
@@ -62,7 +72,7 @@ fun MarkdownText(
     style: androidx.compose.ui.text.TextStyle = MaterialTheme.typography.bodyLarge,
 ) {
     val blocks = rememberParsedMarkdown(markdown)
-    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.sm)) {
         blocks.forEach { block ->
             when (block) {
                 is MarkdownBlock.Paragraph -> Text(
@@ -95,7 +105,7 @@ fun MarkdownText(
 
                 is MarkdownBlock.NumberedList -> block.items.forEachIndexed { position, item ->
                     Row {
-                        Text("${block.start + position}.  ", style = style)
+                        Text(stringResource(R.string.md_numbered_list_marker, block.start + position), style = style)
                         Text(
                             text = annotate(parseInline(item.plainText()), style),
                             style = style,
@@ -110,25 +120,37 @@ fun MarkdownText(
                     modifier = Modifier.fillMaxWidth(),
                 )
 
-                is MarkdownBlock.Quote -> Column(modifier = Modifier.padding(start = 12.dp)) {
-                    HorizontalDivider()
-                    block.lines.forEach { line ->
-                        when (line) {
-                            is MarkdownBlock.Paragraph -> Text(
-                                text = annotate(parseInline(line.text), style),
-                                style = style.copy(color = LocalContentColor.current.copy(alpha = 0.7f)),
-                            )
+                is MarkdownBlock.Quote -> Row(modifier = Modifier.fillMaxWidth()) {
+                    // The accent bar is the quote's signal: a primary-colored vertical rule at the
+                    // content's full height, instead of the inset padding and dividers that read
+                    // as a section of the answer rather than someone else's words.
+                    Box(
+                        modifier = Modifier
+                            .width(4.dp)
+                            .fillMaxHeight()
+                            .background(
+                                color = MaterialTheme.colorScheme.primary,
+                                shape = RoundedCornerShape(2.dp),
+                            ),
+                    )
+                    Column(modifier = Modifier.padding(start = OpenCodeThemeExtras.spacing.sm)) {
+                        block.lines.forEach { line ->
+                            when (line) {
+                                is MarkdownBlock.Paragraph -> Text(
+                                    text = annotate(parseInline(line.text), style),
+                                    style = style.copy(color = LocalContentColor.current.copy(alpha = 0.7f)),
+                                )
 
-                            else -> MarkdownBlockView(line, style)
+                                else -> MarkdownBlockView(line, style)
+                            }
                         }
                     }
-                    HorizontalDivider()
                 }
 
                 is MarkdownBlock.Table -> Table(block, style)
 
                 is MarkdownBlock.Divider -> HorizontalDivider(
-                    modifier = Modifier.padding(vertical = 8.dp),
+                    modifier = Modifier.padding(vertical = OpenCodeThemeExtras.spacing.sm),
                     color = if (block.style == MarkdownBlock.DividerStyle.HORIZONTAL_RULE) {
                         MaterialTheme.colorScheme.outlineVariant
                     } else {
@@ -156,9 +178,10 @@ private fun MarkdownBlockView(block: MarkdownBlock, style: androidx.compose.ui.t
             )
         }
 
-        is MarkdownBlock.NumberedList -> block.items.forEach {
+        is MarkdownBlock.NumberedList -> block.items.forEachIndexed { position, item ->
+            val marker = stringResource(R.string.md_numbered_list_marker, block.start + position)
             Text(
-                text = annotate(parseInline(stringResource(R.string.md_number_marker) + it.plainText()), style),
+                text = annotate(parseInline(marker + item.plainText()), style),
                 style = style,
             )
         }
@@ -185,7 +208,9 @@ private fun Table(block: MarkdownBlock.Table, style: androidx.compose.ui.text.Te
             .fillMaxWidth()
             .horizontalScroll(scroll),
     ) {
-        Row {
+        // The header is a band, not just bolder text: the wash separates it from the rows
+        // when the table scrolls sideways and the divider scrolls out of view.
+        Row(modifier = Modifier.background(MaterialTheme.colorScheme.surfaceContainerHigh)) {
             block.header.forEachIndexed { column, cell ->
                 val alignment = block.alignment.getOrNull(column) ?: ColumnAlignment.LEFT
                 Text(
@@ -196,7 +221,7 @@ private fun Table(block: MarkdownBlock.Table, style: androidx.compose.ui.text.Te
                     ),
                     modifier = Modifier
                         .width(160.dp)
-                        .padding(horizontal = 6.dp, vertical = 2.dp),
+                        .padding(horizontal = 6.dp, vertical = OpenCodeThemeExtras.spacing.xxs),
                 )
             }
         }
@@ -210,7 +235,7 @@ private fun Table(block: MarkdownBlock.Table, style: androidx.compose.ui.text.Te
                         style = style.copy(textAlign = alignment.toTextAlign()),
                         modifier = Modifier
                             .width(160.dp)
-                            .padding(horizontal = 6.dp, vertical = 2.dp),
+                            .padding(horizontal = 6.dp, vertical = OpenCodeThemeExtras.spacing.xxs),
                     )
                 }
             }
@@ -246,6 +271,15 @@ fun CodeBlock(
     val colors = DiffColors.of()
     val scroll = rememberScrollState()
     val clipboard = LocalClipboardManager.current
+    var copied by remember { mutableStateOf(false) }
+    // The copy is silent otherwise: on a phone there is no selection to see, so the button morphs
+    // to a check for a moment to say the tap landed.
+    LaunchedEffect(copied) {
+        if (copied) {
+            delay(1_500)
+            copied = false
+        }
+    }
     Surface(
         modifier = modifier.fillMaxWidth(),
         color = MaterialTheme.colorScheme.surfaceContainerLowest,
@@ -259,21 +293,30 @@ fun CodeBlock(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-                    .padding(start = 12.dp),
+                    .padding(start = OpenCodeThemeExtras.spacing.md),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    text = (language ?: stringResource(R.string.md_code_plain)).uppercase(),
+                    text = (language ?: stringResource(R.string.md_code_plain)).uppercase(Locale.ROOT),
                     style = codeTypography.small.copy(color = MaterialTheme.colorScheme.onSurfaceVariant),
                     modifier = Modifier.weight(1f),
                 )
                 IconButton(
-                    onClick = { clipboard.setText(AnnotatedString(code.trimEnd('\n'))) },
+                    onClick = {
+                        // setText(AnnotatedString) is deprecated in favor of ClipEntry, but this BOM's
+                        // ClipboardManager has no setText(ClipEntry) overload — the deprecated call is
+                        // the only one that compiles here.
+                        @Suppress("DEPRECATION")
+                        clipboard.setText(AnnotatedString(code.trimEnd('\n')))
+                        copied = true
+                    },
                     modifier = Modifier.size(36.dp),
                 ) {
                     Icon(
-                        imageVector = Icons.Outlined.ContentCopy,
-                        contentDescription = stringResource(R.string.md_code_copy),
+                        imageVector = if (copied) Icons.Filled.Check else Icons.Outlined.ContentCopy,
+                        contentDescription = stringResource(
+                            if (copied) R.string.md_code_copied else R.string.md_code_copy,
+                        ),
                         modifier = Modifier.size(18.dp),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -284,7 +327,7 @@ fun CodeBlock(
                 style = codeTypography.body,
                 modifier = Modifier
                     .horizontalScroll(scroll)
-                    .padding(12.dp),
+                    .padding(OpenCodeThemeExtras.spacing.md),
             )
         }
     }
@@ -299,6 +342,13 @@ fun CodeBlock(
  */
 @Composable
 fun rememberParsedMarkdown(markdown: String): List<MarkdownBlock> = remember(markdown) { parseMarkdown(markdown) }
+
+/**
+ * The URL schemes a rendered link may open. Anything else renders as plain text: a `javascript:`
+ * URL must never become tappable.
+ */
+private fun isSafeLink(url: String): Boolean =
+    url.startsWith("http://") || url.startsWith("https://") || url.startsWith("mailto:")
 
 /** Turns inline markup into a styled string. */
 @Composable
@@ -316,21 +366,34 @@ private fun annotate(
                     if (inline.strong) SpanStyle(fontWeight = FontWeight.Bold) else SpanStyle(fontStyle = FontStyle.Italic),
                 ) { append(inline.text) }
 
-                is MarkdownInline.Code -> withStyle(SpanStyle(fontFamily = OpenCodeThemeExtras.code.body.fontFamily)) {
+                is MarkdownInline.Code -> withStyle(
+                    SpanStyle(
+                        fontFamily = OpenCodeThemeExtras.code.body.fontFamily,
+                        // Inline code reads as code because of the wash, not just the font: in a
+                        // paragraph the mono typeface alone is easy to miss.
+                        background = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f),
+                    ),
+                ) {
                     append(inline.text)
                 }
 
-                is MarkdownInline.Link -> withLink(
-                    LinkAnnotation.Url(
-                        url = inline.url,
-                        styles = TextLinkStyles(
-                            style = SpanStyle(
-                                color = linkColor,
-                                textDecoration = TextDecoration.Underline,
+                is MarkdownInline.Link -> if (isSafeLink(inline.url)) {
+                    withLink(
+                        LinkAnnotation.Url(
+                            url = inline.url,
+                            styles = TextLinkStyles(
+                                style = SpanStyle(
+                                    color = linkColor,
+                                    textDecoration = TextDecoration.Underline,
+                                ),
                             ),
                         ),
-                    ),
-                ) { append(inline.text) }
+                    ) { append(inline.text) }
+                } else {
+                    // A link the allowlist rejects is not tappable: no javascript:, no custom
+                    // scheme the app cannot vouch for. The text still renders, so nothing is lost.
+                    append(inline.text)
+                }
             }
         }
     }

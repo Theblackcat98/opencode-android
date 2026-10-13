@@ -16,11 +16,14 @@
     <string name="changelog_title">Changelog</string>
     <string name="changelog_navigate_back">Back</string>
     <string name="changelog_unavailable">The changelog is not available in this build.</string>
+    <string name="changelog_empty_title">No changelog entries</string>
+    <string name="changelog_empty_body">This build\'s changelog has nothing to show.</string>
     <string name="changelog_bullet" translatable="false">•</string>
 
     <!-- The command palette (navigation/CommandPalette.kt, CommandPaletteDialog.kt). Each command label is the text the palette lists. -->
     <string name="palette_search_label">Search commands</string>
     <string name="palette_no_match">No command matches.</string>
+    <string name="palette_clear">Clear search</string>
     <string name="palette_servers">Servers</string>
     <string name="palette_new_session">New session</string>
     <string name="palette_usage">Usage</string>
@@ -31,6 +34,13 @@
     <string name="palette_event_inspector">Event inspector</string>
     <!-- The leader-key mnemonic shown after a palette row (navigation/LeaderKeys.kt). %1$s is the letter that follows Ctrl+X. -->
     <string name="palette_leader_hint">Ctrl+X %1$s</string>
+    <!-- The pill shown while Ctrl+X waits for its letter (navigation/Routes.kt). -->
+    <string name="leader_armed">Ctrl+X: press a letter</string>
+    <!-- The session top bar's command-palette button (navigation/SessionHost.kt). -->
+    <string name="session_command_palette">Open command palette</string>
+    <!-- The attach sheet's fallbacks (navigation/SessionHost.kt): the device has no camera, or no source to attach from. -->
+    <string name="session_camera_unavailable">Camera unavailable on this device</string>
+    <string name="session_attach_unavailable">Nothing available to attach from</string>
     <!-- The bottom bar's three tabs. -->
     <string name="tab_home">Home</string>
     <string name="tab_chat">Chat</string>

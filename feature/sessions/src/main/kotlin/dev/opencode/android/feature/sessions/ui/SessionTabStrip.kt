@@ -31,6 +31,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
 import dev.opencode.android.feature.sessions.R
 
 /** One open session, as the strip shows it. [id] is the session id, which is what the strip's callbacks name. */
@@ -78,8 +79,8 @@ private fun TabRow(
     LazyRow(
         modifier = modifier.fillMaxWidth().height(TabHeight),
         state = listState,
-        contentPadding = PaddingValues(horizontal = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        contentPadding = PaddingValues(horizontal = OpenCodeThemeExtras.spacing.sm),
+        horizontalArrangement = Arrangement.spacedBy(OpenCodeThemeExtras.spacing.xs),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         itemsIndexed(tabs, key = { _, tab -> tab.id }) { index, tab ->
@@ -120,7 +121,7 @@ private fun SessionTab(
                 .height(TabHeight)
                 .selectable(selected = tab.selected, role = Role.Tab, onClick = { onSelect(tab.id) })
                 .semantics(mergeDescendants = true) { contentDescription = label }
-                .padding(start = 12.dp, end = 4.dp),
+                .padding(start = OpenCodeThemeExtras.spacing.md, end = OpenCodeThemeExtras.spacing.xs),
             contentAlignment = Alignment.CenterStart,
         ) {
             Text(
