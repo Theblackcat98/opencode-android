@@ -107,7 +107,7 @@ data class CatalogUiState(
             AdminCatalog.REFERENCES -> references.status
         }
 
-    val rows: List<CatalogRow> by lazy {
+    internal val rows: List<CatalogRow> by lazy {
         val needle = search.trim().lowercase()
         fun keep(key: String) = needle.isEmpty() || key.lowercase().contains(needle)
         when (tab) {
