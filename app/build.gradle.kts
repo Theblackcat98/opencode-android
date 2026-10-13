@@ -163,17 +163,6 @@ if (!hasReleaseSigning) {
         .configureEach { dependsOn(releaseMaterialMissing) }
 }
 
-val verifyPublishableReleaseRequested = gradle.startParameter.taskNames.any {
-    it.substringAfterLast(':') == "verifyPublishableRelease"
-}
-if (verifyPublishableReleaseRequested && !hasReleaseSigning) {
-    throw org.gradle.api.GradleException(
-        "verifyPublishableRelease requires complete release signing material. " +
-            "Set OPENCODE_KEYSTORE, OPENCODE_STORE_PASSWORD, OPENCODE_KEY_ALIAS, and " +
-            "OPENCODE_KEY_PASSWORD, or provide the matching keystore.properties values.",
-    )
-}
-
 val verifyPublishableRelease = tasks.register("verifyPublishableRelease") {
     group = "release"
     description = "Assembles and verifies signed Play and F-Droid release APKs; does not publish them."
