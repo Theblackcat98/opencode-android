@@ -213,7 +213,11 @@ class AdminScreenContentTest {
             "the filter must hide an unset key",
             compose.allNodesWithTagOrNull(AdminTags.configKey("small_model")) == null,
         )
-        // …and one that is set is still there.
+        // …and one that is set is still there. Scroll first: the LazyColumn only composes its
+        // window, and the search field added above the list shrank the initial viewport.
+        // "model" is schema index 16, 4th among the test's configured keys (shell, snapshot,
+        // share, model), so list index FIRST_KEY_INDEX + 3.
+        compose.onNodeWithTag(AdminTags.CONFIG_LIST).performScrollToIndex(FIRST_KEY_INDEX + 3)
         compose.onNodeWithTag(AdminTags.configKey("model")).fetchSemanticsNode()
     }
 
