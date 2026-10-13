@@ -11,6 +11,8 @@ import dev.opencode.android.core.data.repository.DefaultServerRepository
 import dev.opencode.android.core.data.repository.ServerHealth
 import dev.opencode.android.core.data.repository.ServerRepository
 import dev.opencode.android.core.data.security.InMemoryCredentialStore
+import dev.opencode.android.core.data.security.CredentialStoreUnavailableException
+import dev.opencode.android.core.data.security.SecureCredentialStore
 import dev.opencode.android.core.database.OpenCodeDatabase
 import dev.opencode.android.core.network.PairingClient
 import dev.opencode.android.core.network.PairingLink
@@ -396,4 +398,157 @@ class ServerRepositoryTest {
 
     private fun serverInfoJson(baseUrl: String) =
         """{"version":"2.0.18","pid":4321,"urls":["$baseUrl"],"paths":{"tmp":"/tmp"}}"""
+
+    // #46: the one-default invariant survives edits.
+
+    @Test
+    fun uncheckingTheDefaultPromotesASurvivor() = runTest {
+        val first = repository.addServer("S1", "http://localhost:4096", null)
+        val second = repository.addServer("S2", "http://localhost:4097", null)
+        assertTrue(repository.getServer(first)!!.isDefault)
+
+        repository.updateServer(
+            id = first,
+            name = "S1",
+            baseUrl = "http://localhost:4096",
+            credential = null,
+            isDefault = false,
+            trustUserCertificates = false,
+        )
+
+        assertFalse(repository.getServer(first)!!.isDefault)
+        val defaults = repository.getAllServers().filter { it.isDefault }
+        assertEquals("Exactly one server must be the default", 1, defaults.size)
+        assertEquals(second, defaults.single().id)
+    }
+
+    @Test
+    fun theLastServerCannotBeUncheckedAsDefault() = runTest {
+        val only = repository.addServer("Solo", "http://localhost:4096", null)
+        assertTrue(repository.getServer(only)!!.isDefault)
+
+        repository.updateServer(
+            id = only,
+            name = "Solo",
+            baseUrl = "http://localhost:4096",
+            credential = null,
+            isDefault = false,
+            trustUserCertificates = false,
+        )
+
+        assertTrue("The last server stays default", repository.getServer(only)!!.isDefault)
+    }
+
+    @Test
+    fun checkingAnotherServerAsDefaultClearsTheOldOne() = runTest {
+        val first = repository.addServer("S1", "http://localhost:4096", null)
+        val second = repository.addServer("S2", "http://localhost:4097", null)
+
+        repository.updateServer(
+            id = second,
+            name = "S2",
+            baseUrl = "http://localhost:4097",
+            credential = null,
+            isDefault = true,
+            trustUserCertificates = false,
+        )
+
+        assertFalse(repository.getServer(first)!!.isDefault)
+        assertTrue(repository.getServer(second)!!.isDefault)
+        assertEquals(1, repository.getAllServers().count { it.isDefault })
+    }
+
+    // #45: credential persistence failures roll back.
+
+    /** A credential store that throws on save, for failure-injection tests. */
+    private class FailingCredentialStore(
+        private val delegate: InMemoryCredentialStore,
+    ) : SecureCredentialStore {
+        var failOnSave = false
+        override fun getCredential(serverId: String): String? = delegate.getCredential(serverId)
+        override fun saveCredential(serverId: String, tokenOrPassword: String) {
+            if (failOnSave) throw CredentialStoreUnavailableException("injected failure")
+            delegate.saveCredential(serverId, tokenOrPassword)
+        }
+        override fun removeCredential(serverId: String) = delegate.removeCredential(serverId)
+        override fun clearAll() = delegate.clearAll()
+    }
+
+    @Test
+    fun aFailedCredentialSaveOnAddRollsBackTheInsertedRow() = runTest {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val failingDb = Room.inMemoryDatabaseBuilder(context, OpenCodeDatabase::class.java)
+            .allowMainThreadQueries()
+            .build()
+        try {
+            val failingStore = FailingCredentialStore(InMemoryCredentialStore())
+            val client = OkHttpClient()
+            val apiFactory = ServerApiFactory(client)
+            val repo = DefaultServerRepository(
+                serverDao = failingDb.serverDao(),
+                credentialStore = failingStore,
+                serverValidator = ServerValidator(apiFactory),
+                pairingClient = PairingClient(apiFactory),
+                credentialCache = ServerCredentialCache(),
+            )
+            val first = repo.addServer("S1", "http://localhost:4096", null)
+            assertTrue(repo.getServer(first)!!.isDefault)
+
+            failingStore.failOnSave = true
+            val error = runCatching {
+                repo.addServer("S2", "http://localhost:4097", "secret", isDefault = true)
+            }.exceptionOrNull()
+            assertNotNull("Expected the credential failure to propagate", error)
+
+            // The half-saved row is gone and the prior default is restored.
+            val remaining = repo.getAllServers()
+            assertEquals(1, remaining.size)
+            assertEquals(first, remaining.single().id)
+            assertTrue(repo.getServer(first)!!.isDefault)
+        } finally {
+            failingDb.close()
+        }
+    }
+
+    @Test
+    fun aFailedCredentialSaveOnUpdateRestoresTheOriginalProfile() = runTest {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val failingDb = Room.inMemoryDatabaseBuilder(context, OpenCodeDatabase::class.java)
+            .allowMainThreadQueries()
+            .build()
+        try {
+            val failingStore = FailingCredentialStore(InMemoryCredentialStore())
+            val client = OkHttpClient()
+            val apiFactory = ServerApiFactory(client)
+            val repo = DefaultServerRepository(
+                serverDao = failingDb.serverDao(),
+                credentialStore = failingStore,
+                serverValidator = ServerValidator(apiFactory),
+                pairingClient = PairingClient(apiFactory),
+                credentialCache = ServerCredentialCache(),
+            )
+            val id = repo.addServer("Original", "http://localhost:4096", "original-pass")
+            assertEquals("original-pass", repo.getCredential(id))
+
+            failingStore.failOnSave = true
+            val error = runCatching {
+                repo.updateServer(
+                    id = id,
+                    name = "Renamed",
+                    baseUrl = "http://localhost:4099",
+                    credential = "new-pass",
+                    isDefault = true,
+                    trustUserCertificates = false,
+                )
+            }.exceptionOrNull()
+            assertNotNull("Expected the credential failure to propagate", error)
+
+            val restored = repo.getServer(id)!!
+            assertEquals("Original", restored.name)
+            assertEquals("http://localhost:4096", restored.baseUrl)
+            assertEquals("original-pass", repo.getCredential(id))
+        } finally {
+            failingDb.close()
+        }
+    }
 }
