@@ -92,9 +92,62 @@ fun AddServerScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val lanState by lanViewModel.uiState.collectAsStateWithLifecycle()
+    AddServerContent(
+        uiState = uiState,
+        lanState = lanState,
+        isRePairing = viewModel.isRePairing,
+        onNavigateBack = onNavigateBack,
+        onSelectTab = viewModel::selectTab,
+        onPayloadReceived = viewModel::onPayloadReceived,
+        onCameraUnavailable = viewModel::onCameraUnavailable,
+        onPairingLinkChange = viewModel::updatePairingLinkInput,
+        onPairWithLink = viewModel::pairWithPastedLink,
+        onManualUrlChange = viewModel::updateManualUrlInput,
+        onManualNameChange = viewModel::updateManualNameInput,
+        onManualPasswordChange = viewModel::updateManualPasswordInput,
+        onTrustUserCertificatesChange = viewModel::setTrustUserCertificates,
+        onConnectManually = viewModel::connectManually,
+        onClearError = viewModel::clearError,
+        onLanEnabledChange = lanViewModel::setEnabled,
+        onLanPortsChange = lanViewModel::updatePortsInput,
+        onLanScan = lanViewModel::startScan,
+        onLanStop = lanViewModel::stopScan,
+        modifier = modifier,
+    )
+}
+
+/**
+ * The three add-server tabs for a given [uiState], with no view model behind it.
+ *
+ * Separate from [AddServerScreen] so a screenshot can stand in for the pairing flow.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AddServerContent(
+    uiState: AddServerUiState,
+    lanState: LanDiscoveryUiState,
+    isRePairing: Boolean,
+    onNavigateBack: () -> Unit,
+    onSelectTab: (AddServerTab) -> Unit,
+    onPayloadReceived: (String) -> Unit,
+    onCameraUnavailable: () -> Unit,
+    onPairingLinkChange: (String) -> Unit,
+    onPairWithLink: () -> Unit,
+    onManualUrlChange: (String) -> Unit,
+    onManualNameChange: (String) -> Unit,
+    onManualPasswordChange: (String) -> Unit,
+    onTrustUserCertificatesChange: (Boolean) -> Unit,
+    onConnectManually: () -> Unit,
+    onClearError: () -> Unit,
+    onLanEnabledChange: (Boolean) -> Unit,
+    onLanPortsChange: (String) -> Unit,
+    onLanScan: () -> Unit,
+    onLanStop: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     // A re-pair replaces one credential, so the scan and manual tabs, which create a new profile,
     // are not offered; the link tab is the only way in.
-    val visibleTabs = if (viewModel.isRePairing) listOf(AddServerTab.PASTE) else AddServerTab.entries
+    val visibleTabs = if (isRePairing) listOf(AddServerTab.PASTE) else AddServerTab.entries
 
     LaunchedEffect(uiState.addedServerId) {
         if (uiState.addedServerId != null) onNavigateBack()
@@ -107,7 +160,7 @@ fun AddServerScreen(
                 title = {
                     Text(
                         stringResource(
-                            if (viewModel.isRePairing) R.string.repair_server_title else R.string.add_server_title,
+                            if (isRePairing) R.string.repair_server_title else R.string.add_server_title,
                         ),
                     )
                 },
@@ -135,7 +188,7 @@ fun AddServerScreen(
                 visibleTabs.forEach { tab ->
                     Tab(
                         selected = uiState.selectedTab == tab,
-                        onClick = { viewModel.selectTab(tab) },
+                        onClick = { onSelectTab(tab) },
                         text = { Text(stringResource(tab.titleRes())) },
                         icon = { Icon(tab.icon(), contentDescription = null) },
                         modifier = Modifier.testTag(tab.testTag()),
@@ -146,30 +199,30 @@ fun AddServerScreen(
             Box(modifier = Modifier.weight(1f)) {
                 when (uiState.selectedTab) {
                     AddServerTab.SCAN -> ScanQrTab(
-                        onPayload = viewModel::onPayloadReceived,
-                        onCameraUnavailable = viewModel::onCameraUnavailable,
-                        onSwitchToPaste = { viewModel.selectTab(AddServerTab.PASTE) },
+                        onPayload = onPayloadReceived,
+                        onCameraUnavailable = onCameraUnavailable,
+                        onSwitchToPaste = { onSelectTab(AddServerTab.PASTE) },
                     )
 
                     AddServerTab.PASTE -> PasteLinkTab(
                         state = uiState,
-                        onLinkChange = viewModel::updatePairingLinkInput,
-                        onPair = viewModel::pairWithPastedLink,
+                        onLinkChange = onPairingLinkChange,
+                        onPair = onPairWithLink,
                     )
 
                     AddServerTab.MANUAL -> ManualEntryTab(
                         state = uiState,
-                        onUrlChange = viewModel::updateManualUrlInput,
-                        onNameChange = viewModel::updateManualNameInput,
-                        onPasswordChange = viewModel::updateManualPasswordInput,
-                        onTrustUserCertificatesChange = viewModel::setTrustUserCertificates,
-                        onConnect = viewModel::connectManually,
+                        onUrlChange = onManualUrlChange,
+                        onNameChange = onManualNameChange,
+                        onPasswordChange = onManualPasswordChange,
+                        onTrustUserCertificatesChange = onTrustUserCertificatesChange,
+                        onConnect = onConnectManually,
                         lan = lanState,
-                        onLanEnabledChange = lanViewModel::setEnabled,
-                        onLanPortsChange = lanViewModel::updatePortsInput,
-                        onLanScan = lanViewModel::startScan,
-                        onLanStop = lanViewModel::stopScan,
-                        onLanUseServer = { server -> viewModel.updateManualUrlInput(server.url) },
+                        onLanEnabledChange = onLanEnabledChange,
+                        onLanPortsChange = onLanPortsChange,
+                        onLanScan = onLanScan,
+                        onLanStop = onLanStop,
+                        onLanUseServer = { server -> onManualUrlChange(server.url) },
                     )
                 }
 
@@ -193,10 +246,10 @@ fun AddServerScreen(
             error = error,
             technicalDetail = uiState.errorTechnicalDetail,
             onPairAgain = {
-                viewModel.clearError()
-                viewModel.selectTab(AddServerTab.PASTE)
+                onClearError()
+                onSelectTab(AddServerTab.PASTE)
             },
-            onDismiss = viewModel::clearError,
+            onDismiss = onClearError,
         )
     }
 }
