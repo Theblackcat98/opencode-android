@@ -421,6 +421,8 @@ class ServerRepositoryTest {
     fun `sameServerEndpoint rejects malformed urls`() {
         assertFalse(sameServerEndpoint("not a url", "https://host/"))
         assertFalse(sameServerEndpoint("https://host/", "also not a url"))
+    }
+
     // #46: the one-default invariant survives edits.
 
     @Test

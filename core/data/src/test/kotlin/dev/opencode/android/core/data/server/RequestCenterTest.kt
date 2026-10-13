@@ -171,7 +171,8 @@ class RequestCenterTest {
 
         assertNull(error)
         val call = server.takeRequest()
-        assertTrue(call.url.encodedPath.endsWith("/permission/${REQUEST.id}/reply"))        assertTrue("the decision must be sent", call.bodyText().contains("\"decision\":\"always\""))
+        assertTrue(call.url.encodedPath.endsWith("/permission/${REQUEST.id}/reply"))
+        assertTrue("the decision must be sent", call.bodyText().contains("\"decision\":\"always\""))
         assertTrue(
             "an event removes it, not the call",
             center.permissions.value.isNotEmpty(),
