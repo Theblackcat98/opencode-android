@@ -171,8 +171,7 @@ class RequestCenterTest {
 
         assertNull(error)
         val call = server.takeRequest()
-        assertTrue(call.url.encodedPath.endsWith("/permission/${REQUEST.id}/reply"))
-        assertTrue("the decision must be sent", call.bodyText().contains("\"decision\":\"always\""))
+        assertTrue(call.url.encodedPath.endsWith("/permission/${REQUEST.id}/reply"))        assertTrue("the decision must be sent", call.bodyText().contains("\"decision\":\"always\""))
         assertTrue(
             "an event removes it, not the call",
             center.permissions.value.isNotEmpty(),
@@ -292,6 +291,57 @@ class RequestCenterTest {
           "location":{"directory":"$directory"},"sandboxes":[]}}
         """.trimIndent(),
     )
+
+    // #44: a request answered during resync must not be resurrected by the stale snapshot.
+
+    @Test
+    fun `a permission answered during resync stays answered`() = runTest {
+        center.apply(askedEvent(REQUEST))
+        center.apply(sessionCreatedEvent())
+        // The snapshot still lists the request (it was produced before the reply).
+        server.enqueue(
+            jsonResponse(
+                200,
+                """{"location":{"directory":"/w"},"data":[
+                  {"id":"per_1","sessionID":"ses_probe","action":"shell","resources":["echo hello"]}]}""",
+            ),
+        )
+        server.enqueue(jsonResponse(200, """{"location":{"directory":"/w"},"data":[]}"""))
+
+        val resyncJob = launch { center.resync("/w") }
+        runCurrent() // let the resync enter its fetch
+        center.apply(repliedEvent("per_1"))
+        resyncJob.join()
+
+        assertTrue(
+            "an answered permission must not reappear after resync",
+            center.permissions.value.isEmpty(),
+        )
+    }
+
+    @Test
+    fun `a form answered during resync stays answered`() = runTest {
+        center.apply(formCreatedEvent(FORM))
+        center.apply(sessionCreatedEvent())
+        server.enqueue(jsonResponse(200, """{"location":{"directory":"/w"},"data":[]}"""))
+        server.enqueue(
+            jsonResponse(
+                200,
+                """{"location":{"directory":"/w"},"data":[
+                  {"id":"frm_1","sessionID":"ses_probe","title":"Q","fields":[]}]}""",
+            ),
+        )
+
+        val resyncJob = launch { center.resync("/w") }
+        runCurrent()
+        center.apply(formRepliedEvent("frm_1"))
+        resyncJob.join()
+
+        assertTrue(
+            "an answered form must not reappear after resync",
+            center.forms.value.isEmpty(),
+        )
+    }
 
     private companion object {
         val REQUEST = PermissionRequest(
