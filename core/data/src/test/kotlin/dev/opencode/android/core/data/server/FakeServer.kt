@@ -57,6 +57,8 @@ class FakeServer(
     var releaseSessionRequest: CountDownLatch? = null
     var messagePage: List<SessionMessage> = emptyList()
     var messageCursorNext: String? = null
+    var messageRequestStarted: CountDownLatch? = null
+    var releaseMessageRequest: CountDownLatch? = null
 
     init {
         server.dispatcher = object : Dispatcher() {
@@ -68,10 +70,14 @@ class FakeServer(
                 val body = when {
                     path.startsWith("/api/session/active") -> dataResponse(runningMap())
 
-                    path.endsWith("/message") || path.contains("/message?") -> encode(
-                        Paged.serializer(SessionMessage.serializer()),
-                        Paged(messagePage, Paged.Cursor(null, messageCursorNext)),
-                    )
+                    path.endsWith("/message") || path.contains("/message?") -> {
+                        messageRequestStarted?.countDown()
+                        releaseMessageRequest?.await(10, TimeUnit.SECONDS)
+                        encode(
+                            Paged.serializer(SessionMessage.serializer()),
+                            Paged(messagePage, Paged.Cursor(null, messageCursorNext)),
+                        )
+                    }
 
                     path.startsWith("/api/session?") -> {
                         if (query(path, "cursor") != null) {

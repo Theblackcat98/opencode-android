@@ -16,6 +16,8 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 
 /**
  * The timeline store: cache first, the server's page second, and the event stream on top.
@@ -59,11 +61,23 @@ class TimelineStoreTest {
     fun `a cached window is shown before the server answers`() = runBlocking {
         cache.writeMessages("server-1", "ses_a", listOf(userMessage("msg_cached", "from the cache")))
         server.messagePage = listOf(userMessage("msg_fresh", "from the server"))
+        val messageRequestStarted = CountDownLatch(1)
+        val releaseMessageRequest = CountDownLatch(1)
+        server.messageRequestStarted = messageRequestStarted
+        server.releaseMessageRequest = releaseMessageRequest
         val store = newStore()
         store.start()
-        // The cache is populated synchronously before the request returns, so the window it holds
-        // is what a user sees while offline.
-        await("the cached window never appeared") { store.state.value.messages.any { it.id == "msg_cached" } }
+        try {
+            assertTrue(
+                "the server request should remain in flight while the cached window is checked",
+                messageRequestStarted.await(5, TimeUnit.SECONDS),
+            )
+            // The cache is populated synchronously before the request returns, so the window it holds
+            // is what a user sees while offline.
+            await("the cached window never appeared") { store.state.value.messages.any { it.id == "msg_cached" } }
+        } finally {
+            releaseMessageRequest.countDown()
+        }
         await("the server page never arrived") { store.state.value.messages.any { it.id == "msg_fresh" } }
         await("the server page never replaced the cache") {
             store.state.value.messages.size == 1 && store.state.value.messages[0].id == "msg_fresh"
