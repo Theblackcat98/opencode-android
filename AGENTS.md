@@ -23,17 +23,18 @@ node tools/audit-matrix.test.mjs && node tools/audit-matrix.mjs  # every manual-
 
 `audit-viewmodels` exists because `hiltViewModel()` compiles for any `ViewModel` and fails only when the screen opens; seven screens crashed that way. It also fails on the two shapes that gave a screen a `ComposerViewModel` no session was opened in ("Undo to here" and the file browser's attachments did nothing): a `hiltViewModel()` default on the function that builds the `NavHost`, and a second `ComposerViewModel` default outside `SessionHost` without a `// audit-viewmodels: own-instance` claim. `:app` has no Hilt or Robolectric test wiring, so this is a source check, not a navigation test. Only `--strict`, `--check`, `audit-viewmodels` and `audit-matrix` fail on their own. **`audit-strings` and `audit-accessibility` always exit 0** — read the output. CI gates strings through a shell pipeline over `audit-strings --json` in `.github/workflows/ci.yml`, not through the tool.
 
-**Gradle gates** (this is what CI runs, in this order):
+**Gradle gates** (the CI build job runs these, in this order):
 
 ```bash
 ./gradlew unitTest        # the main gate; ~40s with a warm cache
 ./gradlew lintDebug
-./gradlew assembleDebug   # play + fdroid
 ./gradlew spotlessCheck   # ktlint — the formatting gate
-./gradlew verifyRoborazziDebug
+./gradlew assembleDebug   # play + fdroid
 ```
 
-**`./gradlew check` is currently red.** detekt is pinned to `2.0.0-alpha.6` (`gradle/libs.versions.toml`) but `config/detekt/detekt.yml` uses the 1.x schema — `build.maxIssues`, `complexity>LongMethod>threshold` and `style>UnusedPrivateMember` are all rejected, so every module's `detekt` task fails on config validation. CI never runs `check` (only `unitTest`/`lintDebug`/`assembleDebug`), which is why nobody noticed. Do not "fix" this by adding a detekt baseline; the file's own header says a baseline is how a zero-findings claim is faked.
+CI runs `integrationTest` in a separate job with a pinned server. `verifyRoborazziDebug` is a manual visual assertion; CI does not run it.
+
+**`./gradlew check` currently fails because Detekt reports findings.** The Detekt 2.x configuration is under review, and the Detekt workflow step is temporarily disabled. Do not add a baseline; review the rule configuration and address actionable findings before restoring the CI gate.
 
 **There is no `ktlintCheck` task.** The ktlint gate is Spotless: `spotlessCheck` / `spotlessKotlinCheck`. `QualityConventionPlugin`'s KDoc says otherwise and is wrong.
 
