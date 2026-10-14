@@ -116,7 +116,7 @@ class TerminalPageTest {
         model.onBridgeMessage(TerminalBridgeMessage.Ready)
         server.sendOutput("first")
         val screen = awaitState("the first output") { it.pendingOutput.contains("first") }
-        model.outputConsumed(screen.pendingOutput.length)
+        model.outputConsumed(screen.pendingOutput.length, screen.epoch)
 
         // The refresh button: a new socket, on the page that said `ready` once and will not say it again.
         model.reconnect()
@@ -129,6 +129,24 @@ class TerminalPageTest {
             it.pendingOutput.contains("second")
         }
         assertFalse("the first socket's output is sent again: ${state.pendingOutput}", "first" in state.pendingOutput)
+    }
+
+    @Test
+    fun `a stale page acknowledgment cannot consume output from a fresh replay`() {
+        startTerminal("pty_a", sockets = 1)
+        model.onBridgeMessage(TerminalBridgeMessage.Ready)
+        server.sendOutput("old page output")
+        val old = awaitState("the old page output") { it.pendingOutput.isNotEmpty() }
+        model.outputConsumed(old.pendingOutput.length, old.epoch)
+
+        model.reconnect()
+        awaitUntil("the replay socket") { server.sockets >= 2 }
+        server.sendOutput("fresh replay output")
+        val fresh = awaitState("the fresh page output") { it.pendingOutput.contains("fresh replay output") }
+
+        model.outputConsumed(fresh.pendingOutput.length, old.epoch)
+
+        assertEquals("fresh replay output", model.state.value.pendingOutput)
     }
 
     @Test
@@ -160,7 +178,7 @@ class TerminalPageTest {
         model.onBridgeMessage(TerminalBridgeMessage.Ready)
         server.sendOutput("what the old page showed")
         val old = awaitState("output for the old page") { it.pendingOutput.isNotEmpty() }
-        model.outputConsumed(old.pendingOutput.length)
+        model.outputConsumed(old.pendingOutput.length, old.epoch)
 
         // The activity was recreated: the WebView is new and empty, and it says `ready` like any page.
         model.onBridgeMessage(TerminalBridgeMessage.Ready)

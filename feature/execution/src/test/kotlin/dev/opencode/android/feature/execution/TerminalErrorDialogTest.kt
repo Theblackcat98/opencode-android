@@ -51,6 +51,13 @@ class TerminalErrorDialogTest {
     }
 
     @Test
+    fun `output desynchronization explains that the screen is replaying`() {
+        show(TerminalError.OutputDesynchronized)
+
+        compose.onNodeWithText(context.getString(R.string.terminal_error_output_desynchronized)).assertIsDisplayed()
+    }
+
+    @Test
     fun `the server's own words are shown as they came`() {
         show(TerminalError.Said("The server could not start /usr/bin/zsh"))
 

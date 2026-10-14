@@ -31,6 +31,11 @@ jobs:
         with:
           node-version: 20
 
+      - name: Verify third-party and GitHub Actions integrity pins
+        run: |
+          node tools/verify-opencode-cli.mjs
+          node tools/verify-opencode-cli.test.mjs
+
       - name: Run API drift test
         run: node tools/check-api-drift.test.mjs
 
@@ -101,8 +106,8 @@ jobs:
         with:
           node-version: 20
 
-      - name: Install pinned OpenCode CLI
-        run: npm install -g @opencode/cli@2.0.18
+      - name: Install integrity-locked OpenCode CLI
+        run: ./scripts/install-opencode-cli.sh >/dev/null
 
       - name: Setup Android SDK
         run: ./scripts/setup-android-sdk.sh

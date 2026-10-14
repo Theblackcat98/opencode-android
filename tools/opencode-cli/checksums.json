@@ -1,0 +1,9 @@
+{
+  "npmIntegrity": "sha512-EkIxIa2goJ2v8U3Os2gpRckOIjN9gpUBXy6fyVOFbPZl71rkGpoF3NFsm4nlDiF2BgnIqcgJU5NgdV1k6/OZuw==",
+  "linuxX64Binaries": {
+    "cli-linux-x64": "10d405161d8b9595f4a2ec31254e961969e6ca3f8239ac9bd55b6ff6431dc24f",
+    "cli-linux-x64-baseline": "67d8275630aa3dfe5409c6c2e1bb44ab0cf0d9558a6593e769342b9f1dc93f4b",
+    "cli-linux-x64-musl": "8ffbcd408000c338050ec94009733ba37830ae726d2185ef595a15cefc9e5e14",
+    "cli-linux-x64-baseline-musl": "610e7ab91b8f1dab2a55038f3b16cc72505f1247fade44728796cb062568e274"
+  }
+}

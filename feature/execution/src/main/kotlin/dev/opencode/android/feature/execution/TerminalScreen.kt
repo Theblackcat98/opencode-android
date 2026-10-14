@@ -88,7 +88,7 @@ fun TerminalScreen(
     onRequestTicket: () -> Unit,
     onKeys: (List<TerminalKey>) -> Unit,
     onBridgeMessage: (TerminalBridgeMessage) -> Unit,
-    onOutputConsumed: (Int) -> Unit,
+    onOutputConsumed: (Int, Int) -> Unit,
     onReconnect: () -> Unit,
     onRequestKill: (String) -> Unit,
     onConfirmKill: () -> Unit,
@@ -175,6 +175,7 @@ private fun TerminalError.text(): String = when (this) {
     is TerminalError.Said -> message
     TerminalError.Gone -> stringResource(R.string.terminal_error_gone)
     TerminalError.NoConnection -> stringResource(R.string.terminal_error_no_connection)
+    TerminalError.OutputDesynchronized -> stringResource(R.string.terminal_error_output_desynchronized)
 }
 
 /**
@@ -347,16 +348,16 @@ private fun TerminalSurface(
     state: TerminalUiState,
     channel: TerminalChannel,
     onBridgeMessage: (TerminalBridgeMessage) -> Unit,
-    onOutputConsumed: (Int) -> Unit,
+    onOutputConsumed: (Int, Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     // Declared before the output effect on purpose: when the view model starts a replay it changes the
     // epoch and empties the output in one update, and the screen has to be cleared before what follows.
     LaunchedEffect(state.epoch) { channel.reset() }
-    LaunchedEffect(state.pendingOutput) {
+    LaunchedEffect(state.epoch, state.pendingOutput) {
         if (state.pendingOutput.isEmpty()) return@LaunchedEffect
         channel.write(state.pendingOutput)
-        onOutputConsumed(state.pendingOutput.length)
+        onOutputConsumed(state.pendingOutput.length, state.epoch)
     }
     LaunchedEffect(state.statusKey, state.stream) {
         channel.publishState(state.statusKey, (state.stream as? PtyStreamState.Live)?.cursor)

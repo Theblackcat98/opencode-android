@@ -115,6 +115,9 @@ sealed interface TerminalError {
 
     /** There is no server connection to open the terminal's socket over. */
     data object NoConnection : TerminalError
+
+    /** Output exceeded the bounded reader queue; the screen is reset and the retained buffer replayed. */
+    data object OutputDesynchronized : TerminalError
 }
 
 private fun ActionError.said(): TerminalError = TerminalError.Said(message)
@@ -172,6 +175,9 @@ class TerminalViewModel(
      * `MutableStateFlow` because it changes at message rate and nothing observes it but the bridge.
      */
     private val pendingOutput = StringBuilder()
+
+    /** Bytes waiting either in [pendingOutput] or in the state handed to the page. */
+    private var pendingOutputBytes = 0
 
     /**
      * Whether a page is mounted and can take output.
@@ -315,18 +321,25 @@ class TerminalViewModel(
         val socket = sockets.create(directory, ptyID, ticket) ?: return null
         this.socket = socket
         // A new socket replays the retained buffer from the start, so the page starts from an empty screen.
+        pendingOutput.setLength(0)
+        pendingOutputBytes = 0
         _state.value = _state.value.copy(pendingOutput = "", epoch = _state.value.epoch + 1)
         collectors = viewModelScope.launch {
             launch { socket.state.collect { stream -> foldStream(stream) } }
             launch {
                 socket.output.collect { chunk ->
-                    // A terminal writes faster than a WebView lays out a line, so the buffer drops its
-                    // oldest frames rather than applying backpressure to the socket (plan §4.2, "never
-                    // block the reader"). What is lost is a frame of output; the page redraws from its own
-                    // buffer, so the terminal's state is not lost.
-                    pendingOutput.append(chunk)
-                    trimPending()
+                    if (pendingOutputBytes + chunk.byteCount > PENDING_LIMIT_BYTES) {
+                        recoverFromOutputLoss(socket)
+                        return@collect
+                    }
+                    pendingOutput.append(chunk.text)
+                    pendingOutputBytes += chunk.byteCount
                     drain()
+                }
+            }
+            launch {
+                socket.droppedFrames.collect { dropped ->
+                    if (dropped > 0) recoverFromOutputLoss(socket)
                 }
             }
         }
@@ -387,15 +400,10 @@ class TerminalViewModel(
         if (!pageReady || pendingOutput.isEmpty()) return
         val chunk = pendingOutput.toString()
         pendingOutput.setLength(0)
-        // Bounded like the builder above: while the screen is stopped nothing consumes this, and a busy
-        // terminal would otherwise grow it for as long as the app stays in the background.
-        val held = (_state.value.pendingOutput + chunk).takeLast(PENDING_LIMIT)
+        // The byte budget covers this state queue and the builder together; never truncate an ordered
+        // PTY byte stream to keep a terminal that has already lost its synchronization looking live.
+        val held = _state.value.pendingOutput + chunk
         _state.value = _state.value.copy(pendingOutput = held)
-    }
-
-    private fun trimPending() {
-        if (pendingOutput.length <= PENDING_LIMIT) return
-        pendingOutput.delete(0, pendingOutput.length - PENDING_LIMIT)
     }
 
     /** `pty.update` with a size, but only when the grid actually moved. */
@@ -521,9 +529,24 @@ class TerminalViewModel(
      * re-sends everything the terminal has ever said. A busy terminal would then rewrite its whole
      * history on every frame, which is both quadratic and visibly wrong.
      */
-    fun outputConsumed(count: Int) {
+    fun outputConsumed(count: Int, epoch: Int) {
         if (count <= 0) return
-        _state.value = _state.value.copy(pendingOutput = _state.value.pendingOutput.drop(count))
+        val current = _state.value
+        if (epoch != current.epoch) return
+        val consumedChars = count.coerceAtMost(current.pendingOutput.length)
+        if (consumedChars <= 0) return
+        val consumedBytes = current.pendingOutput.take(consumedChars).toByteArray(Charsets.UTF_8).size
+        pendingOutputBytes = (pendingOutputBytes - consumedBytes).coerceAtLeast(0)
+        _state.value = current.copy(pendingOutput = current.pendingOutput.drop(consumedChars))
+    }
+
+    private fun recoverFromOutputLoss(source: PtySocket) {
+        if (socket !== source) return
+        // A PTY is an ordered byte stream: after any rejected output, xterm may be midway through an
+        // escape sequence. A fresh socket has no cursor, so the page is cleared and the server replays
+        // its retained buffer instead of drawing across the missing bytes.
+        _state.value = _state.value.copy(error = TerminalError.OutputDesynchronized)
+        reconnect()
     }
 
     private fun foldStream(stream: PtyStreamState) {
@@ -554,6 +577,7 @@ class TerminalViewModel(
         socket?.close("closed")
         socket = null
         pendingOutput.setLength(0)
+        pendingOutputBytes = 0
     }
 
     override fun onCleared() {
@@ -562,8 +586,8 @@ class TerminalViewModel(
     }
 
     private companion object {
-        /** How much output is held before the oldest is dropped: 256 KiB of characters. */
-        const val PENDING_LIMIT = 256 * 1024
+        /** Maximum combined ViewModel/page output queue, measured in UTF-8 bytes. */
+        const val PENDING_LIMIT_BYTES = 256 * 1024
 
         /**
          * The statuses a single-use ticket can still fix.
