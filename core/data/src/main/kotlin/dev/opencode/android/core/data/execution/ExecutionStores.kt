@@ -260,10 +260,10 @@ class ExecutionStore(
                 _shells.value = _shells.value.filterNot { it.id == payload.id }
             }.let { true }
 
-            is PtyCreated -> atomically {
+            is PtyCreated -> {
                 record(payload.info)
-                ptyLedger.named(payload.info.id)
-            }.let { true }
+                true
+            }
 
             is PtyUpdated -> {
                 _ptys.value = _ptys.value.map { pty -> if (pty.id == payload.info.id) payload.info else pty }
@@ -301,12 +301,13 @@ class ExecutionStore(
      *
      * **Idempotent on purpose, because the server says the same thing twice.** `pty.create` answers with the
      * whole terminal and `pty.created` then carries it again, and the two reach the client in either order.
-     * Whichever comes second finds the row and replaces it with the same object, so the list neither misses
-     * the terminal nor shows it twice. What is recorded is always the server's own description; nothing here
-     * is a guess about a terminal the server has not confirmed.
+     * Marking the id in the same locked step means a `pty.list` request already in flight cannot erase a
+     * newly created terminal when its older response arrives. What is recorded is always the server's own
+     * description; nothing here is a guess about a terminal the server has not confirmed.
      */
-    fun record(info: PtyInfo) {
+    fun record(info: PtyInfo) = atomically {
         _ptys.value = _ptys.value.filterNot { it.id == info.id } + info
+        ptyLedger.named(info.id)
     }
 
     /** Records what a failed call to an experimental route proved, or proved nothing. */
