@@ -25,7 +25,7 @@ import dev.opencode.android.feature.sessions.ui.SessionTabUi
  * browser, the pending-requests inbox, shells, terminals, subagents, worktrees and project settings.
  */
 fun NavGraphBuilder.sessionGraph(deps: NavGraphDeps) {
-    navigation<SessionGraph>(startDestination = SessionRoute) {
+    navigation<SessionGraph>(startDestination = SessionRoute::class) {
         composable<SessionRoute> { entry ->
             val route = entry.toRoute<SessionRoute>()
             // This entry's composer, taken with the entry as its owner. It is the instance `SessionHost`

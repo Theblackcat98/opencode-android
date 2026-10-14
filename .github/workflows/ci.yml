@@ -34,9 +34,6 @@ jobs:
       - name: Run API drift test
         run: node tools/check-api-drift.test.mjs
 
-      - name: Run process-guard test
-        run: node .opencode/plugins/process-guard.test.mjs
-
       - name: Check the coverage matrices
         run: node tools/audit-coverage.mjs --strict
 

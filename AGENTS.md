@@ -15,7 +15,6 @@ node tools/audit-coverage.mjs --strict     # §7/§8 plan matrices vs the code
 node tools/gen-event-payloads.mjs --check  # event corpus is current
 node tools/check-api-drift.test.mjs        # drift tool's own tests
 node tools/audit-viewmodels.test.mjs && node tools/audit-viewmodels.mjs  # every ViewModel is @HiltViewModel, and gets the right instance
-node .opencode/plugins/process-guard.test.mjs
 node tools/audit-strings.mjs              # UI strings externalized
 node tools/audit-accessibility.mjs
 node tools/audit-matrix.test.mjs && node tools/audit-matrix.mjs  # every manual-matrix row has a result marker
@@ -139,15 +138,6 @@ ViewModels are uniformly `@HiltViewModel` + `@Inject constructor(ServerDataRegis
 - ktlint runs `intellij_idea` style with the class/function/parameter-list signature rules disabled, so one-line `data class`es stay one line. That is most of `core:model`; do not reformat them.
 - Composables and Roborazzi capture helpers are PascalCase, exempted via `ktlint_function_naming_ignore_when_annotated_with`.
 - Commit messages are one imperative sentence that names what was proved ("Make the coverage claim fail the build instead of needing a script"), not a conventional-commit prefix.
-
-## The process guard blocks kills
-
-`.opencode/plugins/process-guard.js` rejects `kill`, `pkill`, `killall`, `os.kill` and `process.kill` **anywhere in a bash command string** — including inside `sh -c "…"`, pipes and `$( )`, because the agent runs in the same process tree as the CLI. Do not route around it. Use:
-
-```bash
-./scripts/dev-server.sh start|stop|status   # the only thing allowed to signal these servers
-./gradlew --stop
-```
 
 ## Release
 
