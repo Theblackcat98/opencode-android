@@ -160,10 +160,32 @@ class PtySocketTest {
     }
 
     @Test
+    fun `an oversized Okio binary message is rejected before conversion`() {
+        val decoder = PtyFrameDecoder()
+        val frame = ByteArray(PtyFrameDecoder.MAX_FRAME_BYTES + 1) { 'x'.code.toByte() }.toByteString()
+
+        assertEquals(emptyList<PtyFrame>(), decoder.decode(frame))
+        assertEquals(1L, decoder.oversizedFrames.value)
+    }
+
+    @Test
     fun `an oversized text frame is dropped before the second allocation and is counted`() {
         val decoder = PtyFrameDecoder()
         val text = "z".repeat(PtyFrameDecoder.MAX_FRAME_BYTES + 1)
         assertEquals(emptyList<PtyFrame>(), decoder.decode(text))
+        assertEquals(1L, decoder.oversizedFrames.value)
+    }
+
+    @Test
+    fun `text frame limit is measured in UTF-8 bytes rather than character count`() {
+        val decoder = PtyFrameDecoder()
+        val atCap = "é".repeat(PtyFrameDecoder.MAX_FRAME_BYTES / 2)
+        assertEquals(1, decoder.decode(atCap).size)
+
+        // This text has fewer characters than the byte cap, but one extra two-byte character exceeds it.
+        val overCap = atCap + "é"
+        assertTrue(overCap.length < PtyFrameDecoder.MAX_FRAME_BYTES)
+        assertEquals(emptyList<PtyFrame>(), decoder.decode(overCap))
         assertEquals(1L, decoder.oversizedFrames.value)
     }
 
@@ -235,9 +257,9 @@ class PtySocketTest {
         val received = LinkedBlockingQueue<String>()
         // The collector and the socket's own coroutines run on a real dispatcher, because the test body
         // blocks on queues: a coroutine on the blocked `runBlocking` event loop would never get to
-        // subscribe, and the flow's drop-oldest buffer would throw the output away.
+        // subscribe and drain the bounded output queue.
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-        val job = scope.launch { socket.output.collect { received += it } }
+        val job = scope.launch { socket.output.collect { received += it.text } }
         try {
             socket.open(scope)
             val upgrade = upgrades.poll(5, TimeUnit.SECONDS)
@@ -391,7 +413,7 @@ class PtySocketTest {
         try {
             socket.open(scope)
             val peer = awaitPeer()
-            // No collector is attached, so the 64-frame buffer fills and the rest drop.
+            // No collector is attached, so the 64-frame buffer fills and the rest are rejected.
             // Each send is a separate WebSocket message, decoded and offered to the buffer.
             repeat(PtySocket.OUTPUT_BUFFER + 10) { i ->
                 peer.send("frame-$i")
@@ -401,6 +423,55 @@ class PtySocketTest {
                 socket.droppedFrames.value.takeIf { it > 0 }
             }
             assertTrue("expected drops, got $dropped", dropped > 0)
+        } finally {
+            socket.close()
+            scope.cancel()
+        }
+    }
+
+    @Test
+    fun `output queue is bounded by bytes even when the frame-count limit is not reached`() = runBlocking {
+        serveWebSocket()
+        val socket = socket()
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        try {
+            socket.open(scope)
+            val peer = awaitPeer()
+            val frame = "x".repeat(PtyFrameDecoder.MAX_FRAME_BYTES)
+            repeat(PtySocket.MAX_BUFFERED_OUTPUT_BYTES / PtyFrameDecoder.MAX_FRAME_BYTES + 1) {
+                peer.send(frame)
+            }
+
+            val dropped = awaitValue("the byte budget to reject output") {
+                socket.droppedFrames.value.takeIf { it > 0 }
+            }
+            assertTrue("expected a byte-budget overflow, got $dropped", dropped > 0)
+            assertTrue(
+                "the byte budget is reached before the frame-count limit",
+                PtySocket.MAX_BUFFERED_OUTPUT_BYTES / PtyFrameDecoder.MAX_FRAME_BYTES + 1 <
+                    PtySocket.OUTPUT_BUFFER,
+            )
+        } finally {
+            socket.close()
+            scope.cancel()
+        }
+    }
+
+    @Test
+    fun `oversized inbound text and binary frames signal stream loss for replay`() = runBlocking {
+        serveWebSocket()
+        val socket = socket()
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        try {
+            socket.open(scope)
+            val peer = awaitPeer()
+            peer.send("x".repeat(PtyFrameDecoder.MAX_FRAME_BYTES + 1))
+            peer.send(ByteArray(PtyFrameDecoder.MAX_FRAME_BYTES + 1) { 'y'.code.toByte() }.toByteString())
+
+            val dropped = awaitValue("oversized frames to signal stream loss") {
+                socket.droppedFrames.value.takeIf { it >= 2 }
+            }
+            assertTrue("expected both oversized frames to be signaled, got $dropped", dropped >= 2)
         } finally {
             socket.close()
             scope.cancel()

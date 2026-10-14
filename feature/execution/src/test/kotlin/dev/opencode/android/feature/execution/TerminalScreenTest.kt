@@ -49,7 +49,7 @@ class TerminalScreenTest {
         state: () -> TerminalUiState,
         channel: TerminalChannel = TerminalChannel(),
         onOpenTerminal: (String) -> Unit = {},
-        onOutputConsumed: (Int) -> Unit = {},
+        onOutputConsumed: (Int, Int) -> Unit = { _, _ -> },
     ) = compose.setContent {
         OpenCodeTheme {
             TerminalScreen(
@@ -106,7 +106,7 @@ class TerminalScreenTest {
             ),
         )
         val consumed = mutableListOf<Int>()
-        screen(state = { state }, channel = channel, onOutputConsumed = { consumed += it })
+        screen(state = { state }, channel = channel, onOutputConsumed = { count, _ -> consumed += count })
         compose.waitForIdle()
         // The page loads and says `ready`; from here the channel writes straight through.
         compose.runOnIdle { channel.onPageReady() }

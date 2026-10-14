@@ -12,7 +12,7 @@
 #   scripts/dev-server.sh status
 #
 # Environment overrides:
-#   OPENCODE_CLI_VERSION   pinned CLI release (default 2.0.18)
+#   OPENCODE_CLI_VERSION   must match the pinned CLI release in tools/opencode-cli/package.json
 #   OPENCODE_BIN           use this opencode binary instead of installing the pinned CLI
 #   OPENCODE_DEV_PORT      server port (default 4096)
 #   FAKE_PROVIDER_PORT     fake provider port (default 4097)
@@ -26,10 +26,6 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 STATE_DIR="$ROOT/.dev-server"
-CLI_VERSION="${OPENCODE_CLI_VERSION:-2.0.18}"
-# Integrity hash for @opencode/cli@$CLI_VERSION, from the npm registry.
-# Update when bumping CLI_VERSION: `npm view @opencode/cli@$CLI_VERSION dist.integrity`
-CLI_INTEGRITY="sha512-EkIxIa2goJ2v8U3Os2gpRckOIjN9gpUBXy6fyVOFbPZl71rkGpoF3NFsm4nlDiF2BgnIqcgJU5NgdV1k6/OZuw=="
 SERVER_PORT="${OPENCODE_DEV_PORT:-4096}"
 FAKE_PORT="${FAKE_PROVIDER_PORT:-4097}"
 HOST="127.0.0.1"
@@ -102,35 +98,7 @@ resolve_bin() {
         printf '%s\n' "$OPENCODE_BIN"
         return 0
     fi
-    local cli_dir="$STATE_DIR/cli"
-    local stamp="$cli_dir/VERSION"
-    if [[ ! -x "$cli_dir/node_modules/.bin/opencode" ]] || \
-        [[ ! -f "$stamp" ]] || [[ "$(tr -d '[:space:]' <"$stamp")" != "$CLI_VERSION" ]]; then
-        log "installing @opencode/cli@$CLI_VERSION into $cli_dir (one-time download)"
-        rm -rf "$cli_dir"
-        mkdir -p "$cli_dir"
-        npm install --no-audit --no-fund --prefix "$cli_dir" "@opencode/cli@$CLI_VERSION" >&2
-        # Verify the downloaded package integrity against the pinned hash (issue #57).
-        # npm verifies integrity on install, but this guards against registry or
-        # man-in-the-middle tampering that bypasses npm's own checks.
-        actual_integrity="$(npm view "@opencode/cli@$CLI_VERSION" dist.integrity 2>/dev/null || true)"
-        if [[ -n "$actual_integrity" && "$actual_integrity" != "$CLI_INTEGRITY" ]]; then
-            fail "integrity mismatch for @opencode/cli@$CLI_VERSION: expected $CLI_INTEGRITY, got $actual_integrity"
-        fi
-        printf '%s' "$CLI_VERSION" >"$stamp"
-    fi
-    # The npm package ships one binary per libc. `find | head` picks whichever the filesystem
-    # lists first, which is how a glibc host ended up running the musl build and failing with
-    # "cannot execute: required file not found". Prefer glibc, and the baseline flavour only when
-    # the plain one is absent, because both run on any glibc system.
-    local bin
-    bin="$cli_dir/node_modules/@opencode/cli-linux-x64/bin/opencode"
-    [[ -x "$bin" ]] || bin="$cli_dir/node_modules/@opencode/cli-linux-x64-baseline/bin/opencode"
-    if [[ ! -x "$bin" ]]; then
-        bin="$(find "$cli_dir/node_modules/@opencode" -name opencode -type f -perm -111 2>/dev/null | head -n 1)"
-    fi
-    [[ -n "$bin" ]] || fail "no opencode binary found under $cli_dir/node_modules/@opencode"
-    printf '%s\n' "$bin"
+    "$ROOT/scripts/install-opencode-cli.sh"
 }
 
 write_config() {

@@ -146,6 +146,8 @@ class PairingAndReconnectTest {
             connection.connectionState.first { it is ConnectionState.Connected }
         }
         assertEquals(profile.id, connections.activeConnection.value?.serverProfile?.id)
+        // Connected is published just before the counter, so await the resync instead of sampling it mid-update.
+        withTimeout(TIMEOUT_MILLIS) { connection.resyncCount.first { it >= 1L } }
         assertEquals("One server.connected means one resync", 1L, connection.resyncCount.value)
     }
 

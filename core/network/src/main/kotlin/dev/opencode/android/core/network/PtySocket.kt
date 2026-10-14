@@ -4,14 +4,13 @@ import dev.opencode.android.core.model.PtyCursor
 import dev.opencode.android.core.model.json.OpenCodeJson
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import okhttp3.Credentials
@@ -24,6 +23,7 @@ import okhttp3.WebSocket
 import okhttp3.WebSocketListener
 import okio.ByteString
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * What a terminal's stream is doing.
@@ -89,7 +89,7 @@ class PtyFrameDecoder {
 
     private val _oversizedFrames = MutableStateFlow(0L)
 
-    /** How many inbound frames exceeded [MAX_FRAME_BYTES] and were dropped. Diagnostics only. */
+    /** How many inbound frames exceeded [MAX_FRAME_BYTES] and were dropped, triggering stream replay. */
     val oversizedFrames: StateFlow<Long> = _oversizedFrames.asStateFlow()
 
     /** The replay cap the server applies, and the unit the client sizes its own buffer at. */
@@ -109,15 +109,32 @@ class PtyFrameDecoder {
     fun decode(frame: ByteArray): List<PtyFrame> {
         if (frame.isEmpty()) return emptyList()
         if (frame.size > MAX_FRAME_BYTES) {
-            _oversizedFrames.value = _oversizedFrames.value + 1
+            countOversizedFrame()
             return emptyList()
         }
-        if (frame[0] != CONTROL_PREFIX) return listOf(PtyFrame.Output(frame.copyOf().decodeToString()))
-        val json = frame.copyOfRange(1, frame.size).decodeToString()
+        if (frame[0] != CONTROL_PREFIX) {
+            return listOf(PtyFrame.Output(frame.decodeToString(), frame.size))
+        }
+        val json = frame.decodeToString(startIndex = 1)
         val cursor = runCatching { OpenCodeJson.decodeFromString(PtyCursor.serializer(), json) }.getOrNull()
         if (cursor != null) return listOf(PtyFrame.Cursor(cursor.cursor))
         _unreadableControls.value = _unreadableControls.value + 1
-        return listOf(PtyFrame.Output(json))
+        return listOf(PtyFrame.Output(json, frame.size - 1))
+    }
+
+    /** Decodes OkHttp's binary message without first copying its [ByteString] into a byte array. */
+    fun decode(frame: ByteString): List<PtyFrame> {
+        if (frame.size == 0) return emptyList()
+        if (frame.size > MAX_FRAME_BYTES) {
+            countOversizedFrame()
+            return emptyList()
+        }
+        if (frame[0] != CONTROL_PREFIX) return listOf(PtyFrame.Output(frame.utf8(), frame.size))
+        val json = frame.substring(1).utf8()
+        val cursor = runCatching { OpenCodeJson.decodeFromString(PtyCursor.serializer(), json) }.getOrNull()
+        if (cursor != null) return listOf(PtyFrame.Cursor(cursor.cursor))
+        _unreadableControls.value = _unreadableControls.value + 1
+        return listOf(PtyFrame.Output(json, frame.size - 1))
     }
 
     /**
@@ -127,12 +144,41 @@ class PtyFrameDecoder {
      * dropped without a second allocation.
      */
     fun decode(text: String): List<PtyFrame> {
-        val bytes = text.toByteArray(Charsets.UTF_8)
-        if (bytes.size > MAX_FRAME_BYTES) {
-            _oversizedFrames.value = _oversizedFrames.value + 1
+        if (utf8ByteCountExceedsLimit(text)) {
+            countOversizedFrame()
             return emptyList()
         }
+        val bytes = text.toByteArray(Charsets.UTF_8)
         return decode(bytes)
+    }
+
+    private fun countOversizedFrame() {
+        _oversizedFrames.value = _oversizedFrames.value + 1
+    }
+
+    /** Checks UTF-8 size without allocating an encoded copy of a potentially hostile text frame. */
+    private fun utf8ByteCountExceedsLimit(text: String): Boolean {
+        var bytes = 0
+        var index = 0
+        while (index < text.length) {
+            val character = text[index]
+            bytes += when {
+                character.code <= 0x7f -> 1
+
+                character.code <= 0x7ff -> 2
+
+                Character.isHighSurrogate(character) && index + 1 < text.length &&
+                    Character.isLowSurrogate(text[index + 1]) -> {
+                    index++
+                    4
+                }
+
+                else -> 3
+            }
+            if (bytes > MAX_FRAME_BYTES) return true
+            index++
+        }
+        return false
     }
 
     companion object {
@@ -156,7 +202,11 @@ class PtyFrameDecoder {
 /** One decoded inbound message. */
 sealed interface PtyFrame {
     /** Terminal output, exactly as the server sent it. */
-    data class Output(val text: String) : PtyFrame
+    data class Output(
+        val text: String,
+        /** UTF-8 bytes charged to the bounded output queue. */
+        val byteCount: Int = text.toByteArray(Charsets.UTF_8).size,
+    ) : PtyFrame
 
     /** The one control frame: the cursor the next reconnect resumes from. */
     data class Cursor(val cursor: Long) : PtyFrame
@@ -177,14 +227,10 @@ sealed interface PtyFrame {
  * lines of scrollback the user has already read. A first connection sends no cursor at all, which is
  * the server's "replay the whole retained buffer" and the right thing for a terminal being opened.
  *
- * **Output is a hot flow with a drop-oldest buffer, deliberately — and drops are counted.**
- * A terminal writing faster than a phone can draw must not apply backpressure to the socket: the
- * standard advice for the event stream ("never block the reader", plan §4.2) is the same here,
- * and the failure mode of getting it wrong is a reconnect loop on a build that is working
- * perfectly. But a dropped frame can split an escape sequence or a UTF-8 character, so every drop
- * is counted on [droppedFrames]: a nonzero count means the terminal is desynchronized and the UI
- * should offer a resync (reconnect from [cursor]) rather than keep drawing from a stream with a
- * hole in it.
+ * **Output is bounded by frame count and UTF-8 bytes.** A terminal writing faster than the page can
+ * draw must not silently lose an arbitrary part of its byte stream. When either limit is reached,
+ * the incoming frame is rejected and [droppedFrames] signals the screen to clear and replay the
+ * server's retained buffer through a new connection.
  */
 class PtySocket(
     private val url: HttpUrl,
@@ -210,20 +256,25 @@ class PtySocket(
      */
     val droppedFrames: StateFlow<Long> = _droppedFrames.asStateFlow()
 
-    private val _output = Channel<String>(
+    private val bufferedOutputBytes = AtomicInteger(0)
+    private val _output = Channel<PtyFrame.Output>(
         capacity = OUTPUT_BUFFER,
-        onBufferOverflow = BufferOverflow.DROP_OLDEST,
-        onUndeliveredElement = { _droppedFrames.value = _droppedFrames.value + 1 },
+        onUndeliveredElement = { bufferedOutputBytes.addAndGet(-it.byteCount) },
     )
 
     /**
-     * Terminal output, in order.
-     *
-     * A terminal writing faster than the UI can draw must not apply backpressure to the socket, so
-     * the buffer drops the oldest frames — but unlike before, every drop is counted on
-     * [droppedFrames] so the desynchronization is explicit instead of silent.
+     * Terminal output, in order. The consumer releases each frame's byte charge even when it is
+     * cancelled while handling that frame.
      */
-    val output: Flow<String> = _output.receiveAsFlow()
+    val output: Flow<PtyFrame.Output> = flow {
+        for (chunk in _output) {
+            try {
+                emit(chunk)
+            } finally {
+                bufferedOutputBytes.addAndGet(-chunk.byteCount)
+            }
+        }
+    }
 
     private val _cursor = MutableStateFlow<Long?>(null)
 
@@ -323,11 +374,11 @@ class PtySocket(
         }
 
         override fun onMessage(webSocket: WebSocket, text: String) {
-            dispatch(decoder.decode(text))
+            decodeAndDispatch { decoder.decode(text) }
         }
 
         override fun onMessage(webSocket: WebSocket, bytes: ByteString) {
-            dispatch(decoder.decode(bytes.toByteArray()))
+            decodeAndDispatch { decoder.decode(bytes) }
         }
 
         override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
@@ -365,7 +416,7 @@ class PtySocket(
     private fun dispatch(frames: List<PtyFrame>) {
         frames.forEach { frame ->
             when (frame) {
-                is PtyFrame.Output -> if (frame.text.isNotEmpty()) _output.trySend(frame.text)
+                is PtyFrame.Output -> if (frame.text.isNotEmpty()) offerOutput(frame)
 
                 is PtyFrame.Cursor -> {
                     _cursor.value = frame.cursor
@@ -377,6 +428,37 @@ class PtySocket(
                 }
             }
         }
+    }
+
+    private fun decodeAndDispatch(decode: () -> List<PtyFrame>) {
+        val oversizedBefore = decoder.oversizedFrames.value
+        dispatch(decode())
+        if (decoder.oversizedFrames.value > oversizedBefore) recordDroppedFrame()
+    }
+
+    private fun offerOutput(frame: PtyFrame.Output) {
+        val byteCount = frame.byteCount
+        if (!reserveOutputBytes(byteCount)) {
+            recordDroppedFrame()
+            return
+        }
+        if (_output.trySend(frame).isFailure) {
+            bufferedOutputBytes.addAndGet(-byteCount)
+            recordDroppedFrame()
+        }
+    }
+
+    private fun reserveOutputBytes(byteCount: Int): Boolean {
+        if (byteCount <= 0 || byteCount > MAX_BUFFERED_OUTPUT_BYTES) return false
+        while (true) {
+            val buffered = bufferedOutputBytes.get()
+            if (byteCount > MAX_BUFFERED_OUTPUT_BYTES - buffered) return false
+            if (bufferedOutputBytes.compareAndSet(buffered, buffered + byteCount)) return true
+        }
+    }
+
+    private fun recordDroppedFrame() {
+        _droppedFrames.value = _droppedFrames.value + 1
     }
 
     private fun scheduleReconnect(scope: CoroutineScope, reason: String, retry: Boolean) {
@@ -406,13 +488,11 @@ class PtySocket(
         /** RFC 6455 normal closure. */
         const val NORMAL_CLOSURE: Int = 1000
 
-        /**
-         * Frames of output the buffer holds before the oldest is dropped.
-         *
-         * 64 is about a screenful of redraw for a full-screen program, which is the point at which
-         * dropping is preferable to holding the socket's send window open.
-         */
+        /** Maximum output messages buffered while the WebView catches up. */
         const val OUTPUT_BUFFER: Int = 64
+
+        /** Maximum queued output bytes; an overflow triggers a retained-buffer replay. */
+        const val MAX_BUFFERED_OUTPUT_BYTES: Int = 1024 * 1024
 
         /** 250 ms, doubling to a 10 s ceiling. The event stream's shape, for the same reason. */
         fun defaultBackoff(attempt: Int): Long =
