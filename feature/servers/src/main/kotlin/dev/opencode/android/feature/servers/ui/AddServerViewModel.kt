@@ -30,8 +30,7 @@ data class AddServerUiState(
     val error: AddServerErrorType? = null,
     val errorTechnicalDetail: String? = null,
     val addedServerId: String? = null,
-) {
-}
+)
 
 /**
  * Drives the add-server screen for all three paths.

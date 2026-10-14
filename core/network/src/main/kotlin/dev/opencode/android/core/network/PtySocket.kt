@@ -5,13 +5,13 @@ import dev.opencode.android.core.model.json.OpenCodeJson
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import okhttp3.Credentials
@@ -87,6 +87,11 @@ class PtyFrameDecoder {
     /** How many control frames arrived that this protocol does not define. Diagnostics only. */
     val unreadableControls: StateFlow<Long> = _unreadableControls.asStateFlow()
 
+    private val _oversizedFrames = MutableStateFlow(0L)
+
+    /** How many inbound frames exceeded [MAX_FRAME_BYTES] and were dropped. Diagnostics only. */
+    val oversizedFrames: StateFlow<Long> = _oversizedFrames.asStateFlow()
+
     /** The replay cap the server applies, and the unit the client sizes its own buffer at. */
     val replayChunkBytes: Int get() = REPLAY_CHUNK_BYTES
 
@@ -95,9 +100,18 @@ class PtyFrameDecoder {
      *
      * Total by construction: a binary message, an empty message and a message that is one `0x00`
      * byte and nothing else all produce frames, and none of them throw.
+     *
+     * **Oversized frames are dropped before any copy or decode.** A frame larger than
+     * [MAX_FRAME_BYTES] is rejected without allocating a copy or running the UTF-8 decoder, so a
+     * buggy or compromised server cannot trigger large allocations. The drop is counted on
+     * [oversizedFrames] for diagnostics.
      */
     fun decode(frame: ByteArray): List<PtyFrame> {
         if (frame.isEmpty()) return emptyList()
+        if (frame.size > MAX_FRAME_BYTES) {
+            _oversizedFrames.value = _oversizedFrames.value + 1
+            return emptyList()
+        }
         if (frame[0] != CONTROL_PREFIX) return listOf(PtyFrame.Output(frame.copyOf().decodeToString()))
         val json = frame.copyOfRange(1, frame.size).decodeToString()
         val cursor = runCatching { OpenCodeJson.decodeFromString(PtyCursor.serializer(), json) }.getOrNull()
@@ -106,8 +120,20 @@ class PtyFrameDecoder {
         return listOf(PtyFrame.Output(json))
     }
 
-    /** Decodes a text message, which is how an OkHttp listener reports a UTF-8 frame. */
-    fun decode(text: String): List<PtyFrame> = decode(text.toByteArray(Charsets.UTF_8))
+    /**
+     * Decodes a text message, which is how an OkHttp listener reports a UTF-8 frame.
+     *
+     * The size check runs on the UTF-8 bytes before decoding, so an oversized text frame is
+     * dropped without a second allocation.
+     */
+    fun decode(text: String): List<PtyFrame> {
+        val bytes = text.toByteArray(Charsets.UTF_8)
+        if (bytes.size > MAX_FRAME_BYTES) {
+            _oversizedFrames.value = _oversizedFrames.value + 1
+            return emptyList()
+        }
+        return decode(bytes)
+    }
 
     companion object {
         /** The byte that makes a frame a control frame. */
@@ -115,6 +141,15 @@ class PtyFrameDecoder {
 
         /** The replay chunk size the server sends in (features doc §31). */
         const val REPLAY_CHUNK_BYTES: Int = 64 * 1024
+
+        /**
+         * The largest inbound frame the decoder accepts, in bytes.
+         *
+         * Twice the replay chunk: the server chunks at 64 KiB, so a legitimate frame never
+         * approaches this, while a runaway allocation is stopped before it starts. Checked before
+         * any copy or UTF-8 decode.
+         */
+        const val MAX_FRAME_BYTES: Int = 128 * 1024
     }
 }
 
@@ -142,12 +177,14 @@ sealed interface PtyFrame {
  * lines of scrollback the user has already read. A first connection sends no cursor at all, which is
  * the server's "replay the whole retained buffer" and the right thing for a terminal being opened.
  *
- * **Output is a hot `SharedFlow` with a drop-oldest buffer, deliberately.** A terminal writing
- * faster than a phone can draw must not apply backpressure to the socket: the standard advice for
- * the event stream ("never block the reader", plan §4.2) is the same here, and the failure mode of
- * getting it wrong is a reconnect loop on a build that is working perfectly. What is dropped is
- * pixels of output, and the cursor that follows is the server's, so a dropped frame costs the user
- * a moment of output rather than the terminal's state.
+ * **Output is a hot flow with a drop-oldest buffer, deliberately — and drops are counted.**
+ * A terminal writing faster than a phone can draw must not apply backpressure to the socket: the
+ * standard advice for the event stream ("never block the reader", plan §4.2) is the same here,
+ * and the failure mode of getting it wrong is a reconnect loop on a build that is working
+ * perfectly. But a dropped frame can split an escape sequence or a UTF-8 character, so every drop
+ * is counted on [droppedFrames]: a nonzero count means the terminal is desynchronized and the UI
+ * should offer a resync (reconnect from [cursor]) rather than keep drawing from a stream with a
+ * hole in it.
  */
 class PtySocket(
     private val url: HttpUrl,
@@ -161,14 +198,32 @@ class PtySocket(
     private val _state = MutableStateFlow<PtyStreamState>(PtyStreamState.Idle)
     val state: StateFlow<PtyStreamState> = _state.asStateFlow()
 
-    private val _output = MutableSharedFlow<String>(
-        replay = 0,
-        extraBufferCapacity = OUTPUT_BUFFER,
+    private val _droppedFrames = MutableStateFlow(0L)
+
+    /**
+     * How many output frames were dropped because the consumer could not keep up.
+     *
+     * PTY output is an ordered byte stream, so a dropped frame can split an escape sequence or a
+     * UTF-8 character. When this is nonzero the terminal is desynchronized: the UI should offer a
+     * resync (reconnect from [cursor], which replays from the server's retained buffer) rather than
+     * continue drawing from a stream with a hole in it.
+     */
+    val droppedFrames: StateFlow<Long> = _droppedFrames.asStateFlow()
+
+    private val _output = Channel<String>(
+        capacity = OUTPUT_BUFFER,
         onBufferOverflow = BufferOverflow.DROP_OLDEST,
+        onUndeliveredElement = { _droppedFrames.value = _droppedFrames.value + 1 },
     )
 
-    /** Terminal output, in order, at the cost of dropping the oldest when the buffer fills. */
-    val output: SharedFlow<String> = _output.asSharedFlow()
+    /**
+     * Terminal output, in order.
+     *
+     * A terminal writing faster than the UI can draw must not apply backpressure to the socket, so
+     * the buffer drops the oldest frames — but unlike before, every drop is counted on
+     * [droppedFrames] so the desynchronization is explicit instead of silent.
+     */
+    val output: Flow<String> = _output.receiveAsFlow()
 
     private val _cursor = MutableStateFlow<Long?>(null)
 
@@ -257,6 +312,7 @@ class PtySocket(
         reconnect = null
         socket?.close(NORMAL_CLOSURE, reason)
         socket = null
+        _output.close()
         _state.value = PtyStreamState.Closed(reason)
     }
 
@@ -309,7 +365,7 @@ class PtySocket(
     private fun dispatch(frames: List<PtyFrame>) {
         frames.forEach { frame ->
             when (frame) {
-                is PtyFrame.Output -> if (frame.text.isNotEmpty()) _output.tryEmit(frame.text)
+                is PtyFrame.Output -> if (frame.text.isNotEmpty()) _output.trySend(frame.text)
 
                 is PtyFrame.Cursor -> {
                     _cursor.value = frame.cursor

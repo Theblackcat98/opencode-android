@@ -127,6 +127,42 @@ class EventStreamClientTest {
     }
 
     @Test
+    fun aReverseProxyPrefixIsPreservedOnTheEventStreamPath() = eventStreamTest {
+        server.enqueue(sseResponse(SERVER_CONNECTED_FRAME))
+        // A server behind a reverse proxy at /opencode: the SSE request must go to
+        // /opencode/api/event, not /api/event, or it 404s while REST calls succeed.
+        val prefixedBase = server.url("/opencode/").toString()
+        client = newClient().let {
+            // Rebuild with the prefixed base; newClient hardcodes server.url("/").
+            EventStreamClient(
+                baseUrl = prefixedBase,
+                credentialProvider = { "token" },
+                okHttpClient = http,
+                backoffPolicy = BackoffPolicy(
+                    initialDelayMillis = 5_000,
+                    maxDelayMillis = 10_000,
+                    jitterRatio = 0.0,
+                    random = Random(1),
+                ),
+            )
+        }
+        client.start(scope)
+        awaitConnected()
+
+        val recorded = server.takeRequest()
+        assertEquals("/opencode/api/event", recorded.url.encodedPath)
+    }
+
+    @Test
+    fun aRootBaseUrlStillProducesTheBareEventPath() {
+        // Unit-level: sseUrl() appends rather than replaces, so a root base keeps working.
+        val client = newClient()
+        // Access via reflection-free internal call: the test is in the same module.
+        val url = client.sseUrl()
+        assertEquals("/api/event", url.encodedPath)
+    }
+
+    @Test
     fun sendsNoCredentialWhenTheServerHasNoPassword() = eventStreamTest {
         server.enqueue(sseResponse(SERVER_CONNECTED_FRAME))
         client = newClient(credential = null)

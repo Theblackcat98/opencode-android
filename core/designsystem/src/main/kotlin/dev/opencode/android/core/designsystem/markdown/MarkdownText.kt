@@ -53,8 +53,8 @@ import dev.opencode.android.core.designsystem.code.CodeLanguage
 import dev.opencode.android.core.designsystem.diff.DiffColors
 import dev.opencode.android.core.designsystem.diff.highlighted
 import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
-import java.util.Locale
 import kotlinx.coroutines.delay
+import java.util.Locale
 
 /**
  * Renders an assistant answer (plan §5.4).

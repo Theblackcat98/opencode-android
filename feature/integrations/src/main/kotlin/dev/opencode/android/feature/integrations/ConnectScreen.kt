@@ -697,8 +697,11 @@ private fun CredentialConfirmDialog(
             TextButton(
                 onClick = onConfirm,
                 colors = ButtonDefaults.textButtonColors(
-                    contentColor = if (destructive) MaterialTheme.colorScheme.error
-                    else MaterialTheme.colorScheme.primary,
+                    contentColor = if (destructive) {
+                        MaterialTheme.colorScheme.error
+                    } else {
+                        MaterialTheme.colorScheme.primary
+                    },
                 ),
             ) {
                 Text(stringResource(R.string.connect_confirm))

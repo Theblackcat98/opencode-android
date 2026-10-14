@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.withContext
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import java.util.UUID
 
 /** How a server attempt ended, in the classes the onboarding help maps to. */
@@ -181,23 +182,35 @@ class DefaultServerRepository(
 
         // The first server added is the default, so a fresh install has one to open.
         val shouldBeDefault = isDefault || serverDao.count() == 0
+        // #45: capture for rollback — a credential failure must not leave a half-saved row.
+        val previousDefault = serverDao.getDefaultServer()
 
-        if (shouldBeDefault) serverDao.clearDefaultFlags()
-        serverDao.insert(
-            ServerEntity(
-                id = serverId,
-                name = name.trim().ifBlank { cleanBaseUrl },
-                baseUrl = cleanBaseUrl,
-                isDefault = shouldBeDefault,
-                trustUserCertificates = trustUserCertificates,
-                createdAt = now(),
-            ),
-        )
+        try {
+            if (shouldBeDefault) serverDao.clearDefaultFlags()
+            serverDao.insert(
+                ServerEntity(
+                    id = serverId,
+                    name = name.trim().ifBlank { cleanBaseUrl },
+                    baseUrl = cleanBaseUrl,
+                    isDefault = shouldBeDefault,
+                    trustUserCertificates = trustUserCertificates,
+                    createdAt = now(),
+                ),
+            )
 
-        if (!credential.isNullOrBlank()) {
-            saveCredential(serverId, cleanBaseUrl, credential)
-        } else {
-            setRuntime(serverId, health = null, hasCredential = false)
+            if (!credential.isNullOrBlank()) {
+                saveCredential(serverId, cleanBaseUrl, credential)
+            } else {
+                setRuntime(serverId, health = null, hasCredential = false)
+            }
+        } catch (error: Throwable) {
+            // Compensating rollback: remove the inserted row and restore the prior default.
+            serverDao.deleteById(serverId)
+            if (shouldBeDefault) {
+                previousDefault?.let { serverDao.setDefaultServer(it.id) }
+            }
+            runtime.update { it - serverId }
+            throw error
         }
         serverId
     }
@@ -213,32 +226,60 @@ class DefaultServerRepository(
         val existing = serverDao.getById(id) ?: return@withContext
         val cleanBaseUrl = baseUrl.toServerBaseUrl().trimEnd('/')
         val addressChanged = cleanBaseUrl != existing.baseUrl
+        // #45: capture for rollback — a credential failure must restore the prior profile.
+        val previousDefault = serverDao.getDefaultServer()
 
-        if (isDefault && !existing.isDefault) serverDao.clearDefaultFlags()
-        if (addressChanged) {
-            // A token belongs to the server it was issued by, and to the address it was issued for.
-            credentialCache.forget(existing.baseUrl)
-        }
-        serverDao.update(
-            existing.copy(
-                name = name.trim().ifBlank { cleanBaseUrl },
-                baseUrl = cleanBaseUrl,
-                isDefault = isDefault,
-                trustUserCertificates = trustUserCertificates,
-            ),
-        )
-
-        when {
-            credential == null -> Unit
-
-            // Unchanged: the user did not touch the field.
-            credential.isBlank() -> {
-                credentialStore.removeCredential(id)
-                credentialCache.forget(cleanBaseUrl)
-                setRuntime(id, health = null, hasCredential = false)
+        try {
+            // #46: the one-default invariant. Unchecking the default promotes a survivor, mirroring
+            // the remove path; the last server cannot be unchecked.
+            val clearingDefault = existing.isDefault && !isDefault
+            val effectiveDefault = if (clearingDefault) {
+                val survivor = serverDao.getAll().firstOrNull { it.id != id }
+                if (survivor != null) {
+                    serverDao.setDefaultServer(survivor.id)
+                    false
+                } else {
+                    true
+                }
+            } else {
+                if (isDefault && !existing.isDefault) serverDao.clearDefaultFlags()
+                isDefault
             }
 
-            else -> saveCredential(id, cleanBaseUrl, credential)
+            if (addressChanged) {
+                // A token belongs to the server it was issued by, and to the address it was issued for.
+                credentialCache.forget(existing.baseUrl)
+            }
+            serverDao.update(
+                existing.copy(
+                    name = name.trim().ifBlank { cleanBaseUrl },
+                    baseUrl = cleanBaseUrl,
+                    isDefault = effectiveDefault,
+                    trustUserCertificates = trustUserCertificates,
+                ),
+            )
+
+            when {
+                credential == null -> Unit
+
+                // Unchanged: the user did not touch the field.
+                credential.isBlank() -> {
+                    credentialStore.removeCredential(id)
+                    credentialCache.forget(cleanBaseUrl)
+                    setRuntime(id, health = null, hasCredential = false)
+                }
+
+                else -> saveCredential(id, cleanBaseUrl, credential)
+            }
+        } catch (error: Throwable) {
+            // Compensating rollback: restore the original profile and default flags.
+            serverDao.update(existing)
+            if (previousDefault != null) {
+                serverDao.setDefaultServer(previousDefault.id)
+            } else {
+                serverDao.clearDefaultFlags()
+            }
+            throw error
         }
     }
 
@@ -340,7 +381,7 @@ class DefaultServerRepository(
             technicalDetail = "The server to re-pair no longer exists",
         )
         val linkBaseUrl = pairingLink.baseUrl.trimEnd('/')
-        if (!linkBaseUrl.equals(existing.baseUrl.trimEnd('/'), ignoreCase = true)) {
+        if (!sameServerEndpoint(linkBaseUrl, existing.baseUrl.trimEnd('/'))) {
             return@withContext AddServerOutcome.Failure(
                 errorType = AddServerErrorType.UNREACHABLE,
                 technicalDetail = "The pairing link points at $linkBaseUrl, not at ${existing.baseUrl}",
@@ -543,4 +584,21 @@ fun ValidationErrorType.toAddServerErrorType(): AddServerErrorType = when (this)
     ValidationErrorType.SERVER_ERROR -> AddServerErrorType.SERVER_ERROR
     ValidationErrorType.MALFORMED_RESPONSE -> AddServerErrorType.SERVER_ERROR
     ValidationErrorType.UNKNOWN -> AddServerErrorType.UNREACHABLE
+}
+
+/**
+ * Whether two server base URLs identify the same endpoint.
+ *
+ * Hosts are case-insensitive per RFC 3986, but paths are case-sensitive: `/Tenant` and `/tenant`
+ * can route to different tenants behind a reverse proxy, so a case-folded comparison could let a
+ * pairing link for one tenant replace another's credential. Scheme and port compare exactly
+ * (normalized by [toServerBaseUrl] upstream); the path compares byte-for-byte.
+ */
+internal fun sameServerEndpoint(a: String, b: String): Boolean {
+    val urlA = a.toHttpUrlOrNull() ?: return false
+    val urlB = b.toHttpUrlOrNull() ?: return false
+    return urlA.scheme.equals(urlB.scheme, ignoreCase = true) &&
+        urlA.host.equals(urlB.host, ignoreCase = true) &&
+        urlA.port == urlB.port &&
+        urlA.encodedPath == urlB.encodedPath
 }

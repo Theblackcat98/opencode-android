@@ -498,7 +498,3 @@ private fun ToolStatus.labelRes(): Int = when (this) {
     ToolStatus.Completed -> R.string.tool_completed
     is ToolStatus.Failed -> R.string.tool_failed
 }
-
-
-
-

@@ -18,9 +18,12 @@ object Formatters {
     /** Cost in US dollars. Sub-cent amounts keep four decimals, because a cheap turn is still a cost. */
     fun cost(value: Double): String = when {
         value <= 0.0 -> "$0.00"
+
         value < 0.01 -> "$" + String.format(Locale.US, "%.4f", value)
+
         // Round before tiering: $999.999 formats as $1,000, not $1000.00.
         value < 999.995 -> "$" + String.format(Locale.US, "%.2f", value)
+
         else -> "$" + String.format(Locale.US, "%,.0f", value)
     }
 
@@ -32,11 +35,16 @@ object Formatters {
      */
     fun tokens(value: Long): String = when {
         value < 0 -> "0"
+
         value < 1_000 -> value.toString()
+
         // Bump the tier when rounding hits 1000: 999_999 is "1M", not "1000k".
         value < 999_950 -> trim(value / 1_000.0) + "k"
+
         value < 999_950_000 -> trim(value / 1_000_000.0) + "M"
+
         value < 999_950_000_000 -> trim(value / 1_000_000_000.0) + "B"
+
         else -> trim(value / 1_000_000_000_000.0) + "T"
     }
 
@@ -137,11 +145,14 @@ fun relativeTimeDescription(then: Long, now: Long): String {
     val minutes = delta / 60_000
     return when {
         delta < 60_000 -> stringResource(R.string.relative_time_just_now)
+
         minutes < 60 -> pluralStringResource(R.plurals.relative_time_minutes_ago, minutes.toInt(), minutes)
+
         minutes < 60 * 24 -> {
             val hours = minutes / 60
             pluralStringResource(R.plurals.relative_time_hours_ago, hours.toInt(), hours)
         }
+
         else -> {
             val days = minutes / (60 * 24)
             pluralStringResource(R.plurals.relative_time_days_ago, days.toInt(), days)

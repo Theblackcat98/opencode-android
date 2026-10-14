@@ -29,7 +29,8 @@ import kotlinx.coroutines.launch
  */
 fun NavGraphBuilder.adminGraph(deps: NavGraphDeps) {
     navigation<AdminGraph>(startDestination = ConfigRoute::class) {
-        composable<ServerStatusRoute> {            ServerStatusScreen(
+        composable<ServerStatusRoute> {
+            ServerStatusScreen(
                 onNavigateBack = { deps.navController.popBackStack() },
                 onEditServer = { serverId -> deps.navController.navigate(EditServerRoute(serverId)) { launchSingleTop = true } },
                 onOpenInspector = { serverId -> deps.navController.navigate(EventInspectorRoute(serverId)) { launchSingleTop = true } },

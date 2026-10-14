@@ -36,6 +36,9 @@ private val INTEGRATION_ENV = mapOf(
 
 internal fun Project.configureTests() {
     val integration = integrationMode
+    val hasIntegrationTestSources = fileTree("src/test").matching {
+        include("**/integration/**/*.kt", "**/integration/**/*.java")
+    }.files.isNotEmpty()
     tasks.withType(Test::class.java).configureEach {
         testLogging {
             events(TestLogEvent.FAILED, TestLogEvent.SKIPPED)
@@ -52,11 +55,31 @@ internal fun Project.configureTests() {
         )
         filter.isFailOnNoMatchingTests = false
         if (integration) {
+            // Only modules with integration sources should fail when the package filter matches
+            // nothing; the aggregate task also visits modules that own no live tests.
+            filter.isFailOnNoMatchingTests = hasIntegrationTestSources
             filter.includeTestsMatching(INTEGRATION_PATTERN)
             INTEGRATION_ENV.forEach { (env, property) ->
                 val fromProperty = providers.gradleProperty(property).orNull
                 val value = fromProperty ?: providers.environmentVariable(env).orNull
                 if (value != null) systemProperty(property, value)
+            }
+            // Fail fast when the server configuration is absent for an explicitly
+            // invoked integration task (issue #54). The required properties are
+            // opencode.it.url, opencode.it.password, and opencode.it.directory.
+            val required = listOf("opencode.it.url", "opencode.it.password", "opencode.it.directory")
+            val missing = required.filter { prop ->
+                providers.gradleProperty(prop).orNull == null &&
+                    providers.environmentVariable(INTEGRATION_ENV.entries.find { it.value == prop }?.key ?: "").orNull == null
+            }
+            if (missing.isNotEmpty()) {
+                throw org.gradle.api.GradleException(
+                    "Integration tests require server configuration but these properties are absent: " +
+                        missing.joinToString(", ") +
+                        ". Start the server with scripts/dev-server.sh or pass " +
+                        "-Popencode.it.url=... -Popencode.it.password=... -Popencode.it.directory=... " +
+                        "(issue #54)"
+                )
             }
             // A live server is not a cacheable input.
             outputs.upToDateWhen { false }

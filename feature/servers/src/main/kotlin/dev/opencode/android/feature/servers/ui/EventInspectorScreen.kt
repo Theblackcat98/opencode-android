@@ -86,14 +86,56 @@ fun EventInspectorScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val events by viewModel.filteredEvents.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    val snackbarHostState = remember { SnackbarHostState() }
     val copiedText = stringResource(R.string.inspector_copied)
+
+    EventInspectorContent(
+        uiState = uiState,
+        events = events,
+        onNavigateBack = onNavigateBack,
+        onAddServer = onAddServer,
+        onTogglePause = viewModel::togglePause,
+        onClearEvents = viewModel::clearEvents,
+        onSearchChange = viewModel::updateSearchQuery,
+        onSelectEvent = viewModel::selectEvent,
+        onClearCopiedMessage = { viewModel.setCopiedMessage(null) },
+        onCopyJson = { selected ->
+            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
+            clipboard?.setPrimaryClip(ClipData.newPlainText("Event JSON", selected.rawJson))
+            viewModel.setCopiedMessage(copiedText)
+        },
+        modifier = modifier,
+    )
+}
+
+/**
+ * The event inspector for a given [uiState] and [events], with no view model behind it.
+ *
+ * Separate from [EventInspectorScreen] so a screenshot can stand in for the live event stream.
+ * The selected event's detail sheet is a `ModalBottomSheet`, which a capture does not see, so the
+ * screenshot shows the list state with no selection.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun EventInspectorContent(
+    uiState: EventInspectorUiState,
+    events: List<InspectedEvent>,
+    onNavigateBack: () -> Unit,
+    onAddServer: () -> Unit,
+    onTogglePause: () -> Unit,
+    onClearEvents: () -> Unit,
+    onSearchChange: (String) -> Unit,
+    onSelectEvent: (InspectedEvent?) -> Unit,
+    onClearCopiedMessage: () -> Unit,
+    onCopyJson: (InspectedEvent) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(uiState.copiedMessage) {
         val message = uiState.copiedMessage
         if (message != null) {
             snackbarHostState.showSnackbar(message)
-            viewModel.setCopiedMessage(null)
+            onClearCopiedMessage()
         }
     }
 
@@ -125,7 +167,7 @@ fun EventInspectorScreen(
                 actions = {
                     val paused = uiState.isPaused
                     IconButton(
-                        onClick = viewModel::togglePause,
+                        onClick = onTogglePause,
                         modifier = Modifier.testTag(EventInspectorTags.PAUSE_BUTTON),
                     ) {
                         Icon(
@@ -136,7 +178,7 @@ fun EventInspectorScreen(
                         )
                     }
                     IconButton(
-                        onClick = viewModel::clearEvents,
+                        onClick = onClearEvents,
                         modifier = Modifier.testTag(EventInspectorTags.CLEAR_BUTTON),
                     ) {
                         Icon(
@@ -155,12 +197,12 @@ fun EventInspectorScreen(
         ) {
             SyncedTextField(
                 value = uiState.searchQuery,
-                onValueChange = viewModel::updateSearchQuery,
+                onValueChange = onSearchChange,
                 placeholder = { Text(stringResource(R.string.inspector_search_hint)) },
                 leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                 trailingIcon = {
                     if (uiState.searchQuery.isNotEmpty()) {
-                        IconButton(onClick = { viewModel.updateSearchQuery("") }) {
+                        IconButton(onClick = { onSearchChange("") }) {
                             Icon(
                                 Icons.Default.Clear,
                                 contentDescription = stringResource(R.string.inspector_clear_search),
@@ -214,7 +256,7 @@ fun EventInspectorScreen(
                     items(events, key = { it.index }) { event ->
                         EventRow(
                             entry = event,
-                            onClick = { viewModel.selectEvent(event) },
+                            onClick = { onSelectEvent(event) },
                         )
                     }
                 }
@@ -225,17 +267,13 @@ fun EventInspectorScreen(
     uiState.selectedEvent?.let { selected ->
         val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
         ModalBottomSheet(
-            onDismissRequest = { viewModel.selectEvent(null) },
+            onDismissRequest = { onSelectEvent(null) },
             sheetState = sheetState,
             modifier = Modifier.testTag(EventInspectorTags.DETAIL_SHEET),
         ) {
             EventDetailSheet(
                 entry = selected,
-                onCopyJson = {
-                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
-                    clipboard?.setPrimaryClip(ClipData.newPlainText("Event JSON", selected.rawJson))
-                    viewModel.setCopiedMessage(copiedText)
-                },
+                onCopyJson = { onCopyJson(selected) },
             )
         }
     }

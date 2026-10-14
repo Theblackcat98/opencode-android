@@ -354,11 +354,13 @@ fun DefinitionScreen(
         ) {
             // A fixed square (heightIn alone squeezes elliptical), announced: unlike the loading
             // rows elsewhere, no text says a save is in flight, so the spinner must say it.
-            if (state.saving) CircularProgressIndicator(
-                modifier = Modifier
-                    .size(20.dp)
-                    .semantics { contentDescription = savingDescription },
-            )
+            if (state.saving) {
+                CircularProgressIndicator(
+                    modifier = Modifier
+                        .size(20.dp)
+                        .semantics { contentDescription = savingDescription },
+                )
+            }
             Button(onClick = onSave, enabled = state.canSave, modifier = Modifier.testTag(AdminTags.DEFINITION_SAVE)) {
                 Text(stringResource(R.string.admin_save))
             }

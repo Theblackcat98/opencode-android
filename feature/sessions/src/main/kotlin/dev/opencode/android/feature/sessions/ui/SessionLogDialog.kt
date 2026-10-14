@@ -3,9 +3,12 @@ package dev.opencode.android.feature.sessions.ui
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Card
@@ -18,7 +21,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -42,7 +44,15 @@ fun SessionLogDialog(
     val spacing = OpenCodeThemeExtras.spacing
     Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Surface(modifier = Modifier.fillMaxSize()) {
-            Column(Modifier.fillMaxSize().padding(spacing.lg), verticalArrangement = Arrangement.spacedBy(spacing.md)) {
+            // safeDrawing keeps the content out of the status bar, navigation bar, and display
+            // cutout. This is a full-screen dialog, so the system bars would otherwise obscure
+            // the title row and the footer's final state.
+            Column(
+                Modifier.fillMaxSize()
+                    .windowInsetsPadding(WindowInsets.safeDrawing)
+                    .padding(spacing.lg),
+                verticalArrangement = Arrangement.spacedBy(spacing.md),
+            ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -87,10 +97,11 @@ private fun SessionLogRow(entry: SessionLogEntry) {
             entry.event?.let { event ->
                 Text(event, style = MaterialTheme.typography.titleSmall)
             }
+            // The code typography token, not FontFamily.Monospace directly: the token carries the
+            // bundled JetBrains Mono plus the size/line-height the design system chose for code.
             Text(
                 entry.fields.toString(),
-                style = MaterialTheme.typography.bodySmall,
-                fontFamily = FontFamily.Monospace,
+                style = OpenCodeThemeExtras.code.small,
             )
         }
     }

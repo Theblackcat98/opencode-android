@@ -201,6 +201,19 @@ class EventStreamClient(
         "The event stream base URL is not a valid URL: $baseUrl"
     }
 
+    /**
+     * The SSE endpoint URL, with any reverse-proxy path prefix preserved.
+     *
+     * A base of `https://host/opencode/` must produce `/opencode/api/event`, not `/api/event`:
+     * the old code replaced the whole path via `encodedPath()`, so REST calls succeeded under the
+     * prefix while the event stream 404'd. Segments are appended so the prefix survives.
+     */
+    internal fun sseUrl(): HttpUrl {
+        val builder = baseHttpUrl.newBuilder()
+        EVENT_PATH.trim('/').split('/').forEach { builder.addPathSegment(it) }
+        return builder.build()
+    }
+
     private val sseClient: OkHttpClient = okHttpClient.newBuilder()
         // The stream is idle between events, so the read timeout is the watchdog's job, not OkHttp's.
         .readTimeout(0, TimeUnit.MILLISECONDS)
@@ -465,7 +478,7 @@ class EventStreamClient(
         }
 
         val request = Request.Builder()
-            .url(baseHttpUrl.newBuilder().encodedPath(EVENT_PATH).build())
+            .url(sseUrl())
             .header("Accept", "text/event-stream")
             .header("Cache-Control", "no-cache")
             .apply {

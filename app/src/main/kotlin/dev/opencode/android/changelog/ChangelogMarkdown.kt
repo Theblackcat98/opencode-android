@@ -178,7 +178,9 @@ internal fun inlineElements(text: String): List<ChangelogInline> {
         val target = match.groupValues[5]
         when {
             bold.isNotEmpty() -> inlines += ChangelogInline.Bold(bold)
+
             code.isNotEmpty() -> inlines += ChangelogInline.Code(code)
+
             else -> inlines += ChangelogInline.Link(
                 label = inlineElements(label),
                 url = SafeNavigationUrl.parse(target),

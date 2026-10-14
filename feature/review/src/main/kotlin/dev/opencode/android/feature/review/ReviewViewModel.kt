@@ -201,6 +201,16 @@ class ReviewViewModel @Inject constructor(
     /** The published review. */
     val state: StateFlow<ReviewUiState> = _state.asStateFlow()
 
+    /**
+     * Guards against stale review loads (issue #52).
+     *
+     * Selecting a new scope/base starts another [load] without cancelling the prior one. Each load
+     * captures its generation at start; when the suspending work completes, it publishes only if its
+     * generation is still current. A slower earlier request that finishes last is discarded rather
+     * than replacing the currently selected review.
+     */
+    private var loadGeneration = 0
+
     init {
         // The file-write switch is the user's grant, and the file viewer reads it rather than taking
         // it as an argument: a screen that could pass `true` would be a screen that could offer a
@@ -352,15 +362,26 @@ class ReviewViewModel @Inject constructor(
         val set = set ?: return
         val review = set.review
         val session = local.value.sessionID?.let { id -> set.sessions.info.value[id] }
+        // Capture the binding immutably: the scope, base, and generation at request start.
+        // A later load() increments the generation; when this coroutine resumes, it checks
+        // whether it is still the latest before publishing anything.
+        val scope = local.value.scope
+        val base = local.value.baseOverride
+        val generation = ++loadGeneration
         _state.value = _state.value.copy(loading = true, error = null)
         viewModelScope.launch {
-            val error = review.load(session = session, scope = local.value.scope, base = local.value.baseOverride)
+            val error = review.load(session = session, scope = scope, base = base)
+            // Stale: a newer load started while we were suspended. Discard without touching
+            // state — the newer load owns the loading flag and the published review now.
+            if (generation != loadGeneration) return@launch
             val directory = session?.location?.directory
             if (directory != null) {
                 withContext(Dispatchers.Default) {
                     set.vcs(directory).refresh()
                     set.vcs(directory).loadBase()
                 }
+                // Re-check after the second suspension point: the VCS refresh can also race.
+                if (generation != loadGeneration) return@launch
                 fold(set.vcs(directory).state.value)
             }
             _state.value = _state.value.copy(loading = false, error = error)

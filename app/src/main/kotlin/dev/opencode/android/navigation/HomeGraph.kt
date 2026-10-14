@@ -116,6 +116,5 @@ fun NavGraphBuilder.homeGraph(deps: NavGraphDeps) {
                 },
             )
         }
-
     }
 }

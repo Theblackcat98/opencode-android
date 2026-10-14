@@ -64,23 +64,14 @@
                 <data android:pathPrefix="/auth/connect/" />
             </intent-filter>
 
-            <!-- Share target for pairing links -->
-            <intent-filter>
-                <action android:name="android.intent.action.SEND" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <data android:mimeType="text/plain" />
-            </intent-filter>
-
             <!--
-              Phase 5. "Send to OpenCode": a share-sheet target that puts text or a picture into a
-              session. Two filters, because the same action is offered for text and for an image and
-              a chooser that shows the app twice is worse than one that shows it once.
+              Shared text can prefill server setup. Images and generic text-to-session sharing are
+              not wired yet, so this filter must remain text-only (issue #42).
             -->
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:mimeType="text/plain" />
-                <data android:mimeType="image/*" />
             </intent-filter>
 
             <!--

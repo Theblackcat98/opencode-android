@@ -5,8 +5,8 @@ import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.navigation
 import androidx.navigation.toRoute
-import dev.opencode.android.feature.integrations.R as IntegrationsR
 import dev.opencode.android.feature.sessions.ui.SettingsRoute
+import dev.opencode.android.feature.integrations.R as IntegrationsR
 
 /**
  * The settings graph: the settings tab and the per-directory manage destinations —

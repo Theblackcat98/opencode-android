@@ -510,7 +510,3 @@ private fun AdminScaffold(
         content = content,
     )
 }
-
-/**
- * The four catalog lists, resolved from the data set, for [CatalogHost].
- */

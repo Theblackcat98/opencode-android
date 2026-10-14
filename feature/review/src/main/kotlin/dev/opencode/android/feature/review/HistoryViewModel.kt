@@ -15,6 +15,7 @@ import dev.opencode.android.core.model.SessionMessage
 import dev.opencode.android.core.model.SessionTransfer
 import dev.opencode.android.core.model.json.OpenCodeJson
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -122,15 +123,29 @@ class HistoryViewModel @Inject constructor(
 
     private var messages: List<SessionMessage> = emptyList()
     private var transferAllowed: Boolean = false
+    private var timelineJob: Job? = null
 
     /** Binds to a session and folds in the prompts its timeline holds. */
     fun open(sessionID: String?) {
-        _state.value = _state.value.copy(sessionID = sessionID, cursor = null, hits = emptyList())
+        // #40: cancel the previous session's collector — collectors share the `messages` field,
+        // so a late emission from A must not publish into B's prompt list.
+        timelineJob?.cancel()
+        messages = emptyList()
+        _state.value = _state.value.copy(
+            sessionID = sessionID,
+            cursor = null,
+            hits = emptyList(),
+            prompts = emptyList(),
+        )
         val set = dataSets.active.value ?: return
-        viewModelScope.launch {
+        timelineJob = viewModelScope.launch {
             set.sessions.loadSession(sessionID.orEmpty())
             val timeline = sessionID?.let { set.timeline(it) }
+            // Defense in depth: even if cancellation races, an emission is gated by the
+            // session this collector was bound to.
+            val boundSession = sessionID
             timeline?.state?.collect { store ->
+                if (_state.value.sessionID != boundSession) return@collect
                 val next = store.messages
                 if (next == messages) return@collect
                 messages = next

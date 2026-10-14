@@ -27,6 +27,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicInteger
 import dev.opencode.android.core.network.ServerApi as Api
 
 /**
@@ -59,6 +60,17 @@ class RequestCenter(
     private val _permissions = MutableStateFlow<Map<String, PermissionRequest>>(emptyMap())
     private val pendingForms = MutableStateFlow<Map<String, FormInfo>>(emptyMap())
     private val directoryOfSession = MutableStateFlow<Map<String, String>>(emptyMap())
+
+    /**
+     * #44: IDs dropped while a resync is in flight.
+     *
+     * `resync` fetches snapshots, then assigns them. An event applied during the fetch (a reply,
+     * a cancel) drops a request the snapshot still contains; assigning it unfiltered would
+     * resurrect the answered request. Drops during the flight are recorded here and filtered
+     * from the snapshot before assignment.
+     */
+    private val resyncTombstones = ConcurrentHashMap.newKeySet<String>()
+    private val resyncDepth = AtomicInteger(0)
 
     /**
      * The pending requests as the events left them, without the derived sort.
@@ -157,19 +169,31 @@ class RequestCenter(
      * The client has no record of what it missed while it was disconnected, so the answer is the
      * server's: the lists replace everything this center holds for that location rather than being
      * merged into it.
+     *
+     * #44: requests answered while the fetch is in flight are not resurrected — IDs dropped
+     * during the fetch are filtered from the snapshot before assignment.
      */
     suspend fun resync(directory: String?) {
-        val permissions = runCatching { api.listPermissionRequests(directory) }.getOrNull()?.data
-        val forms = runCatching { api.listForms(directory) }.getOrNull()?.data
-        if (permissions == null && forms == null) return
-        val sessions = sessionsIn(directory)
-        if (permissions != null) {
-            _permissions.value = _permissions.value.filterValues { it.sessionID !in sessions } +
-                permissions.associateBy(PermissionRequest::id)
-        }
-        if (forms != null) {
-            pendingForms.value =
-                pendingForms.value.filterValues { it.sessionID !in sessions } + forms.associateBy(FormInfo::id)
+        resyncDepth.incrementAndGet()
+        try {
+            val permissions = runCatching { api.listPermissionRequests(directory) }.getOrNull()?.data
+            val forms = runCatching { api.listForms(directory) }.getOrNull()?.data
+            if (permissions == null && forms == null) return
+            val sessions = sessionsIn(directory)
+            // The fetch suspended; events applied meanwhile may have dropped requests the
+            // snapshot still lists. Filter them so an answered request stays answered.
+            val dropped = resyncTombstones.toSet()
+            if (permissions != null) {
+                _permissions.value = _permissions.value.filterValues { it.sessionID !in sessions } +
+                    permissions.filter { it.id !in dropped }.associateBy(PermissionRequest::id)
+            }
+            if (forms != null) {
+                pendingForms.value =
+                    pendingForms.value.filterValues { it.sessionID !in sessions } +
+                    forms.filter { it.id !in dropped }.associateBy(FormInfo::id)
+            }
+        } finally {
+            if (resyncDepth.decrementAndGet() == 0) resyncTombstones.clear()
         }
     }
 
@@ -255,6 +279,7 @@ class RequestCenter(
 
     private fun dropPermission(requestID: String): Boolean {
         if (requestID !in _permissions.value) return false
+        if (resyncDepth.get() > 0) resyncTombstones.add(requestID)
         _permissions.value = _permissions.value - requestID
         return true
     }
@@ -267,6 +292,7 @@ class RequestCenter(
 
     private fun dropForm(formID: String): Boolean {
         if (formID !in pendingForms.value) return false
+        if (resyncDepth.get() > 0) resyncTombstones.add(formID)
         pendingForms.value = pendingForms.value - formID
         return true
     }

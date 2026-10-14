@@ -428,6 +428,8 @@ class ConfigEditorViewModel(
     private var settingsJob: Job? = null
     private var validationJob: Job? = null
     private var validationRequest = 0
+    private var readJob: Job? = null
+    private var readRequest = 0
 
     fun open(directory: String, path: String? = null) {
         val set = active.value ?: return
@@ -448,10 +450,19 @@ class ConfigEditorViewModel(
 
     private fun read() {
         val set = active.value ?: return
+        // #56: capture the binding at request time. The launched coroutine must not read
+        // `_state.value.directory/path` after it begins — a path switch while the read is in
+        // flight would otherwise publish A's contents under B's path.
+        val directory = _state.value.directory
+        val path = _state.value.path
+        val request = ++readRequest
         _state.value = _state.value.copy(reading = true, readError = null)
-        viewModelScope.launch {
-            when (val read = set.configuration.readFile(_state.value.directory, _state.value.path)) {
+        readJob?.cancel()
+        readJob = viewModelScope.launch {
+            when (val read = set.configuration.readFile(directory, path)) {
                 is ConfigFileRead.Found -> {
+                    // A newer read supersedes this one; only the newest answer is published.
+                    if (request != readRequest) return@launch
                     val text = read.file.text.orEmpty()
                     _state.value = _state.value.copy(
                         text = text,
@@ -466,18 +477,23 @@ class ConfigEditorViewModel(
                 }
 
                 // A file that is not there is the editor's "create it" case, not a failure.
-                is ConfigFileRead.Missing -> _state.value = _state.value.copy(
-                    text = "",
-                    draft = "",
-                    isNewFile = true,
-                    readError = null,
-                    parseFailure = null,
-                    diagnostics = emptyList(),
-                    reading = false,
-                )
+                is ConfigFileRead.Missing -> {
+                    if (request != readRequest) return@launch
+                    _state.value = _state.value.copy(
+                        text = "",
+                        draft = "",
+                        isNewFile = true,
+                        readError = null,
+                        parseFailure = null,
+                        diagnostics = emptyList(),
+                        reading = false,
+                    )
+                }
 
-                is ConfigFileRead.Failed ->
+                is ConfigFileRead.Failed -> {
+                    if (request != readRequest) return@launch
                     _state.value = _state.value.copy(readError = read.error, reading = false)
+                }
             }
         }
     }
