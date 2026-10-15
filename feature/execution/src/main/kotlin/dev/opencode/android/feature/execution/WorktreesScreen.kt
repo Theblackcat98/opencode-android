@@ -45,7 +45,14 @@ import dev.opencode.android.core.model.Project
  *
  * **The create form is visible, not hidden behind a dialog.** Creating a worktree is the panel's main
  * verb and it is three short fields; a dialog for three fields on a phone is two screens' worth of
- * chrome, and the fields it holds are the ones a user needs to see while typing the ref.
+ * chrome.
+ *
+ * **The two optional fields are named for what the server accepts, not for what git would call them**
+ * (matrix F5, issue #7). `from` is the absolute path of a worktree the project already has — the
+ * server resolves it and refuses one it does not know, which is why the label says "Source
+ * directory" and the help says absolute path. `branch` is an existing ref checked out *detached*:
+ * the server runs `git worktree add --detach`, so a name that does not already resolve is refused
+ * and no branch is ever created — "Existing ref", never "Branch name".
  *
  * **The remove confirmation says what forcing costs, and only appears when the server said so.** The
  * first attempt is `force = false`; a refusal brings the server's own reason into
@@ -95,6 +102,7 @@ fun WorktreesScreen(
                 value = state.draftFrom,
                 onValueChange = onFromChange,
                 label = { Text(stringResource(R.string.worktrees_from)) },
+                supportingText = { Text(stringResource(R.string.worktrees_from_help)) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -102,6 +110,7 @@ fun WorktreesScreen(
                 value = state.draftBranch,
                 onValueChange = onBranchChange,
                 label = { Text(stringResource(R.string.worktrees_branch)) },
+                supportingText = { Text(stringResource(R.string.worktrees_branch_help)) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -109,6 +118,7 @@ fun WorktreesScreen(
                 value = state.draftName,
                 onValueChange = onNameChange,
                 label = { Text(stringResource(R.string.worktrees_name)) },
+                supportingText = { Text(stringResource(R.string.worktrees_name_help)) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )

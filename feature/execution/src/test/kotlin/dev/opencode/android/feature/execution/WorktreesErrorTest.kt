@@ -37,8 +37,8 @@ class WorktreesErrorTest {
             WorktreesScreen(
                 state = WorktreesUiState(
                     projectID = "prj_1",
-                    draftFrom = "feature/x",
-                    error = "branch feature/x does not exist",
+                    draftFrom = "/srv/gone",
+                    error = "Worktree directory unavailable: /srv/gone",
                 ),
                 onFromChange = {},
                 onBranchChange = {},
@@ -55,7 +55,7 @@ class WorktreesErrorTest {
         }
 
         compose.onNodeWithTag(WorktreeTags.ERROR)
-            .assertTextContains("branch feature/x does not exist", substring = true)
+            .assertTextContains("Worktree directory unavailable: /srv/gone", substring = true)
         compose.onNodeWithContentDescription(
             ApplicationProvider.getApplicationContext<Context>().getString(R.string.action_close),
         ).performClick()

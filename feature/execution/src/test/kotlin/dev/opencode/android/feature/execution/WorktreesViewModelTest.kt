@@ -48,23 +48,23 @@ class WorktreesViewModelTest {
     fun `a refused create keeps the three drafts, shows the server's reason, and can be dismissed`() {
         server.answer(
             "POST /api/worktree",
-            """{"name":"WorktreeError","data":{"message":"branch feature/x does not exist"}}""",
+            """{"name":"WorktreeError","data":{"message":"Worktree directory unavailable: /srv/gone"}}""",
             status = 400,
         )
-        model.setFrom("feature/x")
-        model.setBranch("feature/y")
+        model.setFrom("/srv/checkouts/app-main")
+        model.setBranch("origin/main")
         model.setName("spike")
 
         model.create()
         settle("the refusal to arrive") { model.state.value.error != null }
 
-        assertEquals("branch feature/x does not exist", model.state.value.error)
-        assertEquals("feature/x", model.state.value.draftFrom)
-        assertEquals("feature/y", model.state.value.draftBranch)
+        assertEquals("Worktree directory unavailable: /srv/gone", model.state.value.error)
+        assertEquals("/srv/checkouts/app-main", model.state.value.draftFrom)
+        assertEquals("origin/main", model.state.value.draftBranch)
         assertEquals("spike", model.state.value.draftName)
         assertFalse(model.state.value.creating)
         assertEquals(
-            """{"projectID":"prj_1","from":"feature/x","branch":"feature/y","name":"spike"}""",
+            """{"projectID":"prj_1","from":"/srv/checkouts/app-main","branch":"origin/main","name":"spike"}""",
             server.lastBody("/api/worktree", method = "POST"),
         )
 
@@ -77,7 +77,7 @@ class WorktreesViewModelTest {
     @Test
     fun `an accepted create clears the drafts and names the directory it made`() {
         server.answer("POST /api/worktree", """{"directory":"/work/.wt/spike"}""")
-        model.setFrom("main")
+        model.setFrom("/srv/checkouts/app-main")
         model.setName("spike")
 
         model.create()

@@ -173,8 +173,16 @@ of them; this changelog does not claim them. The session list beside a session i
   panel never rendered its error, so a refused create looked like nothing had happened. The server's
   `WorktreeError` body has a `name` and no `_tag`, so it decoded as "Unknown error" and the server's reason
   was lost. Now the reason is shown with a dismiss action, and the three draft fields are kept on a refusal
-  and cleared only when the server accepts the create. The branch, ref and name fields are not renamed
-  (that is still open).
+  and cleared only when the server accepts the create.
+
+- **The worktree form asked for the wrong things in two of its three fields (issue #7, matrix F5).** The
+  server's `from` is the absolute path of a worktree the project already has — never a ref — and its
+  `branch` is an existing ref, checked out detached (`git worktree add --detach`), so no branch is ever
+  created. The form said "Branch from (ref)" and "Branch name", and a user who filled them the way the
+  labels asked got `400 Worktree directory unavailable` or `fatal: invalid reference`. The fields are now
+  "Source directory" and "Existing ref", each with help text that says what the server does; `WorktreeCreateRequest`'s
+  documentation and the features doc §29 say the same. Verified against the 2.0.18 server source; not re-run
+  on a device.
 
 Found by driving the app against a live server on an emulator, which no test had done:
 

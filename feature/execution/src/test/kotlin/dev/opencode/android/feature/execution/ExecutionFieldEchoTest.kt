@@ -40,8 +40,11 @@ class ExecutionFieldEchoTest {
     }
 
     private val command = Field(R.string.shells_command, "git log --oneline --since=yesterday | head -n 20")
-    private val from = Field(R.string.worktrees_from, "origin/release/2026.09")
-    private val branch = Field(R.string.worktrees_branch, "feature/rename-the-worktree")
+
+    // The two optional worktree fields hold what the server accepts: a source directory path and an
+    // existing ref — not a branch to create (matrix F5, issue #7).
+    private val from = Field(R.string.worktrees_from, "/srv/checkouts/app-main")
+    private val branch = Field(R.string.worktrees_branch, "origin/main")
     private val name = Field(R.string.worktrees_name, "rename-the-worktree")
 
     private fun matcher(field: Field): SemanticsMatcher {

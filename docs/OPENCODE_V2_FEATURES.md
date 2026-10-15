@@ -619,6 +619,15 @@ terminal.
 | Events | `worktree.updated {projectID}`, `worktree.resolved {projectID, directory, previous, adopted?}` |
 | Parent directory for new worktrees; plugin worktree strategies | **Config** `worktree.directory` / plugins |
 
+`create`'s optional fields do what the 2.0.18 server does with them, which is not what git's own
+vocabulary suggests. `from` is the absolute path of a worktree the project already has — never a
+ref; the server canonicalizes it and refuses a path that is not a known worktree
+(`Worktree directory unavailable: …`). `branch` is an existing ref, checked out detached
+(`git worktree add --detach -- <directory> <ref ?? HEAD>`): a name that does not already resolve is
+refused (`fatal: invalid reference: …`) and no branch is created. `directory` is the parent
+directory for the new worktree; `name` names it, and the server slugs it and adds a suffix when the
+name is taken.
+
 ---
 
 ## 30. Shell commands (non-interactive) **API**
