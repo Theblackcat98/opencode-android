@@ -174,6 +174,8 @@ Principles:
 - Vendor the OpenAPI spec and event list per tested release under `api/opencode-2.0.x/`. A `tools/check-api-drift`
   script diffs a newer `@opencode/cli` release and fails CI on unhandled additions or removals.
 - Run a nightly CI job against the latest `@opencode/cli`, which catches breaking changes within a day.
+  **There is no scheduled workflow yet**; CI verifies the pinned CLI on every push, and the drift check
+  against a new release is run by hand.
 
 ### 5.2 Security and privacy
 
@@ -198,7 +200,7 @@ Principles:
 ### 5.4 Performance, accessibility and localization
 
 - Frame-batched event application; stable `LazyColumn` keys; Markdown parsing and diff tokenization off the main thread.
-- Paged timelines, bounded caches, and baseline profiles.
+- Paged timelines, bounded caches, and baseline profiles (no measured profile yet; issue #28).
 - TalkBack semantics for timeline items, dynamic type, and contrast checks.
 - Every string externalized from P0 on.
 
@@ -215,6 +217,12 @@ green.
 Each phase lists what it **builds on** and which **reusable building blocks** it adds for later phases. That chain is
 what makes the order efficient: every block is built once, at the moment the first feature needs it, and the later
 phases that reuse it get cheaper as a result.
+
+**Device evidence.** The phase records below were written as each phase closed, when there was no emulator or
+hardware. Their "not verified here" notes say what a device had to add at that point, and are kept with their
+reasons rather than rewritten. A later partial run on one API 36 emulator — no physical device, no second device,
+no tablet, no TalkBack, no release build — is recorded per row in
+[`MANUAL_TEST_MATRIX.md`](./MANUAL_TEST_MATRIX.md), and the current status is in [`README.md`](./README.md).
 
 | Phase | Theme | Main building blocks introduced | Reused by | Status |
 | --- | --- | --- | --- | --- |
@@ -406,7 +414,9 @@ previous `events.jsonl` and `messages-*.json` files came from different runs, so
 sessions and only `misc` happened to line up.
 
 **Not verified here, and why.** Scrolling smoothness with more than 1,000 messages needs a device: frame timing
-is a property of the compositor and the display, not of a JVM test, and there is no emulator or hardware here. What
+is a property of the compositor and the display, not of a JVM test, and there was no emulator or hardware here when
+the phase closed. The later partial emulator run is in `MANUAL_TEST_MATRIX.md`, where C4 measured an emulator proxy
+and stayed n/a. What
 *is* verified is the structure that smoothness depends on — stable `LazyColumn` keys per message id, a plain
 recycling layout rather than a fully composed one, and O(1) reducer application so a `text.delta` does not rescan a
 thousand messages. A turn driven from the desktop TUI is likewise a device check; the content half of it is what the
@@ -511,10 +521,12 @@ Driving that scenario against a live server found four things no unit test would
   execution to interrupt. Both are the server's documented rules, so the scenario blocks the turn on a question —
   the only window in which a parked prompt and a real interrupt both exist.
 
-**Not verified here, and why.** The criterion says "entirely from the phone", and there is no emulator and no
-device here, so the physical half of it is unverified: real touch input, the camera-free QR path, on-device
-rendering at real densities, TalkBack, and "a real provider by hand". The scripted fake provider stands in for a
-real one, and a provider that streams differently — tool calls in several deltas, a permission on a real key
+**Not verified here, and why.** The criterion says "entirely from the phone", and there was no emulator or device
+here when the phase closed, so the physical half of it was unverified at the time: real touch input, the camera-free
+QR path, on-device rendering at real densities, TalkBack, and "a real provider by hand". A later partial run on one
+API 36 emulator covered parts of this, with its gaps recorded per row (matrix B2 and D1–D7). The scripted fake
+provider stands in for a real one, and a provider that streams differently — tool calls in several deltas, a
+permission on a real key
 exhaustion, an MCP server that elicits mid-answer — is exactly what a real provider adds and what a fake one
 cannot. The 1.5x Roborazzi baseline is the closest available proxy for a large-display, large-font reading of
 these screens, and it is what caught the clipped "Reject" button. The remaining device work belongs to the manual
@@ -670,8 +682,9 @@ being attempted. The consequence for the first exit criterion is real and is sta
   (the only place a channel can be changed), and guidance for battery optimisation and OEM background
   restrictions that opens the system's list without asking for a permission the app cannot justify.
 
-**Not verified here, and why.** Three of the four exit criteria need a device, and there is no emulator and no
-hardware in this environment.
+**Not verified here, and why.** Three of the four exit criteria need a device, and there was no emulator or
+hardware in this environment when the phase closed. The later partial emulator run covers the notification half of
+these only in part (matrix D4, J8, J9); no second device and no lock-screen run happened.
 
 - *"With the phone locked, a permission request shows a notification within about 2 s."* The decision half is a
   test: `AttentionReconciler` puts a raised request on the permission channel in the same dispatch that raised it,
@@ -838,7 +851,9 @@ a file attachment's content is in the recorded provider request.
   the only place that knows the navigation graph.
 
 **Not verified here, and why.** The parts of the two exit criteria that are about a person holding a
-phone cannot be decided here, and there is no emulator and no device.
+phone cannot be decided here, and there was no emulator or device when the phase closed. The later partial
+emulator run covered the composer flows in matrix D2, D3 and C5; the IME, camera and picker contracts remain
+unexercised.
 
 - *"Every TUI composer feature is available."* What is decided: every trigger's rules, every
   completion's contents and ordering, every attachment's verdict, what a send assembles, the history
@@ -1282,7 +1297,9 @@ each failure was a real defect rather than a broken test:
 | `POST …/experimental/persistent-pty/handoff` | `{"handoff":null}` |
 | `PATCH /api/project/{id}`, `POST /api/session/{id}/move` | declared and covered by the wire tests; the live server was not asked to move a real session's directory mid-flight |
 
-So the *protocols* are verified against the real server. The *UI* is not: there is no device.
+So the *protocols* are verified against the real server. The *UI* is not: when the phase closed there was no
+device. The later partial emulator run additionally exercises the terminal, shells and worktrees in matrix F1–F5,
+with the gaps recorded there.
 
 **The xterm.js bundle ships, and it is tracked.** `feature/execution/src/main/assets/terminal/` holds
 `xterm.js` (284 KiB), `addon-fit.js`, `xterm.css`, `index.html` and both upstream licences, and all six are
@@ -1769,10 +1786,12 @@ branches.
 **Not verified here, and why.** Editing on a real device: the phone keyboard in a configuration editor,
 a `TextField` holding a large `opencode.jsonc` under a real IME, TalkBack reading the explorer's
 thirty-six cards, and observing a reloaded server's *changed behaviour* rather than its changed
-configuration. There is no emulator and no hardware in this environment, and the first three are exactly
+configuration. There was no emulator or hardware in this environment when the phase closed, and the first
+three are exactly
 the things a JVM test cannot decide. The behaviour half is bounded by a real server being reloaded and
 re-read, which the integration tests do; what is missing is an agent turn, which is P5's and P3's job to
-drive and which needs a provider.
+drive and which needs a provider. The later partial emulator run covers the configuration screens in matrix
+G6–G8.
 
 **Deviations.**
 
@@ -1927,9 +1946,11 @@ than quietly.
   138 of 138 operations declared, wired and tested; 94 of 94 event types handled and tested. The claim
   is derived from the code by `tools/audit-coverage.mjs` and asserted by `CoverageMatrixTest`, and the
   audit of what the matrices claimed and the code did not back is in [`COVERAGE.md`](./COVERAGE.md).
-- The release candidate passes the manual test matrix. — **Not met, and not met honestly.** There is
-  no device, no emulator and no second device in the build environment, so the matrix has not been
-  run. It is written down, with a *Result* column for a human to fill, in
+- The release candidate passes the manual test matrix. — **Not met.** The matrix has been run only in
+  part, on one API 36 phone emulator: the `fdroid` debug build throughout, the `play` debug build for two
+  rows, against a 2.0.18 dev server and a read-only 2.0.20 server, plus one self-signed HTTPS endpoint.
+  Several rows fail (B10, J1–J6, J9, J11–J13, K6) and many are n/a for want of a physical device, a second
+  device, a tablet and a TalkBack run. The per-row results are in
   [`MANUAL_TEST_MATRIX.md`](./MANUAL_TEST_MATRIX.md). No signed artifact was produced either: the
   build is ready for signing material and refuses to pretend otherwise. See [`RELEASE.md`](./RELEASE.md).
 
@@ -1952,27 +1973,30 @@ falling back to `Unknown`, which would have taken the event connection down over
 
 **Scope, stated plainly.** The *wire and state* half of this phase is built and tested: the nine
 operations are declared, called, capability-gated and covered by tests over real HTTP, and the TUI
-control events are handled and wired to the surfaces that read them. The *screen* half is mostly not
-built. The usage dashboard is the exception: it is reachable from Settings ("Usage") and has a project row above its
-cards, built and unit tested but not seen changing numbers on a device (matrix H2). Wait until idle is reachable from the session menu, and Quick ask and the RPC console are
-reachable from Settings. The session event history is reachable from the session menu. The Quick Settings tile is built and unit tested but not exercised on a device (matrix J9). The home-screen widget is
-built and unit tested but not placed on a home screen (matrix J8). Session tabs are built and unit tested, and are not
-seen on a device (matrix J7). The session list beside a session on windows at least 840 dp wide is built and unit tested, and is not seen on a
-tablet (matrix J1-J3). There is no OpenCode theme import. The LAN prober is built and unit tested, as the opt-in
-"find servers on this network" section of the add-server form, but it has not been run on a device (matrix B7 and B8). The leader keys (Ctrl+X, then a letter) are built and unit tested, and are not run from a keyboard (matrix J5). Everything in the feature list above
-is therefore a capability rather than a screen, and this phase's Status should be read with that
-distinction in mind: the exit criterion it set is met, and the feature list it also set is not.
+control events are handled and wired to the surfaces that read them. Most of the *screen* half was then
+exercised in the partial emulator run: the usage dashboard (with its project row) rendered and re-queried
+(H1–H3), Quick ask generated text (H5, in part), the RPC console rendered errors and refused a bad id
+(H6, H7, in part), the session event history replayed to `log.synced` (H8, in part), synthetic notes,
+wait-until-idle and plugin-created permissions and forms worked (H9–H12), and the TUI events were
+exercised with injected frames rather than a real TUI (I1, I3–I7). The home-screen widget was placed on
+the emulator launcher and its counts changed (J8); session tabs opened, switched and closed (J7); the
+wide-window session list was seen on a 914 dp emulator override, not on a tablet (J1–J3); the Quick
+Settings tile was not exercised (J9); and the leader keys were seen once on the emulator before the guard
+fix and not from a physical keyboard (J5). There is still no OpenCode theme import, and the LAN
+prober was run on the emulator (B7, B8) but not on a real network. Everything in the feature list above
+that the matrix marks ✗ or n/a remains a capability rather than a device-verified screen, and this
+phase's Status should be read with that distinction in mind: the exit criterion it set is met, and the
+feature list it also set is not.
 
-What a release still has to do is in [`RELEASE.md`](./RELEASE.md): run the manual matrix on real
-hardware, produce a signed artifact from real signing material, and walk the Play track. Two open
-questions are named rather than answered, because they are the owner's to decide — whether the
-keystore key should require user authentication, and whether the unencrypted message cache stays as it
-is. Both are in [`SECURITY_REVIEW.md`](./SECURITY_REVIEW.md) and [`PRIVACY_REVIEW.md`](./PRIVACY_REVIEW.md).
+What a release still has to do is in [`RELEASE.md`](./RELEASE.md): complete the manual matrix, produce a
+signed artifact from real signing material, and walk the Play track. Two open questions are named rather
+than answered, because they are the owner's to decide — whether the keystore key should require user
+authentication, and whether the unencrypted message cache stays as it is. Both are in
+[`REVIEWS.md`](./REVIEWS.md).
 
-The audits are [`SECURITY_REVIEW.md`](./SECURITY_REVIEW.md), [`PRIVACY_REVIEW.md`](./PRIVACY_REVIEW.md)
-and [`ACCESSIBILITY_AUDIT.md`](./ACCESSIBILITY_AUDIT.md). Each states what was checked mechanically and
-what needs a device, because "verified" and "read" are different answers and only the first one is
-worth anything.
+The reviews are [`REVIEWS.md`](./REVIEWS.md) — security, privacy and accessibility. Each states what was
+checked mechanically and what needs a device, because "verified" and "read" are different answers and only
+the first one is worth anything.
 
 ---
 
@@ -2161,7 +2185,7 @@ and is covered by the reducer or invalidation tests.
 | P7 | `worktree.updated` (re-reads the one named project and nothing else), `worktree.resolved` (recorded as an adoption, then re-read), `pty.created`, `pty.updated` (renames in place, so every open view follows the title), `pty.exited`, `pty.deleted`, `persistent-pty.added`, `persistent-pty.removed`, `shell.created`, `shell.exited` (the status and exit code land on the row, and the poller stops), `shell.deleted` | Complete |
 | P8 | `credential.updated`, `credential.switched` (invalidate the integrations list of every open location), `integration.updated`, `provider.updated`, `plugin.updated`, `websearch.updated` (one catalog each, and nothing else), `mcp.status.changed {server}` (invalidate the server list only), `mcp.resources.changed {server}` (invalidate the resource catalog only) | Complete |
 | P9 | `config.updated` | Complete |
-| P10 | `tui.prompt.append`, `tui.command.execute`, `tui.toast.show`, `tui.session.select`, `rpc.<rpcID>.<event>` | Planned |
+| P10 | `tui.prompt.append`, `tui.command.execute`, `tui.toast.show`, `tui.session.select`, `rpc.<rpcID>.<event>` | Complete |
 
 ---
 

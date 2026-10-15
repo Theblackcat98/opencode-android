@@ -46,7 +46,7 @@ CI runs `integrationTest` in a separate job with a pinned server. `verifyRoboraz
 | `app` (two flavors) | `testPlayDebugUnitTest` / `testFdroidDebugUnitTest` | `./gradlew :app:unitTest` |
 
 - `:app:testDebugUnitTest` **does not exist** — the app has `play` and `fdroid` flavors. Use `:app:unitTest` or the flavor-specific task.
-- `--tests '<pattern>'` works only on a **concrete** task. On the `test` / `unitTest` / `check` aggregates it fails with `Unknown command-line option '--tests'`. `docs/COVERAGE.md` line 142 shows exactly that broken form; the working one is `./gradlew :core:network:testDebugUnitTest --tests '*CoverageMatrixTest'`.
+- `--tests '<pattern>'` works only on a **concrete** task. On the `test` / `unitTest` / `check` aggregates it fails with `Unknown command-line option '--tests'`. The working form is `./gradlew :core:network:testDebugUnitTest --tests '*CoverageMatrixTest'`.
 - Screenshot tasks: `verifyRoborazziDebug` for library modules, but `verifyRoborazziPlayDebug` / `verifyRoborazziFdroidDebug` for `:app`.
 
 ## Screenshots are not asserted by `unitTest`
@@ -141,10 +141,10 @@ ViewModels are uniformly `@HiltViewModel` + `@Inject constructor(ServerDataRegis
 
 ## Release
 
-Not a shipped release, and there is no signing material in the tree. `assemblePlayRelease` produces `app-play-release-unsigned.apk`; the `releaseMaterialMissing` task prints what a signed build still needs. Nothing has run on a device or emulator — `docs/RELEASE.md` lists that as the open exit criterion. Do not claim otherwise in a document.
+Not a shipped release, and there is no signing material in the tree. `assemblePlayRelease` produces `app-play-release-unsigned.apk`; the `releaseMaterialMissing` task prints what a signed build still needs. Only one API 36 emulator has run the app, for a partial pass of the manual test matrix (`docs/MANUAL_TEST_MATRIX.md`); no physical device, no TalkBack, no release build. `docs/RELEASE.md` lists completing the matrix and producing a signed artifact as the open exit criteria. Do not claim a device run that the matrix does not record.
 
 ## Documents that are part of a change
 
-`docs/ANDROID_APP_PLAN.md` (architecture, phases, the §7/§8 matrices the audit parses) · `docs/COVERAGE.md` · `docs/CHANGELOG.md` · `docs/OPENCODE_V2_FEATURES.md` (the server contract) · `docs/SECURITY_REVIEW.md` · `docs/PRIVACY_REVIEW.md` · `docs/ACCESSIBILITY_AUDIT.md` · `docs/MANUAL_TEST_MATRIX.md` · `docs/RELEASE.md` · `docs/COMPATIBILITY.md`.
+`docs/README.md` (the front door: goals, status, build and test) · `docs/ANDROID_APP_PLAN.md` (architecture, phases, the §7/§8 matrices the audit parses) · `docs/COVERAGE.md` · `docs/CHANGELOG.md` · `docs/OPENCODE_V2_FEATURES.md` (the server contract) · `docs/REVIEWS.md` (security, privacy and accessibility) · `docs/MANUAL_TEST_MATRIX.md` · `docs/RELEASE.md` (status, compatibility and the runbook) · `docs/design.md` · `docs/MOTION.md`.
 
 This repository keeps documents honest against the code rather than aspirational. If a change alters what exists, updating the corresponding document and the phase's "Status" line is part of the change — and a claim the build cannot back is a defect.
