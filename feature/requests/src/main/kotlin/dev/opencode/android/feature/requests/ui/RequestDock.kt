@@ -40,7 +40,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -175,6 +177,7 @@ fun PermissionCard(
         Text(
             text = stringResource(R.string.permission_title, request.action),
             style = MaterialTheme.typography.titleSmall,
+            modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
         )
         if (!request.raisedByToolCall) NotFromToolLabel(modifier = Modifier.padding(top = OpenCodeThemeExtras.spacing.xs))
         request.title?.let {
@@ -329,7 +332,11 @@ private fun InlineForm(request: PendingRequest.Form, actions: RequestActions, bu
     val problems = FormEngine.validate(form.fields, answers.value)
 
     Column(modifier = modifier.fillMaxWidth().padding(vertical = OpenCodeThemeExtras.spacing.sm)) {
-        Text(form.title, style = MaterialTheme.typography.titleSmall)
+        Text(
+            form.title,
+            style = MaterialTheme.typography.titleSmall,
+            modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+        )
         // A question is asked by a specific tool call, and a transcript can hold several; naming the
         // one being answered is what tells the user which card this belongs to.
         form.questionTool?.id?.let {

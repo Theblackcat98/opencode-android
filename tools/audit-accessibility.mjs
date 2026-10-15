@@ -91,6 +91,9 @@ for (const [file, text] of sources) {
     const line = text.slice(0, m.index).split('\n').length
     const source = lines[line - 1]
     if (source.includes('TextStyle(')) continue // a definition, not an override
+    const typographyStart = text.lastIndexOf('Typography(', m.index)
+    const typographyEnd = typographyStart < 0 ? -1 : text.indexOf('\n)', typographyStart)
+    if (typographyEnd > m.index) continue // multiline named Material roles in Typography(...)
     if (text.slice(Math.max(0, m.index - 200), m.index).includes('data class')) continue
     findings.push({ file, line, rule: 'hardcoded-font-size', detail: m[1] + '.sp' })
   }

@@ -259,6 +259,32 @@
 
     <!-- The Settings tab. -->
     <string name="settings_title">Settings</string>
+    <string name="settings_theme_import_title">OpenCode theme</string>
+    <string name="settings_theme_import_body">Read a V2 theme JSON from the selected project’s .opencode/themes folder or the server’s ~/.config/opencode/themes folder. Preview the supported colors before applying; the source file is never changed.</string>
+    <string name="settings_theme_file_path">Theme file path</string>
+    <string name="settings_theme_path_example">.opencode/themes/my-theme.json</string>
+    <string name="settings_theme_preview_action">Read and preview</string>
+    <string name="settings_theme_reading">Reading theme</string>
+    <string name="settings_theme_current">Current theme: %1$s</string>
+    <string name="settings_theme_reset">Reset</string>
+    <string name="settings_theme_preview_title">Preview: %1$s</string>
+    <string name="settings_theme_sample_text">Sample text</string>
+    <string name="settings_theme_sample_action">Primary action</string>
+    <string name="settings_theme_unsupported">%1$d theme values are not mapped and will keep their defaults:</string>
+    <string name="settings_theme_unsupported_more">…and %1$d more</string>
+    <string name="settings_theme_apply">Apply theme</string>
+    <string name="settings_theme_applied">Applied</string>
+    <string name="settings_theme_discard">Discard preview</string>
+    <string name="settings_theme_error_project">Select a project to read a project-relative theme file.</string>
+    <string name="settings_theme_error_path">Use a .json file directly inside .opencode/themes/ for a project theme or ~/.config/opencode/themes/ for a global theme.</string>
+    <string name="settings_theme_error_read">Could not read that theme file from the server. Check its path and access.</string>
+    <string name="settings_theme_error_not_text">The selected theme file is not readable UTF-8 text.</string>
+    <string name="settings_theme_error_size">Theme files must be 256 KiB or smaller and complete.</string>
+    <string name="settings_theme_error_json">The theme file is not valid JSON.</string>
+    <string name="settings_theme_error_base">The theme file is missing its V2 base token object.</string>
+    <string name="settings_theme_error_mode">The theme file needs a light or dark mode object.</string>
+    <string name="settings_theme_error_contrast">The theme would put normal text below 4.5:1 contrast: %1$s</string>
+    <string name="settings_theme_error_save">The theme preference could not be saved. Try again.</string>
     <string name="settings_project_scope">Project</string>
     <string name="settings_project_none">Add a project on the home screen to manage its accounts, providers and configuration.</string>
     <string name="settings_section_server">Server</string>

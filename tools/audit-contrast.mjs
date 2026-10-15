@@ -101,6 +101,15 @@ export const NOT_COMPUTED = [
   },
 ]
 
+/** Theme colours are not a static source palette; the importer checks each normalized pair before preview/apply. */
+export const RUNTIME_VALIDATION = [
+  {
+    area: 'OpenCode V2 imported themes',
+    rule: 'OpenCodeThemeImporter rejects supported text pairs below 4.5:1 and imported outlines below 3:1 before preview or apply.',
+    tests: 'OpenCodeThemeImporterTest covers contrasting light/dark themes, raised surfaces, and low-contrast rejection.',
+  },
+]
+
 // Colour arithmetic
 
 /** `0xAARRGGBB`, or `0xRRGGBB` which is opaque, as channels in 0..1. */
@@ -220,8 +229,11 @@ export function parseDiffMapping(source) {
     if (m) mapping.set(m[1], readDiffExpression(m[2]))
   }
   const threshold = source.match(/const val DARK_SURFACE = ([\d.]+)f?/)
-  if (!threshold) throw new Error('DARK_SURFACE not found')
-  return { mapping, darkSurfaceBelow: Number(threshold[1]) }
+  const needsThreshold = [...mapping.values()].some((expression) => expression.kind === 'by-surface')
+  if (needsThreshold && !threshold) throw new Error('DARK_SURFACE not found for a surface-dependent diff colour')
+  // When every role comes from the Material ColorScheme, the cutoff is immaterial. The fallback keeps
+  // legacy surface-dependent mappings testable without requiring production code to retain a dead constant.
+  return { mapping, darkSurfaceBelow: threshold ? Number(threshold[1]) : 0.5 }
 }
 
 /**
@@ -321,11 +333,12 @@ function measureScheme(scheme, roles, ctx, out) {
   const linkColour = ctx.markdown.link ?? (ctx.markdown.linkRole ? roles.get(ctx.markdown.linkRole) : null)
   measure(scheme, 'markdown link on surface', { name: 'link', colour: linkColour }, { name: 'surface', colour: surface }, out)
 
-  // The file viewer marks a selected line with secondaryContainer. Its line number is onSurfaceVariant,
-  // which is set in FileBrowserScreen. Its text sets no colour, so the content colour of the host
+  // The file viewer marks a selected line with secondaryContainer. Its line number uses the matching
+  // onSecondaryContainer role, while unselected numbers use onSurfaceVariant. Its text sets no colour,
+  // so the content colour of the host
   // Surface is used, which this file does not show. onSurface is assumed for that host.
   const selectedLine = role('secondaryContainer')
-  measure(scheme, 'file line number on selected line', role('onSurfaceVariant'), selectedLine, out)
+  measure(scheme, 'file line number on selected line', role('onSecondaryContainer'), selectedLine, out)
   measure(scheme, 'file text on selected line (host colour assumed onSurface)', role('onSurface'), selectedLine, out)
 }
 
@@ -357,6 +370,7 @@ export function run(root = ROOT) {
     pairs: out.pairs,
     unmeasured: out.unmeasured,
     notComputed: NOT_COMPUTED,
+    runtimeValidated: RUNTIME_VALIDATION,
   }
 }
 
@@ -388,6 +402,10 @@ function printReport(report) {
   }
   console.log('\nNot computed:')
   for (const n of report.notComputed) console.log(`  ${n.area}. ${n.reason}`)
+  console.log('\nRuntime-validated:')
+  for (const validation of report.runtimeValidated) {
+    console.log(`  ${validation.area}. ${validation.rule} ${validation.tests}`)
+  }
 }
 
 export function main(argv = process.argv.slice(2)) {

@@ -11,6 +11,10 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.ui.platform.LocalContext
 
+/** The stable OpenCode fallback scheme used when an imported theme omits a Material role. */
+fun openCodeBaseColorScheme(darkTheme: Boolean): ColorScheme =
+    if (darkTheme) OpenCodeDarkColors else OpenCodeLightColors
+
 /**
  * The app theme: the [OpenCodePalette] by default.
  *
@@ -22,9 +26,10 @@ import androidx.compose.ui.platform.LocalContext
 fun OpenCodeTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     dynamicColor: Boolean = false,
+    importedTheme: ImportedThemePalette? = null,
     content: @Composable () -> Unit,
 ) {
-    val colorScheme: ColorScheme = when {
+    val fallbackColorScheme: ColorScheme = when {
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
             val context = LocalContext.current
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
@@ -34,6 +39,7 @@ fun OpenCodeTheme(
 
         else -> OpenCodeLightColors
     }
+    val colorScheme = importedTheme?.colorScheme(darkTheme, fallbackColorScheme) ?: fallbackColorScheme
     // One shape object feeds both the design-system local and the M3 slots, so a component that
     // reads MaterialTheme.shapes and one that reads OpenCodeThemeExtras.shapes cannot disagree.
     CompositionLocalProvider(

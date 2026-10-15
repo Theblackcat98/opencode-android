@@ -67,6 +67,16 @@ jobs:
             exit 1
           fi
 
+      - name: Enforce accessibility semantics and contrast gates
+        run: |
+          findings=$(node tools/audit-accessibility.mjs --json | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>console.log(JSON.parse(d).findings.length))")
+          if [ "$findings" != "0" ]; then
+            echo "::error::$findings accessibility source findings"
+            node tools/audit-accessibility.mjs --per-file
+            exit 1
+          fi
+          node tools/audit-contrast.test.mjs
+
       - name: Setup Android SDK
         run: ./scripts/setup-android-sdk.sh
 
