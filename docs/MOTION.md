@@ -9,14 +9,19 @@ ratified), `OPEN` (no convention — stop and ask, do not pick).
 
 ## The design system
 
-This app is Material 3, Expressive-leaning. `OpenCodeTheme` wires
-`motionScheme = expressiveMotionScheme()` explicitly rather than inheriting the silent
-default — the scheme is a deliberate choice, recorded here.
+This app is Material 3, Expressive-leaning. `OpenCodeTheme` does **not** wire
+`motionScheme = expressiveMotionScheme()`: this Compose BOM keeps the `MaterialTheme`
+overload with a motion scheme internal, so it cannot be wired yet (the note in
+`core/designsystem/.../theme/Theme.kt` says so, and `AGENTS.md` records the trap). The
+deliberate motion system is the transition language in
+`app/.../navigation/Transitions.kt`, recorded below.
 
 - **Intent** — the app's motion voice is M3 Expressive: confident spatial movement on
   containers and surfaces, quiet effects on everything else.
-- **Binding** — `MaterialTheme.motionScheme` (expressive), resolved in
-  `core/designsystem/.../theme/Theme.kt`.
+- **Binding** — the `DestinationTransitions` sets in `app/.../navigation/Transitions.kt`.
+  When the BOM exposes the `motionScheme` overload, the expressive scheme should be wired
+  in `core/designsystem/.../theme/Theme.kt`; until then this document and those sets are
+  the motion language.
 
 Where the product's own language is silent, the fallback is pragmatic M3 Expressive
 (resolution rung 1). A decision resolved from the fallback says so in its entry.
@@ -70,9 +75,8 @@ manage destinations.
 - **Intent** — bounce on a number reads as instability, not personality. Session metadata,
   token counts, usage figures and plotted values settle because they are correct, not
   because they stopped wobbling (T-004).
-- **Binding** — the expressive scheme governs containers and surfaces. Nothing in the
-  app's own code puts an expressive spatial spring on a data-read element; transitions
-  use the default/effects tiers.
+- **Binding** — nothing in the app's own code puts a spatial spring on a data-read
+  element; the transition sets use the emphasized tween pair (400ms/200ms), not springs.
 - **Provenance** — `DECIDED`.
 
 ### Back-stack discipline feeds the transitions
@@ -88,8 +92,8 @@ manage destinations.
 
 - **Intent** — the new-session sheet, the palette dialog, the snackbar host and the armed
   pill do not need a product voice; the platform's is correct and familiar.
-- **Binding** — no custom specs. Component defaults, which resolve through the wired
-  motion scheme.
+- **Binding** — no custom specs. Component defaults, which resolve through the platform's
+  default motion, since no custom motion scheme is wired.
 - **Provenance** — `OBSERVED`.
 
 ### In-place appearance: fade, never travel

@@ -28,7 +28,7 @@ import androidx.compose.animation.slideOutHorizontally
  * - **Container** (session to review, session to files): the destination scales up from 92%
  *   with a fade — the container-transform language, anchored to its origin (T-016). A true
  *   shared-element transition would need `SharedTransitionLayout` wiring in both screens;
- *   until that exists this anchored zoom is the deliberate stand-in, recorded in MOTION.md.
+ *   until that exists this anchored zoom is the deliberate stand-in, recorded in `docs/MOTION.md`.
  *
  * The durations are the M3 emphasized pair (400ms enter, 200ms exit). The literal `tween()`
  * calls live here, in the token definitions, which is where T-002 permits them: no call site

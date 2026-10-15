@@ -295,11 +295,11 @@ The shape system balances technical structure with tactile Material 3 ergonomics
 ## Codebase Architecture, Purpose & Foundation
 
 ### 1. Codebase Purpose, Taglines & Real Copy
-*Source of truth: `README.md`, `AGENTS.md`, `docs/ANDROID_APP_PLAN.md`*
+*Source of truth: `docs/README.md`, `AGENTS.md`, `docs/ANDROID_APP_PLAN.md`*
 
 - **Product Name**: **OpenCode for Android**
 - **Target Backend**: **OpenCode V2** (`@opencode/cli` 2.0.18)
-- **Lead Tagline** (*verbatim from `README.md`*):
+- **Lead Tagline** (*verbatim from `docs/README.md` and the root `README.md`*):
   > *"A native Android client for OpenCode V2. It connects to an OpenCode server on your local network, or any network your phone can reach, and drives the server's full feature set from your phone."*
 
 ### Architectural Axioms & House Philosophy
@@ -308,8 +308,8 @@ The shape system balances technical structure with tactile Material 3 ergonomics
 - **Build over Prose**: *"The build is the source of truth, not the documents. This repo asserts claims with gates rather than prose, and several documents are parsed by tooling. When docs and a script disagree, the script wins."*
 - **What Matters Before What Measures**: Driving the agent, context weight feedback, live permission grant, and reversibility precede secondary analytics.
 
-### 2. What the README Leads With (The Dominant Feature)
-The README leads with **active bi-directional control over the agent** rather than passive telemetry or static viewing.
+### 2. What the Documentation Leads With (The Dominant Feature)
+The documentation leads with **active bi-directional control over the agent** rather than passive telemetry or static viewing.
 
 - **Driving over viewing**: *"The app pairs with one or more OpenCode servers, keeps a live event stream to each of them, **drives** them from the phone, stays reachable while it works..."*
 - **Context honesty**: *"...says what a prompt is about to carry before it sends it..."*

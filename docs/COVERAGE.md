@@ -139,7 +139,7 @@ with a reason, and the reason has to be re-argued if it goes.
 ```bash
 node tools/audit-coverage.mjs --strict     # exits 1 on any gap
 node tools/audit-coverage.mjs --json       # the whole table
-./gradlew :core:network:test --tests '*CoverageMatrixTest'
+./gradlew :core:network:testDebugUnitTest --tests '*CoverageMatrixTest'
 node tools/gen-event-payloads.mjs --check  # the corpus is current
 ```
 

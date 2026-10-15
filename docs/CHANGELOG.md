@@ -8,7 +8,9 @@ the app, not of the server it talks to.
 
 The first release candidate, and it is **not shippable**. The plan's exit criterion is coverage and
 that is met: see [`COVERAGE.md`](./COVERAGE.md) for the audit and
-[`MANUAL_TEST_MATRIX.md`](./MANUAL_TEST_MATRIX.md) for what still has to be run by hand.
+[`MANUAL_TEST_MATRIX.md`](./MANUAL_TEST_MATRIX.md) for what has been run on what. The matrix is only
+partly run — one API 36 emulator — and no signed artifact exists; completing the matrix and producing one
+are what [`RELEASE.md`](./RELEASE.md) still requires.
 
 **Scope, stated plainly.** The wire and state half of Phase 10 is built and tested. The screen half is
 not: the operations below exist, are called, are capability-gated and are covered by tests over real
@@ -48,7 +50,7 @@ left to do.
   each command as a card with a status pill over a larger output pane, with the command line docked at the bottom.
   The subagent tree has depth guides, avatars and a running pill.
 - **The brand palette is the default.** `OpenCodeTheme` no longer uses Material You dynamic color unless asked, so
-  devices on Android 12+ draw the palette in `design.md`. Every screenshot baseline was re-recorded.
+  devices on Android 12+ draw the palette in `docs/design.md`. Every screenshot baseline was re-recorded.
 - New design-system components: `OpenCodeTopAppBar`, `OpenCodeStatusPill`, `OpenCodeChip`, `OpenCodeAvatar`,
   `OpenCodeAccordionRow`, `OpenCodeNavigationBar`, semantic status colors, and a code block header with a copy button.
 
@@ -63,33 +65,37 @@ left to do.
   switchable.
 - A project row on the usage dashboard, above its cards: "All projects", then each project the active server knows.
   Choosing one re-queries the statistics with that project's id. Built and unit tested: the view model reads the list
-  from the server's data set and re-queries on each choice, and the chips are 48 dp targets. Not seen changing numbers
-  on a device (matrix H2).
+  from the server's data set and re-queries on each choice, and the chips are 48 dp targets. Seen on the emulator: the
+  project chips changed the numbers (matrix H2); the date-range chips were not seen to change them, because every
+  session on that server was within the last week.
 - Static launcher shortcuts for Servers and New session, opened by an intent action in `MainActivity`; checked by firing the actions, not by tapping the launcher.
 - A Quick Settings tile that starts and stops the connection service (matrix J9). It is lit while the service runs, and a tap starts or stops it through the same launcher as the app. The tile's state and the policy behind its taps are unit tested; the tile was not seen in the shade or tapped on a device.
-- A home-screen widget (matrix J8) showing "N waiting for you" and "N running", with the connection notification's two counts. At zero it reads "Nothing running or waiting"; with no live stream it asks the user to open the app rather than showing a count nothing refreshes. A tap opens the app. It is an `AppWidgetProvider` drawn from `RemoteViews`, with no new dependency. Counts are pushed on every change from the presence signals, and the widget has a 30-minute period. The policy and the inflated layout are unit tested; the widget was not placed on a home screen, and a tap was not made.
-- Session tabs (matrix J7): a strip under the session's top bar, drawn with two or more tabs, lists the sessions opened in this app run for the active server, oldest first and at most eight, with the one on screen selected. A tap on another tab replaces the session on screen with it, and its close button removes the tab; closing the tab on screen opens its neighbour, or goes to the server's home when it was the last. Opening a listed session does not move it. The list is saved with the screen's state, so a rotation should keep it; the saver is unit tested and a rotation was not run. The rules are unit tested and the strip's labels, selected state and 48dp targets are Robolectric tested. Not seen on a device, and no tab was tapped.
-- The session list beside a session on a wide window (matrix J1-J3). On a window at least 840 dp wide, a session shows the active server's recent sessions in a 320 dp list at its left, newest first and at most 30, with the one on screen selected. A tap on a row replaces the session on screen with the tapped one, the same way the tab strip does, and the home screen is unchanged. A narrower window shows the session alone, as before. Built and unit tested: the 840 dp decision, and the list's labels, selection, 48 dp rows and taps. Not seen on a tablet or a resizable window.
+- A home-screen widget (matrix J8) showing "N waiting for you" and "N running", with the connection notification's two counts. At zero it reads "Nothing running or waiting"; with no live stream it asks the user to open the app rather than showing a count nothing refreshes. A tap opens the app. It is an `AppWidgetProvider` drawn from `RemoteViews`, with no new dependency. Counts are pushed on every change from the presence signals, and the widget has a 30-minute period. The policy and the inflated layout are unit tested; the widget was later placed on the emulator's launcher, where its counts changed with requests and running sessions (matrix J8).
+- Session tabs (matrix J7): a strip under the session's top bar, drawn with two or more tabs, lists the sessions opened in this app run for the active server, oldest first and at most eight, with the one on screen selected. A tap on another tab replaces the session on screen with it, and its close button removes the tab; closing the tab on screen opens its neighbour, or goes to the server's home when it was the last. Opening a listed session does not move it. The list is saved with the screen's state, so a rotation should keep it; the saver is unit tested and a rotation was not run. The rules are unit tested and the strip's labels, selected state and 48dp targets are Robolectric tested. Seen on the emulator: tabs opened, switched and closed, rotation kept them and the cap of eight held (matrix J7).
+- The session list beside a session on a wide window (matrix J1-J3). On a window at least 840 dp wide, a session shows the active server's recent sessions in a 320 dp list at its left, newest first and at most 30, with the one on screen selected. A tap on a row replaces the session on screen with the tapped one, the same way the tab strip does, and the home screen is unchanged. A narrower window shows the session alone, as before. Built and unit tested: the 840 dp decision, and the list's labels, selection, 48 dp rows and taps. Seen on the emulator with a 914 dp window override, not on a tablet or a resizable window (matrix J1).
 - An opt-in LAN probe, "Find servers on this network", on the manual tab of the add-server form. Its switch is off by
   default and is not saved, so it is off again on every launch. When it is on, the Scan button probes the /24 around the
   phone's own private IPv4 address (never a wider netmask, never an address outside the three RFC 1918 ranges) on ports
   49374 and 4096 and any valid ports typed. An address counts when `GET /api/info` answers `401` with the
   `UnauthorizedError` tag, or `200` with a server-info body. Tapping a found address fills the Server URL field. The probe
   sends one unauthenticated request per address, no credential and no redirect followed, and Stop cancels the requests in
-  flight. Built and unit tested (`LanProberWireTest`, `LanProberLogicTest`, `LanDiscoveryViewModelTest`). **Not run:** on a
-  device, against a server on a real network (matrix B7 and B8).
+  flight. Built and unit tested (`LanProberWireTest`, `LanProberLogicTest`, `LanDiscoveryViewModelTest`). **Seen on the
+  emulator**, finding the host's servers and stopping when cancelled (matrix B7 and B8, both pass); not run on a real
+  network or a server on a custom port.
 - A command palette, opened by Ctrl+P on a hardware keyboard or by the Search icon, labelled "Command palette", in the
   Servers and the server home top bars. It is a search field over what the app can run from here: Servers, New session,
   Usage, Quick ask, RPC console, Pair another device (the last five only while a server is active), Changelog and Event
   inspector. Choosing a row runs it and closes the palette. Built and unit tested for the matching, the shortcut and the
-  list. **Not run:** the palette's keyboard path and dialog were not run on a device.
+  list. **Seen on the emulator:** the touch route opened the palette and ran a row's command (matrix J6); the keyboard
+  path and the search field were not run (matrix J4).
 - Leader keys, on a hardware keyboard: Ctrl+X, then one letter within 1.5 s, runs the palette command that letter names:
   N New session, U Usage, Q Quick ask, R RPC console, P Pair another device, S Servers, C Changelog, E Event inspector.
   The same availability rule as the palette applies, so a server-scoped command is not run with no server. The palette
   shows each command's key after its row. The leader stands aside while a text editor or a native view has focus, so Ctrl+X
   still cuts in a text field and a letter typed there is never a command. Built and unit tested (`LeaderKeysTest`, `LeaderKeysGuardTest`): the sequence, the timeout,
-  unknown and unoffered letters, the chords, and a focused text field running nothing (Robolectric). **Not run:** from
-  a keyboard, on a device, and in the composer on the emulator since the guard fix (matrix J5).
+  unknown and unoffered letters, the chords, and a focused text field running nothing (Robolectric). **Partially seen
+  on the emulator before the guard fix** (one chord opened the Event inspector, another typed a letter and opened
+  Usage); not run from a physical keyboard, and not re-checked on the emulator since the guard fix (matrix J5).
 - The session event history, in the session menu, replays the log and says when it caught up at `log.synced`. Entry rows were not seen on a device: the dev server replayed none. `SessionLogClient` now reads on the IO dispatcher, and recognises the 2.0.18 server's `{"type":"log.synced"}` frame.
 - The durable session log (`session.log`) as a cold, cancellable `Flow`, with `SseParser` extended to
   keep a frame's `id` and `event` so the `log.synced` end-of-replay is not lost.
@@ -137,12 +143,21 @@ regression.
 - This changelog, in the app: the Changelog action in the Servers screen's top bar shows the file this build was
   made from, so the notes a build carries are the ones in the repository.
 - CI checks for the coverage matrices, for the generated event corpus, and for externalized strings.
-- Documented: a [security review](./SECURITY_REVIEW.md), a [privacy review](./PRIVACY_REVIEW.md), an
-  [accessibility audit](./ACCESSIBILITY_AUDIT.md), a [coverage audit](./COVERAGE.md), a
+- Documented: a [security, privacy and accessibility review](./REVIEWS.md), a [coverage audit](./COVERAGE.md), a
   [manual test matrix](./MANUAL_TEST_MATRIX.md) and a [release runbook](./RELEASE.md).
 
 **Not built:** the Inbox shortcut and the OpenCode theme import. The phase plan lists all
-of them; this changelog does not claim them. The session list beside a session is built for wide windows (see Added) but has not been seen on a tablet. The home-screen widget is built (see Added) but has not been placed on a home screen. The LAN prober is built (see Added) but has not been run on a device.
+of them; this changelog does not claim them. The session list beside a session is built for wide windows (see Added) and was seen on an emulator window override, not on a tablet. The home-screen widget was placed on the emulator's launcher and its counts were seen (matrix J8). The LAN prober was run on the emulator (matrix B7, B8), not on a real network.
+
+### Changed
+
+- **The documentation set was consolidated around what is true.** `docs/README.md` is now the front door —
+  goals and non-goals, the current status, what the app does, build and test, and connecting — and the root
+  `README.md` points at it. `docs/REVIEWS.md` merges the security, privacy and accessibility reviews;
+  `docs/RELEASE.md` merges the release runbook and the compatibility record; `docs/design.md` and
+  `docs/MOTION.md` moved under `docs/`. Claims that predated the partial manual-matrix run — "no device, no
+  emulator", the LAN prober and the widget as unrun — were corrected to what `MANUAL_TEST_MATRIX.md`
+  records, and `MOTION.md` now says what `Theme.kt` actually does about the motion scheme.
 
 ### Fixed
 
@@ -473,16 +488,18 @@ Earlier fixes:
 
 - The LAN probe is the one feature that sends requests to addresses the user did not name. It is opt-in and off by
   default, not saved, limited to the phone's own private /24, sends no credential, follows no redirect and is cancellable.
-  The reasoning is in [`SECURITY_REVIEW.md`](./SECURITY_REVIEW.md) §7 and [`PRIVACY_REVIEW.md`](./PRIVACY_REVIEW.md).
+  The reasoning is in [`REVIEWS.md`](./REVIEWS.md) (the security review §7 and the privacy review).
 - The model and vendor identifiers in the test fixtures are gone, replaced with the neutral
   placeholders the rest of the suite already used. The GitHub token prefixes the credential-redaction
   list has to name are deliberately left alone: those are a security control, not a fixture.
 
 ### Known limitations
 
-- **The release candidate has not passed the manual test matrix.** There is no device, no emulator
-  and no second device in the build environment. The matrix is written down and unrun; see
-  [`MANUAL_TEST_MATRIX.md`](./MANUAL_TEST_MATRIX.md).
+- **The release candidate has not passed the manual test matrix.** It has been run only in part, on
+  one API 36 phone emulator (the `fdroid` debug build throughout, the `play` debug build for two rows),
+  against a 2.0.18 dev server and a read-only 2.0.20 server. There was no physical device, no second
+  device, no tablet, no TalkBack run and no release build; several rows fail (B10, J1–J6, J9, J11–J13, K6)
+  or are n/a. See [`MANUAL_TEST_MATRIX.md`](./MANUAL_TEST_MATRIX.md) and [`RELEASE.md`](./RELEASE.md).
 - **No signed artifact was produced.** No keystore exists and none was created. The build is ready
   for one and refuses to pretend otherwise; see [`RELEASE.md`](./RELEASE.md).
 - **A few tests still fail now and then when every module's tests run at once.** Under

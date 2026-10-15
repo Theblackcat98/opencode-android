@@ -15,8 +15,7 @@ import androidx.compose.ui.platform.LocalContext
  * The app theme: the [OpenCodePalette] by default.
  *
  * Material You dynamic color is opt-in through [dynamicColor]. It used to be the default, which meant
- * every device on Android 12+ drew the wallpaper's palette and never showed the one the repo-root
- * `design.md` specifies.
+ * every device on Android 12+ drew the wallpaper's palette and never showed the one the `docs/design.md` specifies.
  */
 @Composable
 fun OpenCodeTheme(
@@ -48,7 +47,7 @@ fun OpenCodeTheme(
             typography = OpenCodeTypography,
             // No motionScheme: this BOM's M3 keeps the motionScheme MaterialTheme overload internal,
             // so the expressive scheme can't be wired until the BOM moves. The transition language in
-            // Transitions.kt and MOTION.md is the deliberate motion system instead.
+            // Transitions.kt and docs/MOTION.md is the deliberate motion system instead.
             content = content,
         )
     }
