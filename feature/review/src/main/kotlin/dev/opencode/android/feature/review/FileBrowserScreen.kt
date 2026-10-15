@@ -494,7 +494,11 @@ private fun TextFileView(
                     Text(
                         text = line.number.toString(),
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = if (selected) {
+                            MaterialTheme.colorScheme.onSecondaryContainer
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        },
                         fontFamily = FontFamily.Monospace,
                         modifier = Modifier.width(GUTTER_WIDTH).padding(end = 8.dp),
                     )

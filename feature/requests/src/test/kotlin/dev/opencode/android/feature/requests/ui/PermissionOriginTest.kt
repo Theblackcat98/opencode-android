@@ -2,6 +2,9 @@ package dev.opencode.android.feature.requests.ui
 
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
@@ -62,6 +65,15 @@ class PermissionOriginTest {
         compose.onNodeWithText(string(R.string.permission_title, "shell")).assertIsDisplayed()
         assertEquals("no label on a tool's request", 0, compose.onAllNodesWithText(label()).fetchSemanticsNodes().size)
         assertEquals("no title where there is none", 0, compose.onAllNodesWithText(TITLE).fetchSemanticsNodes().size)
+    }
+
+    @Test
+    fun `a new permission title is a polite live region`() {
+        show { PermissionCard(request = pluginRequest(), actions = actions) }
+
+        val title = compose.onNodeWithText(string(R.string.permission_title, "external_directory"))
+            .fetchSemanticsNode().config
+        assertEquals(LiveRegionMode.Polite, title.getOrNull(SemanticsProperties.LiveRegion))
     }
 
     @Test

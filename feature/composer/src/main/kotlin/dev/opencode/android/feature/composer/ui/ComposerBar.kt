@@ -51,6 +51,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -158,10 +159,12 @@ fun ComposerBar(
     // and is overwritten whenever the text arrives from somewhere else — a completion, a history
     // step, a restored draft, a cleared box — which is the only way the caret survives a recomposition
     // without being reset on every keystroke.
-    var field by remember { mutableStateOf(TextFieldValue(state.text, TextRange(state.text.length))) }
+    var field by rememberSaveable(state.sessionID, stateSaver = TextFieldValue.Saver) {
+        mutableStateOf(TextFieldValue(state.text, TextRange(state.text.length)))
+    }
     // `state.text` echoes each keystroke late, so "differs from the field" cannot mean "changed from
     // outside": that reading rewinds the field to a stale echo and eats fast typing.
-    val sync = remember { TextSync() }
+    val sync = remember(state.sessionID) { TextSync() }
     LaunchedEffect(state.text) {
         sync.onState(state.text, field.text)?.let { adopted ->
             field = TextFieldValue(adopted, TextRange(adopted.length))

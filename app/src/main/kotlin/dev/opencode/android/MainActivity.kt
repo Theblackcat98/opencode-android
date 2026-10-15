@@ -7,10 +7,14 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dagger.hilt.android.AndroidEntryPoint
+import dev.opencode.android.core.data.preferences.ThemePreferences
 import dev.opencode.android.core.data.server.ServerDataRegistry
+import dev.opencode.android.core.designsystem.theme.ImportedThemePalette
 import dev.opencode.android.core.designsystem.theme.OpenCodeTheme
 import dev.opencode.android.feature.requests.notifications.NotificationIntents
 import dev.opencode.android.navigation.OpenCodeApp
@@ -47,6 +51,9 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var dataSets: ServerDataRegistry
 
+    @Inject
+    lateinit var themePreferences: ThemePreferences
+
     private var sharedPayload by mutableStateOf<String?>(null)
 
     /** Where a tapped notification should land; the graph consumes it and it stays set. */
@@ -78,7 +85,9 @@ class MainActivity : ComponentActivity() {
         openShortcut = if (savedInstanceState == null) shortcutOf(intent) else null
 
         setContent {
-            OpenCodeTheme {
+            val storedTheme by themePreferences.importedTheme.collectAsStateWithLifecycle(initialValue = null)
+            val importedTheme = remember(storedTheme) { ImportedThemePalette.fromStoredJson(storedTheme) }
+            OpenCodeTheme(importedTheme = importedTheme) {
                 OpenCodeApp(
                     sharedPayload = sharedPayload,
                     openSession = openSession,

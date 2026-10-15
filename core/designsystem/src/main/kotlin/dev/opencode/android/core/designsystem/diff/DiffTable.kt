@@ -67,29 +67,29 @@ data class DiffColors(
         /**
          * The palette from the theme.
          *
-         * The added-row wash is the scheme's tonal container (`primaryContainer`), not a
-         * hard-coded green: a custom or dynamic theme's accent may itself be green, and a fixed
-         * green would clash with it. Annotations use `tertiary` — colouring `@Composable` in
-         * error red read as "this is broken".
+         * Added and removed rows use a subtle theme-accent wash, not a full tonal container: the
+         * brighter syntax colours and gutter must still contrast against the row. A fixed green
+         * would clash with a custom or dynamic theme whose accent may itself be green. Annotations
+         * use `tertiary` — colouring `@Composable` in error red reads as "this is broken".
          */
         @Composable
         fun of(scheme: androidx.compose.material3.ColorScheme = MaterialTheme.colorScheme): DiffColors = DiffColors(
-            added = scheme.primaryContainer,
-            removed = scheme.errorContainer,
+            added = scheme.primary.copy(alpha = 0.12f),
+            removed = scheme.error.copy(alpha = 0.12f),
             context = Color.Transparent,
-            addedStrong = scheme.onPrimaryContainer,
-            removedStrong = scheme.onErrorContainer,
-            hunkHeader = scheme.surfaceContainerHighest,
+            addedStrong = scheme.onSurface,
+            removedStrong = scheme.onSurface,
+            hunkHeader = scheme.surfaceContainerLow,
             keyword = scheme.primary,
             string = scheme.tertiary,
             number = scheme.secondary,
-            comment = scheme.onSurfaceVariant.copy(alpha = 0.7f),
+            comment = scheme.onSurfaceVariant,
             annotation = scheme.tertiary,
             punctuation = scheme.onSurfaceVariant,
             marker = scheme.onSurfaceVariant,
             plain = scheme.onSurface,
-            gutter = scheme.onSurfaceVariant.copy(alpha = 0.7f),
-            selection = scheme.primary.copy(alpha = 0.16f),
+            gutter = scheme.onSurfaceVariant,
+            selection = scheme.primary.copy(alpha = 0.1f),
         )
     }
 }

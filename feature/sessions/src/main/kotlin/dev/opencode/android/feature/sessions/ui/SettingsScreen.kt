@@ -2,6 +2,7 @@ package dev.opencode.android.feature.sessions.ui
 
 import androidx.annotation.StringRes
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -35,23 +36,32 @@ import androidx.compose.material.icons.outlined.SmartToy
 import androidx.compose.material.icons.outlined.SwapHoriz
 import androidx.compose.material.icons.outlined.Terminal
 import androidx.compose.material.icons.outlined.Timeline
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.opencode.android.core.designsystem.component.OpenCodeChip
 import dev.opencode.android.core.designsystem.component.OpenCodeTopAppBar
 import dev.opencode.android.core.designsystem.theme.OpenCodeThemeExtras
+import dev.opencode.android.core.designsystem.theme.openCodeBaseColorScheme
 import dev.opencode.android.core.model.Project
 import dev.opencode.android.feature.sessions.R
 
@@ -153,6 +163,12 @@ fun SettingsScreen(
     state: SettingsUiState,
     onSelectProject: (String) -> Unit,
     onOpen: (ManageDestination) -> Unit,
+    themeImport: ThemeImportUiState = ThemeImportUiState(),
+    onThemePathChange: (String) -> Unit = {},
+    onPreviewTheme: () -> Unit = {},
+    onApplyTheme: () -> Unit = {},
+    onDiscardThemePreview: () -> Unit = {},
+    onResetTheme: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val spacing = OpenCodeThemeExtras.spacing
@@ -171,6 +187,16 @@ fun SettingsScreen(
         ) {
             item(key = "project") {
                 ProjectScope(state, onSelectProject)
+            }
+            item(key = "theme-import") {
+                ThemeImportCard(
+                    state = themeImport,
+                    onPathChange = onThemePathChange,
+                    onPreview = onPreviewTheme,
+                    onApply = onApplyTheme,
+                    onDiscard = onDiscardThemePreview,
+                    onReset = onResetTheme,
+                )
             }
             SettingsSection.entries.forEach { section ->
                 item(key = "section-${section.name}") {
@@ -273,4 +299,169 @@ private fun SettingsRow(destination: ManageDestination, enabled: Boolean, onClic
             tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = alpha),
         )
     }
+}
+
+@Composable
+private fun ThemeImportCard(
+    state: ThemeImportUiState,
+    onPathChange: (String) -> Unit,
+    onPreview: () -> Unit,
+    onApply: () -> Unit,
+    onDiscard: () -> Unit,
+    onReset: () -> Unit,
+) {
+    val spacing = OpenCodeThemeExtras.spacing
+    val isDark = isSystemInDarkTheme()
+    Card(modifier = Modifier.fillMaxWidth().padding(horizontal = spacing.md, vertical = spacing.sm)) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(spacing.md),
+            verticalArrangement = Arrangement.spacedBy(spacing.sm),
+        ) {
+            Text(
+                text = stringResource(R.string.settings_theme_import_title),
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.semantics { heading() },
+            )
+            Text(
+                text = stringResource(R.string.settings_theme_import_body),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            OutlinedTextField(
+                value = state.path,
+                onValueChange = onPathChange,
+                label = { Text(stringResource(R.string.settings_theme_file_path)) },
+                placeholder = { Text(stringResource(R.string.settings_theme_path_example)) },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Button(
+                onClick = onPreview,
+                enabled = state.path.isNotBlank() && !state.isReading,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                if (state.isReading) {
+                    CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                    Spacer(Modifier.size(spacing.sm))
+                    Text(stringResource(R.string.settings_theme_reading))
+                } else {
+                    Text(stringResource(R.string.settings_theme_preview_action))
+                }
+            }
+            state.appliedThemeName?.let { appliedName ->
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = stringResource(R.string.settings_theme_current, appliedName),
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.weight(1f),
+                    )
+                    TextButton(onClick = onReset) { Text(stringResource(R.string.settings_theme_reset)) }
+                }
+            }
+            state.problem?.let { problem ->
+                Text(
+                    text = themeImportProblemText(problem, state.details),
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+                )
+            }
+            state.preview?.let { preview ->
+                Text(
+                    text = stringResource(R.string.settings_theme_preview_title, preview.name),
+                    style = MaterialTheme.typography.titleSmall,
+                )
+                val scheme = preview.colorScheme(isDark, openCodeBaseColorScheme(isDark))
+                MaterialTheme(colorScheme = scheme) {
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        color = scheme.surface,
+                        contentColor = scheme.onSurface,
+                        shape = MaterialTheme.shapes.medium,
+                        tonalElevation = 1.dp,
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(spacing.md),
+                            horizontalArrangement = Arrangement.spacedBy(spacing.md),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(stringResource(R.string.settings_theme_sample_text), color = scheme.onSurface)
+                            Surface(
+                                color = scheme.primary,
+                                contentColor = scheme.onPrimary,
+                                shape = MaterialTheme.shapes.small,
+                            ) {
+                                Text(
+                                    stringResource(R.string.settings_theme_sample_action),
+                                    modifier = Modifier.padding(horizontal = spacing.md, vertical = spacing.sm),
+                                )
+                            }
+                        }
+                    }
+                }
+                if (preview.unsupportedTokenCount > 0) {
+                    Text(
+                        text = stringResource(R.string.settings_theme_unsupported, preview.unsupportedTokenCount),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    preview.unsupportedTokens.forEach { token ->
+                        Text(
+                            text = token,
+                            style = OpenCodeThemeExtras.code.small,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    if (preview.unsupportedTokenCount > preview.unsupportedTokens.size) {
+                        Text(
+                            text = stringResource(
+                                R.string.settings_theme_unsupported_more,
+                                preview.unsupportedTokenCount - preview.unsupportedTokens.size,
+                            ),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(spacing.sm)) {
+                    Button(onClick = onApply, modifier = Modifier.weight(1f)) {
+                        Text(
+                            if (state.appliedThemeName == preview.name) {
+                                stringResource(R.string.settings_theme_applied)
+                            } else {
+                                stringResource(R.string.settings_theme_apply)
+                            },
+                        )
+                    }
+                    TextButton(onClick = onDiscard) { Text(stringResource(R.string.settings_theme_discard)) }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun themeImportProblemText(problem: ThemeImportProblem, details: List<String>): String = when (problem) {
+    ThemeImportProblem.PROJECT_REQUIRED -> stringResource(R.string.settings_theme_error_project)
+
+    ThemeImportProblem.INVALID_PATH -> stringResource(R.string.settings_theme_error_path)
+
+    ThemeImportProblem.READ_FAILED -> stringResource(R.string.settings_theme_error_read)
+
+    ThemeImportProblem.NOT_TEXT -> stringResource(R.string.settings_theme_error_not_text)
+
+    ThemeImportProblem.TOO_LARGE -> stringResource(R.string.settings_theme_error_size)
+
+    ThemeImportProblem.MALFORMED_JSON -> stringResource(R.string.settings_theme_error_json)
+
+    ThemeImportProblem.MISSING_BASE -> stringResource(R.string.settings_theme_error_base)
+
+    ThemeImportProblem.MISSING_MODE -> stringResource(R.string.settings_theme_error_mode)
+
+    ThemeImportProblem.LOW_CONTRAST -> stringResource(
+        R.string.settings_theme_error_contrast,
+        details.joinToString(),
+    )
+
+    ThemeImportProblem.SAVE_FAILED -> stringResource(R.string.settings_theme_error_save)
 }
