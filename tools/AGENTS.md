@@ -12,6 +12,8 @@ Node scripts (plus two shell/Python helpers) that encode the repo's executable c
 | `audit-coverage.mjs` | Plan §7/§8 coverage: every API row declared + wired + tested, every event type registered |
 | `audit-matrix.mjs` | Every `docs/MANUAL_TEST_MATRIX.md` row has a valid result marker (blank ≠ passed) |
 | `audit-matrix.test.mjs` | Tests for the matrix tool |
+| `audit-screen-flow.mjs` | The embedded thumbnails in `docs/app_screen_flow.html` match the screenshot baselines they name; no duplicate captures; every edge has a matching button |
+| `audit-screen-flow.test.mjs` | Tests for the screen-flow tool |
 | `audit-strings.mjs` | Every user-visible string externalized to `strings.xml` (reports per module) |
 | `audit-viewmodels.mjs` | Every production ViewModel is `@HiltViewModel` and gets the right instance (seven screens crashed without this) |
 | `audit-viewmodels.test.mjs` | Tests for the viewmodel tool |

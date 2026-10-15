@@ -68,10 +68,16 @@ jobs:
             :feature:admin:testDebugUnitTest \
             :feature:insights:testDebugUnitTest \
             -Proborazzi.test.record=true \
-            --tests '*ScreenFlow*'
+            --tests '*ScreenFlow*' \
+            --tests '*ScreenshotTest*'
 
       - name: Update screen flow HTML
         run: node tools/update-screen-flow-shots.mjs
+
+      - name: Verify the embedded thumbnails match their baselines
+        run: |
+          node tools/audit-screen-flow.test.mjs
+          node tools/audit-screen-flow.mjs
 
       - name: Commit updated screenshots
         run: |

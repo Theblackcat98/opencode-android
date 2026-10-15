@@ -312,7 +312,7 @@ rather than globally.
 | [`CHANGELOG.md`](./CHANGELOG.md) | What changed, in the order a user would notice it. Bundled into the app's Changelog screen |
 | [`design.md`](./design.md) | The visual language: palette, typography, spacing, components |
 | [`MOTION.md`](./MOTION.md) | The motion language: decisions and their bindings |
-| [`app_screen_flow.html`](./app_screen_flow.html) | A generated screen-flow page built from the Roborazzi screenshot baselines |
+| [`app_screen_flow.html`](./app_screen_flow.html) | A generated screen-flow page built from the Roborazzi screenshot baselines (its thumbnails are checked against them by `tools/audit-screen-flow.mjs`) |
 
 Root [`AGENTS.md`](../AGENTS.md) is the working guide for agents and contributors: module layout, the two
 verification tiers, and the conventions that differ from the defaults.
