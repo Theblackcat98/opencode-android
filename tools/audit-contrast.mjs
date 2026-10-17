@@ -107,6 +107,15 @@ export const NOT_COMPUTED = [
   },
 ]
 
+/** Theme colours are not a static source palette; the importer checks each normalized pair before preview/apply. */
+export const RUNTIME_VALIDATION = [
+  {
+    area: 'OpenCode V2 imported themes',
+    rule: 'OpenCodeThemeImporter rejects supported text pairs below 4.5:1 and imported outlines below 3:1 before preview or apply.',
+    tests: 'OpenCodeThemeImporterTest covers contrasting light/dark themes, raised surfaces, and low-contrast rejection.',
+  },
+]
+
 // Colour arithmetic
 
 /** `0xAARRGGBB`, or `0xRRGGBB` which is opaque, as channels in 0..1. */
@@ -372,6 +381,7 @@ export function run(root = ROOT) {
     pairs: out.pairs,
     unmeasured: out.unmeasured,
     notComputed: NOT_COMPUTED,
+    runtimeValidated: RUNTIME_VALIDATION,
   }
 }
 
@@ -405,6 +415,10 @@ function printReport(report) {
   }
   console.log('\nNot computed:')
   for (const n of report.notComputed) console.log(`  ${n.area}. ${n.reason}`)
+  console.log('\nRuntime-validated:')
+  for (const validation of report.runtimeValidated ?? []) {
+    console.log(`  ${validation.area}. ${validation.rule} ${validation.tests}`)
+  }
 }
 
 /** The failures --strict refuses to ship: unreadable text, an unreadable component, or a gap in the measurement. */

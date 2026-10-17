@@ -143,11 +143,11 @@ regression.
 - This changelog, in the app: the Changelog action in the Servers screen's top bar shows the file this build was
   made from, so the notes a build carries are the ones in the repository.
 - CI checks for the coverage matrices, for the generated event corpus, and for externalized strings.
+- **OpenCode theme import.** OpenCode V2 theme token mapping (`themes/*.json`) onto Material 3 `ColorScheme` in Settings. Supported surfaces, text, actions, and borders are mapped with dynamic contrast validation (rejecting text pairs below 4.5:1 and outline components below 3:1), and validated palettes are persisted in `ThemePreferences` DataStore.
 - Documented: a [security, privacy and accessibility review](./REVIEWS.md), a [coverage audit](./COVERAGE.md), a
   [manual test matrix](./MANUAL_TEST_MATRIX.md) and a [release runbook](./RELEASE.md).
 
-**Not built:** the OpenCode theme import. The phase plan lists all
-of them; this changelog does not claim them. The session list beside a session is built for wide windows (see Added) and was seen on an emulator window override, not on a tablet. The home-screen widget was placed on the emulator's launcher and its counts were seen (matrix J8). The LAN prober was run on the emulator (matrix B7, B8), not on a real network.
+**Not built:** The session list beside a session is built for wide windows (see Added) and was seen on an emulator window override, not on a tablet. The home-screen widget was placed on the emulator's launcher and its counts were seen (matrix J8). The LAN prober was run on the emulator (matrix B7, B8), not on a real network.
 
 ### Changed
 

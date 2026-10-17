@@ -397,11 +397,12 @@ still break at 2.0× in a real layout, because a screenshot does not reflow a sc
 
 The fallback colour pairs, including the code palette, are computed by `tools/audit-contrast.mjs`.
 The results, and what they do not cover, are in [Computed contrast ratios](#computed-contrast-ratios)
-at the end of this document. Two parts need more than a source read:
+at the end of this document. Two parts need more than a static build-time matrix:
 
 - dynamic colour, which has no static value and is on by default on Android 12 and later;
-- the OpenCode theme import, which the plan describes but the sources do not contain, so there is
-  nothing to compute yet.
+- the OpenCode theme import, which is parsed and validated dynamically at import/preview time by
+  `OpenCodeThemeImporter` (enforcing WCAG 4.5:1 for text tokens and 3:1 for component outlines, with safe
+  fallback to the baseline scheme).
 
 **What a human must do:** check the dynamic colour schemes on a device. The source cannot give them a
 value, and nothing in the repository measures them.
@@ -580,8 +581,9 @@ below 4.5:1 and `**` is below 3:1. Ratios are to two decimals.
 - **Camera-unavailable message.** `QrCodeScannerView` draws `Color.White` text over a `Color.Black` box.
   A camera view sits in the same box, and what it shows after a failed bind is not in the source, so
   this pair is not computed.
-- **OpenCode theme import.** The plan describes it, and the sources do not contain it, so no sample
-  theme was computed.
+- **OpenCode theme import.** Imported at runtime from `themes/*.json` and validated dynamically
+  by `OpenCodeThemeImporter` against WCAG 4.5:1 (text) and 3:1 (outline) contrast ratios; tokens
+  that fail contrast checks fall back safely to Material 3 baseline values.
 - **File viewer text.** `TextFileView` sets no colour on its text, so it takes the content colour of a
   host `Surface` that the file does not show. The script assumes `onSurface` for that host, so that
   pair is an assumption and not a reading.

@@ -14,7 +14,7 @@ Everything a release needs, what the build has been checked against, and an hone
 | The Play Console track progression | **Not run.** No account, no upload. |
 | GitHub Releases | **Not published.** No release was cut. |
 | The manual test matrix | **Partly run.** One API 36 phone emulator: the fdroid debug build throughout, the play debug build for A3 and M3, against a disposable 2.0.18 dev server and a real 2.0.20 server (read-only), plus one self-signed HTTPS endpoint (B5, B6). No physical device, no second device, no tablet, no older Android, no TalkBack, no release build. Several rows fail (B10, J1–J6, J9, J11–J13) or are n/a. `MANUAL_TEST_MATRIX.md` has the result of every row. |
-| The Phase 10 screens | **Partly built.** The usage dashboard (with its project row), Quick ask, the RPC console, the session event history, synthetic notes and wait-until-idle are reachable and were exercised on the emulator (H1–H3, H5, H8–H10). The widget (J8) and session tabs (J7) were seen on the emulator; the tile (J9) and the home/bottom-bar/session screens (J11–J13) are unexercised; the wide-window layout (J1–J3) needs a tablet or a resizable window. The OpenCode theme import is not built. See `CHANGELOG.md` and item 5 below. |
+| The Phase 10 screens | **Partly built.** The usage dashboard (with its project row), Quick ask, the RPC console, the session event history, synthetic notes and wait-until-idle are reachable and were exercised on the emulator (H1–H3, H5, H8–H10). The widget (J8) and session tabs (J7) were seen on the emulator; the tile (J9) and the home/bottom-bar/session screens (J11–J13) are unexercised; the wide-window layout (J1–J3) needs a tablet or a resizable window. The OpenCode theme import is built (with token parsing, contrast validation and DataStore persistence) and unexercised on a device. See `CHANGELOG.md` and item 5 below. |
 | Version | `0.1.0`, `versionCode` 1 |
 
 **No signed artifact exists.** That is the accurate statement, and nothing in this repository claims
@@ -242,7 +242,8 @@ common and expensive surprise.
 2. Produce a signed artifact from real signing material.
 3. Run the Play Console track progression: internal, then closed, then production.
 4. Publish the GitHub release.
-5. Build the one Phase 10 screen that is still missing: the **OpenCode theme import**. The project row
+5. Exercise the Phase 10 features on a device: the **OpenCode theme import** is built with token
+   parsing, contrast validation and DataStore persistence, and needs a device run; the project row
    on the usage dashboard is built and was seen re-querying (H2); the session list beside a session on
    a wide window is built and unit tested, and needs a tablet or resizable-window run (J1–J3); the LAN
    prober was run on the emulator (B7, B8) and still needs a real-network check.

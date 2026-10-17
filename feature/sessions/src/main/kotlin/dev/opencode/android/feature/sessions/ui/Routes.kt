@@ -68,6 +68,7 @@ fun SettingsRoute(
     home: HomeViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val themeImport by viewModel.themeImportState.collectAsStateWithLifecycle()
     val serverName by home.serverName.collectAsStateWithLifecycle()
 
     LaunchedEffect(serverId) { home.select(serverId) }
@@ -76,6 +77,12 @@ fun SettingsRoute(
         state = state.copy(serverName = serverName),
         onSelectProject = viewModel::selectProject,
         onOpen = { destination -> onOpen(destination, state.selectedProject?.canonical) },
+        themeImport = themeImport,
+        onThemePathChange = viewModel::setThemePath,
+        onPreviewTheme = viewModel::previewTheme,
+        onApplyTheme = viewModel::applyThemePreview,
+        onDiscardThemePreview = viewModel::discardThemePreview,
+        onResetTheme = viewModel::resetImportedTheme,
         modifier = modifier,
     )
 }

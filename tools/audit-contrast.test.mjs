@@ -132,6 +132,7 @@ test("the repository's sources measure every pair, with nothing unmeasured", () 
   const root = fileURLToPath(new URL("..", import.meta.url))
   const report = run(root)
   assert.deepEqual(report.unmeasured, [])
+  assert.ok(report.runtimeValidated.some((check) => check.area === "OpenCode V2 imported themes"))
   for (const scheme of ["light", "dark"]) {
     const rows = report.pairs.filter((p) => p.scheme === scheme)
     assert.ok(rows.length > 60, `${scheme}: only ${rows.length} pairs measured`)
