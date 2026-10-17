@@ -550,6 +550,7 @@ private fun NavHostController.openShortcutDestination(destination: ShortcutDesti
     val route: Any = when (destination) {
         ShortcutDestination.SERVERS -> ServersRoute
         ShortcutDestination.NEW_SESSION -> HomeRoute(openNewSession = true)
+        ShortcutDestination.INBOX -> PendingRequestsRoute()
     }
     navigate(route) {
         popUpTo(ServersRoute) { inclusive = false }

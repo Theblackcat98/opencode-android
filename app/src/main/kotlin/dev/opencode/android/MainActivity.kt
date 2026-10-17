@@ -160,17 +160,19 @@ data class OpenSessionTarget(
 object LauncherShortcuts {
     const val ACTION_SERVERS: String = "dev.opencode.android.action.SHORTCUT_SERVERS"
     const val ACTION_NEW_SESSION: String = "dev.opencode.android.action.SHORTCUT_NEW_SESSION"
+    const val ACTION_INBOX: String = "dev.opencode.android.action.SHORTCUT_INBOX"
 
     /** The target for a shortcut's action, or `null` for any other action. */
     fun targetOf(action: String?): OpenShortcutTarget? = when (action) {
         ACTION_SERVERS -> OpenShortcutTarget(ShortcutDestination.SERVERS)
         ACTION_NEW_SESSION -> OpenShortcutTarget(ShortcutDestination.NEW_SESSION)
+        ACTION_INBOX -> OpenShortcutTarget(ShortcutDestination.INBOX)
         else -> null
     }
 }
 
 /** Where a tapped launcher shortcut lands. */
-enum class ShortcutDestination { SERVERS, NEW_SESSION }
+enum class ShortcutDestination { SERVERS, NEW_SESSION, INBOX }
 
 /**
  * What a tapped launcher shortcut asks the navigation graph to show.

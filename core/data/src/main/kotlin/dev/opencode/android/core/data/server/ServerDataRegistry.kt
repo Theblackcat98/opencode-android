@@ -3,6 +3,7 @@ package dev.opencode.android.core.data.server
 import dev.opencode.android.core.data.config.ConfigSchema
 import dev.opencode.android.core.data.connection.ServerConnection
 import dev.opencode.android.core.data.connection.ServerConnectionManager
+import dev.opencode.android.core.data.preferences.ProjectPreferences
 import dev.opencode.android.core.data.repository.ServerProfile
 import dev.opencode.android.core.data.repository.ServerRepository
 import dev.opencode.android.core.database.cache.ReadCacheStore
@@ -39,6 +40,7 @@ class ServerDataRegistry @Inject constructor(
     private val cache: ReadCacheStore,
     private val selfCheck: TimelineSelfCheck,
     private val schema: ConfigSchema,
+    private val projectPreferences: ProjectPreferences? = null,
 ) {
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val sets = LinkedHashMap<String, ServerDataSet>()
@@ -129,10 +131,18 @@ class ServerDataRegistry @Inject constructor(
         if (bindings[set.serverId]?.connection === connection) return
         bindings.remove(set.serverId)?.jobs?.forEach { it.cancel() }
         val dispatcher = EventDispatcher(appScope)
-        val jobs = listOf(
+        val followJob = projectPreferences?.let { prefs ->
+            appScope.launch {
+                prefs.followDesktop(set.serverId).collect { enabled ->
+                    set.tui.setFollowDesktop(enabled)
+                }
+            }
+        }
+        val jobs = listOfNotNull(
             appScope.launch { dispatcher.batches.collect { batch -> batch.forEach(set::apply) } },
             appScope.launch { connection.events.collect { event -> dispatcher.submit(event) } },
             appScope.launch { connection.resyncSignal.collect { set.resync() } },
+            followJob,
         )
         bindings[set.serverId] = Binding(connection, jobs)
     }

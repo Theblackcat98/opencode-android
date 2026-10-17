@@ -7,6 +7,10 @@
     <string name="shortcut_servers_long">Servers</string>
     <string name="shortcut_new_session_short">New session</string>
     <string name="shortcut_new_session_long">New session</string>
+    <string name="shortcut_inbox_short">Inbox</string>
+    <string name="shortcut_inbox_long">Pending requests inbox</string>
+    <string name="shortcut_inbox_short_label">Inbox</string>
+    <string name="shortcut_inbox_long_label">Pending requests inbox</string>
 
     <!-- A TUI command, shown as a message and never performed (navigation/TuiCommands.kt). %1$s is the command name the server sent. -->
     <string name="tui_command_unknown">The TUI asked for: %1$s</string>
