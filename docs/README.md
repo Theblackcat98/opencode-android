@@ -220,9 +220,10 @@ The phase-by-phase scope is §6 of the plan; the order a user notices changes in
 - Adaptive UI: a session list beside the session on windows at least 840 dp wide, session tabs, a Ctrl+P
   command palette, leader-key combinations, a home-screen widget, a Quick Settings tile, and launcher
   shortcuts.
+- OpenCode theme import: read `themes/*.json` from project or global paths and map V2 tokens onto a
+  Material color scheme with dynamic contrast validation and DataStore persistence.
 
-**Not built yet.** The OpenCode theme import (read `themes/*.json` and map V2 tokens onto a Material colour
-scheme), an Inbox launcher shortcut, and the release steps in [`RELEASE.md`](./RELEASE.md). They are tracked
+**Not built yet.** The release steps in [`RELEASE.md`](./RELEASE.md). They are tracked
 in GitHub issues.
 
 ## Build and test

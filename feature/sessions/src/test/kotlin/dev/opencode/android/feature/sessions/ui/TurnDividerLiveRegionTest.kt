@@ -84,7 +84,6 @@ class TurnDividerLiveRegionTest {
                     messages = messages,
                     loadingOlder = false,
                     hasMore = false,
-                    following = false,
                     onLoadOlder = {},
                     sessionRunning = sessionRunning,
                 )

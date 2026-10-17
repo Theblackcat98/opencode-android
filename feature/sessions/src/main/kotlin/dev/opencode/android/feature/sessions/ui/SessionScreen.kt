@@ -199,7 +199,6 @@ fun SessionScreen(
                 messages = state.messages,
                 loadingOlder = state.paging.loading,
                 hasMore = state.paging.hasMore,
-                following = state.following,
                 onLoadOlder = onLoadOlder,
                 listState = listState,
                 contentPadding = PaddingValues(horizontal = spacing.lg, vertical = spacing.md),

@@ -132,8 +132,31 @@ test("the repository's sources measure every pair, with nothing unmeasured", () 
   const root = fileURLToPath(new URL("..", import.meta.url))
   const report = run(root)
   assert.deepEqual(report.unmeasured, [])
+  assert.ok(report.runtimeValidated.some((check) => check.area === "OpenCode V2 imported themes"))
   for (const scheme of ["light", "dark"]) {
     const rows = report.pairs.filter((p) => p.scheme === scheme)
     assert.ok(rows.length > 60, `${scheme}: only ${rows.length} pairs measured`)
   }
+})
+
+test("a pair that carries no text is judged by the component floor alone", () => {
+  const root = fileURLToPath(new URL("..", import.meta.url))
+  const outline = run(root).pairs.find((p) => p.pair === "outline / surface")
+  // The disconnected-server dot: outline on surface is below 4.5:1 and that is fine, because no
+  // text is ever drawn in that pair. It must still clear the 3:1 component floor.
+  assert.ok(outline.componentOnly, "outline/surface should be marked component-only")
+  assert.ok(outline.ratio < 4.5, "this fixture pair should sit below the text floor to prove the point")
+  assert.equal(outline.text, true, "a component-only pair is not held to the text floor")
+  assert.ok(outline.uiOrLarge, "a component-only pair is still held to 3:1")
+})
+
+test("the repository's pairs meet the WCAG floors, as --strict demands", () => {
+  const root = fileURLToPath(new URL("..", import.meta.url))
+  const report = run(root)
+  const failures = report.pairs.filter((p) => (!p.componentOnly && !p.text) || !p.uiOrLarge)
+  assert.deepEqual(
+    failures.map((p) => `${p.scheme}: ${p.pair} ${p.ratio.toFixed(2)}:1`),
+    [],
+    "a colour regressed below 4.5:1 as text or 3:1 as a component",
+  )
 })

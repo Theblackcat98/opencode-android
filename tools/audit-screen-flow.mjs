@@ -19,8 +19,7 @@
  *   3. No two nodes embed the same capture (pairwise NCC below DUPLICATE_NCC, 0.98) and no two nodes
  *      reference the same file.
  *   4. Every edge matches a button on its source node and targets a known node, every button has an
- *      edge, and no edge is duplicated. A card no edge leads to is a warning, not a failure: the
- *      canvas may legitimately float one (`pair_device` is reached from Settings, which has no card).
+ *      edge, and no edge is duplicated. A card no edge leads to is a warning, not a failure.
  *
  * Checks 1, 3 (path and hash) and 4 need only Node. The pixel checks (2 and the duplicate half of 3)
  * run when ImageMagick is installed (`magick` or `convert`) and are skipped with a notice otherwise.

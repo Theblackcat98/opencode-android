@@ -64,4 +64,16 @@ class HomeStateTest {
         assertEquals(ChatTarget.Loading, chatTarget(null, emptyList(), loaded = false))
         assertEquals(ChatTarget.Empty, chatTarget(null, emptyList(), loaded = true))
     }
+
+    @Test
+    fun settingsDestinationsIncludesPairDeviceWhenAvailable() {
+        val destinations = settingsDestinations(SettingsSection.SERVER, isPairingAvailable = true)
+        assertTrue(destinations.contains(ManageDestination.PAIR_DEVICE))
+    }
+
+    @Test
+    fun settingsDestinationsOmitsPairDeviceWhenUnavailable() {
+        val destinations = settingsDestinations(SettingsSection.SERVER, isPairingAvailable = false)
+        assertTrue(!destinations.contains(ManageDestination.PAIR_DEVICE))
+    }
 }

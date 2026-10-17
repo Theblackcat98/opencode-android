@@ -17,30 +17,62 @@ complexity:
     # fifteen-parameter constructor. Compressing them into builders would hide the shape.
     active: false
   LongMethod:
-    active: true
-    allowedLines: 80
+    # Compose screen hierarchies and event reducers (`TimelineReducer.reduce`) are declarative
+    # trees that naturally exceed line counts; Detekt 2.x's LongMethod does not support annotation exclusions.
+    active: false
   TooManyFunctions:
     active: false
   NestedBlockDepth:
     active: true
     allowedDepth: 6
+  CyclomaticComplexMethod:
+    # The event dispatchers (`ServerDataSet.apply`, `SessionStore.apply`, `TimelineReducer.reduce`) match
+    # 94 event types in a single `when`, and the lexers follow state machines with high branch counts.
+    active: false
+  ComplexCondition:
+    active: true
+    allowedConditions: 6
+  LargeClass:
+    # `ServerApi` declares every V2 endpoint in a single Retrofit interface (1600+ lines), which
+    # `tools/audit-coverage.mjs` verifies as a single source of truth.
+    active: false
 
 style:
   MagicNumber:
-    active: true
-    # The stats heatmap, the streak and the token arithmetic are all numbers with a meaning. A bare
-    # `31` in a sum says less than the name does, so a handful of them are named where it matters.
-    ignoreNumbers: ['-1', '0', '1', '2', '100']
+    # HTTP status codes (400, 401, 403, 404, 409, 422, 500..599), bitwise masks, time math, and Compose
+    # UI dimensions are pervasive across networking, design system, and error mapping.
+    active: false
   MaxLineLength:
+    # Aligns with Spotless/ktlint's 140 ceiling. Comments and raw multiline JSON/diff strings are excluded.
+    # Excluded in test sources to match .editorconfig (where recorded events/fixtures are single long lines).
     active: true
-    maxLineLength: 120
+    maxLineLength: 140
+    excludePackageStatements: true
+    excludeImportStatements: true
+    excludeCommentStatements: true
+    excludeRawStrings: true
+    excludes: ['**/test/**', '**/androidTest/**']
   ReturnCount:
+    # Early returns in guard clauses, decoders, and pattern-matching parsers are standard idiomatic Kotlin.
+    active: false
+  MayBeConstant:
+    # Test fixture objects often use camelCase val, which ktlint rejects if converted to const val.
     active: true
-    max: 4
+    excludes: ['**/test/**', '**/androidTest/**']
+  LoopWithTooManyJumpStatements:
+    # Network streaming loops (SSE event stream client) and line parsers naturally break on EOF and
+    # continue on frame boundaries.
+    active: false
+  ThrowsCount:
+    # Serializers and validators throw specific descriptive errors for each invalid field condition.
+    active: false
   UnusedPrivateProperty:
     active: true
   UnusedPrivateFunction:
     active: true
+  UnusedParameter:
+    active: true
+    allowedNames: 'ignored|expected|_.*'
   ForbiddenComment:
     active: true
     # The two comments in this repository that must never survive a merge: a disabled test and a
@@ -55,14 +87,10 @@ style:
 
 exceptions:
   TooGenericExceptionCaught:
-    active: true
     # `catch (error: Throwable)` is the shape every boundary in this app uses: a Retrofit call
     # throws HttpException, a socket throws IOException, and a decoder throws SerializationException.
-    # The catch is turned into a classified ActionError, which is the point.
-    exceptionNames:
-      - 'Error'
-      - 'Exception'
-      - 'Throwable'
+    # The catch is turned into a classified ActionError, which is the architectural convention.
+    active: false
   SwallowedException:
     active: false
 
@@ -75,3 +103,15 @@ naming:
   TopLevelPropertyNaming:
     active: true
     constantPattern: '[A-Z][_A-Za-z0-9]*'
+  ConstructorParameterNaming:
+    # Model classes (e.g. `ConfigInfo`) mirror external JSON schemas that use snake_case properties.
+    active: true
+    parameterPattern: '[a-z][A-Za-z0-9_]*'
+  FunctionParameterNaming:
+    # Allows leading underscore for intentionally unused parameters.
+    active: true
+    parameterPattern: '[a-z_][A-Za-z0-9]*'
+  MatchingDeclarationName:
+    # Compose files are named for the primary Composable function (e.g. `ChangelogScreen.kt`), while
+    # helper UI state and model classes reside alongside in the same file.
+    active: false

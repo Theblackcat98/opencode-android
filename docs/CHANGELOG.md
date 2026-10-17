@@ -68,7 +68,7 @@ left to do.
   from the server's data set and re-queries on each choice, and the chips are 48 dp targets. Seen on the emulator: the
   project chips changed the numbers (matrix H2); the date-range chips were not seen to change them, because every
   session on that server was within the last week.
-- Static launcher shortcuts for Servers and New session, opened by an intent action in `MainActivity`; checked by firing the actions, not by tapping the launcher.
+- Static launcher shortcuts for Servers, New session and Inbox, opened by an intent action in `MainActivity`; checked by firing the actions, not by tapping the launcher.
 - A Quick Settings tile that starts and stops the connection service (matrix J9). It is lit while the service runs, and a tap starts or stops it through the same launcher as the app. The tile's state and the policy behind its taps are unit tested; the tile was not seen in the shade or tapped on a device.
 - A home-screen widget (matrix J8) showing "N waiting for you" and "N running", with the connection notification's two counts. At zero it reads "Nothing running or waiting"; with no live stream it asks the user to open the app rather than showing a count nothing refreshes. A tap opens the app. It is an `AppWidgetProvider` drawn from `RemoteViews`, with no new dependency. Counts are pushed on every change from the presence signals, and the widget has a 30-minute period. The policy and the inflated layout are unit tested; the widget was later placed on the emulator's launcher, where its counts changed with requests and running sessions (matrix J8).
 - Session tabs (matrix J7): a strip under the session's top bar, drawn with two or more tabs, lists the sessions opened in this app run for the active server, oldest first and at most eight, with the one on screen selected. A tap on another tab replaces the session on screen with it, and its close button removes the tab; closing the tab on screen opens its neighbour, or goes to the server's home when it was the last. Opening a listed session does not move it. The list is saved with the screen's state, so a rotation should keep it; the saver is unit tested and a rotation was not run. The rules are unit tested and the strip's labels, selected state and 48dp targets are Robolectric tested. Seen on the emulator: tabs opened, switched and closed, rotation kept them and the cap of eight held (matrix J7).
@@ -122,8 +122,8 @@ run", with the name verbatim when this build does not know it, and no command is
 a command that would change server state stays a message, and so does a safe one, because no mapping to an
 app action exists yet. An opt-in "follow desktop" switch, in the session menu and off by default, opens on
 the phone the session the TUI selects while it is on, and turning it off stops that at once. All of it is
-built and unit tested, and none of it has been seen working with a real TUI. **Not built:** the switch is not
-saved, so it is off again after the app restarts, and no TUI command is performed.
+built and unit tested, and none of it has been seen working with a real TUI. The follow-desktop switch is
+persisted in `ProjectPreferences` across app restarts. **Not built:** no TUI command is performed.
 
 **TUI prompt text** (`tui.prompt.append`) is added to the end of the open session's draft while follow-desktop
 is on. Built and unit tested, and not seen with a real TUI.
@@ -143,11 +143,11 @@ regression.
 - This changelog, in the app: the Changelog action in the Servers screen's top bar shows the file this build was
   made from, so the notes a build carries are the ones in the repository.
 - CI checks for the coverage matrices, for the generated event corpus, and for externalized strings.
+- **OpenCode theme import.** OpenCode V2 theme token mapping (`themes/*.json`) onto Material 3 `ColorScheme` in Settings. Supported surfaces, text, actions, and borders are mapped with dynamic contrast validation (rejecting text pairs below 4.5:1 and outline components below 3:1), and validated palettes are persisted in `ThemePreferences` DataStore.
 - Documented: a [security, privacy and accessibility review](./REVIEWS.md), a [coverage audit](./COVERAGE.md), a
   [manual test matrix](./MANUAL_TEST_MATRIX.md) and a [release runbook](./RELEASE.md).
 
-**Not built:** the Inbox shortcut and the OpenCode theme import. The phase plan lists all
-of them; this changelog does not claim them. The session list beside a session is built for wide windows (see Added) and was seen on an emulator window override, not on a tablet. The home-screen widget was placed on the emulator's launcher and its counts were seen (matrix J8). The LAN prober was run on the emulator (matrix B7, B8), not on a real network.
+**Not built:** The session list beside a session is built for wide windows (see Added) and was seen on an emulator window override, not on a tablet. The home-screen widget was placed on the emulator's launcher and its counts were seen (matrix J8). The LAN prober was run on the emulator (matrix B7, B8), not on a real network.
 
 ### Changed
 
@@ -173,8 +173,16 @@ of them; this changelog does not claim them. The session list beside a session i
   panel never rendered its error, so a refused create looked like nothing had happened. The server's
   `WorktreeError` body has a `name` and no `_tag`, so it decoded as "Unknown error" and the server's reason
   was lost. Now the reason is shown with a dismiss action, and the three draft fields are kept on a refusal
-  and cleared only when the server accepts the create. The branch, ref and name fields are not renamed
-  (that is still open).
+  and cleared only when the server accepts the create.
+
+- **The worktree form asked for the wrong things in two of its three fields (issue #7, matrix F5).** The
+  server's `from` is the absolute path of a worktree the project already has — never a ref — and its
+  `branch` is an existing ref, checked out detached (`git worktree add --detach`), so no branch is ever
+  created. The form said "Branch from (ref)" and "Branch name", and a user who filled them the way the
+  labels asked got `400 Worktree directory unavailable` or `fatal: invalid reference`. The fields are now
+  "Source directory" and "Existing ref", each with help text that says what the server does; `WorktreeCreateRequest`'s
+  documentation and the features doc §29 say the same. Verified against the 2.0.18 server source; not re-run
+  on a device.
 
 Found by driving the app against a live server on an emulator, which no test had done:
 

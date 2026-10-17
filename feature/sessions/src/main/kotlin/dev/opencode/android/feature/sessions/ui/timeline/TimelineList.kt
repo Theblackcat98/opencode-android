@@ -89,7 +89,6 @@ fun TimelineList(
     messages: List<SessionMessage>,
     loadingOlder: Boolean,
     hasMore: Boolean,
-    following: Boolean,
     onLoadOlder: () -> Unit,
     modifier: Modifier = Modifier,
     listState: LazyListState = rememberLazyListState(),

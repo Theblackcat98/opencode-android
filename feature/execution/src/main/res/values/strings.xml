@@ -99,9 +99,12 @@
 
     <!-- Worktrees -->
     <string name="worktrees_title">Worktrees</string>
-    <string name="worktrees_from">Branch from (ref)</string>
-    <string name="worktrees_branch">Branch name</string>
+    <string name="worktrees_from">Source directory</string>
+    <string name="worktrees_from_help">Absolute path of a worktree this project already has. The new one is created from it. Leave empty to use the project\'s own checkout.</string>
+    <string name="worktrees_branch">Existing ref</string>
+    <string name="worktrees_branch_help">A ref that already exists, such as main or origin/main. The worktree is checked out detached at it; no branch is created. Leave empty to use HEAD.</string>
     <string name="worktrees_name">Name</string>
+    <string name="worktrees_name_help">Names the worktree\'s directory. The server adds a suffix when the name is taken.</string>
     <string name="worktrees_create">Create a worktree</string>
     <string name="worktrees_create_hint">Creating a worktree runs the project\'s setup script on the server.</string>
     <string name="worktrees_refresh">Rediscover worktrees</string>

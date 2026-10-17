@@ -3,6 +3,7 @@ package dev.opencode.android.core.data.preferences
 import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -43,6 +44,11 @@ interface ProjectPreferences {
     fun settingsProject(serverId: String): Flow<String?>
 
     suspend fun setSettingsProject(serverId: String, projectId: String)
+
+    /** Whether follow-desktop is on for a server, or false by default. */
+    fun followDesktop(serverId: String): Flow<Boolean>
+
+    suspend fun setFollowDesktop(serverId: String, enabled: Boolean)
 }
 
 /** The DataStore-backed store the app uses. */
@@ -83,6 +89,13 @@ class DataStoreProjectPreferences @Inject constructor(
         context.projectPreferences.edit { it[settingsProjectKey(serverId)] = projectId }
     }
 
+    override fun followDesktop(serverId: String): Flow<Boolean> =
+        context.projectPreferences.data.map { it[followDesktopKey(serverId)] ?: false }
+
+    override suspend fun setFollowDesktop(serverId: String, enabled: Boolean) {
+        context.projectPreferences.edit { it[followDesktopKey(serverId)] = enabled }
+    }
+
     private fun String?.toIds(): List<String> = this?.split(SEPARATOR)?.filter { it.isNotBlank() }.orEmpty()
 
     private fun addedKey(serverId: String) = stringPreferencesKey("added.$serverId")
@@ -90,6 +103,8 @@ class DataStoreProjectPreferences @Inject constructor(
     private fun lastSessionKey(serverId: String) = stringPreferencesKey("lastSession.$serverId")
 
     private fun settingsProjectKey(serverId: String) = stringPreferencesKey("settingsProject.$serverId")
+
+    private fun followDesktopKey(serverId: String) = booleanPreferencesKey("followDesktop.$serverId")
 
     private companion object {
         /** Not a character a project id contains. */

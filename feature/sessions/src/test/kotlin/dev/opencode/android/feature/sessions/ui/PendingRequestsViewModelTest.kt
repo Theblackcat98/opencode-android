@@ -4,6 +4,7 @@ import dev.opencode.android.core.data.server.ServerDataSet
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
@@ -11,6 +12,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -90,5 +92,18 @@ class PendingRequestsViewModelTest {
         set.apply(data.sessionCreated("ses_2", parentID = "ses_1"))
 
         assertEquals(1, management.childCount.await("the subagent to be counted") { it == 1 })
+    }
+
+    @Test
+    fun `follow desktop is persisted across view models for the active server`() = runTest {
+        val prefs = FakeProjectPreferences()
+        val management = SessionManagementViewModel(MutableStateFlow(set), prefs)
+        management.setFollowDesktop(true)
+        assertTrue(set.tui.followDesktop.value)
+        assertTrue(prefs.followDesktop(set.serverId).first())
+
+        management.setFollowDesktop(false)
+        assertFalse(set.tui.followDesktop.value)
+        assertFalse(prefs.followDesktop(set.serverId).first())
     }
 }

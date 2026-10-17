@@ -32,13 +32,17 @@ class LauncherShortcutTest {
             ShortcutDestination.NEW_SESSION,
             LauncherShortcuts.targetOf(LauncherShortcuts.ACTION_NEW_SESSION)?.destination,
         )
+        assertEquals(
+            ShortcutDestination.INBOX,
+            LauncherShortcuts.targetOf(LauncherShortcuts.ACTION_INBOX)?.destination,
+        )
         assertNull(LauncherShortcuts.targetOf(null))
         // A notification tap has its own action, and it must not be taken for a shortcut.
         assertNull(LauncherShortcuts.targetOf(NotificationIntents.ACTION_OPEN_SESSION))
     }
 
     @Test
-    fun `the shortcut file declares the two ids, each with the action the activity reads`() {
+    fun `the shortcut file declares the three ids, each with the action the activity reads`() {
         val declared = declarations(shortcuts, "shortcut").associate { shortcut ->
             val intent = declarations(shortcut, "intent").single()
             shortcut.getAttribute("android:shortcutId") to intent.getAttribute("android:action")
@@ -47,6 +51,7 @@ class LauncherShortcutTest {
             mapOf(
                 "servers" to LauncherShortcuts.ACTION_SERVERS,
                 "new_session" to LauncherShortcuts.ACTION_NEW_SESSION,
+                "shortcut_inbox" to LauncherShortcuts.ACTION_INBOX,
             ),
             declared,
         )
@@ -68,7 +73,7 @@ class LauncherShortcutTest {
         val labels = declarations(shortcuts, "shortcut").flatMap { shortcut ->
             listOf("android:shortcutShortLabel", "android:shortcutLongLabel").map { shortcut.getAttribute(it) }
         }
-        assertEquals(4, labels.size)
+        assertEquals(6, labels.size)
         labels.forEach { label ->
             assertTrue("'$label' is not a string resource", label.startsWith("@string/"))
             assertTrue("'$label' is not declared in the app's strings.xml", label.removePrefix("@string/") in names)

@@ -34,4 +34,15 @@
             android:targetClass="dev.opencode.android.MainActivity" />
     </shortcut>
 
+    <shortcut
+        android:shortcutId="shortcut_inbox"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_inbox"
+        android:shortcutShortLabel="@string/shortcut_inbox_short"
+        android:shortcutLongLabel="@string/shortcut_inbox_long">
+        <intent
+            android:action="dev.opencode.android.action.SHORTCUT_INBOX"
+            android:targetClass="dev.opencode.android.MainActivity" />
+    </shortcut>
+
 </shortcuts>

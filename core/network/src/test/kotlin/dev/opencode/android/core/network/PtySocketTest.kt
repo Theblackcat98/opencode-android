@@ -496,7 +496,7 @@ class PtySocketTest {
     private fun socketState(): PtyStreamState? = stateUnderTest?.state?.value
 
     /** Polls a queue on a real deadline, so a regression is a failure rather than a hang. */
-    private suspend fun <T> pollUntil(what: String, poll: () -> T?): T? = withTimeout(5_000) {
+    private suspend fun <T> pollUntil(_what: String, poll: () -> T?): T? = withTimeout(5_000) {
         while (true) {
             poll()?.let { return@withTimeout it }
             Thread.sleep(10)
@@ -506,7 +506,7 @@ class PtySocketTest {
     }
 
     /** Polls a condition on a real deadline and returns the value that satisfied it. */
-    private suspend fun <T> awaitValue(what: String, read: () -> T?): T = withTimeout(10_000) {
+    private suspend fun <T> awaitValue(_what: String, read: () -> T?): T = withTimeout(10_000) {
         while (true) {
             read()?.let { return@withTimeout it }
             Thread.sleep(10)

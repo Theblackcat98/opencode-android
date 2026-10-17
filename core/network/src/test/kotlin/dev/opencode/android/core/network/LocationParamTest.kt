@@ -148,7 +148,7 @@ class LocationParamTest {
     }
 
     private companion object {
-        val SERVER_INFO_JSON =
+        const val SERVER_INFO_JSON =
             """{"version":"2.0.18","pid":1,"urls":["http://box:4096"],"paths":{"tmp":"/tmp"}}"""
     }
 }

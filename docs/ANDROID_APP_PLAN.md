@@ -1982,7 +1982,8 @@ exercised with injected frames rather than a real TUI (I1, I3–I7). The home-sc
 the emulator launcher and its counts changed (J8); session tabs opened, switched and closed (J7); the
 wide-window session list was seen on a 914 dp emulator override, not on a tablet (J1–J3); the Quick
 Settings tile was not exercised (J9); and the leader keys were seen once on the emulator before the guard
-fix and not from a physical keyboard (J5). There is still no OpenCode theme import, and the LAN
+fix and not from a physical keyboard (J5). OpenCode theme import is built (with token parsing, contrast
+validation, and DataStore persistence) and awaiting device exercise, and the LAN
 prober was run on the emulator (B7, B8) but not on a real network. Everything in the feature list above
 that the matrix marks ✗ or n/a remains a capability rather than a device-verified screen, and this
 phase's Status should be read with that distinction in mind: the exit criterion it set is met, and the

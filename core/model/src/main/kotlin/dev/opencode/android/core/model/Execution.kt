@@ -251,10 +251,21 @@ data class WorktreeDirectory(
 /**
  * `POST /api/worktree` (schema `Worktree.create`).
  *
- * Only [projectID] is required; [from] is the ref to branch from, [branch] the branch name,
- * [directory] an explicit path and [name] a name the server turns into one. The client sends the
- * fields the user filled in and omits the rest, so the server's own defaults decide the path.
- * Creating a worktree runs the project's setup script, which is why the confirmation says so.
+ * Only [projectID] is required. The optional fields are what the 2.0.18 server does with them, not
+ * what git's own vocabulary would suggest:
+ *
+ * - [from] is the **absolute path of a worktree the project already has** — the server canonicalizes
+ *   it and refuses a path that is not one (`Worktree directory unavailable: …`); it is never a ref.
+ * - [branch] is an **existing ref**, checked out detached: the server runs
+ *   `git worktree add --detach -- <directory> <ref ?? HEAD>`, so a name that does not already
+ *   resolve is refused (`fatal: invalid reference: …`) and no branch is created.
+ * - [directory] is the **parent** directory for the new worktree; the server's default is the
+ *   project's configuration, then its own data directory.
+ * - [name] names the worktree; the server slugs it and adds a suffix when the name is taken.
+ *
+ * The client sends the fields the user filled in and omits the rest, so the server's own defaults
+ * decide the path. Creating a worktree runs the project's setup script, which is why the
+ * confirmation says so.
  */
 @Serializable
 data class WorktreeCreateRequest(

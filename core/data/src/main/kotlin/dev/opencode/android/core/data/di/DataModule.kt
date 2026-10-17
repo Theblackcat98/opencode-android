@@ -13,9 +13,11 @@ import dev.opencode.android.core.data.composer.DataStoreComposerMemory
 import dev.opencode.android.core.data.preferences.DataStoreExperimentalPreferences
 import dev.opencode.android.core.data.preferences.DataStoreModelPreferences
 import dev.opencode.android.core.data.preferences.DataStoreProjectPreferences
+import dev.opencode.android.core.data.preferences.DataStoreThemePreferences
 import dev.opencode.android.core.data.preferences.ExperimentalPreferences
 import dev.opencode.android.core.data.preferences.ModelPreferences
 import dev.opencode.android.core.data.preferences.ProjectPreferences
+import dev.opencode.android.core.data.preferences.ThemePreferences
 import dev.opencode.android.core.data.repository.DefaultServerRepository
 import dev.opencode.android.core.data.repository.ServerRepository
 import dev.opencode.android.core.data.security.AndroidKeystoreCredentialStore
@@ -89,6 +91,12 @@ object DataModule {
     fun provideProjectPreferences(
         @ApplicationContext context: Context,
     ): ProjectPreferences = DataStoreProjectPreferences(context)
+
+    @Provides
+    @Singleton
+    fun provideThemePreferences(
+        @ApplicationContext context: Context,
+    ): ThemePreferences = DataStoreThemePreferences(context)
 
     /**
      * Mute, quiet hours, the idle grace period and auto-approve (plan §6, Phase 4).

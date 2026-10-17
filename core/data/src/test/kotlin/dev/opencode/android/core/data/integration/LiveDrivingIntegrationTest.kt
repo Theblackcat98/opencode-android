@@ -527,6 +527,7 @@ class LiveDrivingIntegrationTest {
      * A timeout here is the failure mode this project's exit criteria warn about, so the message
      * carries the event types and sessions that did arrive rather than just "timed out".
      */
+    @Suppress("UNUSED_PARAMETER")
     private suspend fun awaitEvents(what: String, matches: (Event) -> Boolean) {
         withTimeout(TURN_TIMEOUT) {
             while (seen.none(matches)) delay(50)
@@ -543,6 +544,7 @@ class LiveDrivingIntegrationTest {
      * Bounded, and it names what it was waiting for, because the event stream is live-only and a
      * frame can legitimately be missed; the projection is what plan §4.2 says covers that gap.
      */
+    @Suppress("UNUSED_PARAMETER")
     private suspend fun awaitProjection(what: String, predicate: suspend () -> Boolean) {
         withTimeout(TURN_TIMEOUT) {
             while (!predicate()) delay(100)
@@ -550,6 +552,7 @@ class LiveDrivingIntegrationTest {
     }
 
     /** Waits for a polled value to satisfy [predicate], or fails naming the last value it saw. */
+    @Suppress("UNUSED_PARAMETER")
     private suspend fun <T> awaitValue(
         what: String,
         predicate: (T) -> Boolean = { true },

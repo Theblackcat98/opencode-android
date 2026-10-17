@@ -88,6 +88,14 @@ class FakeProjectPreferences : ProjectPreferences {
     override suspend fun setSettingsProject(serverId: String, projectId: String) {
         settings.value = settings.value + (serverId to projectId)
     }
+
+    val followDesktopState = MutableStateFlow<Map<String, Boolean>>(emptyMap())
+
+    override fun followDesktop(serverId: String): Flow<Boolean> = followDesktopState.map { it[serverId] ?: false }
+
+    override suspend fun setFollowDesktop(serverId: String, enabled: Boolean) {
+        followDesktopState.value = followDesktopState.value + (serverId to enabled)
+    }
 }
 
 /** A picker that has nothing to hand over: the view model is built with one, and these tests never attach. */

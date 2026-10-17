@@ -23,7 +23,7 @@ object OpenCodePalette {
     // Secondary: Electric Dev Blue
     val Secondary: Color = Color(0xFFA7C8FF)
     val OnSecondary: Color = Color(0xFF003060)
-    val SecondaryContainer: Color = Color(0xFF0361B6)
+    val SecondaryContainer: Color = Color(0xFF02458A)
     val OnSecondaryContainer: Color = Color(0xFFCBDDFF)
     val Blue: Color = Color(0xFFA7C8FF)
     val BlueDeep: Color = Color(0xFF0361B6)
@@ -139,7 +139,7 @@ internal val OpenCodeLightColors: ColorScheme = lightColorScheme(
     onPrimary = Color.White,
     primaryContainer = Color(0xFFFFDBC8),
     onPrimaryContainer = Color(0xFF331200),
-    secondary = Color(0xFF0361B6),
+    secondary = Color(0xFF04549F),
     onSecondary = Color.White,
     secondaryContainer = Color(0xFFD5E3FF),
     onSecondaryContainer = Color(0xFF001B3C),

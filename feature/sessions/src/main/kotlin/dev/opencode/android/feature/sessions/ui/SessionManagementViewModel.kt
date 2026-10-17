@@ -6,6 +6,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.opencode.android.core.data.action.ActionError
 import dev.opencode.android.core.data.action.toActionError
 import dev.opencode.android.core.data.capability.RouteAvailability
+import dev.opencode.android.core.data.preferences.ProjectPreferences
 import dev.opencode.android.core.data.server.ServerDataRegistry
 import dev.opencode.android.core.data.server.ServerDataSet
 import dev.opencode.android.core.data.server.actionErrorOrNull
@@ -45,10 +46,14 @@ import javax.inject.Inject
 @HiltViewModel
 class SessionManagementViewModel(
     private val active: StateFlow<ServerDataSet?>,
+    private val projectPreferences: ProjectPreferences? = null,
 ) : ViewModel() {
     /** Hilt's constructor: what this view model reads from the registry is which read model is active. */
     @Inject
-    constructor(dataSets: ServerDataRegistry) : this(dataSets.active)
+    constructor(
+        dataSets: ServerDataRegistry,
+        projectPreferences: ProjectPreferences,
+    ) : this(dataSets.active, projectPreferences)
 
     private val open = MutableStateFlow<String?>(null)
     private val _error = MutableStateFlow<ActionError?>(null)
@@ -93,8 +98,8 @@ class SessionManagementViewModel(
     /**
      * Whether the app follows the desktop TUI on the active server. The sheet's row shows it as on or off.
      *
-     * It is read from the server's `TuiControl`, through the active server, so a switch of server shows that server's
-     * value. Nothing is stored: the setting is in memory and starts off whenever the server's data set is made.
+     * It is read from the server's `TuiControl`, through the active server, and backed by [ProjectPreferences]
+     * so the user's choice survives app restarts.
      */
     val followDesktop: StateFlow<Boolean> = active
         .flatMapLatest { set -> set?.tui?.followDesktop ?: flowOf(false) }
@@ -102,7 +107,13 @@ class SessionManagementViewModel(
 
     /** Turns following the desktop TUI on or off for the active server. It changes nothing on the server. */
     fun setFollowDesktop(enabled: Boolean) {
-        active.value?.tui?.setFollowDesktop(enabled)
+        val set = active.value ?: return
+        set.tui.setFollowDesktop(enabled)
+        projectPreferences?.let { prefs ->
+            viewModelScope.launch {
+                prefs.setFollowDesktop(set.serverId, enabled)
+            }
+        }
     }
 
     /**
