@@ -431,11 +431,17 @@ itself. `TurnDividerLiveRegionTest` covers the three cases. Tool rows are single
 announce their expanded state, and the user's bubble is read as "You: …" because a screen reader cannot
 see which side it is on. What remains is to hear it on a device with TalkBack (matrix K2 and K3).
 
-**Finding A-2.** The keyboard-shortcut layer added in this phase (Ctrl+P for the command palette,
-leader-key combinations) is a *visible* feature and has no non-keyboard equivalent yet: a
-switch-access or switch-scan user cannot reach it. The commands themselves are reachable through
-their screens, so nothing is unreachable — but the shortcuts should not be described in the UI as
-the primary way to do something until there is a second route.
+**Finding A-2 — addressed in code; device verification with switch access remains.** The keyboard-shortcut
+layer (Ctrl+P for the command palette, leader-key combinations) now provides explicit touch and switch-access
+routes:
+- The command palette is reachable via a dedicated top-bar Search icon button on all top-level destinations
+  (Home, Chat/Session, Settings) and on the Servers screen, so switch-access and touch users have a direct touch
+  target without needing physical keyboard chords.
+- In `CommandPaletteDialog`, leader mnemonics (`Ctrl+X %1$s`) have explicit accessibility semantics identifying
+  them as optional keyboard shortcuts rather than primary controls, and each row remains an interactive button.
+- When Ctrl+X is armed, the leader-armed indicator pill (`Routes.kt`) is an interactive surface with an accessibility
+  label (`R.string.leader_armed_description`) that opens the command palette on tap or switch activation, providing an
+  immediate non-keyboard alternative.
 
 #### 5. The WebView terminal — **a special case, and the hardest one to make accessible**
 

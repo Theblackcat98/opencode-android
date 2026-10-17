@@ -26,6 +26,7 @@ fun NavGraphBuilder.settingsGraph(deps: NavGraphDeps) {
                 onOpen = { destination, directory ->
                     deps.navController.openSettingsDestination(route.serverId, destination, directory.orEmpty())
                 },
+                onOpenCommandPalette = deps.onOpenCommandPalette,
             )
         }
 

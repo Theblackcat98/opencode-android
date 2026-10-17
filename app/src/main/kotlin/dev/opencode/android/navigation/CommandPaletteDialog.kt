@@ -42,6 +42,8 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
@@ -225,11 +227,19 @@ fun CommandPaletteDialog(
                             )
                             // The leader-key mnemonic, so the palette shows the key that runs the same command.
                             leaderLetterOf(command.id)?.let { letter ->
+                                val leaderAccessibility = stringResource(
+                                    R.string.palette_leader_hint_accessibility,
+                                    letter,
+                                )
                                 Text(
                                     text = stringResource(R.string.palette_leader_hint, letter),
                                     style = MaterialTheme.typography.labelLarge,
                                     color = hintColor,
-                                    modifier = Modifier.padding(start = spacing.lg),
+                                    modifier = Modifier
+                                        .padding(start = spacing.lg)
+                                        .clearAndSetSemantics {
+                                            contentDescription = leaderAccessibility
+                                        },
                                 )
                             }
                         }

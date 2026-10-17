@@ -30,16 +30,19 @@ object PaletteCommandIds {
  *
  * [hasActiveServer] decides which commands are offered. The commands that act on a server have no server
  * to act on without one, so they are left out rather than listed and then failing. Servers, Changelog and
- * the event inspector work with no server, so they are always listed.
+ * the event inspector work with no server, so they are always listed. [isPairingAvailable] omits pairing
+ * when the active server lacks pairing capability (e.g. POST /api/pair returned 404).
  */
-fun paletteCommands(hasActiveServer: Boolean): List<PaletteCommand> = buildList {
+fun paletteCommands(hasActiveServer: Boolean, isPairingAvailable: Boolean = true): List<PaletteCommand> = buildList {
     add(PaletteCommand(PaletteCommandIds.SERVERS, R.string.palette_servers))
     if (hasActiveServer) {
         add(PaletteCommand(PaletteCommandIds.NEW_SESSION, R.string.palette_new_session))
         add(PaletteCommand(PaletteCommandIds.USAGE, R.string.palette_usage))
         add(PaletteCommand(PaletteCommandIds.QUICK_ASK, R.string.palette_quick_ask))
         add(PaletteCommand(PaletteCommandIds.RPC_CONSOLE, R.string.palette_rpc_console))
-        add(PaletteCommand(PaletteCommandIds.PAIR_DEVICE, R.string.palette_pair_device))
+        if (isPairingAvailable) {
+            add(PaletteCommand(PaletteCommandIds.PAIR_DEVICE, R.string.palette_pair_device))
+        }
     }
     add(PaletteCommand(PaletteCommandIds.CHANGELOG, R.string.palette_changelog))
     add(PaletteCommand(PaletteCommandIds.EVENT_INSPECTOR, R.string.palette_event_inspector))

@@ -38,8 +38,10 @@
     <string name="palette_event_inspector">Event inspector</string>
     <!-- The leader-key mnemonic shown after a palette row (navigation/LeaderKeys.kt). %1$s is the letter that follows Ctrl+X. -->
     <string name="palette_leader_hint">Ctrl+X %1$s</string>
+    <string name="palette_leader_hint_accessibility">Keyboard shortcut: Ctrl+X then %1$s</string>
     <!-- The pill shown while Ctrl+X waits for its letter (navigation/Routes.kt). -->
     <string name="leader_armed">Ctrl+X: press a letter</string>
+    <string name="leader_armed_description">Keyboard shortcut armed. Press a letter or tap to open command palette.</string>
     <!-- The session top bar's command-palette button (navigation/SessionHost.kt). -->
     <string name="session_command_palette">Open command palette</string>
     <!-- The attach sheet's fallbacks (navigation/SessionHost.kt): the device has no camera, or no source to attach from. -->

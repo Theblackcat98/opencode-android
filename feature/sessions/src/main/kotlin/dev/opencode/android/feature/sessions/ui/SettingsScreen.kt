@@ -19,6 +19,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.outlined.Article
 import androidx.compose.material.icons.automirrored.outlined.Chat
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.BarChart
 import androidx.compose.material.icons.outlined.Build
@@ -40,6 +41,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -147,7 +149,16 @@ data class SettingsUiState(
     /** The projects a checkout-scoped page can be scoped to: the added ones, or every one when none is added. */
     val projects: List<Project> = emptyList(),
     val selectedProject: Project? = null,
+    val isPairingAvailable: Boolean = true,
 )
+
+/** Filters destinations for [section], omitting pairing if the active server does not support it. */
+fun settingsDestinations(
+    section: SettingsSection,
+    isPairingAvailable: Boolean,
+): List<ManageDestination> = section.entries.filter { destination ->
+    destination != ManageDestination.PAIR_DEVICE || isPairingAvailable
+}
 
 /**
  * The server's settings, grouped: what used to be a fourteen-item overflow menu on the home and a second copy of
@@ -170,6 +181,7 @@ fun SettingsScreen(
     onDiscardThemePreview: () -> Unit = {},
     onResetTheme: () -> Unit = {},
     modifier: Modifier = Modifier,
+    onOpenCommandPalette: (() -> Unit)? = null,
 ) {
     val spacing = OpenCodeThemeExtras.spacing
     Scaffold(
@@ -178,6 +190,16 @@ fun SettingsScreen(
             OpenCodeTopAppBar(
                 title = stringResource(R.string.settings_title),
                 subtitle = state.serverName?.let { name -> { Text(name) } },
+                actions = {
+                    if (onOpenCommandPalette != null) {
+                        IconButton(onClick = onOpenCommandPalette) {
+                            Icon(
+                                Icons.Filled.Search,
+                                contentDescription = stringResource(R.string.settings_command_palette),
+                            )
+                        }
+                    }
+                },
             )
         },
     ) { padding ->
@@ -199,22 +221,25 @@ fun SettingsScreen(
                 )
             }
             SettingsSection.entries.forEach { section ->
-                item(key = "section-${section.name}") {
-                    Text(
-                        text = stringResource(section.titleRes),
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier
-                            .padding(start = spacing.xl, end = spacing.xl, top = spacing.xl, bottom = spacing.xs)
-                            .semantics { heading() },
-                    )
-                }
-                items(items = section.entries, key = { it.name }) { destination ->
-                    SettingsRow(
-                        destination = destination,
-                        enabled = !destination.needsProject || state.selectedProject != null,
-                        onClick = { onOpen(destination) },
-                    )
+                val entries = settingsDestinations(section, state.isPairingAvailable)
+                if (entries.isNotEmpty()) {
+                    item(key = "section-${section.name}") {
+                        Text(
+                            text = stringResource(section.titleRes),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier
+                                .padding(start = spacing.xl, end = spacing.xl, top = spacing.xl, bottom = spacing.xs)
+                                .semantics { heading() },
+                        )
+                    }
+                    items(items = entries, key = { it.name }) { destination ->
+                        SettingsRow(
+                            destination = destination,
+                            enabled = !destination.needsProject || state.selectedProject != null,
+                            onClick = { onOpen(destination) },
+                        )
+                    }
                 }
             }
         }

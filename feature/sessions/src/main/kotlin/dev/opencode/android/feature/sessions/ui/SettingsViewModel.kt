@@ -3,6 +3,7 @@ package dev.opencode.android.feature.sessions.ui
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dev.opencode.android.core.data.capability.RouteAvailability
 import dev.opencode.android.core.data.composer.FileContentKind
 import dev.opencode.android.core.data.preferences.ProjectPreferences
 import dev.opencode.android.core.data.preferences.ThemePreferences
@@ -51,11 +52,13 @@ class SettingsViewModel @Inject constructor(
                     set.projects.state,
                     projectPreferences.added(set.serverId),
                     projectPreferences.settingsProject(set.serverId),
-                ) { projects, added, chosen ->
+                    set.insights.pairDevice,
+                ) { projects, added, chosen, pairAvailability ->
                     val offered = settingsProjects(projects.value.orEmpty(), added)
                     SettingsUiState(
                         projects = offered,
                         selectedProject = offered.firstOrNull { it.id == chosen } ?: offered.firstOrNull(),
+                        isPairingAvailable = pairAvailability !is RouteAvailability.Absent,
                     )
                 }
             }

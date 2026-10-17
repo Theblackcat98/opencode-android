@@ -259,6 +259,7 @@
 
     <!-- The Settings tab. -->
     <string name="settings_title">Settings</string>
+    <string name="settings_command_palette">Open command palette</string>
     <string name="settings_theme_import_title">Import OpenCode theme</string>
     <string name="settings_theme_import_body">Read a V2 theme from .opencode/themes/ in a project or ~/.config/opencode/themes/ globally. Contrast is checked before anything changes.</string>
     <string name="settings_theme_file_path">Theme file path</string>
