@@ -259,6 +259,7 @@
 
     <!-- The Settings tab. -->
     <string name="settings_title">Settings</string>
+    <string name="settings_command_palette">Open command palette</string>
     <string name="settings_project_scope">Project</string>
     <string name="settings_project_none">Add a project on the home screen to manage its accounts, providers and configuration.</string>
     <string name="settings_section_server">Server</string>

@@ -64,6 +64,7 @@ fun SettingsRoute(
     serverId: String?,
     onOpen: (ManageDestination, String?) -> Unit,
     modifier: Modifier = Modifier,
+    onOpenCommandPalette: (() -> Unit)? = null,
     viewModel: SettingsViewModel = hiltViewModel(),
     home: HomeViewModel = hiltViewModel(),
 ) {
@@ -76,6 +77,7 @@ fun SettingsRoute(
         state = state.copy(serverName = serverName),
         onSelectProject = viewModel::selectProject,
         onOpen = { destination -> onOpen(destination, state.selectedProject?.canonical) },
+        onOpenCommandPalette = onOpenCommandPalette,
         modifier = modifier,
     )
 }

@@ -129,6 +129,23 @@ class CommandPaletteTest {
     }
 
     @Test
+    fun `with an active server lacking pairing capability pair_device is omitted`() {
+        val ids = paletteCommands(hasActiveServer = true, isPairingAvailable = false).map { it.id }
+        assertEquals(
+            listOf(
+                PaletteCommandIds.SERVERS,
+                PaletteCommandIds.NEW_SESSION,
+                PaletteCommandIds.USAGE,
+                PaletteCommandIds.QUICK_ASK,
+                PaletteCommandIds.RPC_CONSOLE,
+                PaletteCommandIds.CHANGELOG,
+                PaletteCommandIds.EVENT_INSPECTOR,
+            ),
+            ids,
+        )
+    }
+
+    @Test
     fun `no command is listed twice and every label resource is distinct`() {
         val all = paletteCommands(hasActiveServer = true)
         assertEquals(all.size, all.map { it.id }.toSet().size)

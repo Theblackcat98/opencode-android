@@ -39,6 +39,8 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavBackStackEntry
@@ -51,6 +53,7 @@ import dev.opencode.android.OpenSessionTarget
 import dev.opencode.android.OpenShortcutTarget
 import dev.opencode.android.R
 import dev.opencode.android.ShortcutDestination
+import dev.opencode.android.core.data.capability.RouteAvailability
 import dev.opencode.android.core.data.server.ServerDataRegistry
 import dev.opencode.android.core.data.sync.SyncStatus
 import dev.opencode.android.core.data.sync.SyncedState
@@ -74,6 +77,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
@@ -346,8 +350,16 @@ fun OpenCodeApp(
     }
     val sessionInfo by sessionInfoFlow.collectAsStateWithLifecycle(initialValue = emptyMap())
     val untitledSession = stringResource(SessionsR.string.session_title_untitled)
+    val isPairingAvailable by remember(serverDataSets) {
+        serverDataSets.active.flatMapLatest { set ->
+            set?.insights?.pairDevice?.map { it !is RouteAvailability.Absent } ?: flowOf(true)
+        }
+    }.collectAsStateWithLifecycle(initialValue = true)
     // The dialog and the leader keys read this one list, so a leader key cannot run a command the palette hides.
-    val paletteOffered = paletteCommands(hasActiveServer = activeServerId != null)
+    val paletteOffered = paletteCommands(
+        hasActiveServer = activeServerId != null,
+        isPairingAvailable = isPairingAvailable,
+    )
     val leader = remember { LeaderKeyMachine() }
     val leaderArmed by leader.armed
     // The machine only disarms on the next key, so a Ctrl+X followed by silence would leave the armed
@@ -507,13 +519,22 @@ fun OpenCodeApp(
 
         // The leader-key armed state, made visible: after Ctrl+X the app waits for a letter, and without
         // this pill there is no sign it heard the first key. It sits at the top so it never fights the
-        // snackbar below, and the timeout above clears it.
+        // snackbar below, and the timeout above clears it. Tapping the pill opens the command palette
+        // so touch and switch-access users have an immediate alternative to typing a letter.
         if (leaderArmed) {
+            val leaderArmedDescription = stringResource(R.string.leader_armed_description)
             Surface(
+                onClick = {
+                    leader.cancel()
+                    paletteOpen = true
+                },
                 modifier = Modifier
                     .align(Alignment.TopCenter)
                     .windowInsetsPadding(WindowInsets.statusBars)
-                    .padding(top = OpenCodeThemeExtras.spacing.sm),
+                    .padding(top = OpenCodeThemeExtras.spacing.sm)
+                    .semantics {
+                        contentDescription = leaderArmedDescription
+                    },
                 shape = MaterialTheme.shapes.large,
                 color = MaterialTheme.colorScheme.secondaryContainer,
             ) {
