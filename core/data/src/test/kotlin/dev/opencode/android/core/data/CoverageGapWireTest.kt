@@ -138,8 +138,6 @@ class CoverageGapWireTest {
         else -> null
     }
 
-    private fun modelRef() = """{"id":"placeholder-model","providerID":"placeholder-provider"}"""
-
     private fun permission() = """
         {"id":"per_1","sessionID":"ses_1","action":"bash","resources":["git status"],
          "time":{"created":1},"metadata":{}}

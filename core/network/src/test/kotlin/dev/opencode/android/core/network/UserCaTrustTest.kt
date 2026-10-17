@@ -157,7 +157,7 @@ class UserCaTrustTest {
     private fun serverUrl(): String = "https://127.0.0.1:${server.port}/api/info"
 
     private companion object {
-        val SERVER_INFO_JSON =
+        const val SERVER_INFO_JSON =
             """{"version":"2.0.18","pid":1,"urls":["https://box.example.com"],"paths":{"tmp":"/tmp"}}"""
     }
 }

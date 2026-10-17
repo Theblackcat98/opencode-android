@@ -116,8 +116,6 @@ fun ConfigHost(
     onNavigateBack: () -> Unit,
     onOpenEditor: (String?) -> Unit,
     onOpenDefinitions: () -> Unit,
-    onOpenCatalogs: () -> Unit,
-    onOpenPermissions: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: ConfigViewModel = hiltViewModel(),
 ) {

@@ -75,14 +75,6 @@ fun NavGraphBuilder.adminGraph(deps: NavGraphDeps) {
                         DefinitionRoute(route.serverId, route.directory, DefinitionKind.AGENT, ""),
                     ) { launchSingleTop = true }
                 },
-                onOpenCatalogs = {
-                    deps.navController.navigate(
-                        CatalogRoute(route.serverId, route.directory, AdminCatalog.AGENTS),
-                    ) { launchSingleTop = true }
-                },
-                onOpenPermissions = {
-                    deps.navController.navigate(PermissionsRoute(route.serverId, route.directory)) { launchSingleTop = true }
-                },
             )
         }
 

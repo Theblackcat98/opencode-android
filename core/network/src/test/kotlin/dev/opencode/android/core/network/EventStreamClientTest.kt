@@ -629,7 +629,7 @@ class EventStreamClientTest {
         const val HEARTBEAT_WINDOW_MILLIS = 2_000L
         const val HEARTBEAT_PERIOD_MILLIS = 150L
         const val HEARTBEAT_FRAME = ": heartbeat\n\n"
-        val SERVER_CONNECTED_FRAME =
+        const val SERVER_CONNECTED_FRAME =
             "data: {\"id\":\"evt_connected\",\"type\":\"server.connected\",\"data\":{}}\n\n"
     }
 }
