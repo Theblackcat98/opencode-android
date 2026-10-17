@@ -28,13 +28,14 @@ node tools/audit-screen-flow.test.mjs && node tools/audit-screen-flow.mjs  # the
 ```bash
 ./gradlew unitTest        # the main gate; ~40s with a warm cache
 ./gradlew lintDebug
+./gradlew detekt
 ./gradlew spotlessCheck   # ktlint — the formatting gate
 ./gradlew assembleDebug   # play + fdroid
 ```
 
 CI runs `integrationTest` in a separate job with a pinned server. `verifyRoborazziDebug` is a manual visual assertion; CI does not run it.
 
-**`./gradlew check` currently fails because Detekt reports findings.** The Detekt 2.x configuration is under review, and the Detekt workflow step is temporarily disabled. Do not add a baseline; review the rule configuration and address actionable findings before restoring the CI gate.
+**Detekt 2.x configuration review is complete.** All actionable findings have been resolved, rule configurations are tuned to project conventions, and `./gradlew detekt` runs as a CI gate passing cleanly without a baseline.
 
 **There is no `ktlintCheck` task.** The ktlint gate is Spotless: `spotlessCheck` / `spotlessKotlinCheck`. `QualityConventionPlugin`'s KDoc says otherwise and is wrong.
 
