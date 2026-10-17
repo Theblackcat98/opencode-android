@@ -32,7 +32,6 @@ internal class Lexer(
             val closed = consumeUntilClose(
                 from = 0,
                 delimiter = carry.openStringDelimiter!!,
-                triple = carry.triple,
                 escape = true,
             )
             // The rest of the literal is a run in its own right: the line is the inside of a string
@@ -74,7 +73,6 @@ internal class Lexer(
             val result = consumeUntilClose(
                 from = index + open.length,
                 delimiter = close,
-                triple = false,
                 escape = false,
             )
             add(CodeTokenKind.COMMENT, index, result.index)
@@ -97,7 +95,7 @@ internal class Lexer(
         if (ch in rules.stringDelimiters) {
             val triple = rules.tripleQuote && text.startsWith("$ch$ch$ch", index)
             val open = if (triple) "$ch$ch$ch" else ch.toString()
-            val result = consumeUntilClose(from = index + open.length, delimiter = open, triple = triple, escape = true)
+            val result = consumeUntilClose(from = index + open.length, delimiter = open, escape = true)
             add(CodeTokenKind.STRING, index, result.index)
             // Only a language that *has* multi-line literals can leave one open.
             pendingCarry = if (triple && !result.closed && rules.tripleQuote) {
@@ -108,13 +106,13 @@ internal class Lexer(
             return result.index
         }
         if (rules.backtickTemplate && ch == '`') {
-            val result = consumeUntilClose(from = index + 1, delimiter = "`", triple = false, escape = true)
+            val result = consumeUntilClose(from = index + 1, delimiter = "`", escape = true)
             add(CodeTokenKind.STRING, index, result.index)
             pendingCarry = LineCarry.NONE
             return result.index
         }
         if (ch == '"' && !rules.stringDelimiters.contains('"')) {
-            val result = consumeUntilClose(from = index + 1, delimiter = "\"", triple = false, escape = true)
+            val result = consumeUntilClose(from = index + 1, delimiter = "\"", escape = true)
             add(CodeTokenKind.STRING, index, result.index)
             return result.index
         }
@@ -223,7 +221,7 @@ internal class Lexer(
      * does not close the literal: `"a\"b"` is one string, not `"a\"` plus `b"`. Block comments do
      * not escape this way, so their scans pass `false`.
      */
-    private fun consumeUntilClose(from: Int, delimiter: String, triple: Boolean, escape: Boolean): Close {
+    private fun consumeUntilClose(from: Int, delimiter: String, escape: Boolean): Close {
         var at = from
         while (at < text.length) {
             if (escape && text[at] == '\\' && at + 1 < text.length) {

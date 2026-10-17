@@ -412,7 +412,6 @@ fun ConnectSheetContent(
             OAuthProgress(
                 state = state,
                 onOpenUrl = onOpenUrl,
-                onCopyCode = onCopyCode,
                 onCodeChange = onCodeChange,
                 onSubmitCode = onSubmitCode,
                 onCancel = onCancelAttempt,
@@ -522,7 +521,6 @@ private fun jsonText(value: kotlinx.serialization.json.JsonElement?): String =
 private fun OAuthProgress(
     state: ConnectUiState,
     onOpenUrl: (String) -> Unit,
-    onCopyCode: (String) -> Unit,
     onCodeChange: (String) -> Unit,
     onSubmitCode: () -> Unit,
     onCancel: () -> Unit,

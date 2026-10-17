@@ -354,7 +354,7 @@ private fun isSafeLink(url: String): Boolean =
 @Composable
 private fun annotate(
     inlines: List<MarkdownInline>,
-    style: androidx.compose.ui.text.TextStyle,
+    _style: androidx.compose.ui.text.TextStyle,
 ): AnnotatedString {
     val linkColor = MaterialTheme.colorScheme.primary
     return buildAnnotatedString {

@@ -82,7 +82,7 @@ class ShellCompletionAttentionTest {
             state(
                 finishedShells = listOf(finished),
                 quietHours = QuietHours(enabled = true, startMinuteOfDay = 0, endMinuteOfDay = 1_439),
-                now = noon(),
+                now = NOON,
             ),
         )
         assertTrue(drafts.none { it.channel == AttentionChannel.SHELL_FINISHED })
@@ -116,7 +116,9 @@ class ShellCompletionAttentionTest {
         assertTrue(!AttentionChannel.SHELL_FINISHED.blocking)
     }
 
-    private fun noon(): Long = 1_700_000_000_000L
+    companion object {
+        private const val NOON: Long = 1_700_000_000_000L
+    }
 
     private fun state(
         finishedShells: List<FinishedShell>,

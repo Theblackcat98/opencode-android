@@ -68,18 +68,18 @@ object TerminalBridgeCodec {
         return when (type) {
             Ready.TYPE -> TerminalBridgeMessage.Ready
 
-            Input.TYPE -> payload(obj, Input.TYPE)?.let { TerminalBridgeMessage.Input(it) }
+            Input.TYPE -> payload(obj)?.let { TerminalBridgeMessage.Input(it) }
 
             Resize.TYPE -> resize(obj)
 
-            Selection.TYPE -> bounded(obj, Selection.TYPE, MAX_SELECTION_CHARS)
+            Selection.TYPE -> bounded(obj, MAX_SELECTION_CHARS)
                 ?.let { TerminalBridgeMessage.Selection(it) }
 
             // The page's own failure message is in `message`, not `data`: the page is what reports it,
             // and it has always used the field name it uses for a state message. Reading `data` here
             // would decode every failure to `null` and the page would be told nothing, which is the one
             // outcome this branch exists to avoid.
-            Error.TYPE -> bounded(obj, Error.TYPE, MAX_INPUT_CHARS, key = "message")
+            Error.TYPE -> bounded(obj, MAX_INPUT_CHARS, key = "message")
                 ?.let { TerminalBridgeMessage.Failed(it) }
 
             else -> null
@@ -116,14 +116,7 @@ object TerminalBridgeCodec {
      */
     const val HOST_ENCODE_FAILED: String = """{"type":"error","data":"host-encode-failed"}"""
 
-    private fun payload(obj: JsonObject, type: String): String? = bounded(obj, type, MAX_INPUT_CHARS)
-
-    /** [bounded] for a field that is not called `data`. */
-    private fun bounded(obj: JsonObject, type: String, limit: Int, key: String): String? {
-        val value = obj.stringOrNull(key) ?: return null
-        if (value.isEmpty() || value.length > limit) return null
-        return value
-    }
+    private fun payload(obj: JsonObject): String? = bounded(obj, MAX_INPUT_CHARS)
 
     /**
      * A string field, or `null` for anything that is not one.
@@ -133,8 +126,8 @@ object TerminalBridgeCodec {
      * then send those four characters to the terminal as a keystroke. It is excluded here, and so is
      * a JSON number, because a number is not text a page may claim the user typed.
      */
-    private fun bounded(obj: JsonObject, type: String, limit: Int): String? {
-        val value = obj.stringOrNull("data") ?: return null
+    private fun bounded(obj: JsonObject, limit: Int, key: String = "data"): String? {
+        val value = obj.stringOrNull(key) ?: return null
         if (value.isEmpty() || value.length > limit) return null
         return value
     }
