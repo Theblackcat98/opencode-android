@@ -67,29 +67,38 @@ data class DiffColors(
         /**
          * The palette from the theme.
          *
-         * The added-row wash is the scheme's tonal container (`primaryContainer`), not a
-         * hard-coded green: a custom or dynamic theme's accent may itself be green, and a fixed
-         * green would clash with it. Annotations use `tertiary` — colouring `@Composable` in
-         * error red read as "this is broken".
+         * **Row washes are alpha blends of the accents, not the tonal containers.** A container is a
+         * solid fill a chip or card can carry; as a diff row it is too heavy, and in the dark scheme
+         * `primaryContainer` is a *bright* peach that every light text colour fails against (the
+         * contrast audit measured 1.03:1). An 18 % blend of the accent over the card's surface is a
+         * wash in both schemes — faint on light, tinted on dark — and the row's text takes the full
+         * accent, which passes on its own wash in both. Selection is the *secondary* accent for the
+         * same reason: a selected context line must not look like an added line. Annotations use
+         * `tertiary` — colouring `@Composable` in error red read as "this is broken".
+         *
+         * The gutter and comments are `onSurfaceVariant` at full strength. At 0.7 alpha they read as
+         * de-emphasised, but they are normal-size text and fell to 3.2–3.9:1 on the rows they sit on;
+         * the position in the gutter and the smaller role in a comment are the de-emphasis, not the
+         * colour (contrast audit, matrix K6).
          */
         @Composable
         fun of(scheme: androidx.compose.material3.ColorScheme = MaterialTheme.colorScheme): DiffColors = DiffColors(
-            added = scheme.primaryContainer,
-            removed = scheme.errorContainer,
+            added = scheme.primary.copy(alpha = 0.18f),
+            removed = scheme.error.copy(alpha = 0.18f),
             context = Color.Transparent,
-            addedStrong = scheme.onPrimaryContainer,
-            removedStrong = scheme.onErrorContainer,
+            addedStrong = scheme.primary,
+            removedStrong = scheme.error,
             hunkHeader = scheme.surfaceContainerHighest,
             keyword = scheme.primary,
             string = scheme.tertiary,
             number = scheme.secondary,
-            comment = scheme.onSurfaceVariant.copy(alpha = 0.7f),
+            comment = scheme.onSurfaceVariant,
             annotation = scheme.tertiary,
             punctuation = scheme.onSurfaceVariant,
             marker = scheme.onSurfaceVariant,
             plain = scheme.onSurface,
-            gutter = scheme.onSurfaceVariant.copy(alpha = 0.7f),
-            selection = scheme.primary.copy(alpha = 0.16f),
+            gutter = scheme.onSurfaceVariant,
+            selection = scheme.secondary.copy(alpha = 0.18f),
         )
     }
 }

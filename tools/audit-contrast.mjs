@@ -15,9 +15,11 @@
  * value, colours the server or the user chooses, the terminal's xterm.js palette, and the camera
  * message, which sits over a camera view whose content is not static.
  *
- * It reports and does not gate: it exits 0, like audit-strings and audit-accessibility.
+ * It reports and does not gate by default: it exits 0, like audit-strings and audit-accessibility.
+ * With `--strict` it exits 1 on any pair below the floors or any pair it could not read, so CI can
+ * hold the claim.
  *
- * Usage: node tools/audit-contrast.mjs [--json]
+ * Usage: node tools/audit-contrast.mjs [--json] [--strict]
  */
 import { readFileSync } from 'node:fs'
 import { join, dirname } from 'node:path'
@@ -68,9 +70,13 @@ const SCHEME_PAIRS = [
   ['secondary', 'surface'],
   ['tertiary', 'surface'],
   ['error', 'surface'],
-  // The disconnected server dot is `outline`: a non-text component, so only the 3:1 verdict applies.
-  ['outline', 'surface'],
 ]
+
+/**
+ * Pairs that carry no text, so the 4.5:1 text verdict does not apply to them and only the 3:1
+ * component floor is measured. The disconnected server dot is `outline`.
+ */
+const COMPONENT_ONLY = ['outline / surface']
 
 /** What this tool does not compute, and why. These are reported, not measured. */
 export const NOT_COMPUTED = [
@@ -219,9 +225,12 @@ export function parseDiffMapping(source) {
     const m = line.match(/^\s*(\w+)\s*=\s*(.+?),?\s*$/)
     if (m) mapping.set(m[1], readDiffExpression(m[2]))
   }
+  // The theme redesign (e186aed) maps every diff role straight from a scheme role, so the
+  // surface-luminance branch and its threshold constant no longer exist in the source. The
+  // branch shape is still parsed, because a theme that needs per-surface diff variants can
+  // bring it back; without the constant such a role is unmeasured rather than fatal.
   const threshold = source.match(/const val DARK_SURFACE = ([\d.]+)f?/)
-  if (!threshold) throw new Error('DARK_SURFACE not found')
-  return { mapping, darkSurfaceBelow: Number(threshold[1]) }
+  return { mapping, darkSurfaceBelow: threshold ? Number(threshold[1]) : null }
 }
 
 /**
@@ -231,7 +240,7 @@ export function parseDiffMapping(source) {
 export function diffColours({ mapping, darkSurfaceBelow }, roles, vals) {
   const surface = roles.get('surface')
   if (!surface) throw new Error('surface is not set in the scheme')
-  const dark = relativeLuminance(surface) < darkSurfaceBelow
+  const dark = darkSurfaceBelow === null ? null : relativeLuminance(surface) < darkSurfaceBelow
   const out = new Map()
   for (const [role, expr] of mapping) {
     let colour = null
@@ -239,7 +248,7 @@ export function diffColours({ mapping, darkSurfaceBelow }, roles, vals) {
       colour = roles.get(expr.role) ?? null
       if (colour && expr.alpha !== null) colour = { ...colour, a: expr.alpha }
     } else if (expr.kind === 'by-surface') {
-      colour = vals.get(dark ? expr.dark : expr.light) ?? null
+      colour = dark === null ? null : vals.get(dark ? expr.dark : expr.light) ?? null
     } else if (expr.kind === 'colour') {
       colour = resolveColour(expr.expression, vals)
     }
@@ -267,8 +276,9 @@ export function parseMarkdownColours(source) {
 /**
  * One pair. `fg` and `bg` are `{ name, colour }`, and the background is already opaque. A colour that
  * could not be read is recorded as unmeasured, with the name of the role that was missing.
+ * `componentOnly` pairs carry no text, so they are judged against the 3:1 component floor alone.
  */
-function measure(scheme, pair, fg, bg, out) {
+function measure(scheme, pair, fg, bg, out, componentOnly = false) {
   if (!fg.colour || !bg.colour) {
     const missing = fg.colour ? bg.name : fg.name
     out.unmeasured.push({ scheme, pair, reason: `${missing} is not a colour this reads` })
@@ -281,8 +291,9 @@ function measure(scheme, pair, fg, bg, out) {
     foreground: fg.name,
     background: bg.name,
     ratio,
-    text: ratio >= TEXT_MIN,
+    text: componentOnly ? true : ratio >= TEXT_MIN,
     uiOrLarge: ratio >= UI_OR_LARGE_MIN,
+    componentOnly,
   })
 }
 
@@ -294,6 +305,10 @@ function measureScheme(scheme, roles, ctx, out) {
 
   for (const [fg, bg] of SCHEME_PAIRS) {
     measure(scheme, `${fg} / ${bg}`, role(fg), role(bg), out)
+  }
+  for (const pair of COMPONENT_ONLY) {
+    const [fg, bg] = pair.split(' / ')
+    measure(scheme, pair, role(fg), role(bg), out, true)
   }
 
   // Each row's text, gutter, marker and tokens are drawn on the row's background, with the card's
@@ -374,13 +389,15 @@ function printReport(report) {
     console.log(`\n${scheme} scheme (${rows.length} pairs measured)`)
     console.log(`  ${pad('pair', 62)}${'ratio'.padStart(7)}  ${pad('4.5:1', 5)}  3:1`)
     for (const p of rows) {
+      const textVerdict = p.componentOnly ? 'n/a  ' : pad(verdict(p.text), 5)
       console.log(
-        `  ${pad(p.pair, 62)}${p.ratio.toFixed(2).padStart(7)}  ${pad(verdict(p.text), 5)}  ${verdict(p.uiOrLarge)}`,
+        `  ${pad(p.pair, 62)}${p.ratio.toFixed(2).padStart(7)}  ${textVerdict}  ${verdict(p.uiOrLarge)}` +
+          (p.componentOnly ? '  (component: no text on this pair)' : ''),
       )
     }
-    const below45 = rows.filter((p) => !p.text)
+    const below45 = rows.filter((p) => !p.componentOnly && !p.text)
     const below3 = rows.filter((p) => !p.uiOrLarge)
-    console.log(`  below 4.5:1: ${below45.length}. below 3:1: ${below3.length}.`)
+    console.log(`  below 4.5:1 as text: ${below45.length}. below 3:1 at all: ${below3.length}.`)
   }
   if (report.unmeasured.length) {
     console.log('\nUnmeasured (a role or colour this could not read):')
@@ -388,6 +405,22 @@ function printReport(report) {
   }
   console.log('\nNot computed:')
   for (const n of report.notComputed) console.log(`  ${n.area}. ${n.reason}`)
+}
+
+/** The failures --strict refuses to ship: unreadable text, an unreadable component, or a gap in the measurement. */
+function strictProblems(report) {
+  if (report.error) return [`the colour sources could not be read: ${report.error}`]
+  const problems = []
+  for (const p of report.pairs) {
+    if (!p.componentOnly && !p.text) {
+      problems.push(`${p.scheme}: ${p.pair} is ${p.ratio.toFixed(2)}:1 as text; it needs ${TEXT_MIN}:1`)
+    }
+    if (!p.uiOrLarge) {
+      problems.push(`${p.scheme}: ${p.pair} is ${p.ratio.toFixed(2)}:1; even a component needs ${UI_OR_LARGE_MIN}:1`)
+    }
+  }
+  for (const u of report.unmeasured) problems.push(`${u.scheme ?? '-'}: ${u.pair} is unmeasured (${u.reason})`)
+  return problems
 }
 
 export function main(argv = process.argv.slice(2)) {
@@ -400,6 +433,16 @@ export function main(argv = process.argv.slice(2)) {
   if (argv.includes('--json')) console.log(JSON.stringify(report, null, 1))
   else if (report.error) console.log(`could not read the colour sources: ${report.error}`)
   else printReport(report)
+  if (argv.includes('--strict')) {
+    const problems = strictProblems(report)
+    if (problems.length) {
+      console.error(`\n${problems.length} contrast problem(s) below the WCAG floors:`)
+      for (const problem of problems) console.error(`  ${problem}`)
+      process.exitCode = 1
+    } else {
+      console.log('\nstrict: every measured pair meets 4.5:1 as text and 3:1 as a component.')
+    }
+  }
 }
 
 if (process.argv[1]?.endsWith('audit-contrast.mjs')) main()

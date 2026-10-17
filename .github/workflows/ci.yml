@@ -60,6 +60,13 @@ jobs:
           node tools/audit-screen-flow.test.mjs
           node tools/audit-screen-flow.mjs
 
+      - name: Check the theme's contrast pairs
+        # Plan §5.4: text at 4.5:1, components at 3:1. The fallback schemes are read from the
+        # sources, so a palette edit that regresses a pair fails here rather than in a review.
+        run: |
+          node tools/audit-contrast.test.mjs
+          node tools/audit-contrast.mjs --strict
+
       - name: Check every UI string is externalized
         # Plan 5.4: every string externalized from P0 on. A literal in a Text() or a
         # contentDescription is invisible to every locale, so this fails the build rather than
