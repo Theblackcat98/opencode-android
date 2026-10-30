@@ -472,8 +472,11 @@ fun RpcConsoleHost(
         modifier = modifier,
         onNavigateBack = onNavigateBack,
     ) { padding ->
+        val events by viewModel.rpcEvents.collectAsStateWithLifecycle()
         RpcConsoleScreen(
             state = state,
+            events = events,
+            onTabChange = viewModel::setTab,
             onRpcIDChange = viewModel::setRpcID,
             onMethodChange = viewModel::setMethod,
             onInputChange = viewModel::setInput,

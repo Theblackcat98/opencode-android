@@ -73,6 +73,12 @@
     <string name="rpc_calling">Calling the plugin…</string>
     <string name="rpc_output">Answer</string>
 
+    <string name="rpc_tab_call">Call</string>
+    <string name="rpc_tab_events">Events</string>
+    <string name="rpc_events_empty">No rpc.* events recorded yet.</string>
+    <string name="rpc_event_payload">Payload</string>
+    <string name="rpc_event_source">source: %1$s</string>
+
     <!-- Pair another device: one code, drawn as a QR code, for a second client to redeem. -->
     <string name="pair_help">Anyone who scans this code can add this server to their device. The server makes the code, and it works once.</string>
     <string name="pair_address">The code names the address this phone uses for the server, so the other device must be able to reach that address.</string>

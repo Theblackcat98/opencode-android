@@ -6,13 +6,22 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.opencode.android.core.data.action.toActionError
 import dev.opencode.android.core.data.integrations.ActionFailure
 import dev.opencode.android.core.data.server.ServerDataRegistry
+import dev.opencode.android.core.data.tui.TuiControl
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import javax.inject.Inject
+
+/** The tab chosen on the RPC console. */
+enum class RpcConsoleTab { CALL, EVENTS }
 
 /**
  * The RPC console's state: which plugin method to call, the JSON to send, and what came back.
@@ -21,6 +30,7 @@ import javax.inject.Inject
  * model has no context to read them from.
  */
 data class RpcConsoleUiState(
+    val tab: RpcConsoleTab = RpcConsoleTab.CALL,
     val rpcID: String = "",
     val method: String = "",
     val input: String = "",
@@ -47,6 +57,19 @@ class RpcConsoleViewModel @Inject constructor(
 
     private val _state = MutableStateFlow(RpcConsoleUiState())
     val state: StateFlow<RpcConsoleUiState> = _state.asStateFlow()
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val rpcEvents: StateFlow<List<TuiControl.RpcEvent>> = dataSets.active
+        .flatMapLatest { set -> set?.tui?.rpcEvents ?: flowOf(emptyList()) }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = emptyList(),
+        )
+
+    fun setTab(tab: RpcConsoleTab) {
+        _state.value = _state.value.copy(tab = tab)
+    }
 
     fun setRpcID(rpcID: String) {
         _state.value = _state.value.copy(rpcID = rpcID)
