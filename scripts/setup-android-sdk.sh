@@ -20,12 +20,13 @@ set -euo pipefail
 CMDLINE_TOOLS_BUILD="14742923"
 CMDLINE_TOOLS_VERSION="20.0"
 CMDLINE_TOOLS_SHA1="48833c34b761c10cb20bcd16582129395d121b27"
-PLATFORM="${ANDROID_PLATFORM:-android-36}"
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+COMPILE_SDK="$(sed -n 's/^compileSdk[[:space:]]*=[[:space:]]*"\([0-9]\+\)"/\1/p' "$REPO_ROOT/gradle/libs.versions.toml")"
+PLATFORM="${ANDROID_PLATFORM:-android-$COMPILE_SDK}"
 BUILD_TOOLS="${ANDROID_BUILD_TOOLS:-36.0.0}"
 EXTRA_PACKAGES="${ANDROID_EXTRA_PACKAGES:-}"
 
 SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-$HOME/android-sdk}}"
-REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 log() { printf '[setup-android-sdk] %s\n' "$*" >&2; }
 
