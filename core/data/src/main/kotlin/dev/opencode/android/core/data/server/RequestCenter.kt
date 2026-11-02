@@ -26,6 +26,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 import dev.opencode.android.core.network.ServerApi as Api
@@ -182,15 +183,19 @@ class RequestCenter(
             val sessions = sessionsIn(directory)
             // The fetch suspended; events applied meanwhile may have dropped requests the
             // snapshot still lists. Filter them so an answered request stays answered.
-            val dropped = resyncTombstones.toSet()
             if (permissions != null) {
-                _permissions.value = _permissions.value.filterValues { it.sessionID !in sessions } +
-                    permissions.filter { it.id !in dropped }.associateBy(PermissionRequest::id)
+                _permissions.update { current ->
+                    val dropped = resyncTombstones.toSet()
+                    current.filterValues { it.sessionID !in sessions } +
+                        permissions.filter { it.id !in dropped }.associateBy(PermissionRequest::id)
+                }
             }
             if (forms != null) {
-                pendingForms.value =
-                    pendingForms.value.filterValues { it.sessionID !in sessions } +
-                    forms.filter { it.id !in dropped }.associateBy(FormInfo::id)
+                pendingForms.update { current ->
+                    val dropped = resyncTombstones.toSet()
+                    current.filterValues { it.sessionID !in sessions } +
+                        forms.filter { it.id !in dropped }.associateBy(FormInfo::id)
+                }
             }
         } finally {
             if (resyncDepth.decrementAndGet() == 0) resyncTombstones.clear()
@@ -272,29 +277,51 @@ class RequestCenter(
     }
 
     private fun upsertPermission(request: PermissionRequest): Boolean {
-        if (_permissions.value[request.id] == request) return false
-        _permissions.value = _permissions.value + (request.id to request)
-        return true
+        var changed = false
+        _permissions.update { current ->
+            if (current[request.id] == request) {
+                changed = false
+                current
+            } else {
+                changed = true
+                current + (request.id to request)
+            }
+        }
+        return changed
     }
 
     private fun dropPermission(requestID: String): Boolean {
-        if (requestID !in _permissions.value) return false
         if (resyncDepth.get() > 0) resyncTombstones.add(requestID)
-        _permissions.value = _permissions.value - requestID
-        return true
+        var removed = false
+        _permissions.update { current ->
+            removed = current.containsKey(requestID)
+            if (removed) current - requestID else current
+        }
+        return removed
     }
 
     private fun upsertForm(form: FormInfo): Boolean {
-        if (pendingForms.value[form.id] == form) return false
-        pendingForms.value = pendingForms.value + (form.id to form)
-        return true
+        var changed = false
+        pendingForms.update { current ->
+            if (current[form.id] == form) {
+                changed = false
+                current
+            } else {
+                changed = true
+                current + (form.id to form)
+            }
+        }
+        return changed
     }
 
     private fun dropForm(formID: String): Boolean {
-        if (formID !in pendingForms.value) return false
         if (resyncDepth.get() > 0) resyncTombstones.add(formID)
-        pendingForms.value = pendingForms.value - formID
-        return true
+        var removed = false
+        pendingForms.update { current ->
+            removed = current.containsKey(formID)
+            if (removed) current - formID else current
+        }
+        return removed
     }
 
     /** Runs one write and maps a failure to the class the UI renders. */
