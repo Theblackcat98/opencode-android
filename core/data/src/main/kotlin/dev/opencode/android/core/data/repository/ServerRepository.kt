@@ -182,8 +182,16 @@ class DefaultServerRepository(
 
         // The first server added is the default, so a fresh install has one to open.
         val shouldBeDefault = isDefault || serverDao.count() == 0
-        // #45: capture for rollback — a credential failure must not leave a half-saved row.
+        // #45: capture for rollback — if the DB insert fails, we must restore the prior default.
         val previousDefault = serverDao.getDefaultServer()
+
+        // #45: Stage credential changes before mutating the registry so that process termination
+        // between the two writes does not leave a half-saved server profile.
+        if (!credential.isNullOrBlank()) {
+            saveCredential(serverId, cleanBaseUrl, credential)
+        } else {
+            setRuntime(serverId, health = null, hasCredential = false)
+        }
 
         try {
             if (shouldBeDefault) serverDao.clearDefaultFlags()
@@ -197,15 +205,13 @@ class DefaultServerRepository(
                     createdAt = now(),
                 ),
             )
-
-            if (!credential.isNullOrBlank()) {
-                saveCredential(serverId, cleanBaseUrl, credential)
-            } else {
-                setRuntime(serverId, health = null, hasCredential = false)
-            }
         } catch (error: Throwable) {
-            // Compensating rollback: remove the inserted row and restore the prior default.
-            serverDao.deleteById(serverId)
+            // Compensating rollback: delete the staged credential if the row failed to insert.
+            if (!credential.isNullOrBlank()) {
+                credentialStore.removeCredential(serverId)
+                credentialCache.forget(cleanBaseUrl)
+            }
+            // Also restore original profile defaults if they were partially applied.
             if (shouldBeDefault) {
                 previousDefault?.let { serverDao.setDefaultServer(it.id) }
             }
@@ -226,8 +232,24 @@ class DefaultServerRepository(
         val existing = serverDao.getById(id) ?: return@withContext
         val cleanBaseUrl = baseUrl.toServerBaseUrl().trimEnd('/')
         val addressChanged = cleanBaseUrl != existing.baseUrl
-        // #45: capture for rollback — a credential failure must restore the prior profile.
+
+        // #45: capture for rollback — if the DB update fails, we must restore the prior credential.
         val previousDefault = serverDao.getDefaultServer()
+        val previousCredential = credentialStore.getCredential(id)
+        val hadCredential = previousCredential != null
+
+        // #45: Stage credential changes before mutating the registry.
+        when {
+            credential == null -> Unit
+
+            credential.isBlank() -> {
+                credentialStore.removeCredential(id)
+                credentialCache.forget(cleanBaseUrl)
+                setRuntime(id, health = null, hasCredential = false)
+            }
+
+            else -> saveCredential(id, cleanBaseUrl, credential)
+        }
 
         try {
             // #46: the one-default invariant. Unchecking the default promotes a survivor, mirroring
@@ -258,21 +280,17 @@ class DefaultServerRepository(
                     trustUserCertificates = trustUserCertificates,
                 ),
             )
-
-            when {
-                credential == null -> Unit
-
-                // Unchanged: the user did not touch the field.
-                credential.isBlank() -> {
-                    credentialStore.removeCredential(id)
-                    credentialCache.forget(cleanBaseUrl)
-                    setRuntime(id, health = null, hasCredential = false)
-                }
-
-                else -> saveCredential(id, cleanBaseUrl, credential)
-            }
         } catch (error: Throwable) {
-            // Compensating rollback: restore the original profile and default flags.
+            // Compensating rollback: restore the original credential and default flags.
+            if (previousCredential != null) {
+                saveCredential(id, existing.baseUrl, previousCredential)
+            } else {
+                credentialStore.removeCredential(id)
+                credentialCache.forget(cleanBaseUrl)
+                setRuntime(id, health = null, hasCredential = false)
+            }
+
+            // Also restore original profile defaults if they were partially applied (e.g. promoting survivor)
             serverDao.update(existing)
             if (previousDefault != null) {
                 serverDao.setDefaultServer(previousDefault.id)
