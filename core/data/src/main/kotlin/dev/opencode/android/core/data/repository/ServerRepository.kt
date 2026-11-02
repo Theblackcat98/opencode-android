@@ -241,11 +241,13 @@ class DefaultServerRepository(
         // #45: Stage credential changes before mutating the registry.
         when {
             credential == null -> Unit
+
             credential.isBlank() -> {
                 credentialStore.removeCredential(id)
                 credentialCache.forget(cleanBaseUrl)
                 setRuntime(id, health = null, hasCredential = false)
             }
+
             else -> saveCredential(id, cleanBaseUrl, credential)
         }
 
