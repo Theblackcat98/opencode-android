@@ -72,6 +72,9 @@ jobs:
             exit 1
           fi
 
+      - name: Run setup-android-sdk smoke test
+        run: node tools/setup-android-sdk.test.mjs
+
       - name: Setup Android SDK
         run: ./scripts/setup-android-sdk.sh
 
@@ -113,6 +116,9 @@ jobs:
 
       - name: Install integrity-locked OpenCode CLI
         run: ./scripts/install-opencode-cli.sh >/dev/null
+
+      - name: Run setup-android-sdk smoke test
+        run: node tools/setup-android-sdk.test.mjs
 
       - name: Setup Android SDK
         run: ./scripts/setup-android-sdk.sh
