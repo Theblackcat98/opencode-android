@@ -323,8 +323,54 @@ class RequestCenterTest {
     }
 
     @Test
+    fun `a permission answered before it was ever observed by the center stays answered after resync`() = runTest {
+        center.apply(sessionCreatedEvent())
+        server.enqueue(
+            jsonResponse(
+                200,
+                """{"location":{"directory":"/w"},"data":[
+                  {"id":"per_1","sessionID":"ses_probe","action":"shell","resources":["echo hello"]}]}""",
+            ),
+        )
+        server.enqueue(jsonResponse(200, """{"location":{"directory":"/w"},"data":[]}"""))
+
+        val resyncJob = launch { center.resync("/w") }
+        runCurrent()
+        center.apply(repliedEvent("per_1"))
+        resyncJob.join()
+
+        assertTrue(
+            "an answered permission must not reappear after resync",
+            center.permissions.value.isEmpty(),
+        )
+    }
+
+    @Test
     fun `a form answered during resync stays answered`() = runTest {
         center.apply(formCreatedEvent(FORM))
+        center.apply(sessionCreatedEvent())
+        server.enqueue(jsonResponse(200, """{"location":{"directory":"/w"},"data":[]}"""))
+        server.enqueue(
+            jsonResponse(
+                200,
+                """{"location":{"directory":"/w"},"data":[
+                  {"id":"frm_1","sessionID":"ses_probe","title":"Q","fields":[]}]}""",
+            ),
+        )
+
+        val resyncJob = launch { center.resync("/w") }
+        runCurrent()
+        center.apply(formRepliedEvent("frm_1"))
+        resyncJob.join()
+
+        assertTrue(
+            "an answered form must not reappear after resync",
+            center.forms.value.isEmpty(),
+        )
+    }
+
+    @Test
+    fun `a form answered before it was ever observed by the center stays answered after resync`() = runTest {
         center.apply(sessionCreatedEvent())
         server.enqueue(jsonResponse(200, """{"location":{"directory":"/w"},"data":[]}"""))
         server.enqueue(
