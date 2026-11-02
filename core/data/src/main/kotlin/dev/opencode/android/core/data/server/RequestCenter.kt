@@ -249,8 +249,8 @@ class RequestCenter(
     fun dropLocation(directory: String) {
         val sessions = sessionsIn(directory)
         directoryOfSession.value = directoryOfSession.value.filterKeys { it !in sessions }
-        _permissions.value = _permissions.value.filterValues { it.sessionID !in sessions }
-        pendingForms.value = pendingForms.value.filterValues { it.sessionID !in sessions }
+        _permissions.update { current -> current.filterValues { it.sessionID !in sessions } }
+        pendingForms.update { current -> current.filterValues { it.sessionID !in sessions } }
     }
 
     private fun sessionsIn(directory: String?): Set<String> =
