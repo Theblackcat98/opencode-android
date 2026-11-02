@@ -462,7 +462,7 @@ class ConfigEditorViewModel(
             when (val read = set.configuration.readFile(directory, path)) {
                 is ConfigFileRead.Found -> {
                     // A newer read supersedes this one; only the newest answer is published.
-                    if (request != readRequest) return@launch
+                    if (request != readRequest || directory != _state.value.directory || path != _state.value.path) return@launch
                     val text = read.file.text.orEmpty()
                     _state.value = _state.value.copy(
                         text = text,
@@ -478,7 +478,7 @@ class ConfigEditorViewModel(
 
                 // A file that is not there is the editor's "create it" case, not a failure.
                 is ConfigFileRead.Missing -> {
-                    if (request != readRequest) return@launch
+                    if (request != readRequest || directory != _state.value.directory || path != _state.value.path) return@launch
                     _state.value = _state.value.copy(
                         text = "",
                         draft = "",
@@ -491,7 +491,7 @@ class ConfigEditorViewModel(
                 }
 
                 is ConfigFileRead.Failed -> {
-                    if (request != readRequest) return@launch
+                    if (request != readRequest || directory != _state.value.directory || path != _state.value.path) return@launch
                     _state.value = _state.value.copy(readError = read.error, reading = false)
                 }
             }
